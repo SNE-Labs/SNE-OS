@@ -65,13 +65,13 @@ export default function WalletModal({
               ))}
             </div>
           </>
-        ) : !isAuthenticated && onSignIn ? (
+        ) : !isAuthenticated ? (
           <>
             <p className="text-[#A6A6A6] text-sm mb-6">
               Assine a mensagem para autenticar
             </p>
-            <Button onClick={onSignIn} className="w-full">
-              Assinar Mensagem (SIWE)
+            <Button onClick={onSignIn} className="w-full" disabled={!onSignIn}>
+              {onSignIn ? 'Assinar Mensagem (SIWE)' : 'Aguarde...'}
             </Button>
           </>
         ) : null}

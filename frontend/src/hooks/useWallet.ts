@@ -17,12 +17,13 @@ export function useWallet() {
   const [loading, setLoading] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // Verificar autenticação ao montar
+  // Verificar autenticação ao montar e conectar wallet
   useEffect(() => {
-    if (isConnected && address) {
+    if (isConnected && address && !isAuthenticated) {
+      // Wallet conectada mas não autenticada - verificar se já tem sessão válida
       checkAuth()
     }
-  }, [isConnected, address])
+  }, [isConnected, address, isAuthenticated])
 
   const checkAuth = async () => {
     if (!address) return false
@@ -89,8 +90,13 @@ export function useWallet() {
       }
 
       const { license } = authRes.data
+
+      // Atualizar estado local
       setTier(license.tier || 'free')
       setIsAuthenticated(true)
+
+      // Garantir que o estado esteja sincronizado chamando verify
+      await checkAuth()
 
       toast.success('Autenticado com sucesso!')
       return { license }
@@ -131,6 +137,9 @@ export function useWallet() {
 
       await connect({ connector })
       toast.success('Wallet conectada!')
+
+      // Após conectar, verificar se já está autenticado
+      await checkAuth()
     } catch (error: any) {
       toast.error(error.message || 'Erro ao conectar wallet')
       throw error

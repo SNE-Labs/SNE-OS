@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Menu, X, Wallet, Zap, Github } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useWallet } from '../../hooks/useWallet'
 import { Button } from './Button'
 import { cn, shortenAddress } from '../../lib/utils'
@@ -15,6 +15,13 @@ export default function Layout() {
   const handleConnectWallet = () => {
     setShowWalletModal(true)
   }
+
+  // Efeito para mostrar modal quando conectar wallet mas não estiver autenticado
+  useEffect(() => {
+    if (isConnected && !isAuthenticated && address) {
+      setShowWalletModal(true)
+    }
+  }, [isConnected, isAuthenticated, address])
 
   const handleSignIn = async () => {
     try {
@@ -89,8 +96,8 @@ export default function Layout() {
 
           {/* Right Side */}
           <div className="flex items-center gap-4">
-            {/* Tier Badge & Wallet */}
-            {isConnected && address ? (
+            {/* Tier Badge & Wallet - Só mostrar quando AUTENTICADO */}
+            {isAuthenticated && address ? (
               <div className="hidden md:flex items-center gap-3">
                 <Link
                   to="/pricing"
@@ -114,9 +121,9 @@ export default function Layout() {
                 </button>
               </div>
             ) : (
-              <Button onClick={handleConnectWallet} size="sm">
+              <Button onClick={handleConnectWallet} size="sm" disabled={isConnected && !isAuthenticated}>
                 <Wallet className="w-4 h-4 mr-2 inline" />
-                Conectar Carteira
+                {isConnected ? 'Assinar Mensagem' : 'Conectar Carteira'}
               </Button>
             )}
 
