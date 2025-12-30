@@ -6,6 +6,7 @@ Integração com dados de mercado e indicadores
 from flask import Blueprint, request, jsonify, g
 import logging
 import requests
+import json as json_lib
 from datetime import datetime, timedelta
 
 from .auth_siwe import require_auth, check_tier_limits
@@ -110,7 +111,7 @@ def get_candles():
         }
 
         # Cache
-        redis_client.setex(cache_key, cache_ttl, json.dumps(result))
+        redis_client.setex(cache_key, cache_ttl, json_lib.dumps(result))
 
         return jsonify(result), 200
 
@@ -159,7 +160,7 @@ def get_indicators():
         }
 
         # Cache
-        redis_client.setex(cache_key, cache_ttl, json.dumps(result))
+        redis_client.setex(cache_key, cache_ttl, json_lib.dumps(result))
 
         return jsonify(result), 200
 

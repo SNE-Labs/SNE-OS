@@ -6,6 +6,7 @@ Integrou com motor de análise real do SNE V1.0
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime, timedelta
 import logging
+import json as json_lib
 
 from .auth_siwe import require_auth, check_tier_limits
 from .motor import analisar_par
@@ -47,7 +48,7 @@ def dashboard_summary():
         summary_data = generate_dashboard_summary(tier)
 
         # Cache data
-        redis_client.setex(cache_key, cache_ttl, json.dumps(summary_data))
+        redis_client.setex(cache_key, cache_ttl, json_lib.dumps(summary_data))
 
         return jsonify(summary_data), 200
 

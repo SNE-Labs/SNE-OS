@@ -25,7 +25,35 @@ CORS(app, origins=["https://radar.snelabs.space", "https://www.radar.snelabs.spa
      supports_credentials=True)
 
 socketio = SocketIO(app, cors_allowed_origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
-                   async_mode='gevent')
+                   async_mode='threading')
+
+# Simple test route
+@app.route('/', methods=['GET'])
+def root():
+    logger.info("Root endpoint called")
+    return jsonify({'message': 'SNE Web API is running', 'status': 'ok'}), 200
+
+# Database initialization endpoint
+@app.route('/init-db', methods=['POST'])
+def init_database():
+    """Endpoint para inicializar banco de dados"""
+    try:
+        from .models import init_db
+        logger.info("Initializing database...")
+        init_db()
+        logger.info("Database initialized successfully")
+        return jsonify({'status': 'success', 'message': 'Database initialized'}), 200
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# Initialize database automatically
+from .models import init_db_auto
+try:
+    with app.app_context():
+        init_db_auto()
+except Exception as e:
+    logger.warning(f"Database auto-initialization failed: {str(e)}")
 
 # Register blueprints
 from . import main, api, auth_siwe, dashboard_api, charts_api

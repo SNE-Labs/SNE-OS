@@ -77,9 +77,40 @@ class UserTier(db.Model):
 # Funções auxiliares
 def init_db():
     """Inicializa o banco de dados"""
-    with db.session.begin():
-        # Criar todas as tabelas
-        db.create_all()
+    try:
+        with db.session.begin():
+            # Criar todas as tabelas
+            db.create_all()
+        print("✅ Database tables created successfully")
+        return True
+    except Exception as e:
+        print(f"❌ Error creating database tables: {str(e)}")
+        return False
+
+def init_db_auto():
+    """Inicialização automática do banco na startup"""
+    try:
+        # Verificar se já existem tabelas
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+
+        existing_tables = inspector.get_table_names()
+        print(f"📊 Existing tables: {existing_tables}")
+
+        if not existing_tables or len(existing_tables) < 5:
+            print("🚀 Creating database tables automatically...")
+            success = init_db()
+            if success:
+                print("🎉 Database initialized successfully!")
+            else:
+                print("❌ Failed to initialize database")
+        else:
+            print("✅ Database already initialized")
+
+    except Exception as e:
+        print(f"⚠️ Could not check database status: {str(e)}")
+        # Tentar criar tabelas mesmo assim
+        init_db()
 
 def get_user_tier(user_address: str) -> str:
     """Obtém tier do usuário do banco"""
