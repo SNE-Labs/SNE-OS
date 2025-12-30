@@ -29,7 +29,15 @@ export function formatPercentage(value: any): string {
 }
 
 export function safeString(value: any, fallback: string = '-'): string {
-  return value && typeof value === 'string' ? value : fallback
+  if (value === null || value === undefined) return fallback;
+  const s = String(value).trim();
+  return s.length ? s : fallback;
+}
+
+export function formatPercent(value: any, decimals: number = 0): string {
+  const n = safeNumber(value, NaN);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toFixed(decimals)}%`;
 }
 
 export function shortenAddress(address: string): string {
