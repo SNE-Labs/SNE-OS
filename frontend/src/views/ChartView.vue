@@ -1,103 +1,125 @@
 <template>
-  <div class="chart-view p-6">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold mb-2">Chart Analysis</h1>
-      <p class="text-gray-400">Gráficos interativos com indicadores técnicos</p>
-    </div>
+  <Layout>
+    <div class="chart-view">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-4xl font-mono font-bold mb-2 glow-green">Chart Analysis</h1>
+        <p class="text-gray-400 font-mono">Gráficos interativos com indicadores técnicos avançados</p>
+      </div>
 
-    <!-- Controls -->
-    <div class="bg-gray-800 rounded-lg p-4 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm text-gray-400 mb-2">Symbol</label>
-          <input
-            v-model="symbol"
-            type="text"
-            class="w-full px-3 py-2 bg-gray-900 rounded border border-gray-700"
-            placeholder="BTCUSDT"
-          />
-        </div>
-        
-        <div>
-          <label class="block text-sm text-gray-400 mb-2">Timeframe</label>
-          <select
-            v-model="timeframe"
-            class="w-full px-3 py-2 bg-gray-900 rounded border border-gray-700"
-          >
-            <option value="1m">1m</option>
-            <option value="5m">5m</option>
-            <option value="15m">15m</option>
-            <option value="1h">1h</option>
-            <option value="4h">4h</option>
-            <option value="1d">1d</option>
-          </select>
-        </div>
-        
-        <div class="flex items-end">
-          <button
-            @click="loadChart"
-            :disabled="loading"
-            class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {{ loading ? 'Loading...' : 'Load Chart' }}
-          </button>
-        </div>
-        
-        <div v-if="chartData" class="flex items-end">
-          <div class="text-sm">
-            <div class="text-gray-400">Current Price</div>
-            <div class="text-xl font-bold">${{ chartData.current_price?.toFixed(2) }}</div>
+      <!-- Controls -->
+      <TerminalCard class="mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 uppercase tracking-wider mb-2 font-mono">Symbol</label>
+            <input
+              v-model="symbol"
+              type="text"
+              class="terminal-input w-full"
+              placeholder="BTCUSDT"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-xs text-gray-500 uppercase tracking-wider mb-2 font-mono">Timeframe</label>
+            <select
+              v-model="timeframe"
+              class="terminal-input w-full"
+            >
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+              <option value="4h">4h</option>
+              <option value="1d">1d</option>
+            </select>
+          </div>
+          
+          <div class="flex items-end">
+            <TerminalButton
+              @click="loadChart"
+              :disabled="loading"
+              variant="primary"
+              class="w-full"
+            >
+              {{ loading ? 'Loading...' : 'Load Chart' }}
+            </TerminalButton>
+          </div>
+          
+          <div v-if="chartData" class="flex items-end">
+            <div class="w-full">
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-1 font-mono">Current Price</div>
+              <div class="text-2xl font-mono font-bold text-terminal-accent">
+                ${{ chartData.current_price?.toFixed(2) }}
+              </div>
+            </div>
           </div>
         </div>
+      </TerminalCard>
+
+      <!-- Loading -->
+      <div v-if="loading" class="text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-accent mb-4"></div>
+        <p class="text-gray-400 font-mono">Carregando gráfico...</p>
+      </div>
+
+      <!-- Error -->
+      <TerminalCard v-else-if="error" class="border-terminal-error">
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 rounded-full bg-terminal-error animate-pulse"></div>
+          <p class="text-terminal-error font-mono">{{ error }}</p>
+        </div>
+      </TerminalCard>
+
+      <!-- Chart -->
+      <div v-else-if="chartData" class="space-y-6">
+        <TerminalCard>
+          <div id="chart-container" class="h-96 w-full"></div>
+        </TerminalCard>
+        
+        <!-- Indicators Summary -->
+        <TerminalCard v-if="chartData.indicators">
+          <h2 class="text-xl font-mono font-bold mb-6 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-terminal-accent animate-pulse"></span>
+            Indicators Summary
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-2 font-mono">EMA 8</div>
+              <div class="text-2xl font-mono font-bold text-terminal-info">
+                ${{ chartData.indicators.ema8[chartData.indicators.ema8.length - 1]?.value?.toFixed(2) }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-2 font-mono">EMA 21</div>
+              <div class="text-2xl font-mono font-bold text-terminal-warning">
+                ${{ chartData.indicators.ema21[chartData.indicators.ema21.length - 1]?.value?.toFixed(2) }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wider mb-2 font-mono">RSI</div>
+              <div class="text-2xl font-mono font-bold text-terminal-purple">
+                {{ chartData.indicators.rsi[chartData.indicators.rsi.length - 1]?.value?.toFixed(2) }}
+              </div>
+            </div>
+          </div>
+        </TerminalCard>
+      </div>
+
+      <div v-else class="text-center py-16 text-gray-400 font-mono">
+        Selecione um símbolo e clique em "Load Chart"
       </div>
     </div>
-
-    <!-- Chart Container -->
-    <div v-if="loading" class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-      <p class="mt-2 text-gray-400">Carregando gráfico...</p>
-    </div>
-
-    <div v-else-if="error" class="bg-red-900/20 border border-red-500 rounded p-4">
-      <p class="text-red-400">{{ error }}</p>
-    </div>
-
-    <div v-else-if="chartData" class="bg-gray-800 rounded-lg p-4">
-      <div id="chart-container" class="h-96"></div>
-      
-      <!-- Indicators Summary -->
-      <div v-if="chartData.indicators" class="mt-6 grid grid-cols-3 gap-4">
-        <div>
-          <div class="text-sm text-gray-400">EMA 8</div>
-          <div class="text-lg font-bold">
-            ${{ chartData.indicators.ema8[chartData.indicators.ema8.length - 1]?.value?.toFixed(2) }}
-          </div>
-        </div>
-        <div>
-          <div class="text-sm text-gray-400">EMA 21</div>
-          <div class="text-lg font-bold">
-            ${{ chartData.indicators.ema21[chartData.indicators.ema21.length - 1]?.value?.toFixed(2) }}
-          </div>
-        </div>
-        <div>
-          <div class="text-sm text-gray-400">RSI</div>
-          <div class="text-lg font-bold">
-            {{ chartData.indicators.rsi[chartData.indicators.rsi.length - 1]?.value?.toFixed(2) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="text-center py-12 text-gray-400">
-      Selecione um símbolo e clique em "Load Chart"
-    </div>
-  </div>
+  </Layout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import api from '@/services/api'
 import { createChart, ColorType, IChartApi } from 'lightweight-charts'
+import Layout from '@/components/Layout.vue'
+import TerminalCard from '@/components/TerminalCard.vue'
+import TerminalButton from '@/components/TerminalButton.vue'
 
 const symbol = ref('BTCUSDT')
 const timeframe = ref('1h')
@@ -114,7 +136,6 @@ const loadChart = async () => {
     const data = await api.getChartData(symbol.value, timeframe.value, 500)
     chartData.value = data
     
-    // Renderizar gráfico (implementação básica)
     renderChart(data)
   } catch (err: any) {
     error.value = err.message || 'Erro ao carregar gráfico'
@@ -136,23 +157,47 @@ const renderChart = (data: any) => {
   chart = createChart(container, {
     layout: {
       background: { type: ColorType.Solid, color: '#1a1a1a' },
-      textColor: '#d1d5db'
+      textColor: '#d1d5db',
+      fontSize: 12,
+      fontFamily: 'JetBrains Mono, monospace'
     },
     width: container.clientWidth,
     height: 400,
     grid: {
-      vertLines: { color: '#2a2a2a' },
-      horzLines: { color: '#2a2a2a' }
+      vertLines: { color: '#2a2a2a', style: 0 },
+      horzLines: { color: '#2a2a2a', style: 0 }
+    },
+    crosshair: {
+      mode: 0,
+      vertLine: {
+        color: '#00ff00',
+        width: 1,
+        style: 2
+      },
+      horzLine: {
+        color: '#00ff00',
+        width: 1,
+        style: 2
+      }
+    },
+    rightPriceScale: {
+      borderColor: '#2a2a2a',
+      textColor: '#d1d5db'
+    },
+    timeScale: {
+      borderColor: '#2a2a2a',
+      timeVisible: true,
+      secondsVisible: false
     }
   })
   
   // Adicionar série de candles
   const candlestickSeries = chart.addCandlestickSeries({
-    upColor: '#26a69a',
-    downColor: '#ef5350',
+    upColor: '#00ff88',
+    downColor: '#ff4444',
     borderVisible: false,
-    wickUpColor: '#26a69a',
-    wickDownColor: '#ef5350'
+    wickUpColor: '#00ff88',
+    wickDownColor: '#ff4444'
   })
   
   // Converter candles para formato Lightweight Charts
@@ -169,9 +214,11 @@ const renderChart = (data: any) => {
   // Adicionar EMA8
   if (data.indicators?.ema8?.length > 0) {
     const ema8Series = chart.addLineSeries({
-      color: '#2196F3',
+      color: '#00aaff',
       lineWidth: 2,
-      title: 'EMA 8'
+      title: 'EMA 8',
+      priceLineVisible: false,
+      lastValueVisible: true
     })
     ema8Series.setData(data.indicators.ema8.map((i: any) => ({
       time: i.time as any,
@@ -182,9 +229,11 @@ const renderChart = (data: any) => {
   // Adicionar EMA21
   if (data.indicators?.ema21?.length > 0) {
     const ema21Series = chart.addLineSeries({
-      color: '#FF9800',
+      color: '#ffaa00',
       lineWidth: 2,
-      title: 'EMA 21'
+      title: 'EMA 21',
+      priceLineVisible: false,
+      lastValueVisible: true
     })
     ema21Series.setData(data.indicators.ema21.map((i: any) => ({
       time: i.time as any,
@@ -193,6 +242,14 @@ const renderChart = (data: any) => {
   }
   
   chart.timeScale().fitContent()
+  
+  // Responsive resize
+  const resizeObserver = new ResizeObserver(() => {
+    if (chart && container) {
+      chart.applyOptions({ width: container.clientWidth })
+    }
+  })
+  resizeObserver.observe(container)
 }
 
 watch([symbol, timeframe], () => {
@@ -204,12 +261,16 @@ watch([symbol, timeframe], () => {
 onMounted(() => {
   loadChart()
 })
+
+onBeforeUnmount(() => {
+  if (chart) {
+    chart.remove()
+  }
+})
 </script>
 
 <style scoped>
 .chart-view {
-  min-height: 100vh;
-  background: #0a0a0a;
-  color: #fff;
+  min-height: calc(100vh - 200px);
 }
 </style>

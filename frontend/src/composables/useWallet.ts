@@ -1,23 +1,27 @@
 import { ref, computed } from 'vue'
-import { createConfig, getAccount, connect, disconnect, signMessage } from '@wagmi/core'
-import { walletConnect, injected, metaMask } from '@wagmi/connectors'
+import { createConfig, getAccount, connect, disconnect, signMessage, http } from '@wagmi/core'
+import { walletConnect } from '@wagmi/connectors/walletConnect'
+import { injected } from '@wagmi/connectors/injected'
+import { metaMask } from '@wagmi/connectors/metaMask'
 import { SiweMessage } from 'siwe'
-import { http, createPublicClient } from 'viem'
 import { scrollSepolia } from 'viem/chains'
 
 // Configuração Wagmi
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'your-project-id'
+// Project ID do WalletConnect (pode ser sobrescrito por variável de ambiente)
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '3fcc6bba6f1de962d911bb5b5c3dba68'
 
 export const wagmiConfig = createConfig({
   chains: [scrollSepolia],
   connectors: [
-    walletConnect({ projectId }),
+    walletConnect({
+      projectId: projectId,
+    }),
     injected(),
     metaMask()
   ],
   transports: {
-    [scrollSepolia.id]: http()
-  }
+    [scrollSepolia.id]: http(),
+  },
 })
 
 // Estado reativo
@@ -206,4 +210,21 @@ export const logout = async () => {
 
 // Computed
 export const isAuthenticated = computed(() => isConnected.value && address.value !== null)
+
+// Export composable
+export function useWallet() {
+  return {
+    address,
+    isConnected,
+    tier,
+    isLoading,
+    error,
+    connectWallet,
+    disconnectWallet,
+    signIn,
+    verifySession,
+    logout,
+    isAuthenticated
+  }
+}
 
