@@ -26,4 +26,4 @@ EXPOSE 8080
 # Health check removido temporariamente para debug
 
 # Comando para executar (usar abordagem do commit funcional)
-CMD python app.py
+CMD sh -c "echo 'Starting Railway deployment...' && ls -la && python app.py"
