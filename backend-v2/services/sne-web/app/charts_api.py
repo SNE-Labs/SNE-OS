@@ -7,8 +7,10 @@ from flask import Blueprint, request, jsonify, g
 import logging
 import requests
 import json as json_lib
-from datetime import datetime, timedelta
-
+import hmac
+import hashlib
+from datetime import datetime
+import uuid
 from .auth_siwe import require_auth, check_tier_limits
 from app.utils.redis_safe import SafeRedis
 
@@ -18,23 +20,58 @@ logger = logging.getLogger(__name__)
 # Redis para cache
 redis_client = SafeRedis()
 
+# Configurações do coletor
+COLLECTOR_URL = "http://sne-collector.railway.internal"  # Domínio interno Railway (HTTP)
+HMAC_SECRET = "sne-shared-secret-change-in-prod"  # Mesmo secret do coletor
+
+def call_collector(endpoint, params=None, timeout=8):
+    """Chama o coletor com HMAC"""
+    if params is None:
+        params = {}
+
+    # HMAC signature
+    timestamp = datetime.utcnow().isoformat() + 'Z'
+    nonce = str(uuid.uuid4())
+
+    message = f"GET{endpoint}{timestamp}{nonce}".encode()
+    signature = hmac.new(HMAC_SECRET.encode(), message, hashlib.sha256).hexdigest()
+
+    headers = {
+        'X-SNE-Signature': signature,
+        'X-SNE-Timestamp': timestamp,
+        'X-SNE-Nonce': nonce
+    }
+
+    try:
+        url = f"{COLLECTOR_URL}{endpoint}"
+        response = requests.get(url, params=params, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Collector call failed: {str(e)}")
+        return None
+
 # Configuração Binance API (exemplo)
 BINANCE_BASE_URL = 'https://api.binance.com/api/v3'
 
 def get_candles_from_binance(symbol: str, interval: str, limit: int = 500):
-    """Busca dados de candles da Binance"""
+    """Busca dados de candles via coletor (cache-first)"""
     try:
-        url = f'{BINANCE_BASE_URL}/klines'
+        # Chamar coletor ao invés de Binance diretamente
         params = {
             'symbol': symbol.upper(),
             'interval': interval,
             'limit': limit
         }
 
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
+        result = call_collector('/binance/klines', params)
 
-        data = response.json()
+        if not result or "error" in result:
+            logger.error(f"Collector error: {result}")
+            return []
+
+        # Resultado do coletor: {"source": "cache|fresh", "data": [...]}
+        data = result.get("data", [])
 
         # Converter formato Binance para formato interno
         candles = []
@@ -48,10 +85,11 @@ def get_candles_from_binance(symbol: str, interval: str, limit: int = 500):
                 'volume': float(candle[5])
             })
 
+        logger.info(f"Candles from {result.get('source', 'unknown')}: {symbol} {len(candles)} candles")
         return candles
 
     except Exception as e:
-        logger.error(f"Binance API error: {str(e)}")
+        logger.error(f"Collector call error: {str(e)}")
         return None
 
 @charts_bp.route('/api/chart/candles', methods=['GET'])
