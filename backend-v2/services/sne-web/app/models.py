@@ -28,7 +28,7 @@ class Signal(db.Model):
     signal_type = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Numeric(18, 8))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    metadata = db.Column(JSONB)  # Dados extras em JSON
+    signal_metadata = db.Column("metadata", JSONB)  # Dados extras em JSON
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Trade(db.Model):
@@ -42,7 +42,7 @@ class Trade(db.Model):
     quantity = db.Column(db.Numeric(18, 8), nullable=False)
     status = db.Column(db.String(20), default='pending')
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    metadata = db.Column(JSONB)
+    trade_metadata = db.Column("metadata", JSONB)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Analysis(db.Model):
@@ -135,7 +135,7 @@ def save_signal(pair: str, signal_type: str, price: float = None, metadata: dict
         pair=pair,
         signal_type=signal_type,
         price=price,
-        metadata=metadata or {}
+        signal_metadata=metadata or {}
     )
     db.session.add(signal)
     db.session.commit()
