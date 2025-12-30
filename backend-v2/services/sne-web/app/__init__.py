@@ -1,6 +1,9 @@
 """
 SNE Web Service - Flask API with WebSocket support
 """
+import eventlet
+eventlet.monkey_patch()  # Deve ser o primeiro import
+
 from flask import Flask
 from flask_socketio import SocketIO
 from flask_cors import CORS
@@ -38,10 +41,6 @@ def create_app():
 
     logger.info("Flask app created successfully")
     return app, socketio
-
-# Monkey patch para eventlet (produção)
-import eventlet
-eventlet.monkey_patch()
 
 # Create app instance for production (Gunicorn)
 app, socketio = create_app()
