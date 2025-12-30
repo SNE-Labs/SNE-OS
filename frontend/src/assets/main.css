@@ -55,11 +55,17 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--terminal-bg);
-  color: var(--terminal-fg);
+  background: var(--terminal-bg) !important;
+  color: var(--terminal-fg) !important;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+  background: var(--terminal-bg);
 }
 
 /* Terminal-style scrollbar */

@@ -93,10 +93,42 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useWallet } from '@/composables/useWallet'
+import { ref } from 'vue'
 
-const { address, isConnected, tier, connectWallet } = useWallet()
+// Estado do wallet com valores padrão seguros
+const address = ref<string | null>(null)
+const isConnected = ref(false)
+const tier = ref<'free' | 'premium' | 'pro'>('free')
+
+// Função de conexão segura
+const connectWallet = async () => {
+  try {
+    // Importar dinamicamente para evitar erro em SSR
+    const { useWallet } = await import('@/composables/useWallet')
+    const wallet = useWallet()
+    await wallet.connectWallet()
+    address.value = wallet.address.value
+    isConnected.value = wallet.isConnected.value
+    tier.value = wallet.tier.value
+  } catch (err) {
+    console.error('Failed to connect wallet:', err)
+  }
+}
+
+// Tentar carregar estado do wallet se disponível
+if (typeof window !== 'undefined') {
+  import('@/composables/useWallet')
+    .then(({ useWallet }) => {
+      const wallet = useWallet()
+      address.value = wallet.address.value
+      isConnected.value = wallet.isConnected.value
+      tier.value = wallet.tier.value
+    })
+    .catch((err) => {
+      console.warn('Wallet not available:', err)
+      // Continuar sem wallet
+    })
+}
 </script>
 
 <style scoped>
