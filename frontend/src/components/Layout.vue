@@ -73,8 +73,8 @@
             </button>
             <div v-else class="flex items-center gap-3">
               <div class="text-right">
-                <div class="text-xs text-secondary font-mono">Tier</div>
-                <div class="text-sm font-mono text-accent uppercase">{{ tier }}</div>
+                <div class="text-xs font-mono" style="color: var(--sne-text-secondary)">Tier</div>
+                <div class="text-sm font-mono uppercase" style="color: var(--sne-accent)">{{ tier }}</div>
               </div>
               <div
                 class="w-8 h-8 rounded-full border flex items-center justify-center"
@@ -140,7 +140,7 @@
             >
               Conectar Carteira
             </button>
-            <div v-else class="text-sm text-secondary">
+            <div v-else class="text-sm" style="color: var(--sne-text-secondary)">
               {{ address?.slice(0, 6) }}...{{ address?.slice(-4) }}
             </div>
           </div>
@@ -175,7 +175,7 @@
           </div>
 
           <div>
-            <h4 class="mb-3 text-primary">Produtos</h4>
+            <h4 class="mb-3" style="color: var(--sne-text-primary)">Produtos</h4>
             <ul class="space-y-2" style="font-size: var(--text-body)">
               <li>
                 <a href="https://radar.snelabs.space" style="color: var(--sne-text-secondary)">
@@ -196,7 +196,7 @@
           </div>
 
           <div>
-            <h4 class="mb-3 text-primary">Recursos</h4>
+            <h4 class="mb-3" style="color: var(--sne-text-primary)">Recursos</h4>
             <ul class="space-y-2" style="font-size: var(--text-body)">
               <li>
                 <router-link to="/dashboard" style="color: var(--sne-text-secondary)">
@@ -217,7 +217,7 @@
           </div>
 
           <div>
-            <h4 class="mb-3 text-primary">Legal</h4>
+            <h4 class="mb-3" style="color: var(--sne-text-primary)">Legal</h4>
             <ul class="space-y-2" style="font-size: var(--text-body)">
               <li>
                 <a href="#" style="color: var(--sne-text-secondary)">
@@ -289,18 +289,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.text-primary {
-  color: var(--sne-text-primary);
-}
-
-.text-secondary {
-  color: var(--sne-text-secondary);
-}
-
-.text-accent {
-  color: var(--sne-accent);
-}
-
 .bg-sne {
   background: var(--sne-bg);
 }

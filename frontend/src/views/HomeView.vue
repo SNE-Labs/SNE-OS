@@ -19,17 +19,17 @@
       <section class="py-24 px-6 lg:px-24">
         <div class="max-w-[1200px] mx-auto">
           <div class="mb-6">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-elevated border border-sne-accent/30">
-              <div class="w-2 h-2 rounded-full bg-sne-success animate-pulse"></div>
-              <span class="text-xs font-mono text-sne-accent uppercase tracking-wider">Sistema Operacional</span>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border" style="background-color: var(--sne-surface-elevated); border-color: rgba(255, 106, 0, 0.3)">
+              <div class="w-2 h-2 rounded-full animate-pulse" style="background-color: var(--sne-success)"></div>
+              <span class="text-xs font-mono uppercase tracking-wider" style="color: var(--sne-accent)">Sistema Operacional</span>
             </div>
           </div>
 
-          <h1 class="mb-6 max-w-3xl text-primary">
+          <h1 class="mb-6 max-w-3xl" style="color: var(--sne-text-primary)">
             Análise técnica avançada com inteligência artificial e execução verificável
           </h1>
 
-          <p class="mb-8 max-w-2xl text-secondary" style="font-size: var(--text-body-lg)">
+          <p class="mb-8 max-w-2xl" style="font-size: var(--text-body-lg); color: var(--sne-text-secondary)">
             SNE Radar fornece análise técnica profissional com níveis operacionais precisos,
             indicadores avançados e visualizações interativas em tempo real para traders e analistas.
           </p>
@@ -61,11 +61,11 @@
       </section>
 
       <!-- Features Section -->
-      <section class="py-16 px-6 lg:px-24 bg-surface">
+      <section class="py-16 px-6 lg:px-24" style="background-color: var(--sne-surface-1)">
         <div class="max-w-[1200px] mx-auto">
           <div class="mb-12">
-            <h2 class="mb-4 text-primary">Recursos Principais</h2>
-            <p class="text-secondary">Ferramentas profissionais para análise técnica avançada</p>
+            <h2 class="mb-4" style="color: var(--sne-text-primary)">Recursos Principais</h2>
+            <p style="color: var(--sne-text-secondary)">Ferramentas profissionais para análise técnica avançada</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -78,13 +78,13 @@
                 class="w-12 h-12 rounded flex items-center justify-center mb-6"
                 style="background-color: var(--sne-surface-elevated); border: 1px solid var(--sne-accent)"
               >
-                <ChartBar class="w-6 h-6 text-accent" />
+                <ChartBar class="w-6 h-6" style="color: var(--sne-accent)" />
               </div>
-              <h3 class="mb-3 text-primary">Gráficos Interativos</h3>
-              <p class="mb-4 text-secondary">
+              <h3 class="mb-3" style="color: var(--sne-text-primary)">Gráficos Interativos</h3>
+              <p class="mb-4" style="color: var(--sne-text-secondary)">
                 TradingView Lightweight Charts com indicadores técnicos avançados e análise em múltiplos timeframes.
               </p>
-              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all text-accent">
+              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all" style="color: var(--sne-accent)">
                 Explorar gráficos
                 <ArrowRight class="w-4 h-4" />
               </div>
@@ -99,13 +99,13 @@
                 class="w-12 h-12 rounded flex items-center justify-center mb-6"
                 style="background-color: var(--sne-surface-elevated); border: 1px solid var(--sne-accent)"
               >
-                <Brain class="w-6 h-6 text-accent" />
+                <Brain class="w-6 h-6" style="color: var(--sne-accent)" />
               </div>
-              <h3 class="mb-3 text-primary">IA & Machine Learning</h3>
-              <p class="mb-4 text-secondary">
+              <h3 class="mb-3" style="color: var(--sne-text-primary)">IA & Machine Learning</h3>
+              <p class="mb-4" style="color: var(--sne-text-secondary)">
                 Motor de análise com machine learning, reconhecimento de padrões e sinais operacionais precisos.
               </p>
-              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all text-accent">
+              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all" style="color: var(--sne-accent)">
                 Ver análise
                 <ArrowRight class="w-4 h-4" />
               </div>
@@ -120,13 +120,13 @@
                 class="w-12 h-12 rounded flex items-center justify-center mb-6"
                 style="background-color: var(--sne-surface-elevated); border: 1px solid var(--sne-accent)"
               >
-                <Zap class="w-6 h-6 text-accent" />
+                <Zap class="w-6 h-6" style="color: var(--sne-accent)" />
               </div>
-              <h3 class="mb-3 text-primary">Tempo Real</h3>
-              <p class="mb-4 text-secondary">
+              <h3 class="mb-3" style="color: var(--sne-text-primary)">Tempo Real</h3>
+              <p class="mb-4" style="color: var(--sne-text-secondary)">
                 Atualizações em tempo real via WebSocket, análise contínua e alertas instantâneos de sinais.
               </p>
-              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all text-accent">
+              <div class="flex items-center gap-2 text-sm group-hover:gap-3 transition-all" style="color: var(--sne-accent)">
                 Ver dashboard
                 <ArrowRight class="w-4 h-4" />
               </div>
@@ -140,20 +140,20 @@
         <div class="max-w-[1200px] mx-auto">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div class="text-center">
-              <div class="text-3xl font-mono font-bold text-accent mb-2">100+</div>
-              <div class="text-xs text-secondary uppercase tracking-wider">Indicadores</div>
+              <div class="text-3xl font-mono font-bold mb-2" style="color: var(--sne-accent)">100+</div>
+              <div class="text-xs uppercase tracking-wider" style="color: var(--sne-text-secondary)">Indicadores</div>
             </div>
             <div class="text-center">
-              <div class="text-3xl font-mono font-bold text-accent mb-2">24/7</div>
-              <div class="text-xs text-secondary uppercase tracking-wider">Monitoramento</div>
+              <div class="text-3xl font-mono font-bold mb-2" style="color: var(--sne-accent)">24/7</div>
+              <div class="text-xs uppercase tracking-wider" style="color: var(--sne-text-secondary)">Monitoramento</div>
             </div>
             <div class="text-center">
-              <div class="text-3xl font-mono font-bold text-accent mb-2">99.9%</div>
-              <div class="text-xs text-secondary uppercase tracking-wider">Uptime</div>
+              <div class="text-3xl font-mono font-bold mb-2" style="color: var(--sne-accent)">99.9%</div>
+              <div class="text-xs uppercase tracking-wider" style="color: var(--sne-text-secondary)">Uptime</div>
             </div>
             <div class="text-center">
-              <div class="text-3xl font-mono font-bold text-accent mb-2">&lt;100ms</div>
-              <div class="text-xs text-secondary uppercase tracking-wider">Latência</div>
+              <div class="text-3xl font-mono font-bold mb-2" style="color: var(--sne-accent)">&lt;100ms</div>
+              <div class="text-xs uppercase tracking-wider" style="color: var(--sne-text-secondary)">Latência</div>
             </div>
           </div>
         </div>
@@ -168,23 +168,4 @@ import Layout from '@/components/Layout.vue'
 </script>
 
 <style scoped>
-.bg-surface {
-  background: var(--sne-surface-1);
-}
-
-.bg-surface-elevated {
-  background: var(--sne-surface-elevated);
-}
-
-.text-primary {
-  color: var(--sne-text-primary);
-}
-
-.text-secondary {
-  color: var(--sne-text-secondary);
-}
-
-.text-accent {
-  color: var(--sne-accent);
-}
 </style>
