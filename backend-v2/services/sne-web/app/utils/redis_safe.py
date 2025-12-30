@@ -8,98 +8,69 @@ import logging
 from typing import Any, Optional
 import redis
 import requests
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
 class UpstashRedis:
-    """Upstash Redis REST API client"""
+    """Upstash Redis REST API client - Correct URL format"""
 
     def __init__(self, url: str, token: str):
         self.url = url.rstrip('/')
-        self.token = token
-        self.headers = {'Authorization': f'Bearer {token}'}
+        self.headers = {"Authorization": f"Bearer {token}"}
         self.available = True
+
+    def _get(self, path: str):
+        """Internal GET request helper"""
+        if not self.available:
+            return None
+        try:
+            r = requests.get(f"{self.url}/{path}", headers=self.headers, timeout=5)
+            if r.status_code == 200:
+                return r.json().get("result")
+            logger.warning(f"Upstash {path} -> {r.status_code}: {r.text[:200]}")
+            return None
+        except Exception as e:
+            logger.warning(f"Upstash request error: {e}")
+            self.available = False
+            return None
 
     def ping(self) -> bool:
         """Test connection"""
-        try:
-            response = requests.get(f'{self.url}/ping', headers=self.headers, timeout=5)
-            return response.status_code == 200
-        except Exception as e:
-            logger.warning(f"Upstash ping error: {str(e)}")
-            self.available = False
-            return False
+        return self._get("ping") == "PONG"
 
     def get(self, key: str) -> Optional[str]:
-        """Get value"""
-        if not self.available:
-            return None
-        try:
-            response = requests.get(f'{self.url}/get/{key}', headers=self.headers, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('result')
-            return None
-        except Exception as e:
-            logger.warning(f"Upstash get error: {str(e)}")
-            return None
+        """Get value - Upstash format: /get/key"""
+        key = urllib.parse.quote(key, safe="")
+        return self._get(f"get/{key}")
 
     def setex(self, key: str, time: int, value: Any) -> bool:
-        """Set with expiration"""
-        if not self.available:
-            return True
-        try:
-            response = requests.post(
-                f'{self.url}/setex/{key}',
-                json={'value': str(value), 'ex': time},
-                headers=self.headers,
-                timeout=5
-            )
-            return response.status_code == 200
-        except Exception as e:
-            logger.warning(f"Upstash setex error: {str(e)}")
-            return False
+        """Set with expiration - Upstash format: /setex/key/seconds/value"""
+        key = urllib.parse.quote(key, safe="")
+        val = urllib.parse.quote(str(value), safe="")
+        res = self._get(f"setex/{key}/{int(time)}/{val}")
+        return res == "OK"
 
     def delete(self, key: str) -> int:
-        """Delete key"""
-        if not self.available:
-            return 1
+        """Delete key - Upstash format: /del/key"""
+        key = urllib.parse.quote(key, safe="")
+        res = self._get(f"del/{key}")
         try:
-            response = requests.delete(f'{self.url}/del/{key}', headers=self.headers, timeout=5)
-            return 1 if response.status_code == 200 else 0
-        except Exception as e:
-            logger.warning(f"Upstash delete error: {str(e)}")
+            return int(res or 0)
+        except:
             return 0
 
     def incr(self, key: str) -> int:
-        """Increment counter"""
-        if not self.available:
-            return 1
-        try:
-            response = requests.post(f'{self.url}/incr/{key}', headers=self.headers, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('result', 1)
-            return 1
-        except Exception as e:
-            logger.warning(f"Upstash incr error: {str(e)}")
-            return 1
+        """Increment counter - Upstash format: /incr/key"""
+        key = urllib.parse.quote(key, safe="")
+        res = self._get(f"incr/{key}")
+        return int(res or 1)
 
     def expire(self, key: str, time: int) -> bool:
-        """Set expiration"""
-        if not self.available:
-            return True
-        try:
-            response = requests.post(
-                f'{self.url}/expire/{key}',
-                json={'ex': time},
-                headers=self.headers,
-                timeout=5
-            )
-            return response.status_code == 200
-        except Exception as e:
-            logger.warning(f"Upstash expire error: {str(e)}")
-            return False
+        """Set expiration - Upstash format: /expire/key/seconds"""
+        key = urllib.parse.quote(key, safe="")
+        res = self._get(f"expire/{key}/{int(time)}")
+        return res == 1 or res is True
 
 class SafeRedis:
     """
@@ -122,8 +93,8 @@ class SafeRedis:
     def _connect(self):
         """Tenta conectar ao Redis (Upstash REST ou TCP)"""
         # Primeiro tenta Upstash REST API
-        upstash_url = os.getenv('REDIS_REST_URL')
-        upstash_token = os.getenv('REDIS_REST_TOKEN')
+        upstash_url = os.getenv('REDIS_REST_URL') or os.getenv('UPSTASH_REDIS_REST_URL')
+        upstash_token = os.getenv('REDIS_REST_TOKEN') or os.getenv('UPSTASH_REDIS_REST_TOKEN')
 
         if upstash_url and upstash_token:
             try:
