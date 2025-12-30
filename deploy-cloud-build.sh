@@ -108,3 +108,4 @@ echo "🔍 MONITORAMENTO:"
 echo "   gcloud run logs tail --region=$REGION"
 echo ""
 echo "🚀 SISTEMA PRONTO!"
+

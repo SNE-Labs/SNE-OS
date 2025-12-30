@@ -299,3 +299,4 @@ def calculate_williams_r_simple(candles, period=14):
     williams_r = ((highest - current_close) / (highest - lowest)) * -100
 
     return round(williams_r, 2)
+

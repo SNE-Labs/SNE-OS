@@ -167,3 +167,4 @@ curl https://YOUR_BACKEND_URL/health
 **Status:** Sistema 100% funcional e pronto para produção!
 
 **Próximo passo:** Execute `./deploy-cloud-run.sh` e tenha o backend no ar! 🎉
+

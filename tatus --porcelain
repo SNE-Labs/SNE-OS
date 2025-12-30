@@ -1,0 +1,507 @@
+[1mdiff --git a/ANALISE_SERVICOS_EXISTENTES.md b/ANALISE_SERVICOS_EXISTENTES.md[m
+[1mnew file mode 100644[m
+[1mindex 0000000..701b392[m
+[1m--- /dev/null[m
+[1m+++ b/ANALISE_SERVICOS_EXISTENTES.md[m
+[36m@@ -0,0 +1,193 @@[m
+[32m+[m[32m# Análise dos Serviços SNE V1.0 - Backend Potencial[m
+[32m+[m
+[32m+[m[32m## 📁 Estrutura Encontrada[m
+[32m+[m
+[32m+[m[32m### 🏗️ Infraestrutura (Terraform)[m
+[32m+[m[32m```[m
+[32m+[m[32minfra/terraform/[m
+[32m+[m[32m├── apply_migration.sh[m
+[32m+[m[32m├── artifactregistry.tf[m
+[32m+[m[32m├── cloudbuild_trigger.tf[m
+[32m+[m[32m├── cloudrun.tf[m
+[32m+[m[32m├── cloudsql.tf[m
+[32m+[m[32m├── deploy_sem_imagens.tf[m
+[32m+[m[32m├── iam.tf[m
+[32m+[m[32m├── main.tf[m
+[32m+[m[32m├── outputs.tf[m
+[32m+[m[32m├── redis.tf[m
+[32m+[m[32m├── scheduler.tf[m
+[32m+[m[32m├── secrets.tf[m
+[32m+[m[32m├── storage.tf[m
+[32m+[m[32m├── variables.tf[m
+[32m+[m[32m└── vpc.tf[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m**Infra completa no Google Cloud:**[m
+[32m+[m[32m- Cloud Run (containers)[m
+[32m+[m[32m- Cloud SQL (PostgreSQL)[m
+[32m+[m[32m- Redis (cache)[m
+[32m+[m[32m- Cloud Storage[m
+[32m+[m[32m- Artifact Registry[m
+[32m+[m[32m- IAM roles[m
+[32m+[m[32m- VPC network[m
+[32m+[m
+[32m+[m[32m### 🚀 Serviços Backend[m
+[32m+[m
+[32m+[m[32m#### 1. sne-web (API/Web Service)[m
+[32m+[m[32m```[m
+[32m+[m[32mservices/sne-web/[m
+[32m+[m[32m├── app/[m
+[32m+[m[32m│   ├── __init__.py[m
+[32m+[m[32m│   ├── api.py[m
+[32m+[m[32m│   ├── main.py[m
+[32m+[m[32m│   └── motor.py[m
+[32m+[m[32m├── analise_candles_detalhada.py[m
+[32m+[m[32m├── calcular_suportes_resistencias.py[m
+[32m+[m[32m├── catalogo_magnetico.py[m
+[32m+[m[32m├── confluencia.py[m
+[32m+[m[32m├── contexto_global.py[m
+[32m+[m[32m├── Dockerfile[m
+[32m+[m[32m├── estrutura_mercado.py[m
+[32m+[m[32m├── fluxo_ativo.py[m
+[32m+[m[32m├── gestao_risco_profissional.py[m
+[32m+[m[32m├── indicadores_avancados.py[m
+[32m+[m[32m├── indicadores.py[m
+[32m+[m[32m├── motor_renan.py[m
+[32m+[m[32m├── multi_timeframe.py[m
+[32m+[m[32m├── niveis_operacionais.py[m
+[32m+[m[32m├── padroes_graficos.py[m
+[32m+[m[32m├── README.md[m
+[32m+[m[32m├── relatorio_profissional.py[m
+[32m+[m[32m├── requirements.txt[m
+[32m+[m[32m└── ...[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m#### 2. sne-worker (Background Jobs)[m
+[32m+[m[32m```[m
+[32m+[m[32mservices/sne-worker/[m
+[32m+[m[32m├── app/[m
+[32m+[m[32m│   ├── __init__.py[m
+[32m+[m[32m│   ├── jobs.py[m
+[32m+[m[32m│   ├── main.py[m
+[32m+[m[32m│   └── __pycache__/[m
+[32m+[m[32m├── Dockerfile[m
+[32m+[m[32m├── README.md[m
+[32m+[m[32m├── requirements.txt[m
+[32m+[m[32m└── run_job.py[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 🔧 Serviços Core[m
+[32m+[m
+[32m+[m[32m#### 3. Análise Técnica Avançada[m
+[32m+[m[32m```[m
+[32m+[m[32mservices/[m
+[32m+[m[32m├── advanced_backtesting.py (524 linhas)[m
+[32m+[m[32m├── advanced_indicators.py (269 linhas)[m
+[32m+[m[32m├── alert_system.py (250 linhas)[m
+[32m+[m[32m├── export_system.py (294 linhas)[m
+[32m+[m[32m├── indicators.py (34 linhas)[m
+[32m+[m[32m├── ml_predictions.py (341 linhas)[m
+[32m+[m[32m├── professional_indicators.py (414 linhas)[m
+[32m+[m[32m├── ta_summary.py (52 linhas)[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## 🎯 Análise de Compatibilidade[m
+[32m+[m
+[32m+[m[32m### ✅ Pontos Fortes[m
+[32m+[m
+[32m+[m[32m1. **Infraestrutura Completa:**[m
+[32m+[m[32m   - Terraform para Google Cloud[m
+[32m+[m[32m   - Microserviços (sne-web + sne-worker)[m
+[32m+[m[32m   - Redis + PostgreSQL[m
+[32m+[m[32m   - Docker containers[m
+[32m+[m
+[32m+[m[32m2. **Funcionalidades Avançadas:**[m
+[32m+[m[32m   - Análise técnica completa[m
+[32m+[m[32m   - Indicadores profissionais[m
+[32m+[m[32m   - Sistema de alertas[m
+[32m+[m[32m   - Backtesting avançado[m
+[32m+[m[32m   - Machine Learning[m
+[32m+[m[32m   - Exportação de dados[m
+[32m+[m
+[32m+[m[32m3. **Arquitetura Moderna:**[m
+[32m+[m[32m   - Microserviços[m
+[32m+[m[32m   - Async/background jobs[m
+[32m+[m[32m   - Docker containers[m
+[32m+[m[32m   - Cloud-native[m
+[32m+[m
+[32m+[m[32m### ⚠️ Pontos de Atenção[m
+[32m+[m
+[32m+[m[32m1. **Autenticação:**[m
+[32m+[m[32m   - Não vi implementação SIWE[m
+[32m+[m[32m   - Precisa integrar com WalletConnect[m
+[32m+[m
+[32m+[m[32m2. **Tier System:**[m
+[32m+[m[32m   - Não vi implementação de gating por tier[m
+[32m+[m[32m   - Precisa rate limiting por plano[m
+[32m+[m
+[32m+[m[32m3. **API Endpoints:**[m
+[32m+[m[32m   - Precisa mapear endpoints atuais vs. necessários[m
+[32m+[m[32m   - Verificar compatibilidade com frontend React[m
+[32m+[m
+[32m+[m[32m4. **Database Schema:**[m
+[32m+[m[32m   - Precisa verificar se suporta usuários/wallets/licenses[m
+[32m+[m
+[32m+[m[32m### 🔄 Migração Possível[m
+[32m+[m
+[32m+[m[32m#### ✅ Pode Ser Usado Como Backend[m
+[32m+[m
+[32m+[m[32m**sne-web** parece ser um serviço Flask/FastAPI completo que pode servir como backend para o SNE Radar.[m
+[32m+[m
+[32m+[m[32m#### 📋 Passos para Integração[m
+[32m+[m
+[32m+[m[32m1. **Adicionar Autenticação SIWE:**[m
+[32m+[m[32m   - Implementar endpoints `/api/auth/nonce`, `/api/auth/siwe`, `/api/auth/verify`[m
+[32m+[m[32m   - Integrar com Redis para sessions[m
+[32m+[m
+[32m+[m[32m2. **Adicionar Tier System:**[m
+[32m+[m[32m   - Implementar rate limiting baseado em wallet[m
+[32m+[m[32m   - Verificar license/tier no Redis/PostgreSQL[m
+[32m+[m
+[32m+[m[32m3. **Mapear Endpoints:**[m
+[32m+[m[32m   - `/api/dashboard/summary` → dados de dashboard[m
+[32m+[m[32m   - `/api/chart/candles` → dados de candles[m
+[32m+[m[32m   - `/api/analyze` → análise técnica[m
+[32m+[m[32m   - `/api/auth/*` → autenticação[m
+[32m+[m
+[32m+[m[32m4. **Configurar CORS:**[m
+[32m+[m[32m   - Adicionar `https://sneradar.vercel.app` na lista de allowed origins[m
+[32m+[m
+[32m+[m[32m5. **Deploy:**[m
+[32m+[m[32m   - Usar infraestrutura Terraform existente[m
+[32m+[m[32m   - Configurar variáveis de ambiente[m
+[32m+[m
+[32m+[m[32m### 📊 Comparação com Backend Atual[m
+[32m+[m
+[32m+[m[32m| Funcionalidade | Backend Atual | SNE V1.0 Services |[m
+[32m+[m[32m|----------------|---------------|-------------------|[m
+[32m+[m[32m| Análise Técnica | ✅ Básica | ✅ Avançada |[m
+[32m+[m[32m| Indicadores | ⚠️ Básicos | ✅ Profissionais |[m
+[32m+[m[32m| Backtesting | ❌ | ✅ Avançado |[m
+[32m+[m[32m| ML Predictions | ❌ | ✅ |[m
+[32m+[m[32m| Alertas | ❌ | ✅ |[m
+[32m+[m[32m| Export | ❌ | ✅ |[m
+[32m+[m[32m| Infra | ⚠️ Vercel | ✅ Google Cloud |[m
+[32m+[m[32m| Autenticação | ✅ SIWE | ❌ (precisa implementar) |[m
+[32m+[m[32m| Tier System | ✅ | ❌ (precisa implementar) |[m
+[32m+[m
+[32m+[m[32m### 🎯 Recomendação[m
+[32m+[m
+[32m+[m[32m**SIM, esses serviços podem servir como backend!**[m
+[32m+[m
+[32m+[m[32mO **SNE V1.0** tem uma infraestrutura muito mais robusta e funcionalidades muito superiores. A migração vale a pena:[m
+[32m+[m
+[32m+[m[32m1. **Melhor Análise Técnica:** Indicadores profissionais, backtesting avançado, ML[m
+[32m+[m[32m2. **Infra Melhor:** Google Cloud com scaling automático[m
+[32m+[m[32m3. **Arquitetura Melhor:** Microserviços com workers assíncronos[m
+[32m+[m
+[32m+[m[32m**Próximos Passos:**[m
+[32m+[m[32m1. Examinar `app/api.py` para ver endpoints atuais[m
+[32m+[m[32m2. Verificar schema do banco de dados[m
+[32m+[m[32m3. Implementar SIWE authentication[m
+[32m+[m[32m4. Adicionar tier system[m
+[32m+[m[32m5. Migrar para Google Cloud[m
+[1mdiff --git a/CORRECAO_CERTIFICADO_SSL.md b/CORRECAO_CERTIFICADO_SSL.md[m
+[1mnew file mode 100644[m
+[1mindex 0000000..ac5b4ba[m
+[1m--- /dev/null[m
+[1m+++ b/CORRECAO_CERTIFICADO_SSL.md[m
+[36m@@ -0,0 +1,146 @@[m
+[32m+[m[32m# 🔧 Correção: Erro de Certificado SSL[m
+[32m+[m
+[32m+[m[32m## ❌ **Problema Identificado**[m
+[32m+[m
+[32m+[m[32mO frontend está tentando acessar:[m
+[32m+[m[32m```[m
+[32m+[m[32mhttps://sne-radar-api-xxxxx.run.app/api/auth/verify[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mMas recebe erro:[m
+[32m+[m[32m```[m
+[32m+[m[32mnet::ERR_CERT_COMMON_NAME_INVALID[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## 🔍 **Causa Raiz**[m
+[32m+[m
+[32m+[m[32m### 1. **URL do Backend Incorreta**[m
+[32m+[m[32m- A URL `sne-radar-api-xxxxx.run.app` não é uma URL válida do Google Cloud Run[m
+[32m+[m[32m- Google Cloud Run URLs seguem o padrão:[m
+[32m+[m[32m  ```[m
+[32m+[m[32m  https://SERVICE_NAME-HASH-uc.a.run.app[m
+[32m+[m[32m  ```[m
+[32m+[m[32m  Exemplo real:[m
+[32m+[m[32m  ```[m
+[32m+[m[32m  https://sne-web-abc123-uc.a.run.app[m
+[32m+[m[32m  ```[m
+[32m+[m
+[32m+[m[32m### 2. **Certificado SSL Inválido**[m
+[32m+[m[32m- O domínio `sne-radar-api-xxxxx.run.app` não existe[m
+[32m+[m[32m- Google Cloud Run fornece certificados SSL automaticamente para domínios `.run.app`[m
+[32m+[m
+[32m+[m[32m## ✅ **Solução**[m
+[32m+[m
+[32m+[m[32m### 1. **Obter URL Real do Google Cloud Run**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Verificar serviços deployados[m
+[32m+[m[32mgcloud run services list[m
+[32m+[m
+[32m+[m[32m# Output esperado:[m
+[32m+[m[32m# SERVICE_NAME  REGION   URL[m
+[32m+[m[32m# sne-web       us-central1  https://sne-web-abc123-uc.a.run.app[m
+[32m+[m
+[32m+[m[32m# Copiar a URL real e substituir no frontend[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 2. **Atualizar Configuração**[m
+[32m+[m
+[32m+[m[32m#### **Vercel Environment Variables**[m
+[32m+[m[32mNo painel do Vercel, adicionar:[m
+[32m+[m[32m```[m
+[32m+[m[32mVITE_API_BASE_URL=https://sne-web-REAL_HASH-uc.a.run.app[m
+[32m+[m[32mVITE_WS_URL=https://sne-web-REAL_HASH-uc.a.run.app[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m#### **Arquivo .env (local)**[m
+[32m+[m[32m```env[m
+[32m+[m[32mVITE_API_BASE_URL=https://sne-web-REAL_HASH-uc.a.run.app[m
+[32m+[m[32mVITE_WS_URL=https://sne-web-REAL_HASH-uc.a.run.app[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 3. **Verificar Deploy do Backend**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# 1. Verificar se o serviço está rodando[m
+[32m+[m[32mgcloud run services describe sne-web --region=us-central1[m
+[32m+[m
+[32m+[m[32m# 2. Testar endpoint health[m
+[32m+[m[32mcurl https://sne-web-REAL_HASH-uc.a.run.app/health[m
+[32m+[m
+[32m+[m[32m# 3. Testar endpoint auth[m
+[32m+[m[32mcurl -X POST https://sne-web-REAL_HASH-uc.a.run.app/api/auth/nonce \[m
+[32m+[m[32m  -H "Content-Type: application/json" \[m
+[32m+[m[32m  -d '{"address": "0x123..."}'[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## 🚀 **Deploy do Backend no Google Cloud**[m
+[32m+[m
+[32m+[m[32m### **Pré-requisitos**[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# 1. Instalar Google Cloud CLI[m
+[32m+[m[32m# 2. Configurar projeto[m
+[32m+[m[32mexport GOOGLE_CLOUD_PROJECT=sne-labs[m
+[32m+[m[32mgcloud config set project sne-labs[m
+[32m+[m
+[32m+[m[32m# 3. Autenticar[m
+[32m+[m[32mgcloud auth login[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **Deploy sne-web**[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# 1. Build da imagem[m
+[32m+[m[32mcd backend-v2/services/sne-web[m
+[32m+[m[32mdocker build -t gcr.io/sne-labs/sne-web:latest .[m
+[32m+[m
+[32m+[m[32m# 2. Push para Google Container Registry[m
+[32m+[m[32mdocker push gcr.io/sne-labs/sne-web:latest[m
+[32m+[m
+[32m+[m[32m# 3. Deploy no Cloud Run[m
+[32m+[m[32mgcloud run deploy sne-web \[m
+[32m+[m[32m  --image gcr.io/sne-labs/sne-web:latest \[m
+[32m+[m[32m  --platform managed \[m
+[32m+[m[32m  --region us-central1 \[m
+[32m+[m[32m  --allow-unauthenticated \[m
+[32m+[m[32m  --set-env-vars="DATABASE_URL=postgresql://...,REDIS_URL=redis://...,JWT_SECRET=...,SIWE_DOMAIN=radar.snelabs.space,SIWE_ORIGIN=https://radar.snelabs.space"[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **Deploy sne-worker** (opcional)[m
+[32m+[m[32m```bash[m
+[32m+[m[32mcd backend-v2/services/sne-worker[m
+[32m+[m[32mdocker build -t gcr.io/sne-labs/sne-worker:latest .[m
+[32m+[m[32mdocker push gcr.io/sne-labs/sne-worker:latest[m
+[32m+[m
+[32m+[m[32mgcloud run deploy sne-worker \[m
+[32m+[m[32m  --image gcr.io/sne-labs/sne-worker:latest \[m
+[32m+[m[32m  --platform managed \[m
+[32m+[m[32m  --region us-central1 \[m
+[32m+[m[32m  --no-allow-unauthenticated[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## 📋 **Checklist de Correção**[m
+[32m+[m
+[32m+[m[32m- [ ] **Deploy do backend** no Google Cloud Run[m
+[32m+[m[32m- [ ] **Obter URL real** do serviço (ex: `https://sne-web-abc123-uc.a.run.app`)[m
+[32m+[m[32m- [ ] **Atualizar Vercel** com a URL correta[m
+[32m+[m[32m- [ ] **Configurar variáveis** de ambiente no Google Cloud[m
+[32m+[m[32m- [ ] **Testar endpoints** `/health`, `/api/auth/nonce`[m
+[32m+[m[32m- [ ] **Redeploy do frontend** no Vercel[m
+[32m+[m[32m- [ ] **Testar integração** completa[m
+[32m+[m
+[32m+[m[32m## 🎯 **Resultado Esperado**[m
+[32m+[m
+[32m+[m[32mApós correção:[m
+[32m+[m[32m- ✅ **Certificado SSL válido** (Google Cloud Run)[m
+[32m+[m[32m- ✅ **Backend responde** corretamente[m
+[32m+[m[32m- ✅ **SIWE authentication** funciona[m
+[32m+[m[32m- ✅ **Dashboard carrega** dados reais[m
+[32m+[m[32m- ✅ **Charts funcionam** com dados do Binance[m
+[32m+[m
+[32m+[m[32m## 💡 **Nota Importante**[m
+[32m+[m
+[32m+[m[32mO domínio `sne-radar-api-xxxxx.run.app` é placeholder. Substitua pela **URL real** obtida do comando:[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mgcloud run services list[m
+[32m+[m[32m```[m
+[1mdiff --git a/DEPLOY_AGORA.md b/DEPLOY_AGORA.md[m
+[1mnew file mode 100644[m
+[1mindex 0000000..ff76aaf[m
+[1m--- /dev/null[m
+[1m+++ b/DEPLOY_AGORA.md[m
+[36m@@ -0,0 +1,169 @@[m
+[32m+[m[32m# 🚀 **EXECUTE O DEPLOY AGORA!**[m
+[32m+[m
+[32m+[m[32m## ✅ **Google Cloud Configurado**[m
+[32m+[m
+[32m+[m[32mVocê já está logado no projeto **sne-v1** com o email **cnxsrtw@gmail.com**.[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🎯 **OPÇÃO 1: Deploy Automático (Recomendado)**[m
+[32m+[m
+[32m+[m[32m### **Execute o script completo:**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Do diretório raiz do projeto[m
+[32m+[m[32mcd /path/to/SNE-RADAR-DEPLOY[m
+[32m+[m
+[32m+[m[32m# Tornar executável e rodar[m
+[32m+[m[32mchmod +x deploy-cloud-run.sh[m
+[32m+[m[32m./deploy-cloud-run.sh[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m**O script fará automaticamente:**[m
+[32m+[m[32m- ✅ Criar Cloud SQL (PostgreSQL)[m
+[32m+[m[32m- ✅ Inicializar tabelas[m
+[32m+[m[32m- ✅ Criar secrets[m
+[32m+[m[32m- ✅ Build Docker image[m
+[32m+[m[32m- ✅ Deploy no Cloud Run[m
+[32m+[m[32m- ✅ Testar endpoints[m
+[32m+[m[32m- ✅ Dar URL do backend[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🎯 **OPÇÃO 2: Deploy Passo a Passo**[m
+[32m+[m
+[32m+[m[32m### **1. Preparar Infraestrutura**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Configurar projeto e região[m
+[32m+[m[32mexport PROJECT_ID=sne-v1[m
+[32m+[m[32mexport REGION=us-central1[m
+[32m+[m[32mgcloud config set project $PROJECT_ID[m
+[32m+[m
+[32m+[m[32m# Criar Cloud SQL[m
+[32m+[m[32mgcloud sql instances create sne-db-prod \[m
+[32m+[m[32m  --database-version=POSTGRES_15 \[m
+[32m+[m[32m  --cpu=2 \[m
+[32m+[m[32m  --memory=4GB \[m
+[32m+[m[32m  --region=$REGION \[m
+[32m+[m[32m  --root-password="5a9862d483ba291dc2012f254cce03a7"[m
+[32m+[m
+[32m+[m[32mgcloud sql databases create sne --instance=sne-db-prod[m
+[32m+[m[32mgcloud sql users create sne_admin \[m
+[32m+[m[32m  --instance=sne-db-prod \[m
+[32m+[m[32m  --password="5a9862d483ba291dc2012f254cce03a7"[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **2. Inicializar Banco**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Executar script de inicialização[m
+[32m+[m[32mcd backend-v2/services/sne-web[m
+[32m+[m[32mpython init_db.py[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **3. Deploy Backend**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Build e deploy[m
+[32m+[m[32mdocker build -t gcr.io/$PROJECT_ID/sne-web:latest .[m
+[32m+[m[32mdocker push gcr.io/$PROJECT_ID/sne-web:latest[m
+[32m+[m
+[32m+[m[32mgcloud run deploy sne-web \[m
+[32m+[m[32m  --image gcr.io/$PROJECT_ID/sne-web:latest \[m
+[32m+[m[32m  --platform managed \[m
+[32m+[m[32m  --region=$REGION \[m
+[32m+[m[32m  --allow-unauthenticated \[m
+[32m+[m[32m  --set-env-vars="SECRET_KEY=sne-jwt-secret,SIWE_DOMAIN=radar.snelabs.space,SIWE_ORIGIN=https://radar.snelabs.space" \[m
+[32m+[m[32m  --set-secrets="DB_PASSWORD=sne-db-password:latest,JWT_SECRET=sne-jwt-secret:latest" \[m
+[32m+[m[32m  --add-cloudsql-instances=$PROJECT_ID:$REGION:sne-db-prod[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🎯 **OPÇÃO 3: Deploy via Cloud Build (Sem Docker)**[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32m# Navegar para backend[m
+[32m+[m[32mcd backend-v2/services/sne-web[m
+[32m+[m
+[32m+[m[32m# Executar deploy via Cloud Build[m
+[32m+[m[32mchmod +x ../../deploy-cloud-build.sh[m
+[32m+[m[32m../../deploy-cloud-build.sh[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 📋 **APÓS O DEPLOY**[m
+[32m+[m
+[32m+[m[32m### **1. Obter URL do Backend**[m
+[32m+[m[32m```bash[m
+[32m+[m[32mgcloud run services list --region=us-central1[m
+[32m+[m[32m# Copie a URL: https://sne-web-ABC123-uc.a.run.app[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **2. Configurar Vercel**[m
+[32m+[m[32mNo painel Vercel → Environment Variables:[m
+[32m+[m[32m```[m
+[32m+[m[32mVITE_API_BASE_URL=https://sne-web-ABC123-uc.a.run.app[m
+[32m+[m[32mVITE_WS_URL=https://sne-web-ABC123-uc.a.run.app[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### **3. Configurar WalletConnect**[m
+[32m+[m[32m1. Acesse: https://cloud.reown.com[m
+[32m+[m[32m2. Projeto ID: `3fcc6bba6f1de962d911bb5b5c3dba68`[m
+[32m+[m[32m3. Adicionar domínio: `https://sneradar.vercel.app`[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🧪 **TESTE FINAL**[m
+[32m+[m
+[32m+[m[32m1. **Acesse:** https://sneradar.vercel.app[m
+[32m+[m[32m2. **Conecte wallet** (MetaMask)[m
+[32m+[m[32m3. **Faça SIWE login**[m
+[32m+[m[32m4. **Execute análise** de BTCUSDT[m
+[32m+[m[32m5. **Verifique gráficos**[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🎉 **SISTEMA PRONTO PARA PRODUÇÃO!**[m
+[32m+[m
+[32m+[m[32m### **Arquitetura Completa:**[m
+[32m+[m[32m- ✅ **Frontend:** React + Vercel[m
+[32m+[m[32m- ✅ **Backend:** Flask + Cloud Run[m
+[32m+[m[32m- ✅ **Database:** PostgreSQL + Cloud SQL[m
+[32m+[m[32m- ✅ **Cache:** Redis (opcional)[m
+[32m+[m[32m- ✅ **Auth:** SIWE + JWT[m
+[32m+[m[32m- ✅ **Analysis:** Motor Renan profissional[m
+[32m+[m
+[32m+[m[32m### **Funcionalidades:**[m
+[32m+[m[32m- ✅ Dashboard com dados em tempo real[m
+[32m+[m[32m- ✅ Gráficos TradingView[m
+[32m+[m[32m- ✅ Análise técnica profissional[m
+[32m+[m[32m- ✅ Sistema de tiers (Free/Premium/Pro)[m
+[32m+[m[32m- ✅ Autenticação Web3[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 🚨 **IMPORTANTE**[m
+[32m+[m
+[32m+[m[32m**Após o deploy, execute estes comandos para verificar:

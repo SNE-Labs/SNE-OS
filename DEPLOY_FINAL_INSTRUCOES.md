@@ -349,3 +349,4 @@ Após deploy, o SNE Radar estará **100% funcional** com:
 **Criado por:** Assistente de Desenvolvimento SNE Labs
 **Data:** Dezembro 2024
 **Versão:** SNE Radar v2.0 - Produção
+

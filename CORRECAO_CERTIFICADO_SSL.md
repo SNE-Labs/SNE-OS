@@ -144,3 +144,4 @@ O domínio `sne-radar-api-xxxxx.run.app` é placeholder. Substitua pela **URL re
 ```bash
 gcloud run services list
 ```
+

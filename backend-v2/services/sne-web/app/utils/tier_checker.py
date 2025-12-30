@@ -221,3 +221,4 @@ def get_rate_limit_status(user_address: str, tier: str) -> dict:
     except Exception as e:
         logger.warning(f"Rate limit status error: {str(e)}")
         return {}
+

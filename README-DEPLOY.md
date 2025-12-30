@@ -242,3 +242,4 @@ curl -I https://sne-web-ABC123-uc.a.run.app/health
 **Data:** Dezembro 2024
 
 **#SNERadar #Web3 #Trading #Fintech #GoogleCloud**
+

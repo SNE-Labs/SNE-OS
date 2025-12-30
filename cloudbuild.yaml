@@ -50,3 +50,4 @@ timeout: '1800s'
 # Images to build and push
 images:
   - 'gcr.io/$_PROJECT_ID/sne-web:latest'
+

@@ -152,3 +152,4 @@ curl https://sne-web-ABC123-uc.a.run.app/health
 **Sistema estará 100% funcional após o deploy!** 🚀
 
 **Precisa de ajuda com algum comando?** 🤔
+

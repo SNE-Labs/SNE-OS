@@ -137,3 +137,4 @@ def get_watchlist():
     except Exception as e:
         logger.error(f"Watchlist error: {str(e)}")
         return jsonify({'error': 'Failed to load watchlist'}), 500
+

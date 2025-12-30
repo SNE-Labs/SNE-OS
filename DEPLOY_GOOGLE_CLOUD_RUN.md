@@ -268,3 +268,4 @@ https://sne-web-[HASH]-uc.a.run.app
 ```
 
 **Copie esta URL e use no Vercel!** 🚀
+

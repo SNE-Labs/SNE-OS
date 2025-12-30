@@ -186,3 +186,4 @@ curl -X POST https://sne-web.onrender.com/api/analyze \
 **Siga os passos acima no Render e terá um backend 100% funcional e gratuito!** 🎯
 
 **Precisa de ajuda com algum passo?** 🤔
+

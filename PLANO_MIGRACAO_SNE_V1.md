@@ -304,3 +304,4 @@ A migração para **SNE V1.0** é uma **ótima decisão**:
 - **Escalabilidade garantida**
 
 O trabalho principal é integrar SIWE + tier system no código existente, que já tem tudo que precisamos! 🚀
+

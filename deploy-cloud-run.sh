@@ -336,3 +336,4 @@ echo "   - Backend deployado no Cloud Run"
 echo "   - Banco PostgreSQL configurado"
 echo "   - Secrets criados no Secret Manager"
 echo "   - Tabelas inicializadas"
+

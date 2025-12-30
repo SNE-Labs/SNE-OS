@@ -54,3 +54,4 @@ if __name__ == '__main__':
     print("🚀 Inicializando banco de dados SNE Radar...")
     init_database()
     print("🎉 Inicialização concluída!")
+
