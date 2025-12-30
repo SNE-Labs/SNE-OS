@@ -19,7 +19,7 @@ export default function WalletModal({
   isConnected,
   isAuthenticated,
 }: WalletModalProps) {
-  const { connectors } = useWallet()
+  const { connectors, isMetaMaskAvailable } = useWallet()
 
   if (!isOpen) return null
 
@@ -50,16 +50,33 @@ export default function WalletModal({
             <p className="text-[#A6A6A6] text-sm mb-6">
               Conecte sua wallet para acessar o SNE Radar
             </p>
+
+            {!isMetaMaskAvailable() && (
+              <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-md p-4 mb-4">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ MetaMask não detectada. Instale a extensão MetaMask para conectar.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {connectors.map((connector) => (
                 <button
                   key={connector.id}
                   onClick={() => handleConnect(connector.id)}
-                  className="w-full bg-[#1B1B1F] border border-[rgba(255,255,255,0.1)] rounded-md px-6 py-4 hover:border-[#FF6A00] hover:bg-[#1B1B1F] transition-all duration-150 text-left"
+                  disabled={!isMetaMaskAvailable() && connector.id === 'injected'}
+                  className={`w-full border rounded-md px-6 py-4 transition-all duration-150 text-left ${
+                    !isMetaMaskAvailable() && connector.id === 'injected'
+                      ? 'bg-gray-800 border-gray-600 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#1B1B1F] border-[rgba(255,255,255,0.1)] hover:border-[#FF6A00] hover:bg-[#1B1B1F]'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <Wallet className="w-5 h-5" />
                     <span>{connector.name}</span>
+                    {!isMetaMaskAvailable() && connector.id === 'injected' && (
+                      <span className="text-xs text-gray-500 ml-auto">Não disponível</span>
+                    )}
                   </div>
                 </button>
               ))}

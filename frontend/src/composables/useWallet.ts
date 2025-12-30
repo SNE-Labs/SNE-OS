@@ -1,58 +1,9 @@
 import { ref, computed } from 'vue'
-import { createConfig, getAccount, connect, disconnect, signMessage, http } from '@wagmi/core'
-import { WalletConnectConnector } from '@wagmi/connectors/walletConnect'
-import { InjectedConnector } from '@wagmi/connectors/injected'
-import { MetaMaskConnector } from '@wagmi/connectors/metaMask'
+import { getAccount, connect, disconnect, signMessage } from '@wagmi/core'
 import { SiweMessage } from 'siwe'
-import { scrollSepolia } from 'viem/chains'
 
-// Configuração Wagmi
-// Project ID do WalletConnect (pode ser sobrescrito por variável de ambiente)
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '3fcc6bba6f1de962d911bb5b5c3dba68'
-
-// Inicializar wagmiConfig de forma segura (proteção SSR)
-function createWagmiConfig() {
-  // Em SSR, criar um config mínimo
-  if (typeof window === 'undefined') {
-    return createConfig({
-      chains: [scrollSepolia],
-      connectors: [],
-      transports: {
-        [scrollSepolia.id]: http(),
-      },
-    })
-  }
-  
-  // No browser, criar config completo
-  return createConfig({
-    chains: [scrollSepolia],
-    connectors: [
-      new WalletConnectConnector({
-        chains: [scrollSepolia],
-        options: {
-          projectId: projectId,
-        },
-      }),
-      new InjectedConnector({
-        chains: [scrollSepolia],
-      }),
-      new MetaMaskConnector({
-        chains: [scrollSepolia],
-      })
-    ],
-    transports: {
-      [scrollSepolia.id]: http(),
-    },
-  })
-}
-
-export const wagmiConfig = createWagmiConfig()
-
-function getWagmiConfig() {
-  return wagmiConfig
-}
-
-export { getWagmiConfig }
+// Importar configuração global do wagmi (React)
+import { wagmiConfig } from '../lib/wagmi'
 
 // Estado reativo
 export const address = ref<string | null>(null)
@@ -66,30 +17,56 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://api.snelabs.space'
 const SIWE_DOMAIN = import.meta.env.VITE_SIWE_DOMAIN || 'radar.snelabs.space'
 const SIWE_ORIGIN = import.meta.env.VITE_SIWE_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : 'https://radar.snelabs.space')
 
-// Conectar wallet
+// Verificar se MetaMask está disponível
+const isMetaMaskAvailable = () => {
+  return typeof window !== 'undefined' &&
+         window.ethereum &&
+         window.ethereum.isMetaMask === true
+}
+
+// Conectar wallet (MetaMask via injected connector)
 export const connectWallet = async () => {
   if (typeof window === 'undefined') return
-  
+
   isLoading.value = true
   error.value = null
-  
+
   try {
-    const config = getWagmiConfig()
-    if (!config) return
-    
-    const account = getAccount(config)
-    
-    if (!account.isConnected) {
-      await connect(config, { connector: new InjectedConnector({ chains: [scrollSepolia] }) })
+    // Verificar se MetaMask está instalada
+    if (!isMetaMaskAvailable()) {
+      throw new Error('MetaMask não está instalada. Instale a extensão MetaMask e recarregue a página.')
     }
-    
-    const newAccount = getAccount(config)
+
+    const account = getAccount(wagmiConfig)
+
+    if (!account.isConnected) {
+      // Usar injected connector (detecta MetaMask automaticamente)
+      const injectedConnector = wagmiConfig.connectors.find(c => c.id === 'injected')
+      if (!injectedConnector) {
+        throw new Error('Injected connector não encontrado')
+      }
+
+      await connect(wagmiConfig, { connector: injectedConnector })
+    }
+
+    const newAccount = getAccount(wagmiConfig)
     if (newAccount.address) {
       address.value = newAccount.address
       isConnected.value = true
     }
   } catch (err: any) {
-    error.value = err.message
+    // Melhorar tratamento de erros específicos da MetaMask
+    let errorMessage = err.message
+
+    if (err.message.includes('User rejected')) {
+      errorMessage = 'Conexão rejeitada pelo usuário'
+    } else if (err.message.includes('MetaMask extension not found')) {
+      errorMessage = 'MetaMask não encontrada. Instale a extensão MetaMask.'
+    } else if (err.message.includes('connector')) {
+      errorMessage = 'Erro ao conectar com MetaMask. Tente recarregar a página.'
+    }
+
+    error.value = errorMessage
     throw err
   } finally {
     isLoading.value = false
@@ -99,12 +76,9 @@ export const connectWallet = async () => {
 // Desconectar wallet
 export const disconnectWallet = async () => {
   if (typeof window === 'undefined') return
-  
+
   try {
-    const config = getWagmiConfig()
-    if (config) {
-      await disconnect(config)
-    }
+    await disconnect(wagmiConfig)
   } catch (err) {
     // Ignorar erros no disconnect
   } finally {
@@ -119,21 +93,16 @@ const signMessageWithWallet = async (message: string) => {
   if (!address.value) {
     throw new Error('Wallet not connected')
   }
-  
+
   if (typeof window === 'undefined') {
     throw new Error('Window not available')
   }
-  
-  // ✅ Usar signMessage do @wagmi/core (não publicClient)
-  const config = getWagmiConfig()
-  if (!config) {
-    throw new Error('Wagmi config not available')
-  }
-  
-  const signature = await signMessage(config, {
+
+  // ✅ Usar signMessage do @wagmi/core
+  const signature = await signMessage(wagmiConfig, {
     message: message as `0x${string}` | string
   })
-  
+
   return signature
 }
 
@@ -273,6 +242,7 @@ export function useWallet() {
     tier,
     isLoading,
     error,
+    isMetaMaskAvailable,
     connectWallet,
     disconnectWallet,
     signIn,
