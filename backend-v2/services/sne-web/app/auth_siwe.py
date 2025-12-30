@@ -16,10 +16,10 @@ from app.security.siwe_verify import verify_siwe, parse_siwe_message
 
 auth_bp = Blueprint('auth', __name__)
 
-# Configurações SIWE
+# Configurações SIWE - compatível com variáveis existentes
 SIWE_DOMAIN = os.getenv('SIWE_DOMAIN', 'radar.snelabs.space')
 SIWE_ORIGIN = os.getenv('SIWE_ORIGIN', 'https://radar.snelabs.space')
-JWT_SECRET = os.getenv('JWT_SECRET', 'sne-jwt-secret-change-in-production')
+JWT_SECRET = os.getenv('SECRET_KEY', 'gerar_automaticamente')  # Usa SECRET_KEY existente
 JWT_ALGORITHM = 'HS256'
 
 # Redis para nonces e cache de tier

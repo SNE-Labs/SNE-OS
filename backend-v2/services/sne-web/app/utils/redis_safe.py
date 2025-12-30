@@ -5,6 +5,7 @@ Redis wrapper seguro com fallback quando Redis não está disponível
 import os
 import logging
 from typing import Any, Optional
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,21 @@ class SafeRedis:
         """Tenta conectar ao Redis"""
         try:
             import redis
-            self.redis = redis.Redis(
-                host=self.host,
-                port=self.port,
-                db=self.db,
-                **self.kwargs
-            )
+            # Suporte a REDIS_URL do ambiente
+            redis_url = os.getenv('REDIS_URL')
+            if redis_url:
+                self.redis = redis.from_url(redis_url)
+            else:
+                self.redis = redis.Redis(
+                    host=self.host,
+                    port=self.port,
+                    db=self.db,
+                    **self.kwargs
+                )
             # Test connection
             self.redis.ping()
             self.available = True
-            logger.info(f"Redis connected: {self.host}:{self.port}")
+            logger.info(f"Redis connected: {redis_url or f'{self.host}:{self.port}'}")
         except Exception as e:
             self.available = False
             logger.warning(f"Redis unavailable ({self.host}:{self.port}): {str(e)}. Using fallback mode.")
