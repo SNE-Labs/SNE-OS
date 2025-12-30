@@ -107,25 +107,23 @@ class SafeRedis:
             except Exception as e:
                 logger.warning(f"Upstash connection failed: {str(e)}")
 
-        # Se Upstash falhou, tenta TCP Redis
+        # Se Upstash falhou, tenta TCP Redis (só se REDIS_URL definido)
         try:
             import redis
-            # Suporte a REDIS_URL do ambiente
+            # Suporte a REDIS_URL do ambiente - só tenta se explicitamente configurado
             redis_url = os.getenv('REDIS_URL')
             if redis_url:
                 self.redis = redis.from_url(redis_url)
+                # Test connection
+                self.redis.ping()
+                self.available = True
+                self.use_upstash = False
+                logger.info(f"TCP Redis connected: {redis_url}")
             else:
-                self.redis = redis.Redis(
-                    host=self.host,
-                    port=self.port,
-                    db=self.db,
-                    **self.kwargs
-                )
-            # Test connection
-            self.redis.ping()
-            self.available = True
-            self.use_upstash = False
-            logger.info(f"TCP Redis connected: {redis_url or f'{self.host}:{self.port}'}")
+                # Em produção, não tenta localhost automaticamente
+                logger.info("No REDIS_URL configured - Redis disabled")
+                self.available = False
+                return
         except Exception as e:
             self.available = False
             logger.warning(f"Redis unavailable ({self.host}:{self.port}): {str(e)}. Using fallback mode.")

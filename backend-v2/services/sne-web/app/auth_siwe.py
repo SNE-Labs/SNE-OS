@@ -10,9 +10,12 @@ import secrets
 from functools import wraps
 from werkzeug.exceptions import BadRequest
 import os
+import logging
 
 from app.utils.redis_safe import SafeRedis
 from app.security.siwe_verify import verify_siwe, parse_siwe_message
+
+logger = logging.getLogger(__name__)
 from app.models import db, get_user_tier, set_user_tier, save_analysis, get_user_analyses_count
 
 auth_bp = Blueprint('auth', __name__)

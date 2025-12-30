@@ -1,6 +1,11 @@
 """
 SNE Web Service - Flask API with WebSocket support
 """
+import os
+
+# Fix DNS resolution issues with eventlet
+os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")
+
 import eventlet
 eventlet.monkey_patch()  # Deve ser o primeiro import
 

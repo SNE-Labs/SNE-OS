@@ -64,7 +64,7 @@ def get_candles_from_binance(symbol: str, interval: str, limit: int = 500):
             'limit': limit
         }
 
-        result = call_collector('/binance/klines', params)
+        result = call_collector('/api/v1/market/klines', params)
 
         if not result or "error" in result:
             logger.error(f"Collector error: {result}")
@@ -91,6 +91,52 @@ def get_candles_from_binance(symbol: str, interval: str, limit: int = 500):
     except Exception as e:
         logger.error(f"Collector call error: {str(e)}")
         return None
+
+# Função unificada para buscar klines (usada pelo motor_renan e outros)
+def get_klines(symbol: str, interval: str, limit: int = 200):
+    """Função unificada para buscar klines via coletor"""
+    collector_url = os.environ.get('COLLECTOR_URL')
+
+    if collector_url:
+        try:
+            # Usar coletor
+            response = requests.get(
+                f"{collector_url}/api/v1/market/klines",
+                params={
+                    'symbol': symbol.upper(),
+                    'interval': interval,
+                    'limit': limit
+                },
+                timeout=15
+            )
+            response.raise_for_status()
+            result = response.json()
+
+            # Retornar dados no formato esperado pelo motor
+            if result.get('success') and 'data' in result:
+                return result['data']
+            else:
+                logger.warning(f"Invalid collector response: {result}")
+        except Exception as e:
+            logger.error(f"Collector call failed: {str(e)}")
+
+    # Fallback para Binance direto (só em desenvolvimento)
+    try:
+        logger.warning("Using Binance fallback - should not happen in production")
+        response = requests.get(
+            "https://api.binance.com/api/v3/klines",
+            params={
+                'symbol': symbol.upper(),
+                'interval': interval,
+                'limit': limit
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Binance fallback failed: {str(e)}")
+        return []
 
 @charts_bp.route('/api/chart/candles', methods=['GET'])
 @require_auth

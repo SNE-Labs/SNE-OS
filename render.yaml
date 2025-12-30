@@ -19,9 +19,13 @@ services:
       - key: PORT
         value: 10000
       - key: COLLECTOR_URL
-        value: http://sne-collector.railway.internal
+        value: https://sne-web-production.up.railway.app
       - key: COLLECTOR_SHARED_SECRET
         value: sne-hmac-secret-prod
+      - key: EVENTLET_NO_GREENDNS
+        value: yes
+      - key: AUTO_INIT_DB
+        value: false
     databases:
       - name: sne-db
         databaseName: sne
