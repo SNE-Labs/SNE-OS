@@ -1,7 +1,6 @@
 {
-  "buildCommand": "bash build.sh",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "bash -c 'if [ -d frontend ]; then cd frontend && npm install; else echo \"❌ Diretório frontend não encontrado!\"; ls -la; exit 1; fi'",
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
     {
