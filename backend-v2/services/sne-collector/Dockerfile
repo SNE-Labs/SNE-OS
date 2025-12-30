@@ -11,5 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY app.py .
 
-# Comando para executar (usa PORT do Railway)
+# Comando para executar (gunicorn produção)
 CMD ["sh", "-c", "gunicorn -b 0.0.0.0:${PORT:-8080} app:app"]
