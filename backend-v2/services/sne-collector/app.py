@@ -33,30 +33,6 @@ def debug_binance():
             "egress_ok": False
         }), 502
 
-@app.route('/debug/binance')
-def debug_binance():
-    """Endpoint de debug para testar egress da Binance"""
-    try:
-        # Teste básico na Binance
-        response = requests.get(
-            "https://api.binance.com/api/v3/time",
-            timeout=BINANCE_TIMEOUT
-        )
-
-        return jsonify({
-            "status_code": response.status_code,
-            "response": response.json() if response.status_code == 200 else response.text,
-            "timestamp": datetime.utcnow().isoformat(),
-            "egress_ok": response.status_code == 200
-        })
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat(),
-            "egress_ok": False
-        }), 500
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     print(f"🚀 SNE Data Collector starting on port {port}")
