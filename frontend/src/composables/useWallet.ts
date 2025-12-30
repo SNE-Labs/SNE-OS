@@ -1,8 +1,8 @@
 import { ref, computed } from 'vue'
 import { createConfig, getAccount, connect, disconnect, signMessage, http } from '@wagmi/core'
-import { walletConnect } from '@wagmi/connectors/walletConnect'
-import { injected } from '@wagmi/connectors/injected'
-import { metaMask } from '@wagmi/connectors/metaMask'
+import { WalletConnectConnector } from '@wagmi/connectors/walletConnect'
+import { InjectedConnector } from '@wagmi/connectors/injected'
+import { MetaMaskConnector } from '@wagmi/connectors/metaMask'
 import { SiweMessage } from 'siwe'
 import { scrollSepolia } from 'viem/chains'
 
@@ -13,11 +13,18 @@ const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '3fcc6bba6f1d
 export const wagmiConfig = createConfig({
   chains: [scrollSepolia],
   connectors: [
-    walletConnect({
-      projectId: projectId,
+    new WalletConnectConnector({
+      chains: [scrollSepolia],
+      options: {
+        projectId: projectId,
+      },
     }),
-    injected(),
-    metaMask()
+    new InjectedConnector({
+      chains: [scrollSepolia],
+    }),
+    new MetaMaskConnector({
+      chains: [scrollSepolia],
+    })
   ],
   transports: {
     [scrollSepolia.id]: http(),
@@ -45,7 +52,7 @@ export const connectWallet = async () => {
     const account = getAccount(wagmiConfig)
     
     if (!account.isConnected) {
-      await connect(wagmiConfig, { connector: injected() })
+      await connect(wagmiConfig, { connector: new InjectedConnector({ chains: [scrollSepolia] }) })
     }
     
     const newAccount = getAccount(wagmiConfig)
