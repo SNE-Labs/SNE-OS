@@ -1,8 +1,6 @@
 {
   "buildCommand": "bash build.sh",
   "outputDirectory": "frontend/dist",
-  "devCommand": "cd frontend && npm run dev",
-  "installCommand": "cd frontend && npm install",
   "framework": "vite",
   "rewrites": [
     {
