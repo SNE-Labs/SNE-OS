@@ -25,5 +25,5 @@ EXPOSE 8080
 
 # Health check removido temporariamente para debug
 
-# Comando para executar (usar PORT do Railway ou 8080 como fallback)
-CMD sh -c "echo 'Starting Gunicorn on port ${PORT:-8080}' && gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --worker-class gevent --log-level info --access-logfile - --error-logfile - --capture-output app.main:app"
+# Comando para executar (usar abordagem do commit funcional)
+CMD python app.py
