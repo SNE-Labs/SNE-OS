@@ -24,9 +24,11 @@ JWT_SECRET = os.getenv('SECRET_KEY', 'gerar_automaticamente')  # Usa SECRET_KEY 
 JWT_ALGORITHM = 'HS256'
 
 # Redis para nonces e cache de tier
+# Suporta Upstash REST API ou TCP Redis
 redis_client = SafeRedis(
     host=os.getenv('REDIS_HOST', 'localhost'),
     port=int(os.getenv('REDIS_PORT', 6379)),
+    password=os.getenv('REDIS_PASSWORD'),
     db=0,
     decode_responses=True
 )
