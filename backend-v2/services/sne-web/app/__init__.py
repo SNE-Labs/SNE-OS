@@ -7,25 +7,44 @@ from flask_cors import CORS
 import os
 import logging
 
+# Import extensions
+from .extensions import db
+
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info("Initializing Flask app...")
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://localhost/sne')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-logger.info("Flask app created successfully")
+def create_app():
+    """Application factory pattern"""
+    logger.info("Creating Flask app...")
 
-# CORS configuration for cross-origin requests from radar.snelabs.space
-CORS(app, origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allowed_headers=["Content-Type", "Authorization"],
-     supports_credentials=True)
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://localhost/sne')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-socketio = SocketIO(app, cors_allowed_origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
-                   async_mode='threading')
+    # Initialize extensions
+    db.init_app(app)
+
+    # CORS configuration
+    CORS(app, origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization"],
+         supports_credentials=True)
+
+    # SocketIO (para desenvolvimento local)
+    socketio = SocketIO(app, cors_allowed_origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
+                       async_mode='threading')
+
+    logger.info("Flask app created successfully")
+    return app, socketio
+
+# Monkey patch para eventlet (produção)
+import eventlet
+eventlet.monkey_patch()
+
+# Create app instance for production (Gunicorn)
+app, socketio = create_app()
 
 # Simple test route
 @app.route('/', methods=['GET'])

@@ -18,6 +18,10 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: COLLECTOR_URL
+        value: http://sne-collector.railway.internal
+      - key: COLLECTOR_SHARED_SECRET
+        value: sne-hmac-secret-prod
     databases:
       - name: sne-db
         databaseName: sne

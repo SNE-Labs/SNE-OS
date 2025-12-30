@@ -27,5 +27,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD python -c "from app import app; print('OK')"
 
-# Comando para executar (usar abordagem do commit funcional)
-CMD sh -c "echo 'Starting Railway deployment...' && ls -la && python app.py"
+# Comando para executar (Gunicorn produção)
+CMD ["sh", "-c", "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:${PORT:-8080} wsgi:app"]
