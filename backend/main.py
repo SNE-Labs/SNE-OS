@@ -45,10 +45,14 @@ def get_allowed_origins():
     from flask import request
     import re
     
-    # Domínios de produção fixos
+    # Domínios de produção fixos (SNE OS + Radar)
     allowed = [
-        "https://radar.snelabs.space",
-        "https://www.radar.snelabs.space"
+        "https://snelabs.space",        # SNE OS principal
+        "https://www.snelabs.space",    # SNE OS www
+        "https://radar.snelabs.space",  # Radar legacy
+        "https://www.radar.snelabs.space",
+        "https://pass.snelabs.space",   # Passport
+        "https://vault.snelabs.space"   # Vault (future)
     ]
     
     # Durante preview, validar Origin dinamicamente
@@ -76,8 +80,12 @@ def get_allowed_origins():
 # ⚠️ Flask-CORS precisa de lista ou função que retorna lista
 # Para desenvolvimento, usar lista fixa (mais simples)
 cors_origins_list = [
-    "https://radar.snelabs.space",
-    "https://www.radar.snelabs.space"
+    "https://snelabs.space",        # SNE OS principal
+    "https://www.snelabs.space",    # SNE OS www
+    "https://radar.snelabs.space",  # Radar legacy
+    "https://www.radar.snelabs.space",
+    "https://pass.snelabs.space",   # Passport
+    "https://vault.snelabs.space"   # Vault (future)
 ]
 
 # Em desenvolvimento, adicionar localhost

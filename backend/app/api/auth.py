@@ -301,3 +301,102 @@ def logout():
     session.clear()
     return response
 
+# ============================================
+# SNE OS - Endpoints de Sessão e Entitlements
+# ============================================
+
+@auth_bp.route('/api/session', methods=['GET'])
+def get_session():
+    """
+    Retornar informações da sessão atual
+    Usado pelo SNE OS para reidratar sessão no refresh da página
+    """
+    address = session.get('address')
+    if not address:
+        return jsonify({'user': None}), 200
+
+    return jsonify({
+        'user': address,
+        'tier': session.get('tier', 'free'),
+        'chain_id': session.get('chain_id')
+    }), 200
+
+@auth_bp.route('/api/entitlements', methods=['GET'])
+def get_entitlements():
+    """
+    Retornar entitlements baseados na sessão
+    Usado pelo SNE OS para controle de acesso e gating
+    """
+    address = session.get('address')
+    if not address:
+        # Usuário não logado - acesso limitado
+        return jsonify({
+            'user': None,
+            'tier': 'free',
+            'features': ['vault.preview', 'pass.preview', 'radar.preview'],
+            'limits': {
+                'watchlist': 3,
+                'signals_per_day': 5,
+                'vault_items': 1
+            },
+            'expiresAt': None
+        }), 200
+
+    # Usuário logado - verificar tier atual
+    tier = session.get('tier', 'free')
+
+    # Mapeamento de features por tier
+    tier_features = {
+        'free': [
+            'vault.preview', 'pass.preview', 'radar.preview',
+            'vault.basic', 'pass.basic'
+        ],
+        'premium': [
+            'vault.preview', 'pass.preview', 'radar.preview',
+            'vault.access', 'pass.access', 'radar.basic',
+            'vault.checkout', 'pass.spy'
+        ],
+        'pro': [
+            'vault.preview', 'pass.preview', 'radar.preview',
+            'vault.access', 'pass.access', 'radar.access',
+            'vault.checkout', 'pass.spy', 'radar.trade',
+            'ws.realtime', 'api.full'
+        ]
+    }
+
+    # Limites por tier
+    tier_limits = {
+        'free': {
+            'watchlist': 3,
+            'signals_per_day': 10,
+            'vault_items': 2,
+            'api_calls_per_hour': 50
+        },
+        'premium': {
+            'watchlist': 10,
+            'signals_per_day': 100,
+            'vault_items': 10,
+            'api_calls_per_hour': 500
+        },
+        'pro': {
+            'watchlist': float('inf'),  # ilimitado
+            'signals_per_day': 1000,
+            'vault_items': float('inf'),
+            'api_calls_per_hour': 5000
+        }
+    }
+
+    # Calcular expiração (30 dias a partir de agora para tiers pagos)
+    expires_at = None
+    if tier in ['premium', 'pro']:
+        from datetime import datetime, timedelta
+        expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat() + 'Z'
+
+    return jsonify({
+        'user': address,
+        'tier': tier,
+        'features': tier_features.get(tier, tier_features['free']),
+        'limits': tier_limits.get(tier, tier_limits['free']),
+        'expiresAt': expires_at
+    }), 200
+
