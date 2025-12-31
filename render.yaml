@@ -19,7 +19,7 @@ services:
       - key: PORT
         value: 10000
       - key: COLLECTOR_URL
-        value: https://sne-web-production.up.railway.app
+        value: https://collector.snelabs.space
       - key: COLLECTOR_TOKEN
         value: sne-collector-token-prod
       - key: EVENTLET_NO_GREENDNS
