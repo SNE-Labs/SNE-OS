@@ -1,11 +1,8 @@
 import { Activity, Command } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthProvider';
 
-interface BottomBarProps {
-  isWalletConnected: boolean;
-  walletAddress: string;
-}
-
-export function BottomBar({ isWalletConnected, walletAddress }: BottomBarProps) {
+export function BottomBar() {
+  const { isConnected, address } = useAuth();
   return (
     <footer
       className="h-12 border-t flex items-center justify-between px-6"
@@ -22,8 +19,8 @@ export function BottomBar({ isWalletConnected, walletAddress }: BottomBarProps) 
         {/* Wallet Status */}
         <div className="flex items-center gap-2">
           <span className="text-xs" style={{ color: 'var(--text-3)' }}>Wallet:</span>
-          <span className="text-xs font-mono" style={{ color: isWalletConnected ? 'var(--ok-green)' : 'var(--text-3)' }}>
-            {isWalletConnected ? walletAddress : 'Not connected'}
+          <span className="text-xs font-mono" style={{ color: isConnected ? 'var(--ok-green)' : 'var(--text-3)' }}>
+            {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
           </span>
         </div>
 

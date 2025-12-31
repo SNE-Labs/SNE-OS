@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { scroll } from 'viem/chains';
@@ -13,16 +12,10 @@ import { Vault } from './pages/Vault';
 import { Pricing } from './pages/Pricing';
 import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
-import { ConnectWalletModal } from './components/ConnectWalletModal';
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
 
 export default function App() {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState('');
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
-  const [currentApp, setCurrentApp] = useState('Radar');
-
   // Create QueryClient for React Query
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -41,14 +34,6 @@ export default function App() {
     },
   });
 
-  const handleConnectWallet = () => {
-    // Simulate wallet connection
-    const mockAddress = '0x742d...4a2f';
-    setWalletAddress(mockAddress);
-    setIsWalletConnected(true);
-    setIsConnectModalOpen(false);
-  };
-
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -64,13 +49,7 @@ export default function App() {
               {/* Center Content - Fluid */}
               <div className="flex-1 flex flex-col">
                 {/* Topbar */}
-                <Topbar
-                  isWalletConnected={isWalletConnected}
-                  walletAddress={walletAddress}
-                  onConnectWallet={() => setIsConnectModalOpen(true)}
-                  currentApp={currentApp}
-                  onAppChange={setCurrentApp}
-                />
+                <Topbar />
 
                 {/* Main Content Area with Right Panel */}
                 <div className="flex flex-1 overflow-hidden">
@@ -79,8 +58,8 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Navigate to="/home" replace />} />
                       <Route path="/home" element={<Home />} />
-                      <Route path="/radar" element={<Radar isWalletConnected={isWalletConnected} />} />
-                      <Route path="/pass" element={<Pass isWalletConnected={isWalletConnected} walletAddress={walletAddress} />} />
+                      <Route path="/radar" element={<Radar />} />
+                      <Route path="/pass" element={<Pass />} />
                       <Route path="/vault" element={<Vault />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/status" element={<Status />} />
@@ -92,14 +71,7 @@ export default function App() {
             </div>
 
             {/* Bottom Bar - Session Bar */}
-            <BottomBar isWalletConnected={isWalletConnected} walletAddress={walletAddress} />
-
-            {/* Connect Wallet Modal */}
-            <ConnectWalletModal
-              isOpen={isConnectModalOpen}
-              onClose={() => setIsConnectModalOpen(false)}
-              onConnect={handleConnectWallet}
-            />
+            <BottomBar />
           </div>
         </BrowserRouter>
       </EntitlementsProvider>

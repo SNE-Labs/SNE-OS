@@ -1,32 +1,19 @@
 import { Bell, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthProvider';
 
-interface TopbarProps {
-  isWalletConnected: boolean;
-  walletAddress: string;
-  onConnectWallet: () => void;
-  currentApp: string;
-  onAppChange: (app: string) => void;
-}
-
-export function Topbar({ isWalletConnected, walletAddress, onConnectWallet, currentApp, onAppChange }: TopbarProps) {
-  const apps = ['Radar', 'Pass', 'Vault'];
+export function Topbar() {
+  const { isConnected, address, connect } = useAuth();
 
   return (
     <header
       className="h-16 border-b flex items-center justify-between px-6"
       style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
     >
-      {/* App Switcher */}
+      {/* Logo/Title */}
       <div className="flex items-center gap-2">
-        <button
-          className="flex items-center gap-2 px-3 py-2 rounded-lg"
-          style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-        >
-          <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-            {currentApp}
-          </span>
-          <ChevronDown size={16} style={{ color: 'var(--text-3)' }} />
-        </button>
+        <span className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
+          SNE OS
+        </span>
       </div>
 
       {/* Right Actions */}
@@ -53,9 +40,9 @@ export function Topbar({ isWalletConnected, walletAddress, onConnectWallet, curr
         </button>
 
         {/* Connect Wallet Button */}
-        {!isWalletConnected ? (
+        {!isConnected ? (
           <button
-            onClick={onConnectWallet}
+            onClick={connect}
             className="px-4 py-2 rounded-lg font-medium text-sm transition-all"
             style={{
               backgroundColor: 'var(--accent-orange)',
@@ -69,7 +56,7 @@ export function Topbar({ isWalletConnected, walletAddress, onConnectWallet, curr
             className="px-4 py-2 rounded-lg font-mono text-sm"
             style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
           >
-            {walletAddress}
+            {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
           </div>
         )}
       </div>
