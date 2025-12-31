@@ -139,3 +139,91 @@ def get_watchlist():
         logger.error(f"Watchlist error: {str(e)}")
         return jsonify({'error': 'Failed to load watchlist'}), 500
 
+# ============================================
+# SNE OS - Endpoints de Radar (compatibilidade)
+# ============================================
+
+@dashboard_bp.route('/api/radar/market-summary', methods=['GET'])
+def radar_market_summary():
+    """
+    Resumo de mercado para SNE OS Radar
+    Endpoint: GET /api/radar/market-summary
+    """
+    try:
+        # Dados básicos de mercado (sem autenticação obrigatória)
+        summary_data = generate_dashboard_summary('free')  # Usar dados básicos
+
+        # Extrair apenas dados de mercado
+        market_data = {
+            'btc_dominance': summary_data.get('market_summary', {}).get('btc_dominance'),
+            'market_cap': summary_data.get('market_summary', {}).get('market_cap'),
+            'volume_24h': summary_data.get('market_summary', {}).get('volume_24h'),
+            'fear_greed_index': summary_data.get('market_summary', {}).get('fear_greed_index'),
+            'top_movers': summary_data.get('top_movers', [])[:5]  # Limitar a 5
+        }
+
+        return jsonify(market_data), 200
+
+    except Exception as e:
+        logger.error(f"Radar market summary failed: {str(e)}")
+        return jsonify({
+            'btc_dominance': None,
+            'market_cap': None,
+            'volume_24h': None,
+            'fear_greed_index': None,
+            'top_movers': []
+        }), 200
+
+@dashboard_bp.route('/api/radar/signals', methods=['POST'])
+def radar_signals():
+    """
+    Sinais de análise para SNE OS Radar
+    Endpoint: POST /api/radar/signals
+    Body: { "symbol": "BTC/USD", "timeframe": "4H" }
+    """
+    try:
+        data = request.get_json() or {}
+        symbol = data.get('symbol', 'BTCUSDT').replace('/', '')  # Converter BTC/USD para BTCUSDT
+        timeframe = data.get('timeframe', '4H')
+
+        # Usar motor de análise para gerar sinais
+        analysis_result = analisar_par(symbol, timeframe)
+
+        if not analysis_result:
+            return jsonify({'signals': []}), 200
+
+        # Converter para formato esperado pelo frontend
+        signals = []
+
+        # Sinal principal
+        signal_data = analysis_result.get('analysis', {})
+        if signal_data.get('recommendation'):
+            signals.append({
+                'symbol': symbol,
+                'signal': signal_data['recommendation'],
+                'strength': signal_data.get('strength', 'Moderate'),
+                'timeframe': timeframe,
+                'updated': analysis_result.get('timestamp', datetime.utcnow().isoformat()),
+                'change': signal_data.get('change_percent', '--'),
+                'score': signal_data.get('confidence', 50)
+            })
+
+        # Adicionar sinais adicionais se disponíveis
+        additional_signals = analysis_result.get('signals', [])
+        for signal in additional_signals[:5]:  # Limitar a 5 sinais adicionais
+            signals.append({
+                'symbol': symbol,
+                'signal': signal.get('type', 'Unknown'),
+                'strength': signal.get('strength', 'Weak'),
+                'timeframe': timeframe,
+                'updated': signal.get('timestamp', datetime.utcnow().isoformat()),
+                'change': signal.get('change', '--'),
+                'score': signal.get('score', 30)
+            })
+
+        return jsonify({'signals': signals[:10]}), 200  # Limitar a 10 sinais no total
+
+    except Exception as e:
+        logger.error(f"Radar signals failed: {str(e)}")
+        return jsonify({'signals': []}), 200
+
