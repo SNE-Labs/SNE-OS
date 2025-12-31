@@ -45,11 +45,18 @@ def create_app():
     db.init_app(app)
     socketio.init_app(app)
 
-    # CORS configuration
+    # Load configuration
+    app.config.from_object("app.config.Config")
+
+    # CORS configuration - Include all SNE OS subdomains
+    from .config import Config
+    cors_origins = Config.CORS_ORIGINS
+
     CORS(app,
+         origins=cors_origins,
          resources={
              r"/api/*": {
-                 "origins": ["https://radar.snelabs.space", "https://www.radar.snelabs.space", "https://snelabs.space"],
+                 "origins": cors_origins,
                  "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                  "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
                  "supports_credentials": True
@@ -94,9 +101,18 @@ if os.getenv("AUTO_INIT_DB") == "true":
 
 # Register blueprints
 from . import main, api, auth_siwe, dashboard_api, charts_api
+from . import vault_api, passport_api, radar_api, status_api
+
+# Existing blueprints
 app.register_blueprint(auth_siwe.auth_bp)
 app.register_blueprint(dashboard_api.dashboard_bp)
 app.register_blueprint(charts_api.charts_bp)
+
+# New SNE OS blueprints
+app.register_blueprint(vault_api.vault_bp, url_prefix="/api/vault")
+app.register_blueprint(passport_api.passport_bp, url_prefix="/api/passport")
+app.register_blueprint(radar_api.radar_bp, url_prefix="/api/radar")
+app.register_blueprint(status_api.status_bp, url_prefix="/api")
 
 
 
