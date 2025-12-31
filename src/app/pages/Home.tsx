@@ -1,14 +1,59 @@
 import { Activity, Server, Zap, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { RightPanel } from '../components/RightPanel';
+import { apiGet } from '@/lib/api/http';
 
 export function Home() {
-  const recentActivity = [
-    { event: 'Proof Published', component: 'Vault', time: '2m ago', status: 'Online' },
-    { event: 'Data Sync', component: 'Indexer', time: '5m ago', status: 'Online' },
-    { event: 'API Request', component: 'API Gateway', time: '12m ago', status: 'Online' },
-    { event: 'Relay Update', component: 'Relayer', time: '23m ago', status: 'Degraded' },
-    { event: 'Node Heartbeat', component: 'Edge Node', time: '34m ago', status: 'Online' },
-  ];
+  // Fetch dashboard data from API
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => apiGet<{
+      status: { overall_status: string; uptime_percentage: number };
+      metrics: { latency_ms: number; uptime_percentage: number; last_proof_minutes: number };
+      components: Array<{ name: string; status: string; last_check: string }>;
+      activities: Array<{ event: string; component: string; time: string; status: string; timestamp: string }>;
+      alerts: Array<{ message: string; type: string; time: string }>;
+      last_updated: string;
+    }>('/api/dashboard'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+    retry: 3,
+  });
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-1">
+        <div className="flex-1 px-8 py-6 overflow-y-auto">
+          <div className="text-center py-12">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-300 rounded w-48 mx-auto mb-4"></div>
+              <div className="h-8 bg-gray-300 rounded w-64 mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-1">
+        <div className="flex-1 px-8 py-6 overflow-y-auto">
+          <div className="text-center py-12">
+            <div className="text-red-500">
+              <AlertTriangle size={48} className="mx-auto mb-4" />
+              <p>Failed to load dashboard data</p>
+              <p className="text-sm text-gray-500 mt-2">Please try again later</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const data = dashboardData?.data;
+  if (!data) return null;
 
   return (
     <div className="flex flex-1">
@@ -39,9 +84,23 @@ export function Home() {
               SNE OS Status
             </h2>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--ok-green)' }} />
-              <span className="text-sm font-medium" style={{ color: 'var(--ok-green)' }}>
-                All Systems Operational
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor: data.status.overall_status === 'All Systems Operational'
+                    ? 'var(--ok-green)'
+                    : 'var(--warn-amber)'
+                }}
+              />
+              <span
+                className="text-sm font-medium"
+                style={{
+                  color: data.status.overall_status === 'All Systems Operational'
+                    ? 'var(--ok-green)'
+                    : 'var(--warn-amber)'
+                }}
+              >
+                {data.status.overall_status}
               </span>
             </div>
           </div>
@@ -57,7 +116,7 @@ export function Home() {
                 <span className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>Latency</span>
               </div>
               <p className="text-2xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                23<span className="text-sm" style={{ color: 'var(--text-3)' }}>ms</span>
+                {data.metrics.latency_ms}<span className="text-sm" style={{ color: 'var(--text-3)' }}>ms</span>
               </p>
             </div>
 
@@ -70,7 +129,7 @@ export function Home() {
                 <span className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>Uptime</span>
               </div>
               <p className="text-2xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                99.9<span className="text-sm" style={{ color: 'var(--text-3)' }}>%</span>
+                {data.metrics.uptime_percentage}<span className="text-sm" style={{ color: 'var(--text-3)' }}>%</span>
               </p>
             </div>
 
@@ -83,7 +142,7 @@ export function Home() {
                 <span className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>Last Proof</span>
               </div>
               <p className="text-2xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                2<span className="text-sm" style={{ color: 'var(--text-3)' }}>m ago</span>
+                {data.metrics.last_proof_minutes}<span className="text-sm" style={{ color: 'var(--text-3)' }}>m ago</span>
               </p>
             </div>
           </div>
@@ -91,18 +150,22 @@ export function Home() {
           {/* Component Status Pills */}
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>Components:</span>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'var(--bg-0)' }}>
-              <CheckCircle2 size={12} style={{ color: 'var(--ok-green)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>API</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'var(--bg-0)' }}>
-              <CheckCircle2 size={12} style={{ color: 'var(--ok-green)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>Indexer</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'var(--bg-0)' }}>
-              <CheckCircle2 size={12} style={{ color: 'var(--ok-green)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>Relayer</span>
-            </div>
+            {data.components.slice(0, 3).map((component) => (
+              <div
+                key={component.name}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+                style={{ backgroundColor: 'var(--bg-0)' }}
+              >
+                {component.status === 'online' ? (
+                  <CheckCircle2 size={12} style={{ color: 'var(--ok-green)' }} />
+                ) : (
+                  <AlertTriangle size={12} style={{ color: 'var(--warn-amber)' }} />
+                )}
+                <span className="text-xs font-medium" style={{ color: 'var(--text-2)' }}>
+                  {component.name}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -133,7 +196,7 @@ export function Home() {
             </div>
 
             {/* Table Rows */}
-            {recentActivity.map((item, index) => (
+            {data.activities.map((item, index) => (
               <div
                 key={index}
                 className="grid grid-cols-4 gap-4 px-4 py-3 border-b hover:bg-[var(--bg-3)] transition-colors cursor-pointer"
@@ -165,13 +228,14 @@ export function Home() {
       <RightPanel
         tags={[
           { label: 'Network', value: 'Scroll L2' },
-          { label: 'Mode', value: 'Preview' },
-          { label: 'Environment', value: 'Production' },
+          { label: 'Mode', value: 'Production' },
+          { label: 'Uptime', value: `${data.status.uptime_percentage}%` },
         ]}
-        alerts={[
-          { message: 'Relayer experiencing delays', type: 'warning', time: '23m ago' },
-          { message: 'Node sync completed', type: 'success', time: '1h ago' },
-        ]}
+        alerts={data.alerts.map(alert => ({
+          message: alert.message,
+          type: alert.type as 'warning' | 'success',
+          time: alert.time
+        }))}
         actions={[
           { label: 'Open Docs', icon: 'FileText' },
           { label: 'Upgrade', icon: 'ArrowUp' },
