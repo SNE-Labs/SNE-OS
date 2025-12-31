@@ -11,55 +11,68 @@ type EntCtx = {
 const Ctx = createContext<EntCtx | null>(null);
 
 export function EntitlementsProvider({ children }: { children: React.ReactNode }) {
-  const { isConnected } = useAuth();
+  const { isAuthenticated, tier } = useAuth();
   const [loading, setLoading] = useState(false);
   const [entitlements, setEntitlements] = useState<Entitlements | undefined>();
+
+  // Função para gerar entitlements baseado no tier
+  function getEntitlementsForTier(userTier: 'free' | 'premium' | 'pro'): Entitlements {
+    const baseEntitlements = {
+      user: undefined,
+      tier: userTier,
+    };
+
+    switch (userTier) {
+      case 'free':
+        return {
+          ...baseEntitlements,
+          features: ["vault.preview", "pass.preview", "radar.preview"],
+          limits: { watchlist: 3, signals_per_day: 10 }
+        };
+      case 'premium':
+        return {
+          ...baseEntitlements,
+          features: ["vault.checkout", "pass.access", "radar.access"],
+          limits: { watchlist: 10, signals_per_day: 50 }
+        };
+      case 'pro':
+        return {
+          ...baseEntitlements,
+          features: ["vault.checkout", "pass.access", "radar.access", "radar.trade"],
+          limits: { watchlist: 50, signals_per_day: -1 } // -1 = unlimited
+        };
+      default:
+        return {
+          ...baseEntitlements,
+          features: ["vault.preview", "pass.preview", "radar.preview"],
+          limits: { watchlist: 3, signals_per_day: 10 }
+        };
+    }
+  }
 
   async function refresh() {
     setLoading(true);
     try {
-      const data = await getEntitlements();
-      setEntitlements(data);
+      if (isAuthenticated && tier) {
+        // Usar entitlements baseado no tier do AuthProvider
+        const data = getEntitlementsForTier(tier);
+        setEntitlements(data);
+      } else {
+        setEntitlements(undefined);
+      }
     } catch (error) {
-      console.warn("Failed to fetch entitlements:", error);
-      // Set default entitlements for free tier when API fails
-      setEntitlements({
-        user: undefined,
-        tier: "free",
-        features: ["vault.preview", "pass.preview", "radar.preview"],
-        limits: { watchlist: 3, signals_per_day: 10 }
-      });
+      console.warn("Failed to set entitlements:", error);
+      // Fallback para free tier
+      setEntitlements(getEntitlementsForTier('free'));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    // reidrata sessão (refresh da página)
-    (async () => {
-      try {
-        const s = await getSession();
-        if (s.user) await refresh();
-        else setEntitlements(undefined);
-      } catch (error) {
-        console.warn("Failed to get session:", error);
-        // Set default state when session fails
-        setEntitlements(undefined);
-      }
-    })();
+    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!isConnected) {
-      setEntitlements(undefined);
-    } else {
-      refresh().catch(error => {
-        console.warn("Failed to refresh entitlements on connect:", error);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected]);
+  }, [isAuthenticated, tier]);
 
   const value = useMemo(() => ({ loading, entitlements, refresh }), [loading, entitlements]);
 
