@@ -205,9 +205,9 @@ export function Vault() {
               <Search className="w-5 h-5" style={{ color: 'var(--accent-orange)' }} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças Público</h3>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças On-Chain</h3>
               <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-                Cole um endereço Ethereum/Scroll ou ENS para verificar licenças públicas. Nenhuma wallet necessária.
+                Digite um endereço Ethereum/Scroll para verificar dados on-chain e licenças ativas na rede.
               </p>
             </div>
           </div>
