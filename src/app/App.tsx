@@ -32,6 +32,10 @@ export default function App() {
     <AuthProvider>
       <EntitlementsProvider>
         <BrowserRouter>
+          {/* Debug: Show loading state */}
+          <div style={{ position: 'fixed', top: 10, right: 10, background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>
+            App Loaded
+          </div>
           <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
             {/* Main Layout */}
             <div className="flex flex-1">
@@ -77,6 +81,21 @@ export default function App() {
               onClose={() => setIsConnectModalOpen(false)}
               onConnect={handleConnectWallet}
             />
+
+            {/* Debug indicator */}
+            <div style={{
+              position: 'fixed',
+              bottom: 10,
+              right: 10,
+              background: 'green',
+              color: 'white',
+              padding: '10px',
+              borderRadius: '5px',
+              zIndex: 9999,
+              fontSize: '12px'
+            }}>
+              ✅ App Rendered Successfully
+            </div>
           </div>
         </BrowserRouter>
       </EntitlementsProvider>

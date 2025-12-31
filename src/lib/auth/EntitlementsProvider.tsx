@@ -20,6 +20,15 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
     try {
       const data = await getEntitlements();
       setEntitlements(data);
+    } catch (error) {
+      console.warn("Failed to fetch entitlements:", error);
+      // Set default entitlements for free tier when API fails
+      setEntitlements({
+        user: undefined,
+        tier: "free",
+        features: ["vault.preview", "pass.preview", "radar.preview"],
+        limits: { watchlist: 3, signals_per_day: 10 }
+      });
     } finally {
       setLoading(false);
     }
@@ -32,7 +41,9 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
         const s = await getSession();
         if (s.user) await refresh();
         else setEntitlements(undefined);
-      } catch {
+      } catch (error) {
+        console.warn("Failed to get session:", error);
+        // Set default state when session fails
         setEntitlements(undefined);
       }
     })();
@@ -40,8 +51,13 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    if (!isConnected) setEntitlements(undefined);
-    else refresh();
+    if (!isConnected) {
+      setEntitlements(undefined);
+    } else {
+      refresh().catch(error => {
+        console.warn("Failed to refresh entitlements on connect:", error);
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 

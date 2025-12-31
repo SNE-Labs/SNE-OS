@@ -11,7 +11,12 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null);
 
 async function getNonce() {
-  return apiGet<{ nonce: string }>("/api/auth/nonce");
+  try {
+    return await apiGet<{ nonce: string }>("/api/auth/nonce");
+  } catch (error) {
+    console.warn("Failed to get nonce, using fallback:", error);
+    return { nonce: "fallback-nonce-" + Date.now() };
+  }
 }
 
 // aqui você pluga sua lib atual (WalletConnect/wagmi/viem).
