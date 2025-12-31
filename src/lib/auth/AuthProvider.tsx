@@ -28,6 +28,9 @@ async function requestAddress(): Promise<string> {
     throw new Error("MetaMask requires HTTPS. Please access this site via https://snelabs.space");
   }
 
+  // Aguardar um pouco para garantir que o ethereum object está totalmente carregado
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   // @ts-expect-error - ethereum injected
   const eth = window.ethereum;
 
@@ -35,27 +38,69 @@ async function requestAddress(): Promise<string> {
     throw new Error("No wallet found. Please install MetaMask or another Web3 wallet and refresh the page.");
   }
 
+  // Verificar se estamos no domínio correto
+  if (window.location.hostname !== 'snelabs.space' && window.location.hostname !== 'localhost') {
+    console.warn("Warning: Connecting from untrusted domain:", window.location.hostname);
+  }
+
   // Verificar se é MetaMask ou outro provider
   if (eth.isMetaMask) {
-    console.log("MetaMask detected");
+    console.log("MetaMask detected, version:", eth.isMetaMask);
   } else {
     console.log("Other Web3 wallet detected");
   }
 
+  // Verificar se MetaMask está unlocked
   try {
+    await eth.request({ method: "eth_accounts" });
+  } catch (error) {
+    console.warn("MetaMask may be locked:", error);
+  }
+
+  console.log("Attempting to request accounts...");
+
+  try {
+    // Primeiro tentar verificar contas existentes (não solicita permissão)
+    const existingAccounts = (await eth.request({ method: "eth_accounts" })) as string[];
+    console.log("Existing accounts:", existingAccounts);
+
+    if (existingAccounts && existingAccounts.length > 0) {
+      console.log("Using existing connected account");
+      return existingAccounts[0];
+    }
+
+    // Se não há contas conectadas, solicitar permissão
+    console.log("Requesting account permission...");
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+    console.log("Accounts received:", accounts);
+
     if (!accounts || accounts.length === 0) {
       throw new Error("No accounts found. Please connect your wallet.");
     }
     return accounts[0];
   } catch (error: any) {
+    console.error("Wallet connection failed:", error);
+
     if (error.code === 4001) {
-      throw new Error("Connection rejected by user");
+      throw new Error("Connection rejected by user. Please try again and approve the connection in MetaMask.");
     }
     if (error.code === -32002) {
-      throw new Error("Connection request already pending. Check your wallet.");
+      throw new Error("Connection request already pending. Please check MetaMask for pending requests.");
     }
-    throw error;
+    if (error.code === 4100) {
+      throw new Error("MetaMask is not authorized for this site. Please enable it in MetaMask settings.");
+    }
+    if (error.code === 4200) {
+      throw new Error("MetaMask is not enabled. Please unlock your wallet.");
+    }
+
+    // Verificar se é um erro de rede ou conexão
+    if (error.message && error.message.includes("extension")) {
+      throw new Error("MetaMask extension communication failed. Please refresh the page and try again.");
+    }
+
+    // Fallback error message
+    throw new Error(`Wallet connection failed: ${error.message || 'Unknown error'}`);
   }
 }
 
