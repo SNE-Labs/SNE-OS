@@ -207,7 +207,10 @@ export function Vault() {
             <div>
               <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças On-Chain</h3>
               <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-                Digite um endereço Ethereum/Scroll para verificar dados on-chain e licenças ativas na rede.
+                Digite um endereço Ethereum/Scroll para verificar licenças SNE reais na blockchain.
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
+                ⚠️ Sistema em desenvolvimento: atualmente não há contratos SNE implantados.
               </p>
             </div>
           </div>

@@ -91,61 +91,35 @@ export async function lookupAddress(address: string): Promise<LookupResult> {
       throw new Error('Invalid Ethereum address format');
     }
 
-    // Get ETH balance
+    // Get basic on-chain data
     const balanceHex = await rpcCall('eth_getBalance', [address, 'latest']);
     const balanceWei = BigInt(balanceHex);
     const balanceEth = Number(balanceWei) / 1e18;
 
-    // Get transaction count (nonce)
     const txCountHex = await rpcCall('eth_getTransactionCount', [address, 'latest']);
     const txCount = parseInt(txCountHex, 16);
 
-    // Get code (check if it's a contract)
-    const code = await rpcCall('eth_getCode', [address, 'latest']);
-    const isContract = code !== '0x';
+    // Check if address has any ERC-721 tokens (NFTs that could represent licenses)
+    // This is a simplified check - in production would check specific SNE contract addresses
+    const hasNFTs = txCount > 0; // Simplified - addresses with tx might have NFTs
 
-    // Generate data based on real on-chain activity
+    // For now, return empty arrays since we don't have real SNE contracts deployed
+    // This represents the actual state: no SNE licenses/keys/boxes exist yet
     const licenses = [];
     const keys = [];
     const boxes = [];
 
-    // Generate licenses based on transaction activity
-    if (txCount > 0) {
-      licenses.push({
-        id: `license-${address.slice(-8)}`,
-        nodeId: `0x${Math.random().toString(16).substring(2, 10)}`,
-        name: isContract ? 'Contract License' : 'User License',
-        status: 'active' as const,
-        power: `${Math.min(100, txCount * 10)}%`,
-        lastChecked: new Date().toISOString(),
-      });
-    }
-
-    // Generate keys if has balance
-    if (balanceEth > 0) {
-      keys.push({
-        id: `key-${address.slice(-8)}`,
-        boundTo: address,
-        status: 'bound' as const,
-      });
-    }
-
-    // Generate boxes if is contract or has high activity
-    if (isContract || txCount > 5) {
-      boxes.push({
-        id: `box-${address.slice(-8)}`,
-        tier: (isContract ? 'tier3' : 'tier1') as 'tier1' | 'tier2' | 'tier3',
-        provisioned: true,
-        lastSeen: new Date().toISOString(),
-      });
-    }
+    // Future: Check specific SNE contract addresses for real licenses
+    // const sneLicenseContract = '0x...'; // SNE License NFT contract
+    // const sneKeyContract = '0x...'; // SNE Key contract
+    // const sneBoxContract = '0x...'; // SNE Box contract
 
     return {
       licenses,
       keys,
       boxes,
       pou: {
-        nodesPublic: Math.floor(txCount / 2) + Math.floor(balanceEth * 10)
+        nodesPublic: 0 // No real POU system yet
       }
     };
 
