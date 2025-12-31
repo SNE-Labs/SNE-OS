@@ -103,15 +103,24 @@ export function InteractiveChart({
       chartLogger.debug('Chart object received', {
         chartType: typeof chart,
         hasAddCandlestickSeries: typeof chart.addCandlestickSeries,
-        chartKeys: Object.keys(chart).slice(0, 5)
+        chartKeys: Object.keys(chart).slice(0, 5),
+        availableMethods: Object.getOwnPropertyNames(chart).filter(name => typeof chart[name] === 'function').slice(0, 10)
       })
 
-      // Create candlestick series
-      if (typeof chart.addCandlestickSeries !== 'function') {
-        throw new Error('Chart API not available: addCandlestickSeries is not a function')
+      // Create candlestick series - try different API versions
+      let addSeriesMethod = chart.addCandlestickSeries || chart.addCandlestick || chart.addSeries
+
+      if (typeof addSeriesMethod !== 'function') {
+        // Fallback: try to access via prototype or different method names
+        const proto = Object.getPrototypeOf(chart)
+        addSeriesMethod = proto?.addCandlestickSeries || proto?.addCandlestick || proto?.addSeries
+
+        if (typeof addSeriesMethod !== 'function') {
+          throw new Error(`Chart API not available. Available methods: ${Object.getOwnPropertyNames(chart).join(', ')}`)
+        }
       }
 
-      const candlestickSeries = chart.addCandlestickSeries({
+      const candlestickSeries = addSeriesMethod.call(chart, {
         upColor: chartConfig.upColor,
         downColor: chartConfig.downColor,
         borderVisible: false,

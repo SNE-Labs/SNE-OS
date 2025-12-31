@@ -21,19 +21,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_URL || 'https://api.snelabs.space',
-        changeOrigin: true,
-        secure: true,
-      },
-      '/socket.io': {
-        target: process.env.VITE_WS_URL || 'https://api.snelabs.space',
-        ws: true,
-        changeOrigin: true,
-        secure: true,
-      },
-    },
+    // Proxy removido - não funciona em produção Vercel
+    // Usar apenas baseURL direto na configuração da API
   },
   build: {
     outDir: 'dist',
