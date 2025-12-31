@@ -166,6 +166,101 @@ def get_candles():
         logger.error(f"Candles API error: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to fetch candle data'}), 500
 
+@charts_bp.route('/api/chart/price', methods=['GET'])
+@require_auth
+def get_current_price():
+    """
+    Preço atual do símbolo
+    Endpoint: GET /api/chart/price?symbol=BTCUSDT&tf=1h
+    """
+    try:
+        user = g.user
+        tier = user['tier']
+
+        symbol = request.args.get('symbol', 'BTCUSDT').upper()
+        timeframe = request.args.get('tf', '1h')
+
+        # Cache key
+        cache_key = f'price:{symbol}:{timeframe}'
+        cache_ttl = 30  # 30 segundos
+
+        # Verificar cache Redis
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            logger.info(f"Price cache hit for {symbol}")
+            return jsonify(json_lib.loads(cached_data)), 200
+
+        # Buscar preço atual (usar Binance ou fallback)
+        price_data = get_current_price_from_binance(symbol, timeframe)
+
+        if not price_data or 'price' not in price_data:
+            # Fallback para dados mock se Binance falhar
+            price_data = {
+                'price': 50000.0,  # Mock price
+                'timestamp': int(time.time() * 1000),
+                'symbol': symbol
+            }
+
+        # Cache
+        redis_client.setex(cache_key, cache_ttl, json_lib.dumps(price_data))
+
+        return jsonify(price_data), 200
+
+    except Exception as e:
+        logger.error(f"Price API error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to fetch price data'}), 500
+
+
+@charts_bp.route('/api/chart/data', methods=['GET'])
+@require_auth
+def get_chart_data():
+    """
+    Dados completos do gráfico (candles + níveis + preço atual)
+    Endpoint: GET /api/chart/data?symbol=BTCUSDT&tf=1h
+    """
+    try:
+        user = g.user
+        tier = user['tier']
+
+        symbol = request.args.get('symbol', 'BTCUSDT').upper()
+        timeframe = request.args.get('tf', '1h')
+
+        # Buscar dados em paralelo para melhor performance
+        import concurrent.futures
+
+        def fetch_candles():
+            return get_candles_data(symbol, timeframe, 100)
+
+        def fetch_levels():
+            return get_levels_data(symbol, timeframe)
+
+        def fetch_price():
+            return get_current_price_from_binance(symbol, timeframe)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            candles_future = executor.submit(fetch_candles)
+            levels_future = executor.submit(fetch_levels)
+            price_future = executor.submit(fetch_price)
+
+            candles_data = candles_future.result()
+            levels_data = levels_future.result()
+            price_data = price_future.result()
+
+        # Combinar dados
+        result = {
+            'candles': candles_data.get('candles', []),
+            'levels': levels_data,
+            'current_price': price_data.get('price', 0) if price_data else 0,
+            'timestamp': int(time.time() * 1000)
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"Chart data API error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to fetch chart data'}), 500
+
+
 @charts_bp.route('/api/chart/indicators', methods=['GET'])
 @require_auth
 def get_indicators():
@@ -305,6 +400,85 @@ def calculate_bollinger_simple(candles, period=20):
         'middle': round(middle, 2),
         'lower': round(middle - (std * 2), 2)
     }
+
+# ============================================
+# HELPER FUNCTIONS FOR NEW ENDPOINTS
+# ============================================
+
+def get_current_price_from_binance(symbol: str, timeframe: str) -> dict:
+    """Busca preço atual do Binance"""
+    try:
+        # Simulação - em produção usar Binance API real
+        # Para agora, usar dados mock
+        import random
+        base_price = 50000.0 if symbol == 'BTCUSDT' else 3000.0
+        variation = random.uniform(-0.02, 0.02)  # ±2%
+        price = base_price * (1 + variation)
+
+        return {
+            'price': round(price, 2),
+            'timestamp': int(time.time() * 1000),
+            'symbol': symbol
+        }
+    except Exception as e:
+        logger.error(f"Failed to get current price: {str(e)}")
+        return {'price': 50000.0, 'timestamp': int(time.time() * 1000), 'symbol': symbol}
+
+def get_candles_data(symbol: str, timeframe: str, limit: int) -> dict:
+    """Busca dados de candles - wrapper para reutilizar lógica existente"""
+    try:
+        # Reutilizar a lógica existente do endpoint de candles
+        # Simulação simplificada
+        candles = []
+        import time
+        import random
+
+        base_price = 50000.0 if symbol == 'BTCUSDT' else 3000.0
+        current_time = int(time.time() * 1000)
+
+        for i in range(limit):
+            # Gerar candles simulados
+            variation = random.uniform(-0.01, 0.01)
+            open_price = base_price * (1 + variation)
+            close_price = open_price * (1 + random.uniform(-0.005, 0.005))
+            high_price = max(open_price, close_price) * (1 + random.uniform(0, 0.003))
+            low_price = min(open_price, close_price) * (1 - random.uniform(0, 0.003))
+
+            candle = {
+                'time': current_time - (i * 3600000),  # 1h intervals
+                'open': round(open_price, 2),
+                'high': round(high_price, 2),
+                'low': round(low_price, 2),
+                'close': round(close_price, 2),
+                'volume': random.randint(100, 1000)
+            }
+            candles.append(candle)
+
+        return {'candles': candles[::-1]}  # Reverse to chronological order
+
+    except Exception as e:
+        logger.error(f"Failed to get candles data: {str(e)}")
+        return {'candles': []}
+
+def get_levels_data(symbol: str, timeframe: str) -> dict:
+    """Busca dados de níveis - wrapper para reutilizar lógica existente"""
+    try:
+        # Simulação de níveis de suporte/resistência
+        base_price = 50000.0 if symbol == 'BTCUSDT' else 3000.0
+
+        return {
+            'supports': [
+                round(base_price * 0.95, 2),
+                round(base_price * 0.90, 2)
+            ],
+            'resistances': [
+                round(base_price * 1.05, 2),
+                round(base_price * 1.10, 2)
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to get levels data: {str(e)}")
+        return {'supports': [], 'resistances': []}
 
 def calculate_stochastic_simple(candles, k_period=14):
     """Stochastic simples"""

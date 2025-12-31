@@ -15,7 +15,7 @@ export const analysisApi = {
    * Executa análise técnica completa
    */
   analyze: (symbol: string, timeframe: string): Promise<{ data: AnalysisResult }> =>
-    api.post('/api/analysis/analyze', { symbol, timeframe }),
+    api.post('/api/analyze/auth', { symbol, timeframe }),
 
   /**
    * Busca resultado de análise por ID

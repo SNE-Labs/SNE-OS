@@ -46,9 +46,15 @@ def create_app():
     socketio.init_app(app)
 
     # CORS configuration
-    CORS(app, origins=["https://radar.snelabs.space", "https://www.radar.snelabs.space"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization"],
+    CORS(app,
+         resources={
+             r"/api/*": {
+                 "origins": ["https://radar.snelabs.space", "https://www.radar.snelabs.space", "https://snelabs.space"],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+                 "supports_credentials": True
+             }
+         },
          supports_credentials=True)
 
     logger.info("Flask app created successfully")

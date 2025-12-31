@@ -102,6 +102,10 @@ def require_auth(f):
     """Decorator para verificar JWT token"""
     @wraps(f)
     def wrapper(*args, **kwargs):
+        # Allow OPTIONS requests (CORS preflight) to pass through
+        if request.method == "OPTIONS":
+            return ("", 204)
+
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Missing or invalid token'}), 401
