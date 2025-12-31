@@ -17,7 +17,7 @@ export const chartApi = {
   getCandles: (symbol: string, timeframe: string, limit: number = 500): Promise<{
     data: { candles: CandleData[] }
   }> =>
-    api.get('/api/chart/candles', { params: { symbol: 'tf': timeframe, limit } }),
+    api.get('/api/chart/candles', { params: { symbol, tf: timeframe, limit } }),
 
   /**
    * Busca níveis de suporte/resistência
