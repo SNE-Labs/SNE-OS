@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Redis para cache
 redis_client = SafeRedis()
 
-@dashboard_bp.route('/api/dashboard/summary', methods=['GET'])
+@dashboard_bp.route('/summary', methods=['GET'])
 @require_auth
 def dashboard_summary():
     """

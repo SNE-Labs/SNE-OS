@@ -33,6 +33,14 @@ def require_session(fn):
 
 status_bp = Blueprint("status", __name__)
 
+# Create dashboard blueprint for /api/dashboard routes
+dashboard_bp = Blueprint("dashboard", __name__)
+
+@dashboard_bp.get("/")
+def dashboard_root():
+    """Alias for /api/dashboard - returns system overview"""
+    return ok(get_dashboard_payload())
+
 @status_bp.get("/session")
 def get_session():
     """Get current session info for frontend"""
@@ -199,11 +207,10 @@ def active_alerts():
         "last_updated": datetime.now().isoformat()
     })
 
-@status_bp.get("/dashboard")
-def dashboard_data():
-    """Get all dashboard data in one request"""
+def get_dashboard_payload():
+    """Get dashboard payload data"""
     try:
-        return ok({
+        return {
             "status": {
                 "overall_status": get_system_status(),
                 "uptime_percentage": get_uptime_percentage()
@@ -217,11 +224,11 @@ def dashboard_data():
             "activities": get_recent_activity(),
             "alerts": get_active_alerts(),
             "last_updated": datetime.now().isoformat()
-        })
+        }
     except Exception as e:
         # Fallback data if anything fails
         logger.error(f"Dashboard error: {e}")
-        return ok({
+        return {
             "status": {
                 "overall_status": "All Systems Operational",
                 "uptime_percentage": 99.9
@@ -235,4 +242,9 @@ def dashboard_data():
             "activities": [{"event": "System Check", "component": "API", "time": "now", "status": "Online"}],
             "alerts": [],
             "last_updated": datetime.now().isoformat()
-        })
+        }
+
+@status_bp.get("/dashboard")
+def dashboard_data():
+    """Get all dashboard data in one request"""
+    return ok(get_dashboard_payload())
