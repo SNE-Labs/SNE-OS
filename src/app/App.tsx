@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { BottomBar } from './components/BottomBar';
@@ -20,6 +21,16 @@ export default function App() {
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [currentApp, setCurrentApp] = useState('Radar');
 
+  // Create QueryClient for React Query
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
+
   const handleConnectWallet = () => {
     // Simulate wallet connection
     const mockAddress = '0x742d...4a2f';
@@ -29,13 +40,10 @@ export default function App() {
   };
 
   return (
-    <AuthProvider>
-      <EntitlementsProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <EntitlementsProvider>
         <BrowserRouter>
-          {/* Debug: Show loading state */}
-          <div style={{ position: 'fixed', top: 10, right: 10, background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>
-            App Loaded
-          </div>
           <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
             {/* Main Layout */}
             <div className="flex flex-1">
@@ -81,24 +89,10 @@ export default function App() {
               onClose={() => setIsConnectModalOpen(false)}
               onConnect={handleConnectWallet}
             />
-
-            {/* Debug indicator */}
-            <div style={{
-              position: 'fixed',
-              bottom: 10,
-              right: 10,
-              background: 'green',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '5px',
-              zIndex: 9999,
-              fontSize: '12px'
-            }}>
-              ✅ App Rendered Successfully
-            </div>
           </div>
         </BrowserRouter>
       </EntitlementsProvider>
     </AuthProvider>
+    </QueryClientProvider>
   );
 }

@@ -11,7 +11,6 @@ type EntCtx = {
 const Ctx = createContext<EntCtx | null>(null);
 
 export function EntitlementsProvider({ children }: { children: React.ReactNode }) {
-  console.log("EntitlementsProvider: Initializing");
   const { isConnected } = useAuth();
   const [loading, setLoading] = useState(false);
   const [entitlements, setEntitlements] = useState<Entitlements | undefined>();
