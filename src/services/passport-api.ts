@@ -6,9 +6,8 @@ import type { LookupResult, BalanceResponse, GasResponse, ProductsResponse, Erro
  * Segue o contract definido em API_CONTRACT.md
  */
 
-// SNE Scroll Passport is frontend-only, no backend API available
 const API_BASE =
-  (import.meta.env?.VITE_PASSPORT_API_URL as string | undefined) ?? null;
+  (import.meta.env?.VITE_PASSPORT_API_URL as string | undefined) ?? 'https://pass.snelabs.space/api';
 
 /**
  * Retry strategy: 3 tentativas com exponential backoff
@@ -57,56 +56,98 @@ async function fetchWithRetry(
 
 /**
  * Busca dados de um endereço (licenças, keys, boxes)
- * NOT AVAILABLE: SNE Scroll Passport não tem API backend
  */
 export async function lookupAddress(address: string): Promise<LookupResult> {
-  throw new Error(
-    'Validador de Licenças temporariamente indisponível. ' +
-    'A API do SNE Scroll Passport não está acessível no momento. ' +
-    'Use o aplicativo original em: https://sne-scroll-pass.vercel.app'
-  );
+  const url = `${API_BASE}/sne/lookup?addr=${encodeURIComponent(address)}`;
+  const response = await fetchWithRetry(url);
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.message || error.error);
+  }
+
+  return await response.json();
 }
 
 /**
  * Verifica acesso de uma licença específica
- * MOCK IMPLEMENTATION: Simula verificação de licença
  */
 export async function checkLicense(nodeId: string): Promise<{ access: boolean; status: string }> {
-  throw new Error(
-    'Verificação de licença temporariamente indisponível. ' +
-    'A API do SNE Scroll Passport não está acessível no momento.'
-  );
+  const url = `${API_BASE}/sne/check?node=${encodeURIComponent(nodeId)}`;
+  const response = await fetchWithRetry(url);
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.message || error.error);
+  }
+
+  return await response.json();
 }
 
 /**
  * Busca balance de um endereço
- * NOT AVAILABLE: SNE Scroll Passport não tem API backend
  */
 export async function getBalance(address: Address): Promise<BalanceResponse> {
-  throw new Error(
-    'Consulta de saldo temporariamente indisponível. ' +
-    'A API do SNE Scroll Passport não está acessível no momento.'
-  );
+  const url = `${API_BASE}/balance?addr=${encodeURIComponent(address)}`;
+  const response = await fetchWithRetry(url);
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.message || error.error);
+  }
+
+  return await response.json();
 }
 
 /**
  * Busca preço atual de gas
- * NOT AVAILABLE: SNE Scroll Passport não tem API backend
  */
 export async function getGasPrice(): Promise<GasResponse> {
-  throw new Error(
-    'Gas tracker temporariamente indisponível. ' +
-    'A API do SNE Scroll Passport não está acessível no momento.'
-  );
+  const url = `${API_BASE}/gas`;
+  const response = await fetchWithRetry(url);
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.message || error.error);
+  }
+
+  return await response.json();
 }
 
 /**
  * Busca produtos disponíveis
- * NOT AVAILABLE: SNE Scroll Passport não tem API backend
  */
 export async function getProducts(): Promise<ProductsResponse> {
-  throw new Error(
-    'Catálogo de produtos temporariamente indisponível. ' +
-    'A API do SNE Scroll Passport não está acessível no momento.'
-  );
+  const url = `${API_BASE}/sne/products`;
+
+  try {
+    const response = await fetchWithRetry(url);
+
+    if (!response.ok) {
+      // Tentar parsear erro, mas não falhar se não conseguir
+      try {
+        const error: ErrorResponse = await response.json();
+        throw new Error(error.message || error.error || `HTTP ${response.status}`);
+      } catch (parseError) {
+        throw new Error(`Erro ao buscar produtos: HTTP ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+
+    // Validar estrutura básica
+    if (!data || !Array.isArray(data.products)) {
+      throw new Error('Resposta da API em formato inválido');
+    }
+
+    return data;
+  } catch (error) {
+    // Log do erro para debugging (apenas em dev)
+    if (import.meta.env.DEV) {
+      console.error('[Passport API] Erro ao buscar produtos:', error);
+    }
+
+    // Re-throw para que o hook possa tratar
+    throw error;
+  }
 }

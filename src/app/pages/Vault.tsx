@@ -205,19 +205,9 @@ export function Vault() {
               <Search className="w-5 h-5" style={{ color: 'var(--accent-orange)' }} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças</h3>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças Público</h3>
               <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-                🔄 Temporariamente indisponível - API do SNE Scroll Passport não acessível.
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                Use o aplicativo original: <a
-                  href="https://sne-scroll-pass.vercel.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-500 hover:underline"
-                >
-                  sne-scroll-pass.vercel.app
-                </a>
+                Cole um endereço Ethereum/Scroll ou ENS para verificar licenças públicas. Nenhuma wallet necessária.
               </p>
             </div>
           </div>
@@ -227,20 +217,20 @@ export function Vault() {
               value={queryAddr}
               onChange={(e) => setQueryAddr(e.target.value)}
               placeholder="Ex: 0xAbc... ou nome.eth"
-              className="input px-3 py-2 rounded w-full opacity-50 cursor-not-allowed"
+              className="input px-3 py-2 rounded w-full"
               aria-label="Endereco ou ENS"
-              disabled
             />
             <button
-              disabled
-              className="px-4 py-2 rounded-lg font-medium opacity-50 cursor-not-allowed"
+              onClick={() => performLookup(queryAddr.trim())}
+              disabled={!queryAddr.trim() || loading}
+              className="px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90 focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: 'var(--sne-surface-elevated)',
-                color: 'var(--sne-text-secondary)'
+                backgroundColor: loading ? 'var(--sne-surface-elevated)' : 'var(--sne-accent)',
+                color: loading ? 'var(--sne-text-secondary)' : '#0B0B0B'
               }}
-              aria-label="Funcionalidade temporariamente indisponível"
+              aria-label="Verificar endereço na blockchain"
             >
-              Indisponível
+              {loading ? 'Verificando…' : 'Verificar'}
             </button>
 
             <button
@@ -255,7 +245,7 @@ export function Vault() {
                 color: 'var(--sne-text-secondary)',
                 border: '1px solid var(--border)'
               }}
-              aria-label="Limpar campo de busca"
+              aria-label="Limpar campo de busca e resultados"
             >
               Limpar
             </button>
