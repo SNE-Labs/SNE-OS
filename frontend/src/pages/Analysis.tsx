@@ -49,6 +49,11 @@ export default function Analysis() {
     )
   }
 
+  // Mapeamento defensivo para dados da análise
+  const a = analysisResult?.analysis ?? {}
+  const fa = analysisResult?.full_analysis ?? {}
+  const levels = fa?.niveis_operacionais ?? a?.niveis_operacionais ?? {}
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -88,13 +93,23 @@ export default function Analysis() {
 
         {/* Results */}
         <div className="lg:col-span-2">
+          {/* Debug temporário - remover depois */}
+          {analysisResult && (
+            <details className="mb-4">
+              <summary className="text-xs text-gray-500 cursor-pointer">Debug: full_analysis.niveis_operacionais</summary>
+              <pre className="text-xs bg-gray-900 p-2 rounded overflow-auto max-h-40">
+                {JSON.stringify(analysisResult?.full_analysis?.niveis_operacionais ?? {}, null, 2)}
+              </pre>
+            </details>
+          )}
+
           {analysisResult ? (
             <div className="bg-[#111216] border border-[rgba(255,255,255,0.1)] rounded-[10px] p-6 space-y-6">
               {/* Score Geral */}
               <div>
                 <div className="text-sm text-[#A6A6A6] mb-2">Score Geral</div>
                 <div className="text-5xl font-mono font-bold text-[#FF6A00]">
-                  {safeNumber(analysisResult.analysis?.score || analysisResult.analysis?.confluence_score * 10, 0)}/100
+                  {safeNumber(a.score ?? (a.confluence_score != null ? a.confluence_score * 10 : 0), 0)}/100
                 </div>
               </div>
 
@@ -103,13 +118,13 @@ export default function Analysis() {
                 <div>
                   <div className="text-sm text-[#A6A6A6] mb-1">Setup Identificado</div>
                   <div className="text-xl font-semibold">
-                    {safeString(analysisResult.analysis?.setup || analysisResult.analysis?.bias, 'INDEFINIDO')}
+                    {safeString(a.setup || a.bias, 'INDEFINIDO')}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-[#A6A6A6] mb-1">Probabilidade</div>
                   <div className="text-xl font-semibold text-[#00C48C]">
-                    {safeNumber(analysisResult.analysis?.probability, 0)}%
+                    {safeNumber(a.probability, 0)}%
                   </div>
                 </div>
               </div>
@@ -121,31 +136,31 @@ export default function Analysis() {
                   <div className="flex justify-between items-center p-3 bg-[#1B1B1F] rounded-md border border-[rgba(0,200,140,0.3)]">
                     <span className="text-sm">Entry</span>
                     <span className="font-mono font-bold text-[#00C48C]">
-                      {formatCurrency(analysisResult.analysis?.entry)}
+                      {formatCurrency(a.entry ?? levels.entry ?? levels.entry_price)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-[#1B1B1F] rounded-md border border-[rgba(255,77,79,0.3)]">
                     <span className="text-sm">Stop Loss</span>
                     <span className="font-mono font-bold text-[#FF4D4F]">
-                      {formatCurrency(analysisResult.analysis?.sl || analysisResult.analysis?.stop_loss)}
+                      {formatCurrency(a.sl ?? a.stop_loss ?? levels.sl ?? levels.stop_loss ?? levels.stop)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-[#1B1B1F] rounded-md border border-[rgba(255,200,87,0.3)]">
                     <span className="text-sm">TP1</span>
                     <span className="font-mono font-bold text-[#FFC857]">
-                      {formatCurrency(analysisResult.analysis?.tp1)}
+                      {formatCurrency(a.tp1 ?? levels.tp1)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-[#1B1B1F] rounded-md border border-[rgba(255,200,87,0.3)]">
                     <span className="text-sm">TP2</span>
                     <span className="font-mono font-bold text-[#FFC857]">
-                      {formatCurrency(analysisResult.analysis?.tp2)}
+                      {formatCurrency(a.tp2 ?? levels.tp2)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-[#1B1B1F] rounded-md border border-[rgba(255,200,87,0.3)]">
                     <span className="text-sm">TP3</span>
                     <span className="font-mono font-bold text-[#FFC857]">
-                      {formatCurrency(analysisResult.analysis?.tp3)}
+                      {formatCurrency(a.tp3 ?? levels.tp3)}
                     </span>
                   </div>
                 </div>
@@ -155,7 +170,7 @@ export default function Analysis() {
               <div>
                 <div className="text-sm text-[#A6A6A6] mb-2">Risk/Reward Ratio</div>
                 <div className="text-2xl font-mono font-bold">
-                  {safeString(analysisResult.analysis?.riskReward || analysisResult.analysis?.risk_reward, '1:1')}
+                  {safeString(a.riskReward ?? a.risk_reward ?? levels.rr_ratio ?? levels.risk_reward, '1:1')}
                 </div>
               </div>
             </div>
