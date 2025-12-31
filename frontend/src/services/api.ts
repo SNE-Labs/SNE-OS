@@ -18,8 +18,8 @@ import type {
 // CONFIGURAÇÃO DA API
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://sne-web.onrender.com'
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'https://sne-web.onrender.com'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.snelabs.space'
+const WS_URL = import.meta.env.VITE_WS_URL ?? 'wss://api.snelabs.space'
 
 // Logger contextualizado para API
 const apiLogger = logger.child('API')

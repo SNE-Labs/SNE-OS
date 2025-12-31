@@ -99,7 +99,18 @@ export function InteractiveChart({
     ;(window as any).chartInstance = chart
 
     try {
+      // Debug: Check if chart object is valid
+      chartLogger.debug('Chart object received', {
+        chartType: typeof chart,
+        hasAddCandlestickSeries: typeof chart.addCandlestickSeries,
+        chartKeys: Object.keys(chart).slice(0, 5)
+      })
+
       // Create candlestick series
+      if (typeof chart.addCandlestickSeries !== 'function') {
+        throw new Error('Chart API not available: addCandlestickSeries is not a function')
+      }
+
       const candlestickSeries = chart.addCandlestickSeries({
         upColor: chartConfig.upColor,
         downColor: chartConfig.downColor,
@@ -120,6 +131,8 @@ export function InteractiveChart({
 
     } catch (error) {
       chartLogger.error('Error setting up candlestick series', error)
+      // Re-throw to trigger onChartError callback
+      throw error
     }
   }, [chartConfig, chartData, symbol, timeframe])
 
