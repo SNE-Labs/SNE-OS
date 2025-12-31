@@ -101,18 +101,21 @@ if os.getenv("AUTO_INIT_DB") == "true":
 
 # Register blueprints
 from . import main, api, auth_siwe, dashboard_api, charts_api
-from . import vault_api, passport_api, radar_api, status_api
+from .vault_api import vault_bp
+from .passport_api import passport_bp
+from .radar_api import radar_bp
+from .status_api import status_bp
 
 # Existing blueprints
 app.register_blueprint(auth_siwe.auth_bp)
 app.register_blueprint(dashboard_api.dashboard_bp)
 app.register_blueprint(charts_api.charts_bp)
 
-# New SNE OS blueprints
-app.register_blueprint(vault_api.vault_bp, url_prefix="/api/vault")
-app.register_blueprint(passport_api.passport_bp, url_prefix="/api/passport")
-app.register_blueprint(radar_api.radar_bp, url_prefix="/api/radar")
-app.register_blueprint(status_api.status_bp, url_prefix="/api")
+# New SNE OS blueprints - Direct imports to avoid namespace confusion
+app.register_blueprint(vault_bp, url_prefix="/api/vault")
+app.register_blueprint(passport_bp, url_prefix="/api/passport")
+app.register_blueprint(radar_bp, url_prefix="/api/radar")
+app.register_blueprint(status_bp, url_prefix="/api")
 
 
 
