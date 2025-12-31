@@ -1228,6 +1228,7 @@ const client = new SNEClient({
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
