@@ -90,6 +90,7 @@ export function Pricing() {
                 borderWidth: '1px',
                 borderColor: 'var(--stroke-1)',
               }}
+            >
 
               <div className="mb-6">
                 <h3 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-1)' }}>{tier.name}</h3>
