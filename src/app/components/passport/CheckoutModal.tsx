@@ -101,14 +101,14 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-md"
+        className="max-w-sm mx-4 max-h-[90vh] overflow-y-auto"
         style={{
           backgroundColor: 'var(--bg-1)',
           borderColor: 'var(--stroke-1)',
           boxShadow: 'var(--shadow-2)',
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="pb-4">
           <DialogTitle className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
             Confirmar Compra
           </DialogTitle>
@@ -117,9 +117,9 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Produto */}
-          <div className="p-4 rounded border" style={{ backgroundColor: 'var(--sne-bg)', borderColor: 'var(--border)' }}>
+          <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-3)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-0)' }}>
             <h4 style={{ color: 'var(--sne-text-primary)', fontWeight: 600, marginBottom: 8 }}>
               {product.title}
             </h4>
@@ -141,7 +141,7 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
 
           {/* Balance */}
           {isConnected && address ? (
-            <div className="p-3 rounded border" style={{ backgroundColor: 'var(--sne-bg)', borderColor: 'var(--border)' }}>
+            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-3)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-0)' }}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Wallet className="w-4 h-4" style={{ color: 'var(--sne-accent)' }} />
@@ -158,7 +158,7 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
               </div>
             </div>
           ) : (
-            <div className="p-3 rounded border" style={{ backgroundColor: 'var(--sne-bg)', borderColor: 'var(--border)' }}>
+            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-3)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-0)' }}>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" style={{ color: 'var(--sne-critical)' }} />
                 <span style={{ color: 'var(--sne-text-secondary)', fontSize: '0.9rem' }}>
@@ -169,7 +169,7 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
           )}
 
           {/* Resumo de Preços */}
-          <div className="p-3 rounded border" style={{ backgroundColor: 'var(--sne-bg)', borderColor: 'var(--border)' }}>
+          <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--bg-3)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-0)' }}>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span style={{ color: 'var(--sne-text-secondary)', fontSize: '0.9rem' }}>Produto</span>
@@ -248,7 +248,7 @@ export function CheckoutModal({ product, open, onOpenChange }: CheckoutModalProp
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 pt-6">
           <button
             onClick={() => onOpenChange(false)}
             disabled={isProcessing}
