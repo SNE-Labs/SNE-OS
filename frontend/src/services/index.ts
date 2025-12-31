@@ -4,7 +4,7 @@
 // ============================================
 
 // Core API configuration
-export { api } from './api'
+export { api, handleApiError } from './api'
 
 // Domain-specific services
 export * from './auth'
