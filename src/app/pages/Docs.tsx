@@ -542,61 +542,85 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
 
   return (
     <div className="flex flex-1">
-      {/* Desktop Docs Sidebar - Fixed positioning like main sidebar */}
-      <aside
-        className="hidden lg:block fixed left-80 top-16 bottom-0 w-64 border-r overflow-y-auto"
-        style={{
-          backgroundColor: "var(--bg-2)",
-          borderColor: "var(--stroke-1)",
-        }}
-      >
-        <div className="p-5">
-          <DocsSidebar
-            sections={sections}
-            selectedDoc={selectedDoc}
-            onSelect={(id: string) => {
-              setSelectedDoc(id);
-            }}
-          />
-        </div>
-      </aside>
-
-      {/* Mobile Drawer */}
-      {sidebarOpen && (
-        <MobileDrawer onClose={() => setSidebarOpen(false)}>
-          <div className="p-6">
-            <DocsSidebar
-              sections={sections}
-              selectedDoc={selectedDoc}
-              onSelect={(id: string) => {
-                setSelectedDoc(id);
-              }}
-              closeOnSelect={() => setSidebarOpen(false)}
-              showHeader
-            />
-          </div>
-        </MobileDrawer>
-      )}
-
       {/* Main Content */}
-      <div className="flex-1 px-8 py-6 overflow-y-auto lg:ml-64">
-          <div className="max-w-4xl mx-auto">
-            {/* Mobile toggle button - Show on all screens smaller than lg */}
-            <div className="mb-6 lg:hidden">
+      <div className="flex-1 px-8 py-6 overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          {/* Transparent Navigation Selector */}
+          <div className="mb-6">
+            <div
+              className="inline-flex items-center gap-3 px-4 py-3 rounded-lg backdrop-blur-md border transition-all hover:border-accent-orange"
+              style={{
+                backgroundColor: "rgba(15, 20, 27, 0.6)",
+                borderColor: "var(--stroke-1)",
+                boxShadow: "var(--shadow-1)",
+              }}
+            >
+              <Book className="w-4 h-4" style={{ color: "var(--accent-orange)" }} />
+              <select
+                value={selectedDoc}
+                onChange={(e) => setSelectedDoc(e.target.value)}
+                className="bg-transparent outline-none text-sm font-medium cursor-pointer appearance-none"
+                style={{
+                  color: "var(--text-1)",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  minWidth: "220px",
+                  fontSize: "14px",
+                }}
+              >
+                {sections.map((section) =>
+                  section.items.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                      style={{
+                        backgroundColor: "var(--bg-2)",
+                        color: "var(--text-1)",
+                        padding: "8px",
+                      }}
+                    >
+                      {section.title} → {item.label}
+                    </option>
+                  ))
+                )}
+              </select>
+              <ChevronRight className="w-3 h-3 pointer-events-none" style={{ color: "var(--text-3)" }} />
+            </div>
+
+            {/* Mobile Drawer Button */}
+            <div className="mt-3 lg:hidden">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded"
-                aria-label="Abrir índice de documentação"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded text-xs"
+                aria-label="Abrir índice completo"
                 style={{
-                  backgroundColor: "var(--bg-2)",
-                  color: "var(--text-1)",
+                  backgroundColor: "var(--bg-3)",
+                  color: "var(--text-3)",
                   border: "1px solid var(--stroke-1)",
                 }}
               >
-                <Search className="w-4 h-4" />
-                Índice da Documentação
+                <Search className="w-3 h-3" />
+                Ver índice completo
               </button>
             </div>
+          </div>
+
+          {/* Mobile Drawer (fallback) */}
+          {sidebarOpen && (
+            <MobileDrawer onClose={() => setSidebarOpen(false)}>
+              <div className="p-6">
+                <DocsSidebar
+                  sections={sections}
+                  selectedDoc={selectedDoc}
+                  onSelect={(id: string) => {
+                    setSelectedDoc(id);
+                  }}
+                  closeOnSelect={() => setSidebarOpen(false)}
+                  showHeader
+                />
+              </div>
+            </MobileDrawer>
+          )}
 
           {/* Header */}
           <div className="mb-6">
