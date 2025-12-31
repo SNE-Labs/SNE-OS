@@ -131,7 +131,7 @@ export function InteractiveChart({
   // ============================================
 
   // Update candle data when chart data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (candlestickSeriesRef.current && chartData?.candles) {
       try {
         candlestickSeriesRef.current.setData(chartData.candles)
