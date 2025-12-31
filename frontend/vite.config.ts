@@ -6,9 +6,12 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    react({ jsxRuntime: "automatic" }),
     tailwindcss(),
   ],
+  esbuild: {
+    jsx: "automatic",
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
