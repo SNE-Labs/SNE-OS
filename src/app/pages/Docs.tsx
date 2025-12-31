@@ -542,16 +542,28 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
 
   return (
     <div className="flex flex-1">
-      {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Desktop Docs Sidebar - Internal to content area */}
-        <aside
-          className="hidden lg:block w-80 border-r overflow-y-auto"
-          style={{
-            backgroundColor: "var(--bg-2)",
-            borderColor: "var(--stroke-1)",
-          }}
-        >
+      {/* Desktop Docs Sidebar - Fixed positioning like main sidebar */}
+      <aside
+        className="hidden lg:block fixed left-80 top-16 bottom-0 w-64 border-r overflow-y-auto"
+        style={{
+          backgroundColor: "var(--bg-2)",
+          borderColor: "var(--stroke-1)",
+        }}
+      >
+        <div className="p-5">
+          <DocsSidebar
+            sections={sections}
+            selectedDoc={selectedDoc}
+            onSelect={(id: string) => {
+              setSelectedDoc(id);
+            }}
+          />
+        </div>
+      </aside>
+
+      {/* Mobile Drawer */}
+      {sidebarOpen && (
+        <MobileDrawer onClose={() => setSidebarOpen(false)}>
           <div className="p-6">
             <DocsSidebar
               sections={sections}
@@ -559,32 +571,15 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
               onSelect={(id: string) => {
                 setSelectedDoc(id);
               }}
+              closeOnSelect={() => setSidebarOpen(false)}
+              showHeader
             />
           </div>
-        </aside>
+        </MobileDrawer>
+      )}
 
-        {/* Mobile Drawer */}
-        {sidebarOpen && (
-          <MobileDrawer onClose={() => setSidebarOpen(false)}>
-            <div className="p-6">
-              <DocsSidebar
-                sections={sections}
-                selectedDoc={selectedDoc}
-                onSelect={(id: string) => {
-                  setSelectedDoc(id);
-                }}
-                closeOnSelect={() => setSidebarOpen(false)}
-                showHeader
-              />
-            </div>
-          </MobileDrawer>
-        )}
-
-        {/* Main Content */}
-        <main
-          ref={mainRef}
-          className="flex-1 py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto"
-        >
+      {/* Main Content */}
+      <div className="flex-1 px-8 py-6 overflow-y-auto lg:ml-64">
           <div className="max-w-4xl mx-auto">
             {/* Mobile toggle button - Show on all screens smaller than lg */}
             <div className="mb-6 lg:hidden">
@@ -604,38 +599,39 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
             </div>
 
           {/* Header */}
-          <div className="mb-8">
-            <div className="mb-4">
+          <div className="mb-6">
+            <div className="mb-3">
               <StatusBadge status="active">
                 Documentação
               </StatusBadge>
             </div>
             <h1
-              className="mb-4 break-words"
+              className="text-xl font-semibold mb-4 break-words"
               style={{ color: "var(--text-1)" }}
             >
               {currentContent.title}
             </h1>
             {currentContent.tldr && (
               <div
-                className="p-4 rounded-lg border-l-4 mb-6 break-words"
+                className="p-4 rounded-lg border-l-4 mb-4 break-words"
                 style={{
                   backgroundColor: "var(--bg-2)",
                   borderColor: "var(--accent-orange)",
                 }}
               >
                 <h4
-                  className="mb-2"
+                  className="text-sm font-medium mb-2 uppercase tracking-wide"
                   style={{ color: "var(--text-1)" }}
                 >
                   TL;DR
                 </h4>
                 <p
-                  className="break-words whitespace-normal"
+                  className="text-sm break-words whitespace-normal"
                   style={{
-                    color: "var(--text-secondary)",
+                    color: "var(--text-2)",
                     overflowWrap: "anywhere",
                     wordBreak: "break-word",
+                    lineHeight: 1.5,
                   }}
                 >
                   {currentContent.tldr}
@@ -645,21 +641,21 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
           </div>
 
           {/* Content Sections */}
-          <div className="space-y-8 break-words">
+          <div className="space-y-5 break-words">
             {currentContent.sections?.map(
               (section: any, idx: number) => (
                 <div key={idx}>
                   <h2
-                    className="mb-4 break-words"
+                    className="text-lg font-semibold mb-3 break-words"
                     style={{ color: "var(--text-1)" }}
                   >
                     {section.heading}
                   </h2>
                   {section.content && (
                     <p
-                      className="mb-6 break-words whitespace-normal"
+                      className="mb-4 text-sm break-words whitespace-normal"
                       style={{
-                        color: "var(--text-secondary)",
+                        color: "var(--text-2)",
                         overflowWrap: "anywhere",
                         wordBreak: "break-word",
                         lineHeight: 1.6,
@@ -676,7 +672,7 @@ echo "$hash" | openssl dgst -sha256 -sign node_private.pem | base64
             {selectedDoc === "quickstart" && (
               <div>
                 <h3
-                  className="mb-4 break-words"
+                  className="text-base font-semibold mb-3 break-words"
                   style={{ color: "var(--text-1)" }}
                 >
                   Instalação
@@ -696,7 +692,7 @@ sne --version`}
                 </div>
 
                 <h3
-                  className="mt-8 mb-4 break-words"
+                  className="text-base font-semibold mt-6 mb-3 break-words"
                   style={{ color: "var(--text-1)" }}
                 >
                   Configuração Inicial
@@ -794,7 +790,7 @@ sne start \\
                 </ol>
 
                 <h3
-                  className="mb-4 break-words"
+                  className="text-base font-semibold mb-3 break-words"
                   style={{ color: "var(--text-1)" }}
                 >
                   Para Implementadores
@@ -823,7 +819,7 @@ const client = new SNEClient({
             {selectedDoc === "radar" && (
               <div>
                 <h3
-                  className="mb-4 break-words"
+                  className="text-base font-semibold mb-3 break-words"
                   style={{ color: "var(--text-1)" }}
                 >
                   SNE Radar — Detalhes de Implementação
@@ -846,7 +842,7 @@ const client = new SNEClient({
             {selectedDoc === "vault" && (
               <div>
                 <h3
-                  className="mb-4 break-words"
+                  className="text-base font-semibold mb-3 break-words"
                   style={{ color: "var(--text-1)" }}
                 >
                   SNE Vault — Detalhes de Implementação
@@ -1227,7 +1223,6 @@ const client = new SNEClient({
             </button>
           </div>
         </div>
-      </main>
       </div>
     </div>
   );
