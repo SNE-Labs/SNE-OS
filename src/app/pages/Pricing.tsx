@@ -15,51 +15,54 @@ export function Pricing() {
       name: 'Free',
       price: '$0',
       period: 'forever',
-      description: 'Perfect for exploring SNE OS',
+      description: 'Acesso básico ao ecossistema SNE',
       features: [
-        { name: 'Read-only access', included: true },
-        { name: 'Preview mode', included: true },
-        { name: 'Basic metrics', included: true },
-        { name: 'Community support', included: true },
-        { name: 'Trading features', included: false },
-        { name: 'Priority support', included: false },
-        { name: 'Advanced analytics', included: false },
+        { name: 'Dados de mercado em tempo real', included: true },
+        { name: 'Interface web responsiva', included: true },
+        { name: 'Métricas básicas', included: true },
+        { name: 'Suporte via documentação', included: true },
+        { name: 'Funcionalidades de trading', included: false },
+        { name: 'Suporte prioritário', included: false },
+        { name: 'Analytics avançados', included: false },
+        { name: 'Integração SNE Vault', included: false },
       ],
-      cta: 'Start Free',
+      cta: 'Começar',
       highlighted: false,
     },
     {
       name: 'Pro',
-      price: '$99',
+      price: '$29',
       period: 'per month',
-      description: 'Full access for professionals',
+      description: 'Acesso completo às funcionalidades SNE OS',
       features: [
-        { name: 'Full read/write access', included: true },
-        { name: 'Trading features', included: true },
-        { name: 'Advanced analytics', included: true },
-        { name: 'Priority support', included: true },
-        { name: 'Custom integrations', included: true },
-        { name: 'API access', included: true },
-        { name: 'Real-time alerts', included: true },
+        { name: 'Acesso completo de leitura/escrita', included: true },
+        { name: 'Funcionalidades de trading', included: true },
+        { name: 'Analytics avançados', included: true },
+        { name: 'Suporte prioritário', included: true },
+        { name: 'Integrações customizadas', included: true },
+        { name: 'API de integração completa', included: true },
+        { name: 'Alertas em tempo real', included: true },
+        { name: 'Integração com SNE Vault', included: true },
       ],
-      cta: 'Upgrade to Pro',
-      highlighted: true,
+      cta: 'Selecionar Pro',
+      highlighted: false,
     },
     {
-      name: 'Institution',
+      name: 'Enterprise',
       price: 'Custom',
       period: 'contact us',
-      description: 'Enterprise-grade infrastructure',
+      description: 'Soluções personalizadas para organizações',
       features: [
-        { name: 'Everything in Pro', included: true },
-        { name: 'Dedicated nodes', included: true },
-        { name: 'Custom SLAs', included: true },
-        { name: 'White-label options', included: true },
-        { name: 'On-premise deployment', included: true },
-        { name: 'Dedicated support', included: true },
-        { name: 'Volume discounts', included: true },
+        { name: 'Tudo do plano Pro', included: true },
+        { name: 'Nós dedicados', included: true },
+        { name: 'SLAs customizados', included: true },
+        { name: 'Opções white-label', included: true },
+        { name: 'Deploy on-premise', included: true },
+        { name: 'Suporte dedicado', included: true },
+        { name: 'Descontos por volume', included: true },
+        { name: 'Integração enterprise SNE Vault', included: true },
       ],
-      cta: 'Contact Sales',
+      cta: 'Contato',
       highlighted: false,
     },
   ];
@@ -69,10 +72,10 @@ export function Pricing() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-3)' }}>Plans</p>
-          <h1 className="text-4xl font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Pricing</h1>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-3)' }}>Planos</p>
+          <h1 className="text-4xl font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Acesso SNE OS</h1>
           <p className="text-lg" style={{ color: 'var(--text-2)' }}>
-            Choose the plan that fits your needs
+            Escolha o nível de acesso adequado às suas necessidades
           </p>
         </div>
 
@@ -84,19 +87,9 @@ export function Pricing() {
               className="rounded-xl p-6"
               style={{
                 backgroundColor: 'var(--bg-2)',
-                borderWidth: tier.highlighted ? '2px' : '1px',
-                borderColor: tier.highlighted ? 'var(--accent-orange)' : 'var(--stroke-1)',
-                position: 'relative',
+                borderWidth: '1px',
+                borderColor: 'var(--stroke-1)',
               }}
-            >
-              {tier.highlighted && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold"
-                  style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
-                >
-                  MOST POPULAR
-                </div>
-              )}
 
               <div className="mb-6">
                 <h3 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-1)' }}>{tier.name}</h3>
@@ -109,11 +102,11 @@ export function Pricing() {
 
               <button
                 onClick={() => handleChoosePlan(tier)}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium mb-6 transition-all hover:opacity-90"
+                className="w-full px-4 py-3 rounded-lg text-sm font-medium mb-6 transition-colors"
                 style={{
-                  backgroundColor: tier.highlighted ? 'var(--accent-orange)' : 'var(--bg-3)',
-                  color: tier.highlighted ? '#FFFFFF' : 'var(--text-1)',
-                  borderWidth: tier.highlighted ? '0' : '1px',
+                  backgroundColor: 'var(--bg-3)',
+                  color: 'var(--text-1)',
+                  borderWidth: '1px',
                   borderColor: 'var(--stroke-1)',
                 }}
               >
@@ -141,17 +134,89 @@ export function Pricing() {
           ))}
         </div>
 
+        {/* Technical Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+          {/* Performance Metrics */}
+          <div
+            className="rounded-xl p-6"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Especificações Técnicas</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-3)' }}>Disponibilidade</span>
+                <span style={{ color: 'var(--text-1)' }}>99.9% uptime</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-3)' }}>Latência</span>
+                <span style={{ color: 'var(--text-1)' }}>&lt;100ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-3)' }}>API Rate Limit</span>
+                <span style={{ color: 'var(--text-1)' }}>1000 req/min</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-3)' }}>Trial</span>
+                <span style={{ color: 'var(--text-1)' }}>30 dias</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Integration Info */}
+          <div
+            className="rounded-xl p-6"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Integração SNE Vault</h3>
+            <div className="space-y-3 text-sm">
+              <p style={{ color: 'var(--text-3)' }}>
+                Plano Pro inclui compatibilidade com hardware SNE Vault e licenças on-chain via Scroll L2.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Check size={14} style={{ color: 'var(--ok-green)' }} />
+                  <span style={{ color: 'var(--text-2)' }}>Verificação Proof of Uptime</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check size={14} style={{ color: 'var(--ok-green)' }} />
+                  <span style={{ color: 'var(--text-2)' }}>Zero-knowledge architecture</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check size={14} style={{ color: 'var(--ok-green)' }} />
+                  <span style={{ color: 'var(--text-2)' }}>SIWE authentication</span>
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+                Ver documentação completa em /docs/vault-integration
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* FAQ Section */}
         <div
           className="rounded-xl p-6"
           style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
         >
-          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Frequently Asked Questions</h3>
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Perguntas Frequentes</h3>
           <div className="space-y-4">
             {[
-              { q: 'Can I upgrade or downgrade at any time?', a: 'Yes, you can change your plan at any time. Changes take effect immediately.' },
-              { q: 'What payment methods do you accept?', a: 'We accept all major credit cards and cryptocurrency payments.' },
-              { q: 'Is there a free trial for Pro?', a: 'Yes, all new users get a 14-day free trial of Pro features.' },
+              {
+                q: 'Qual a diferença entre plano Free e Pro?',
+                a: 'Free oferece acesso básico aos dados e interface web. Pro inclui funcionalidades completas de trading, analytics avançados, API de integração e suporte prioritário.'
+              },
+              {
+                q: 'Como funciona a integração com SNE Vault?',
+                a: 'O plano Pro permite integração direta com dispositivos SNE Vault via APIs padronizadas, incluindo verificação de licenças on-chain e Proof of Uptime.'
+              },
+              {
+                q: 'Posso alterar meu plano a qualquer momento?',
+                a: 'Sim, alterações de plano têm efeito imediato. Não há período mínimo de compromisso.'
+              },
+              {
+                q: 'Quais métodos de pagamento são aceitos?',
+                a: 'Aceitamos cartões de crédito principais e pagamentos em criptomoedas.'
+              },
             ].map((faq, index) => (
               <div key={index}>
                 <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-1)' }}>{faq.q}</p>
@@ -179,12 +244,7 @@ export function Pricing() {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-orange)' }}>
-                  <ShoppingCart size={20} style={{ color: '#FFFFFF' }} />
-                </div>
-                <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Checkout</h2>
-              </div>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Selecionar Plano</h2>
               <button
                 onClick={() => setShowCheckout(false)}
                 className="p-2 rounded-lg hover:bg-[var(--bg-2)] transition-colors"
@@ -195,33 +255,28 @@ export function Pricing() {
 
             {/* Content */}
             <div className="p-6">
-              {/* Plan Summary */}
+              {/* Plan Details */}
               <div className="mb-6">
-                <h3 className="font-medium mb-2" style={{ color: 'var(--text-1)' }}>Plan Summary</h3>
                 <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium" style={{ color: 'var(--text-1)' }}>{selectedPlan.name} Plan</span>
-                    <span className="text-lg font-bold" style={{ color: 'var(--accent-orange)' }}>{selectedPlan.price}</span>
+                    <span className="font-medium" style={{ color: 'var(--text-1)' }}>Plano {selectedPlan.name}</span>
+                    <span className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>{selectedPlan.price}</span>
                   </div>
-                  <p className="text-sm" style={{ color: 'var(--text-3)' }}>{selectedPlan.description}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>{selectedPlan.period}</p>
+                  <p className="text-sm mb-2" style={{ color: 'var(--text-2)' }}>{selectedPlan.description}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-3)' }}>{selectedPlan.period}</p>
                 </div>
               </div>
 
-              {/* Payment Options */}
+              {/* Features */}
               <div className="mb-6">
-                <h3 className="font-medium mb-3" style={{ color: 'var(--text-1)' }}>Payment Method</h3>
-                <div className="space-y-2">
-                  <button className="w-full p-3 rounded-lg border flex items-center gap-3 hover:bg-[var(--bg-2)] transition-colors"
-                          style={{ borderColor: 'var(--stroke-1)', backgroundColor: 'var(--bg-2)' }}>
-                    <CreditCard size={18} style={{ color: 'var(--text-2)' }} />
-                    <span style={{ color: 'var(--text-1)' }}>Credit Card</span>
-                  </button>
-                  <button className="w-full p-3 rounded-lg border flex items-center gap-3 hover:bg-[var(--bg-2)] transition-colors"
-                          style={{ borderColor: 'var(--stroke-1)', backgroundColor: 'var(--bg-2)' }}>
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: 'var(--accent-orange)' }} />
-                    <span style={{ color: 'var(--text-1)' }}>Cryptocurrency</span>
-                  </button>
+                <h3 className="font-medium mb-3" style={{ color: 'var(--text-1)' }}>Recursos incluídos</h3>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {selectedPlan.features.filter(f => f.included).map((feature, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <Check size={14} style={{ color: 'var(--ok-green)', marginTop: '2px' }} />
+                      <span className="text-sm" style={{ color: 'var(--text-2)' }}>{feature.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -232,22 +287,22 @@ export function Pricing() {
                   className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--bg-2)]"
                   style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   onClick={() => {
-                    alert(`Thank you for choosing ${selectedPlan.name}! Payment integration coming soon.`);
+                    alert(`Integração de pagamento em desenvolvimento. Plano selecionado: ${selectedPlan.name}`);
                     setShowCheckout(false);
                   }}
-                  className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-                  style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
+                  className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
+                  style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
-                  Complete Purchase
+                  Continuar
                 </button>
               </div>
 
               <p className="text-xs text-center mt-4" style={{ color: 'var(--text-3)' }}>
-                By completing your purchase, you agree to our Terms of Service
+                Ao continuar, você concorda com nossos Termos de Serviço
               </p>
             </div>
           </div>
