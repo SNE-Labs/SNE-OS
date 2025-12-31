@@ -12,24 +12,12 @@ import type { CandleData, LevelsData } from '../types/analysis'
 
 export const chartApi = {
   /**
-   * Busca dados consolidados para gráfico
-   */
-  getChartData: (symbol: string, timeframe: string): Promise<{
-    data: {
-      candles: CandleData[]
-      levels?: LevelsData
-      current_price: number
-    }
-  }> =>
-    api.get('/api/chart/data', { params: { symbol, timeframe } }),
-
-  /**
-   * Busca candles históricos
+   * Busca candles históricos (endpoint principal)
    */
   getCandles: (symbol: string, timeframe: string, limit: number = 500): Promise<{
     data: { candles: CandleData[] }
   }> =>
-    api.get('/api/chart/candles', { params: { symbol, timeframe, limit } }),
+    api.get('/api/chart/candles', { params: { symbol: 'tf': timeframe, limit } }),
 
   /**
    * Busca níveis de suporte/resistência
@@ -37,13 +25,6 @@ export const chartApi = {
   getLevels: (symbol: string, timeframe: string): Promise<{ data: LevelsData }> =>
     api.get('/api/chart/levels', { params: { symbol, timeframe } }),
 
-  /**
-   * Busca preço atual
-   */
-  getLastPrice: (symbol: string, timeframe: string): Promise<{
-    data: { price: number; timestamp: number }
-  }> =>
-    api.get('/api/chart/price', { params: { symbol, timeframe } }),
 
   /**
    * Busca indicadores técnicos

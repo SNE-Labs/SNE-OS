@@ -88,39 +88,6 @@ export const useSignal = (symbol: string, timeframe: string, enabled: boolean = 
 // CHART DATA HOOKS
 // ============================================
 
-/**
- * Hook para dados consolidados do gráfico
- * - Cache: 1 minuto
- * - Retry: 3 vezes
- * - AbortController: sim
- */
-export const useChartData = (symbol: string, timeframe: string, enabled: boolean = true) => {
-  return useQuery({
-    queryKey: ['chart-data', symbol, timeframe],
-    queryFn: async ({ signal: _signal }) => {
-      marketLogger.debug('Fetching chart data', { symbol, timeframe })
-      const result = await chartApi.getChartData(symbol, timeframe)
-      marketLogger.debug('Chart data fetched successfully', {
-        symbol,
-        timeframe,
-        candlesCount: result.candles?.length ?? 0
-      })
-      return result
-    },
-    staleTime: 60 * 1000, // 1min
-    gcTime: 10 * 60 * 1000, // 10min
-    retry: 3,
-    enabled,
-    refetchOnWindowFocus: false,
-    onError: (error: unknown) => {
-      marketLogger.error('Chart data query failed', {
-        symbol,
-        timeframe,
-        error: handleApiError(error as Error)
-      })
-    }
-  })
-}
 
 /**
  * Hook para candles históricos (endpoint separado)

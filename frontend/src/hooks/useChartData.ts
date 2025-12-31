@@ -26,9 +26,8 @@ export const useChartData = (
       chartLogger.debug('Fetching chart data', { symbol, timeframe })
 
       try {
-        const rawData = await chartApi.getChartData(symbol, timeframe)
-
-        // Validate candles
+        // Fetch candles (main data source)
+        const rawData = await chartApi.getCandles(symbol, timeframe, 500)
         const validCandles = validateCandles(rawData.candles || [])
 
         if (validCandles.length === 0) {
@@ -36,25 +35,37 @@ export const useChartData = (
           return {
             candles: [],
             levels: { supports: [], resistances: [] },
-            currentPrice: rawData.current_price || 0,
-            timestamp: Date.now()
+            currentPrice: 0,
+            timestamp: Date.now(),
+            metadata: {
+              symbol,
+              timeframe,
+              candleCount: 0,
+              hasLevels: false
+            }
           }
         }
 
         // Adapt to Lightweight Charts format
         const candles = adaptCandlesToLightweight(validCandles)
-        const levels = rawData.levels ? adaptLevelsToLightweight(rawData.levels) : { supports: [], resistances: [] }
+
+        // Derive current price from last candle
+        const lastCandle = validCandles[validCandles.length - 1]
+        const currentPrice = lastCandle?.close || 0
+
+        // For now, no levels (can be added later when endpoint exists)
+        const levels = { supports: [], resistances: [] }
 
         const result = {
           candles,
           levels,
-          currentPrice: rawData.current_price || 0,
+          currentPrice,
           timestamp: Date.now(),
           metadata: {
             symbol,
             timeframe,
             candleCount: candles.length,
-            hasLevels: (levels.supports.length + levels.resistances.length) > 0
+            hasLevels: false
           }
         }
 
@@ -174,9 +185,23 @@ export const useCurrentPrice = (
   return useQuery({
     queryKey: ['current-price', symbol, timeframe],
     queryFn: async ({ signal }) => {
-      const result = await chartApi.getLastPrice(symbol, timeframe)
+      // Get latest candle to derive current price
+      const rawData = await chartApi.getCandles(symbol, timeframe, 1)
+      const validCandles = validateCandles(rawData.candles || [])
 
-      chartLogger.debug('Current price fetched', {
+      if (validCandles.length === 0) {
+        throw new Error('No candles available for price')
+      }
+
+      const lastCandle = validCandles[validCandles.length - 1]
+      const price = lastCandle?.close || 0
+
+      const result = {
+        price,
+        timestamp: lastCandle?.time || Date.now()
+      }
+
+      chartLogger.debug('Current price derived from candle', {
         symbol,
         timeframe,
         price: result.price

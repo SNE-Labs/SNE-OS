@@ -126,20 +126,6 @@ export const analysisApi = {
 }
 
 export const chartApi = {
-  /**
-   * Busca dados de gráfico consolidados
-   */
-  async getChartData(symbol: string, timeframe: string, limit: number = 500): Promise<ChartData> {
-    const response = await api.get<ApiResponse<ChartData>>('/api/v1/chart-data', {
-      params: { symbol, timeframe, limit }
-    })
-
-    if (!response.data.success) {
-      throw new Error(response.data.error ?? 'Busca de dados do gráfico falhou')
-    }
-
-    return response.data.data
-  },
 
   /**
    * Busca candles históricos
