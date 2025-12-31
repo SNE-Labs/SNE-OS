@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════
+    END USER LICENSE AGREEMENT (EULA)
+    SNE RADAR - Sistema Neural Estratégico
+═══════════════════════════════════════════════════════════════
+
+IMPORTANTE: LEIA ATENTAMENTE ESTE ACORDO ANTES DE USAR O SOFTWARE.
+
+Ao usar este software, você concorda com os termos abaixo. Se você
+não concordar, NÃO use o software.
+
+───────────────────────────────────────────────────────────────
+
+1. PROPRIEDADE INTELECTUAL
+
+Este software e todo seu conteúdo são propriedade exclusiva do
+desenvolvedor. Todos os direitos reservados.
+
+───────────────────────────────────────────────────────────────
+
+2. LICENÇA DE USO
+
+Esta licença permite o uso do software APENAS para fins de TESTE
+e AVALIAÇÃO.
+
+✅ PERMITIDO:
+   - Usar o software para teste pessoal
+   - Avaliar funcionalidades
+   - Reportar bugs e feedback
+
+❌ PROIBIDO:
+   - Uso comercial sem autorização expressa
+   - Redistribuir o software
+   - Compartilhar com terceiros
+   - Fazer engenharia reversa
+   - Descompilar ou desmontar o código
+   - Copiar funcionalidades ou algoritmos
+
+───────────────────────────────────────────────────────────────
+
+3. GARANTIA
+
+O SOFTWARE É FORNECIDO "COMO ESTÁ", SEM GARANTIAS DE QUALQUER TIPO.
+
+───────────────────────────────────────────────────────────────
+
+═══════════════════════════════════════════════════════════════
+                    © 2025 SNE RADAR
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,130 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* SNE OS Industrial Tokens - Neutrals */
+  --bg-0: #07090B;
+  --bg-1: #0B0E12;
+  --bg-2: #0F141B;
+  --bg-3: #121A24;
+  --stroke-1: #1D2632;
+  --stroke-2: #2A3647;
+  --text-1: #E9EEF5;
+  --text-2: #B7C3D2;
+  --text-3: #7F8DA3;
+  
+  /* SNE OS Industrial Tokens - Accents */
+  --accent-orange: #FF6600;
+  --ok-green: #32D583;
+  --warn-amber: #FFB020;
+  --danger-red: #F04438;
+  --info-cyan: #2DD4FF;
+  
+  /* Border Radii */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  
+  /* Shadows (subtle, no glow) */
+  --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px 0 rgba(0, 0, 0, 0.6);
+  
+  /* Spacing / Grid */
+  --spacing-base: 8px;
+  --spacing-padding: 24px;
+  --spacing-gap: 16px;
+  
+  /* Font */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}
+
+@theme inline {
+  /* Tailwind compatibility mappings */
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-stroke-1: var(--stroke-1);
+  --color-stroke-2: var(--stroke-2);
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-accent-orange: var(--accent-orange);
+  --color-ok-green: var(--ok-green);
+  --color-warn-amber: var(--warn-amber);
+  --color-danger-red: var(--danger-red);
+  --color-info-cyan: var(--info-cyan);
+}
+
+@layer base {
+  * {
+    border-color: var(--stroke-1);
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--bg-0);
+    color: var(--text-1);
+    font-family: var(--font-family);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Active nav item style */
+  .active-nav-item {
+    background-color: var(--bg-2);
+  }
+
+  /* Typography with precise hierarchy */
+  h1 {
+    font-size: 36px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.4;
+  }
+
+  p {
+    font-size: 16px;
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  button {
+    font-size: 14px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: 14px;
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+}
