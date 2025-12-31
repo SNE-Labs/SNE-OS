@@ -5,9 +5,20 @@ Provides real-time system metrics, status, and activity data
 import time
 import random
 from datetime import datetime, timedelta
-from flask import Blueprint
-from .common.http import ok
+from flask import Blueprint, jsonify
 from .common.auth import require_session
+
+# Local HTTP helpers to avoid import issues
+def ok(data=None, **meta):
+    """Standard success response"""
+    payload = {"ok": True, "data": data}
+    if meta: payload["meta"] = meta
+    return jsonify(payload), 200
+
+def fail(code: str, message: str, status: int = 400, **details):
+    """Standard error response"""
+    payload = {"ok": False, "error": {"code": code, "message": message, "details": details or None}}
+    return jsonify(payload), status
 
 status_bp = Blueprint("status", __name__)
 

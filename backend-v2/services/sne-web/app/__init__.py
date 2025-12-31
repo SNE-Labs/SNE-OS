@@ -4,10 +4,10 @@ SNE Web Service - Flask API with WebSocket support
 import os
 
 # Fix DNS resolution issues with eventlet
-os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")
-
-import eventlet
-eventlet.monkey_patch()  # Deve ser o primeiro import
+# Temporarily disabled for local testing
+# os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")
+# import eventlet
+# eventlet.monkey_patch()  # Deve ser o primeiro import
 
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
