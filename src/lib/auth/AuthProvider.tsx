@@ -10,9 +10,9 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-async function getNonce() {
+async function getNonce(address: string) {
   try {
-    return await apiGet<{ nonce: string }>("/api/auth/nonce");
+    return await apiPost<{ nonce: string }>("/api/auth/nonce", { address });
   } catch (error) {
     console.warn("Failed to get nonce, using fallback:", error);
     return { nonce: "fallback-nonce-" + Date.now() };
@@ -68,21 +68,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | undefined>();
 
   async function connect() {
-    const addr = await requestAddress();
-    const { nonce } = await getNonce();
+    try {
+      const addr = await requestAddress();
+      const { nonce } = await getNonce(addr);
 
-    // Sempre usar sne.space como domínio para SIWE (consistência entre dev/prod)
-    const domain = "snelabs.space";
-    const uri = "https://snelabs.space";
-    const chainId = 534352; // Scroll L2 chain ID
+      // Sempre usar sne.space como domínio para SIWE (consistência entre dev/prod)
+      const domain = "snelabs.space";
+      const uri = "https://snelabs.space";
+      const chainId = 534352; // Scroll L2 chain ID
 
-    const message = buildSiweMessage({ domain, address: addr, uri, chainId, nonce });
+      const message = buildSiweMessage({ domain, address: addr, uri, chainId, nonce });
 
-    const signature = await signMessage(message);
+      const signature = await signMessage(message);
 
-    await apiPost("/api/auth/siwe/verify", { message, signature });
+      await apiPost("/api/auth/verify", { message, signature });
 
-    setAddress(addr);
+      setAddress(addr);
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      throw error;
+    }
   }
 
   async function logout() {

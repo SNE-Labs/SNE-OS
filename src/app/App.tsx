@@ -1,7 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider, createConfig, http } from 'wagmi';
-import { scroll } from 'viem/chains';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { BottomBar } from './components/BottomBar';
@@ -26,19 +24,10 @@ export default function App() {
     },
   });
 
-  // Create Wagmi config for Scroll Network
-  const wagmiConfig = createConfig({
-    chains: [scroll],
-    transports: {
-      [scroll.id]: http(),
-    },
-  });
-
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <EntitlementsProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <EntitlementsProvider>
         <BrowserRouter>
           <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
             {/* Main Layout */}
@@ -77,6 +66,5 @@ export default function App() {
       </EntitlementsProvider>
     </AuthProvider>
     </QueryClientProvider>
-    </WagmiProvider>
   );
 }
