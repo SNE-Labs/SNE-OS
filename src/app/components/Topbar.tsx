@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { useState } from 'react';
 
 export function Topbar() {
-  const { isConnected, address, connect } = useAuth();
+  const { isConnected, isAuthenticated, address, tier, connect } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -38,10 +38,10 @@ export function Topbar() {
       <div className="flex items-center gap-3">
         {/* Tier Badge */}
         <div
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold uppercase"
           style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
         >
-          FREE TIER
+          {tier} TIER
         </div>
 
         {/* Network Indicator */}

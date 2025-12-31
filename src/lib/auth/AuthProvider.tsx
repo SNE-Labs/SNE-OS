@@ -1,18 +1,27 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { apiGet, apiPost } from "../api/http";
 
 type AuthCtx = {
   address?: string;
   isConnected: boolean;
+  isAuthenticated: boolean;
+  tier: 'free' | 'premium' | 'pro';
   connect: () => Promise<void>;
   logout: () => Promise<void>;
+  checkAuth: () => Promise<boolean>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+// SIWE configuration
+const SIWE_DOMAIN = "snelabs.space";
+const SIWE_ORIGIN = "https://snelabs.space";
+const CHAIN_ID = 534352; // Scroll L2
+
 async function getNonce(address: string) {
   try {
-    return await apiPost<{ nonce: string }>("/api/auth/nonce", { address });
+    const response = await apiPost<{ nonce: string }>("/api/auth/nonce", { address });
+    return response;
   } catch (error) {
     console.warn("Failed to get nonce, using fallback:", error);
     return { nonce: "fallback-nonce-" + Date.now() };
@@ -117,44 +126,115 @@ async function signMessage(message: string): Promise<string> {
   return sig;
 }
 
-function buildSiweMessage(opts: {
+function // Build SIWE message (compatible with backend)
+buildSiweMessage(opts: {
   domain: string;
   address: string;
   uri: string;
   chainId: number;
   nonce: string;
 }): string {
-  // Mensagem SIWE mínima (backend valida). Se você já tem SIWE lib no Radar, pode alinhar 1:1 depois.
-  // Mantém simples pra "ligar agora".
   return `${opts.domain} wants you to sign in with your Ethereum account:
 ${opts.address}
 
 URI: ${opts.uri}
 Version: 1
 Chain ID: ${opts.chainId}
-Nonce: ${opts.nonce}`;
+Nonce: ${opts.nonce}
+Issued At: ${new Date().toISOString()}
+Expiration Time: ${new Date(Date.now() + 5 * 60 * 1000).toISOString()}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | undefined>();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [tier, setTier] = useState<'free' | 'premium' | 'pro'>('free');
+
+  // Verificar autenticação existente ao inicializar
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const savedToken = localStorage.getItem('auth_token');
+      if (savedToken) {
+        // Configurar axios com token salvo
+        // Note: Aqui você precisaria configurar o axios globalmente ou passar o token nas chamadas
+        console.log("Found saved auth token, checking validity...");
+        await checkAuth();
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Verificar autenticação quando wallet conectar
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      if (address && !isAuthenticated) {
+        // Wallet conectada mas não autenticada - tentar verificar se já existe sessão
+        await checkAuth();
+      }
+    };
+
+    checkWalletConnection();
+  }, [address, isAuthenticated]);
+
+  const checkAuth = async (): Promise<boolean> => {
+    try {
+      const response = await apiGet<{ tier: string }>('/api/auth/verify');
+
+      if (response) {
+        const verifiedTier = (response.tier as 'free' | 'premium' | 'pro') || 'free';
+        setTier(verifiedTier);
+        setIsAuthenticated(true);
+        return true;
+      }
+    } catch (error: any) {
+      console.log('Auth check failed:', error.message);
+      // Token inválido - limpar
+      localStorage.removeItem('auth_token');
+      setIsAuthenticated(false);
+      setTier('free');
+    }
+
+    return false;
+  };
 
   async function connect() {
     try {
       const addr = await requestAddress();
+
+      // Verificar se já está autenticado para este endereço
+      if (isAuthenticated && address === addr) {
+        console.log("Already authenticated for this address");
+        return;
+      }
+
       const { nonce } = await getNonce(addr);
 
-      // Sempre usar sne.space como domínio para SIWE (consistência entre dev/prod)
-      const domain = "snelabs.space";
-      const uri = "https://snelabs.space";
-      const chainId = 534352; // Scroll L2 chain ID
-
-      const message = buildSiweMessage({ domain, address: addr, uri, chainId, nonce });
+      const message = buildSiweMessage({
+        domain: SIWE_DOMAIN,
+        address: addr,
+        uri: SIWE_ORIGIN,
+        chainId: CHAIN_ID,
+        nonce
+      });
 
       const signature = await signMessage(message);
 
-      await apiPost("/api/auth/verify", { message, signature });
+      // Usar endpoint SIWE correto
+      const authResponse = await apiPost<{
+        token: string;
+        tier: 'free' | 'premium' | 'pro';
+      }>("/api/auth/siwe", { message, signature });
+
+      // Salvar token JWT
+      const { token, tier: userTier } = authResponse;
+      localStorage.setItem('auth_token', token);
 
       setAddress(addr);
+      setTier(userTier || 'free');
+      setIsAuthenticated(true);
+
+      console.log("Authentication successful");
     } catch (error) {
       console.error("Failed to connect wallet:", error);
       throw error;
@@ -162,13 +242,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await apiPost("/api/auth/logout", {});
+    try {
+      await apiPost("/api/auth/logout", {});
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+
+    // Limpar dados locais
+    localStorage.removeItem('auth_token');
     setAddress(undefined);
+    setIsAuthenticated(false);
+    setTier('free');
   }
 
   const value = useMemo(
-    () => ({ address, isConnected: Boolean(address), connect, logout }),
-    [address]
+    () => ({
+      address,
+      isConnected: Boolean(address),
+      isAuthenticated,
+      tier,
+      connect,
+      logout,
+      checkAuth
+    }),
+    [address, isAuthenticated, tier]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
