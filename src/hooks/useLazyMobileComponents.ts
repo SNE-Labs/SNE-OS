@@ -4,7 +4,7 @@ import { usePlatform } from './usePlatform';
 // Lazy loaded mobile components
 const LazyTabBar = lazy(() => import('../app/components/mobile/TabBar').then(m => ({ default: m.MobileTabBar })));
 const LazyContainer = lazy(() => import('../app/components/mobile/Container').then(m => ({ default: m.MobileContainer })));
-const LazyMobileLayout = lazy(() => import('../app/layouts/MobileLayout'));
+const LazyMobileLayout = lazy(() => import('../app/layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
 
 // Mobile pages (já lazy loaded no MobileLayout, mas podemos preload)
 const LazyMobileHome = lazy(() => import('../app/pages/mobile/Home').then(m => ({ default: m.MobileHome })));

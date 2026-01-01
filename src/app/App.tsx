@@ -27,7 +27,7 @@ const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.
 const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 
 // Mobile Layout Components (lazy loaded)
-const MobileLayout = lazy(() => import('./layouts/MobileLayout'));
+const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
