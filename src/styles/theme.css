@@ -14,10 +14,22 @@
   
   /* SNE OS Industrial Tokens - Accents */
   --accent-orange: #FF6600;
+  --accent-orange-dim: rgba(255, 102, 0, 0.1);
   --ok-green: #32D583;
+  --success: #32D583;
+  --success-dim: rgba(50, 213, 131, 0.1);
   --warn-amber: #FFB020;
+  --warning: #FFB020;
+  --warning-dim: rgba(255, 176, 32, 0.1);
   --danger-red: #F04438;
+  --danger: #F04438;
+  --danger-dim: rgba(240, 68, 56, 0.1);
   --info-cyan: #2DD4FF;
+  --info: #2DD4FF;
+  --info-dim: rgba(45, 212, 255, 0.1);
+  
+  /* Mobile Design System - Elevated backgrounds */
+  --bg-elevated: #1a1c24;
   
   /* Border Radii */
   --radius-sm: 10px;
