@@ -3,18 +3,26 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-  "functions": {
-    "frontend/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.snelabs.space/api/:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [
@@ -24,14 +32,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "VITE_API_BASE_URL": "https://api.snelabs.space",
-    "VITE_WS_URL": "wss://api.snelabs.space",
-    "VITE_WALLETCONNECT_PROJECT_ID": "3fcc6bba6f1de962d911bb5b5c3dba68",
-    "VITE_SCROLL_RPC_URL": "https://sepolia-rpc.scroll.io",
-    "VITE_SIWE_DOMAIN": "radar.snelabs.space",
-    "VITE_SIWE_ORIGIN": "https://radar.snelabs.space"
-  }
+  ]
 }
-

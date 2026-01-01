@@ -1,45 +1,24 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-# Exceção: não ignorar src/lib/ no frontend
-!frontend/src/lib/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+build/
+*.tsbuildinfo
 
-# Virtual Environment
-venv/
-env/
-ENV/
-.venv
-
-# Environment Variables
+# Environment variables
 .env
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
@@ -47,30 +26,13 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Node
-node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# Build
-dist/
-build/
-*.tsbuildinfo
-
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-
-# Misc
-*.bak
-*.tmp
+# Other SNE projects (not part of SNE OS deployment)
+SNE RADAR DEPLOY/
+SNE VAULT/
+SNE-Scroll-Passport-main/
+SNE_RADAR_DISTRIBUICAO_20251208_175125/
+docs/
