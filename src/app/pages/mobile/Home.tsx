@@ -138,9 +138,4 @@ const homeStyles = `
   }
 `;
 
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = homeStyles;
-  document.head.appendChild(styleSheet);
-}
+// Styles are handled by global CSS
