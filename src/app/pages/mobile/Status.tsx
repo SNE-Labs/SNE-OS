@@ -1,60 +1,104 @@
+import { MobilePageShell, SurfaceCard, Badge, ListItem, MobileButton } from '../../components/mobile';
+import { Activity, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+
 export function MobileStatus() {
   const services = [
-    { name: 'API Gateway', status: 'operational', uptime: '99.9%' },
-    { name: 'Indexer', status: 'operational', uptime: '100%' },
-    { name: 'Relayer', status: 'degraded', uptime: '98.7%' },
-    { name: 'Edge Nodes', status: 'operational', uptime: '99.8%' },
-    { name: 'Vault', status: 'operational', uptime: '100%' },
+    { name: 'API Gateway', status: 'operational', uptime: '99.9%', icon: <Activity className="w-4 h-4" /> },
+    { name: 'Indexer', status: 'operational', uptime: '100%', icon: <CheckCircle className="w-4 h-4" /> },
+    { name: 'Relayer', status: 'degraded', uptime: '98.7%', icon: <AlertTriangle className="w-4 h-4" /> },
+    { name: 'Edge Nodes', status: 'operational', uptime: '99.8%', icon: <Activity className="w-4 h-4" /> },
+    { name: 'Vault', status: 'operational', uptime: '100%', icon: <CheckCircle className="w-4 h-4" /> },
   ];
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'operational': return 'success';
+      case 'degraded': return 'warning';
+      case 'down': return 'danger';
+      default: return 'neutral';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'operational': return '✓';
+      case 'degraded': return '⚠';
+      case 'down': return '✗';
+      default: return '?';
+    }
+  };
+
   return (
-    <div className="mobile-status">
-      <div className="mobile-status-header">
-        <h1 className="mobile-status-title">Status</h1>
-        <p className="mobile-status-subtitle">Monitoramento do sistema</p>
-      </div>
-
-      <div className="mobile-status-overview">
-        <div className="mobile-status-card">
-          <div className="mobile-status-indicator operational"></div>
+    <MobilePageShell
+      title="Status"
+      subtitle="Monitoramento do sistema"
+      showContext={true}
+    >
+      <SurfaceCard variant="elevated">
+        <div className="flex items-center gap-3 mb-2">
+          <CheckCircle className="w-6 h-6 text-[var(--success)]" />
           <div>
-            <h3 className="mobile-status-card-title">Sistema Operacional</h3>
-            <p className="mobile-status-card-text">Todos os serviços funcionando</p>
+            <h3 className="text-[var(--text-1)]">Sistema Operacional</h3>
+            <p className="text-sm text-[var(--text-2)]">Todos os serviços funcionando</p>
           </div>
         </div>
-      </div>
-
-      <div className="mobile-services">
-        <h3 className="mobile-section-title">Serviços</h3>
-        <div className="mobile-services-list">
-          {services.map((service, index) => (
-            <div key={index} className="mobile-service-item">
-              <div className="mobile-service-info">
-                <span className="mobile-service-name">{service.name}</span>
-                <div className={`mobile-service-status ${service.status}`}>
-                  {service.status === 'operational' ? '✓' : '⚠'}
-                  {service.status}
-                </div>
-              </div>
-              <div className="mobile-service-metrics">
-                <span className="mobile-service-uptime">{service.uptime}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mobile-incidents">
-        <h3 className="mobile-section-title">Incidentes Recentes</h3>
-        <div className="mobile-incidents-list">
-          <div className="mobile-incident-item">
-            <div className="mobile-incident-header">
-              <span className="mobile-incident-date">15 Jan</span>
-              <span className="mobile-incident-status resolved">Resolvido</span>
-            </div>
-            <p className="mobile-incident-title">Relayer com delays</p>
-            <p className="mobile-incident-duration">Duração: 2h 34m</p>
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-[var(--success)]">99.9%</div>
+            <div className="text-xs text-[var(--text-2)]">Uptime</div>
           </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-[var(--accent-orange)]">5</div>
+            <div className="text-xs text-[var(--text-2)]">Serviços</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-[var(--info)]">1</div>
+            <div className="text-xs text-[var(--text-2)]">Degradado</div>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard padding="none">
+        <div className="p-4 border-b border-[var(--stroke-1)]">
+          <h3 className="text-[var(--text-1)]">Serviços Individuais</h3>
+        </div>
+        {services.map((service, index) => (
+          <ListItem
+            key={index}
+            title={service.name}
+            subtitle={`${service.uptime} uptime`}
+            icon={service.icon}
+            badge={{
+              label: `${getStatusIcon(service.status)} ${service.status.charAt(0).toUpperCase() + service.status.slice(1)}`,
+              variant: getStatusVariant(service.status) as any
+            }}
+          />
+        ))}
+      </SurfaceCard>
+
+      <SurfaceCard padding="none">
+        <div className="p-4 border-b border-[var(--stroke-1)]">
+          <h3 className="text-[var(--text-1)]">Incidentes Recentes</h3>
+        </div>
+        <div className="p-4">
+          <div className="bg-[var(--bg-2)] rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Badge variant="success" size="sm">Resolvido</Badge>
+              <span className="text-xs text-[var(--text-3)]">15 Jan</span>
+            </div>
+            <h4 className="text-[var(--text-1)] text-sm mb-1">Relayer com delays</h4>
+            <p className="text-xs text-[var(--text-2)]">Duração: 2h 34m</p>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <MobileButton variant="secondary" className="w-full">
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Atualizar Status
+      </MobileButton>
+    </MobilePageShell>
+  );
+}
 
           <div className="mobile-incident-item">
             <div className="mobile-incident-header">
@@ -70,8 +114,6 @@ export function MobileStatus() {
   );
 }
 
-// Mobile styles
-const statusStyles = `
   .mobile-status {
     padding: 16px;
     padding-bottom: 100px;

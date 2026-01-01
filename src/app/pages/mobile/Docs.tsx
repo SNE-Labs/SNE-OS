@@ -1,61 +1,85 @@
+import { MobilePageShell, SurfaceCard, ListItem, MobileButton } from '../../components/mobile';
+import { BookOpen, Radar, Shield, CreditCard, Code, MessageCircle, ExternalLink } from 'lucide-react';
+
 export function MobileDocs() {
+  const sections = [
+    {
+      title: 'Introdução',
+      content: 'O SNE OS é uma plataforma de análise de mercado que integra dados on-chain e off-chain para fornecer insights avançados sobre criptoativos.',
+      icon: <BookOpen className="w-5 h-5" />
+    },
+    {
+      title: 'Principais Recursos',
+      features: [
+        { name: 'SNE Radar', desc: 'Análise de mercado em tempo real', icon: <Radar className="w-4 h-4" /> },
+        { name: 'SNE Vault', desc: 'Segurança física para chaves privadas', icon: <Shield className="w-4 h-4" /> },
+        { name: 'SNE Pass', desc: 'Sistema de licenças baseado em NFT', icon: <CreditCard className="w-4 h-4" /> }
+      ]
+    },
+    {
+      title: 'API',
+      content: 'Acesse nossa API REST completa para integrar dados SNE em sua aplicação.',
+      code: 'GET /api/v1/market/data',
+      icon: <Code className="w-5 h-5" />
+    },
+    {
+      title: 'Suporte',
+      content: 'Entre em contato conosco para suporte técnico e dúvidas sobre a plataforma.',
+      icon: <MessageCircle className="w-5 h-5" />
+    }
+  ];
+
   return (
-    <div className="mobile-docs">
-      <div className="mobile-docs-header">
-        <h1 className="mobile-docs-title">Documentação</h1>
-        <p className="mobile-docs-subtitle">Guia completo do SNE OS</p>
-      </div>
-
-      <div className="mobile-docs-content">
-        <div className="mobile-docs-section">
-          <h2 className="mobile-docs-section-title">Introdução</h2>
-          <p className="mobile-docs-text">
-            O SNE OS é uma plataforma de análise de mercado que integra dados
-            on-chain e off-chain para fornecer insights avançados sobre criptoativos.
-          </p>
-        </div>
-
-        <div className="mobile-docs-section">
-          <h2 className="mobile-docs-section-title">Principais Recursos</h2>
-          <div className="mobile-docs-features">
-            <div className="mobile-docs-feature">
-              <h4>SNE Radar</h4>
-              <p>Análise de mercado em tempo real</p>
+    <MobilePageShell
+      title="Documentação"
+      subtitle="Guia completo do SNE OS"
+      showContext={true}
+    >
+      {sections.map((section, index) => (
+        <SurfaceCard key={index}>
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              {section.icon}
+              <h3 className="text-[var(--text-1)] text-lg font-semibold">{section.title}</h3>
             </div>
-            <div className="mobile-docs-feature">
-              <h4>SNE Vault</h4>
-              <p>Segurança física para chaves privadas</p>
-            </div>
-            <div className="mobile-docs-feature">
-              <h4>SNE Pass</h4>
-              <p>Sistema de licenças baseado em NFT</p>
-            </div>
+            <p className="text-sm text-[var(--text-2)]">{section.content}</p>
           </div>
-        </div>
 
-        <div className="mobile-docs-section">
-          <h2 className="mobile-docs-section-title">API</h2>
-          <p className="mobile-docs-text">
-            Acesse nossa API REST completa para integrar dados SNE em sua aplicação.
-          </p>
-          <div className="mobile-docs-code">
-            <code>GET /api/v1/market/data</code>
-          </div>
-        </div>
+          {section.features && (
+            <div className="space-y-3">
+              {section.features.map((feature, featureIndex) => (
+                <ListItem
+                  key={featureIndex}
+                  title={feature.name}
+                  subtitle={feature.desc}
+                  icon={feature.icon}
+                />
+              ))}
+            </div>
+          )}
 
-        <div className="mobile-docs-section">
-          <h2 className="mobile-docs-section-title">Suporte</h2>
-          <p className="mobile-docs-text">
-            Entre em contato conosco para suporte técnico e dúvidas sobre a plataforma.
-          </p>
-        </div>
+          {section.code && (
+            <div className="bg-[var(--bg-1)] border border-[var(--stroke-1)] rounded-lg p-3 mt-3">
+              <code className="text-sm text-[var(--text-1)] font-mono">{section.code}</code>
+            </div>
+          )}
+        </SurfaceCard>
+      ))}
+
+      <div className="space-y-3">
+        <MobileButton variant="primary" className="w-full">
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Ver Documentação Completa
+        </MobileButton>
+
+        <MobileButton variant="secondary" className="w-full">
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Entrar em Contato
+        </MobileButton>
       </div>
-    </div>
+    </MobilePageShell>
   );
 }
-
-// Mobile styles
-const docsStyles = `
   .mobile-docs {
     padding: 16px;
     padding-bottom: 100px;

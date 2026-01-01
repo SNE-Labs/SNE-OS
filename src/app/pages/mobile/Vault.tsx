@@ -1,149 +1,87 @@
+import { MobilePageShell, SurfaceCard, Badge, ListItem, MobileButton } from '../../components/mobile';
+import { Shield, Zap, Lock, ExternalLink } from 'lucide-react';
+
 export function MobileVault() {
   return (
-    <div className="mobile-vault">
-      <div className="mobile-vault-header">
-        <h1 className="mobile-vault-title">Vault</h1>
-        <p className="mobile-vault-subtitle">Soberania física em desenvolvimento</p>
-        <div className="mobile-coming-soon">
-          <span>🚧 Em desenvolvimento</span>
-        </div>
-      </div>
-
-      <div className="mobile-vault-content">
-        <div className="mobile-card">
-          <h3 className="mobile-card-title">Em Desenvolvimento</h3>
-          <p className="mobile-card-text">
+    <MobilePageShell
+      title="Vault"
+      subtitle="Soberania física"
+      statusPill={{ label: 'EM DESENVOLVIMENTO', variant: 'warning' }}
+      showContext={true}
+    >
+      <SurfaceCard variant="warning">
+        <div className="text-center mb-4">
+          <Shield className="w-12 h-12 text-[var(--warning)] mx-auto mb-2" />
+          <h3 className="text-[var(--text-1)] mb-1">Em Desenvolvimento</h3>
+          <p className="text-sm text-[var(--text-2)]">
             O SNE Vault está sendo desenvolvido para fornecer soberania física
             completa para suas chaves e dados.
           </p>
         </div>
+      </SurfaceCard>
 
-        <div className="mobile-features">
-          <div className="mobile-feature">
-            <div className="mobile-feature-icon">🔐</div>
-            <h4>Hardware Seguro</h4>
-            <p>TPM/TEE para proteção máxima</p>
+      <SurfaceCard>
+        <div className="mb-4">
+          <h3 className="text-[var(--text-1)] mb-1">Arquitetura de Segurança</h3>
+          <p className="text-sm text-[var(--text-2)]">3 camadas de proteção física</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-[var(--bg-2)] rounded-lg">
+            <Lock className="w-5 h-5 text-[var(--accent-orange)]" />
+            <div>
+              <div className="text-[var(--text-1)] font-medium">Hardware Seguro</div>
+              <div className="text-xs text-[var(--text-2)]">TPM/TEE para proteção máxima</div>
+            </div>
           </div>
-          <div className="mobile-feature">
-            <div className="mobile-feature-icon">⚡</div>
-            <h4>Proof of Uptime</h4>
-            <p>Verificação contínua de integridade</p>
+
+          <div className="flex items-center gap-3 p-3 bg-[var(--bg-2)] rounded-lg">
+            <Zap className="w-5 h-5 text-[var(--success)]" />
+            <div>
+              <div className="text-[var(--text-1)] font-medium">Proof of Uptime</div>
+              <div className="text-xs text-[var(--text-2)]">Verificação contínua de integridade</div>
+            </div>
           </div>
-          <div className="mobile-feature">
-            <div className="mobile-feature-icon">🛡️</div>
-            <h4>Zero Trust</h4>
-            <p>Arquitetura zero-knowledge</p>
+
+          <div className="flex items-center gap-3 p-3 bg-[var(--bg-2)] rounded-lg">
+            <Shield className="w-5 h-5 text-[var(--info)]" />
+            <div>
+              <div className="text-[var(--text-1)] font-medium">Zero Trust</div>
+              <div className="text-xs text-[var(--text-2)]">Arquitetura zero-knowledge</div>
+            </div>
           </div>
         </div>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <div className="mb-4">
+          <h3 className="text-[var(--text-1)] mb-1">Status da Rede</h3>
+          <p className="text-sm text-[var(--text-2)]">Nodes ativos e métricas</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-mono font-bold text-[var(--accent-orange)]">247</div>
+            <div className="text-xs text-[var(--text-2)]">Nodes Ativos</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-mono font-bold text-[var(--success)]">99.97%</div>
+            <div className="text-xs text-[var(--text-2)]">Uptime</div>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <div className="space-y-3">
+        <MobileButton variant="primary" className="w-full">
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Ver Documentação
+        </MobileButton>
+
+        <MobileButton variant="secondary" className="w-full">
+          Entrar na Waitlist
+        </MobileButton>
       </div>
-    </div>
+    </MobilePageShell>
   );
 }
 
-// Mobile styles
-const vaultStyles = `
-  .mobile-vault {
-    padding: 16px;
-    padding-bottom: 100px;
-  }
-
-  .mobile-vault-header {
-    margin-bottom: 24px;
-  }
-
-  .mobile-vault-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text-1, #000);
-    margin: 0;
-  }
-
-  .mobile-vault-subtitle {
-    font-size: 16px;
-    color: var(--text-3, #666);
-    margin: 8px 0 0 0;
-  }
-
-  .mobile-card {
-    background: var(--bg-2, #f5f5f5);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
-    border: 1px solid var(--stroke-1, #e0e0e0);
-  }
-
-  .mobile-card-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-1, #000);
-    margin: 0 0 12px 0;
-  }
-
-  .mobile-card-text {
-    font-size: 14px;
-    color: var(--text-2, #333);
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .mobile-features {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .mobile-feature {
-    background: var(--bg-2, #f5f5f5);
-    border-radius: 8px;
-    padding: 16px;
-    border: 1px solid var(--stroke-1, #e0e0e0);
-    text-align: center;
-  }
-
-  .mobile-feature-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-
-  .mobile-feature h4 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-1, #000);
-    margin: 0 0 4px 0;
-  }
-
-  .mobile-feature p {
-    font-size: 14px;
-    color: var(--text-3, #666);
-    margin: 0;
-  }
-
-  .mobile-wallet-status {
-    margin-top: 12px;
-  }
-
-  .mobile-wallet-balance {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--bg-2, #f5f5f5);
-    padding: 12px 16px;
-    border-radius: 8px;
-    border: 1px solid var(--stroke-1, #e0e0e0);
-  }
-
-  .mobile-balance-label {
-    font-size: 14px;
-    color: var(--text-2, #333);
-    font-weight: 500;
-  }
-
-  .mobile-balance-value {
-    font-size: 14px;
-    color: var(--text-1, #000);
-    font-weight: 600;
-    font-family: 'Monaco', 'Menlo', monospace;
-  }
-`;
-
-// Styles are handled by global CSS

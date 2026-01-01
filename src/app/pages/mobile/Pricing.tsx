@@ -1,160 +1,92 @@
-// Versão mobile simplificada do Pricing
+import { MobilePageShell, SurfaceCard, MobileButton, Badge } from '../../components/mobile';
+import { Star, Zap, Building2, Check } from 'lucide-react';
+
 export function MobilePricing() {
+  const plans = [
+    {
+      name: 'Free',
+      price: '$0',
+      icon: <Zap className="w-6 h-6" />,
+      features: ['Dados básicos', 'Interface web', 'Suporte documentação'],
+      variant: 'default' as const,
+      buttonText: 'Começar',
+      popular: false
+    },
+    {
+      name: 'Pro',
+      price: '$29/mês',
+      icon: <Star className="w-6 h-6" />,
+      features: ['API completa', 'Analytics avançados', 'Integração SNE Vault', 'Suporte prioritário'],
+      variant: 'elevated' as const,
+      buttonText: 'Selecionar Pro',
+      popular: true
+    },
+    {
+      name: 'Enterprise',
+      price: 'Custom',
+      icon: <Building2 className="w-6 h-6" />,
+      features: ['Soluções personalizadas', 'Nós dedicados', 'SLAs customizados', 'Suporte dedicado'],
+      variant: 'default' as const,
+      buttonText: 'Contato',
+      popular: false
+    }
+  ];
+
   return (
-    <div className="mobile-pricing">
-      <div className="mobile-pricing-header">
-        <h1 className="mobile-pricing-title">Planos</h1>
-        <p className="mobile-pricing-subtitle">Acesso ao SNE OS</p>
-      </div>
+    <MobilePageShell
+      title="Planos"
+      subtitle="Acesso ao SNE OS"
+      showContext={true}
+    >
+      {plans.map((plan, index) => (
+        <SurfaceCard
+          key={plan.name}
+          variant={plan.variant}
+          className="relative"
+        >
+          {plan.popular && (
+            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+              <Badge variant="pro">Mais Popular</Badge>
+            </div>
+          )}
 
-      <div className="mobile-pricing-content">
-        <div className="mobile-pricing-card">
-          <div className="mobile-pricing-card-header">
-            <h3 className="mobile-pricing-card-title">Free</h3>
-            <span className="mobile-pricing-card-price">$0</span>
+          <div className="text-center mb-4">
+            <div className="text-[var(--accent-orange)] mb-2">{plan.icon}</div>
+            <h3 className="text-[var(--text-1)] text-lg font-semibold">{plan.name}</h3>
+            <div className="text-2xl font-bold text-[var(--accent-orange)] font-mono mt-2">
+              {plan.price}
+            </div>
           </div>
-          <ul className="mobile-pricing-features">
-            <li>Dados básicos</li>
-            <li>Interface web</li>
-            <li>Suporte documentação</li>
-          </ul>
-          <button className="mobile-pricing-button">Começar</button>
-        </div>
 
-        <div className="mobile-pricing-card mobile-pricing-card-pro">
-          <div className="mobile-pricing-card-header">
-            <h3 className="mobile-pricing-card-title">Pro</h3>
-            <span className="mobile-pricing-card-price">$29/mês</span>
+          <div className="space-y-2 mb-6">
+            {plan.features.map((feature, featureIndex) => (
+              <div key={featureIndex} className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[var(--success)] flex-shrink-0" />
+                <span className="text-sm text-[var(--text-2)]">{feature}</span>
+              </div>
+            ))}
           </div>
-          <ul className="mobile-pricing-features">
-            <li>API completa</li>
-            <li>Analytics avançados</li>
-            <li>Integração SNE Vault</li>
-            <li>Suporte prioritário</li>
-          </ul>
-          <button className="mobile-pricing-button mobile-pricing-button-pro">Selecionar Pro</button>
-        </div>
 
-        <div className="mobile-pricing-card">
-          <div className="mobile-pricing-card-header">
-            <h3 className="mobile-pricing-card-title">Enterprise</h3>
-            <span className="mobile-pricing-card-price">Custom</span>
-          </div>
-          <ul className="mobile-pricing-features">
-            <li>Soluções personalizadas</li>
-            <li>Nós dedicados</li>
-            <li>SLAs customizados</li>
-            <li>Suporte dedicado</li>
-          </ul>
-          <button className="mobile-pricing-button">Contato</button>
+          <MobileButton
+            variant={plan.popular ? "primary" : "secondary"}
+            className="w-full"
+          >
+            {plan.buttonText}
+          </MobileButton>
+        </SurfaceCard>
+      ))}
+
+      <SurfaceCard variant="elevated">
+        <div className="text-center">
+          <h3 className="text-[var(--text-1)] mb-2">Perguntas Frequentes</h3>
+          <p className="text-sm text-[var(--text-2)] mb-4">
+            Dúvidas sobre nossos planos? Entre em contato conosco.
+          </p>
+          <MobileButton variant="ghost" className="w-full">
+            Fale Conosco
+          </MobileButton>
         </div>
-      </div>
-    </div>
+      </SurfaceCard>
+    </MobilePageShell>
   );
 }
-
-// Mobile styles
-const pricingStyles = `
-  .mobile-pricing {
-    padding: 16px;
-    padding-bottom: 100px;
-  }
-
-  .mobile-pricing-header {
-    margin-bottom: 24px;
-    text-align: center;
-  }
-
-  .mobile-pricing-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text-1, #000);
-    margin: 0;
-  }
-
-  .mobile-pricing-subtitle {
-    font-size: 16px;
-    color: var(--text-3, #666);
-    margin: 8px 0 0 0;
-  }
-
-  .mobile-pricing-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .mobile-pricing-card {
-    background: var(--bg-2, #f5f5f5);
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid var(--stroke-1, #e0e0e0);
-  }
-
-  .mobile-pricing-card-pro {
-    border-color: var(--accent-orange, #ff6b35);
-    border-width: 2px;
-  }
-
-  .mobile-pricing-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-
-  .mobile-pricing-card-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-1, #000);
-    margin: 0;
-  }
-
-  .mobile-pricing-card-price {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-1, #000);
-  }
-
-  .mobile-pricing-features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px 0;
-  }
-
-  .mobile-pricing-features li {
-    font-size: 14px;
-    color: var(--text-2, #333);
-    margin-bottom: 8px;
-    padding-left: 16px;
-    position: relative;
-  }
-
-  .mobile-pricing-features li:before {
-    content: '✓';
-    position: absolute;
-    left: 0;
-    color: var(--ok-green, #10b981);
-    font-weight: 600;
-  }
-
-  .mobile-pricing-button {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--stroke-1, #e0e0e0);
-    background: var(--bg-3, #fff);
-    color: var(--text-1, #000);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .mobile-pricing-button-pro {
-    background: var(--accent-orange, #ff6b35);
-    color: #ffffff;
-    border-color: var(--accent-orange, #ff6b35);
-  }
-`;
-
-// Styles are handled by global CSS
