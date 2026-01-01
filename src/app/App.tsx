@@ -31,7 +31,6 @@ import { useIsMobile } from '../hooks/useIsMobile';
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
   const isMobile = useIsMobile();
-  console.log('AppContent isMobile:', isMobile);
 
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
