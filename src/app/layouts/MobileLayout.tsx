@@ -96,38 +96,26 @@ export function MobileLayout() {
     { id: 'docs', label: 'Docs', icon: 'FileText' as const },
   ];
 
-  // Função para mudar tab e navegar
+  // Função para mudar tab (apenas estado local, sem navegação externa)
   const handleTabChange = (tabId: string) => {
-    if (tabId === activeTab) return; // Evitar navegação desnecessária
-
-    const tabRoutes = {
-      radar: '/radar',
-      vault: '/vault',
-      pass: '/pass',
-      pricing: '/pricing',
-      status: '/status',
-      docs: '/docs'
-    };
-
-    const newRoute = tabRoutes[tabId as keyof typeof tabRoutes] || '/radar';
+    if (tabId === activeTab) return; // Evitar mudanças desnecessárias
     setActiveTab(tabId);
-    navigate(newRoute, { replace: true });
   };
 
-  // Atualizar tab baseada na rota atual (apenas uma vez)
+  // Sincronizar tab com rota atual apenas na montagem inicial
   useEffect(() => {
     const path = location.pathname;
-    let newTab = 'radar';
+    let initialTab = 'radar';
 
-    if (path.includes('/radar')) newTab = 'radar';
-    else if (path.includes('/vault')) newTab = 'vault';
-    else if (path.includes('/pass')) newTab = 'pass';
-    else if (path.includes('/pricing')) newTab = 'pricing';
-    else if (path.includes('/status')) newTab = 'status';
-    else if (path.includes('/docs')) newTab = 'docs';
+    if (path === '/radar') initialTab = 'radar';
+    else if (path === '/vault') initialTab = 'vault';
+    else if (path === '/pass') initialTab = 'pass';
+    else if (path === '/pricing') initialTab = 'pricing';
+    else if (path === '/status') initialTab = 'status';
+    else if (path === '/docs') initialTab = 'docs';
 
-    setActiveTab(newTab);
-  }, []); // Removido location.pathname para evitar loop
+    setActiveTab(initialTab);
+  }, []); // Só executa uma vez na montagem
 
   // Get current component
   const CurrentComponent = routeComponents[location.pathname as keyof typeof routeComponents] || MobileRadar;
@@ -163,7 +151,7 @@ export function MobileLayout() {
 
 // Map routes to components
 const routeComponents = {
-  '/': MobileHome,
+  '/': MobileRadar, // Default to radar
   '/radar': MobileRadar,
   '/vault': MobileVault,
   '/pass': MobilePass,
