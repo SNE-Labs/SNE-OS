@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: sne-web
+    runtime: docker
+    repo: https://github.com/SNE-Labs/SNE-Radar
+    rootDir: backend-v2/services/sne-web
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SECRET_KEY
+        value: sne-jwt-secret-change-in-production
+      - key: SIWE_DOMAIN
+        value: snelabs.space
+      - key: SIWE_ORIGIN
+        value: https://snelabs.space
+      - key: DEBUG
+        value: false
+      - key: FLASK_ENV
+        value: production
+      # PORT will be set automatically by Render
+      - key: COLLECTOR_URL
+        value: https://collector.snelabs.space
+      - key: COLLECTOR_TOKEN
+        value: sne-collector-token-prod
+      - key: EVENTLET_NO_GREENDNS
+        value: yes
+      - key: AUTO_INIT_DB
+        value: false
+    databases:
+      - name: sne-db
+        databaseName: sne
+        user: sne_admin
+        plan: free
+

@@ -1,0 +1,17 @@
+[1mdiff --git a/vercel.json b/vercel.json[m
+[1mindex 07d81e5..daac544 100644[m
+[1m--- a/vercel.json[m
+[1m+++ b/vercel.json[m
+[36m@@ -22,11 +22,8 @@[m
+     }[m
+   ],[m
+   "env": {[m
+[31m-    "VITE_API_BASE_URL": "@sne-radar-api-url",[m
+[31m-    "VITE_WS_URL": "@sne-radar-ws-url",[m
+[31m-    "VITE_WALLETCONNECT_PROJECT_ID": "@walletconnect-project-id",[m
+[32m+[m[32m    "VITE_WALLETCONNECT_PROJECT_ID": "3fcc6bba6f1de962d911bb5b5c3dba68",[m
+     "VITE_SCROLL_RPC_URL": "https://sepolia-rpc.scroll.io",[m
+[31m-    "VITE_LICENSE_CONTRACT_ADDRESS": "@license-contract-address",[m
+     "VITE_SIWE_DOMAIN": "radar.snelabs.space",[m
+     "VITE_SIWE_ORIGIN": "https://radar.snelabs.space"[m
+   }[m

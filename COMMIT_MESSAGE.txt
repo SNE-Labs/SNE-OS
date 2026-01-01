@@ -1,0 +1,34 @@
+feat: Preparação completa para deploy no Vercel
+
+✅ Configuração Vercel:
+- vercel.json com build, rewrites e headers
+- Variáveis de ambiente configuradas
+
+✅ Frontend otimizado:
+- vite.config.ts otimizado para produção
+- Build com code splitting e minificação
+- package.json scripts ajustados
+
+✅ Correções de crash:
+- SafeRedis wrapper para fallback sem Redis
+- CORS corrigido (lista fixa de origens)
+- Rota raiz '/' adicionada
+- Socket.IO com tratamento de erro
+
+✅ Integrações completas:
+- Motor de análise (motor_renan.py) integrado
+- CoinMarketCap API integrada
+- APIs v1 compatíveis com radar existente
+
+✅ Documentação:
+- DEPLOY_VERCEL.md (guia completo)
+- STATUS_DEPLOY_VERCEL.md
+- README_DEPLOY.md
+
+✅ Testes:
+- Build do frontend funcionando
+- Flask app testado e funcionando
+- Todos os endpoints testados
+
+Pronto para deploy no Vercel!
+

@@ -1,0 +1,23 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "buildCommand": "pip install -r requirements.txt"
+  },
+  "deploy": {
+    "startCommand": "python app.py",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "envVars": [
+      {
+        "key": "COLLECTOR_TOKEN",
+        "value": "sne-collector-token-prod"
+      },
+      {
+        "key": "SNE_HMAC_SECRET",
+        "value": "sne-shared-secret-change-in-prod"
+      }
+    ]
+  }
+}

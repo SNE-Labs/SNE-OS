@@ -1,0 +1,47 @@
+# Flask Core
+flask==3.0.0
+flask-cors==4.0.0
+flask-socketio==5.3.6
+flask-session==0.5.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.0
+psycopg2-binary==2.9.9
+
+# Redis
+redis==5.0.1
+
+# Web3 & Blockchain
+web3==6.11.3
+eth-account==0.8.0
+# siwe: conflito de versões - implementar SIWE manualmente usando eth-account
+# siwe==2.1.0  # Requer eth-account < 0.6.0, mas web3 requer >= 0.8.0
+
+# Authentication & Security
+pyjwt==2.8.0
+pycryptodome==3.19.0
+
+# HTTP & API
+requests==2.31.0
+gunicorn==21.2.0
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.3
+scipy>=1.11.0
+pytz>=2023.3
+
+# Utilities
+python-dotenv==1.0.0
+# pydantic==2.5.0  # Requer Rust - instalar separadamente se necessário
+
+# Monitoring & Observability
+prometheus-client==0.19.0
+
+# Development
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.12.1
+flake8==7.0.0
+
