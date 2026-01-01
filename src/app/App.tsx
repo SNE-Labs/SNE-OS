@@ -26,36 +26,12 @@ const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ de
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
-  // Simplified platform detection without complex hooks
-  const [isMobile, setIsMobile] = React.useState(() => window.innerWidth <= 768);
-
-  React.useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const checkMobile = () => {
-      // Debounce para evitar mudanças muito rápidas
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        const newIsMobile = window.innerWidth <= 768;
-        setIsMobile(prevIsMobile => {
-          // Só atualiza se realmente mudou para evitar re-renders desnecessários
-          if (prevIsMobile !== newIsMobile) {
-            return newIsMobile;
-          }
-          return prevIsMobile;
-        });
-      }, 100); // 100ms debounce
-    };
-
-    window.addEventListener('resize', checkMobile);
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
+  const isMobile = useIsMobile();
+  console.log('AppContent isMobile:', isMobile);
 
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
