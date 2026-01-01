@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Shield, Key, BarChart3 } from 'lucide-react';
 
 // Lazy load mobile pages
-const MobileHome = lazy(() => import('../pages/mobile/Home'));
-const MobileRadar = lazy(() => import('../pages/mobile/Radar'));
-const MobileVault = lazy(() => import('../pages/mobile/Vault'));
-const MobilePass = lazy(() => import('../pages/mobile/Pass'));
-const MobilePricing = lazy(() => import('../pages/mobile/Pricing'));
-const MobileStatus = lazy(() => import('../pages/mobile/Status'));
-const MobileDocs = lazy(() => import('../pages/mobile/Docs'));
+const MobileHome = lazy(() => import('../pages/mobile/Home').then(m => ({ default: m.MobileHome })));
+const MobileRadar = lazy(() => import('../pages/mobile/Radar').then(m => ({ default: m.MobileRadar })));
+const MobileVault = lazy(() => import('../pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
+const MobilePass = lazy(() => import('../pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
+const MobilePricing = lazy(() => import('../pages/mobile/Pricing').then(m => ({ default: m.MobilePricing })));
+const MobileStatus = lazy(() => import('../pages/mobile/Status').then(m => ({ default: m.MobileStatus })));
+const MobileDocs = lazy(() => import('../pages/mobile/Docs').then(m => ({ default: m.MobileDocs })));
 
 // Loading component for mobile
 function MobileSkeleton() {

@@ -7,9 +7,9 @@ const LazyContainer = lazy(() => import('../app/components/mobile/Container').th
 const LazyMobileLayout = lazy(() => import('../app/layouts/MobileLayout'));
 
 // Mobile pages (já lazy loaded no MobileLayout, mas podemos preload)
-const LazyMobileHome = lazy(() => import('../app/pages/mobile/Home'));
-const LazyMobilePricing = lazy(() => import('../app/pages/mobile/Pricing'));
-const LazyMobileDocs = lazy(() => import('../app/pages/mobile/Docs'));
+const LazyMobileHome = lazy(() => import('../app/pages/mobile/Home').then(m => ({ default: m.MobileHome })));
+const LazyMobilePricing = lazy(() => import('../app/pages/mobile/Pricing').then(m => ({ default: m.MobilePricing })));
+const LazyMobileDocs = lazy(() => import('../app/pages/mobile/Docs').then(m => ({ default: m.MobileDocs })));
 
 export function useLazyMobileComponents() {
   const { isMobile } = usePlatform();

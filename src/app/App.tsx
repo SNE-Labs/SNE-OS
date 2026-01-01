@@ -17,14 +17,14 @@ import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
 
 // Mobile Pages (lazy loaded para performance)
-const MobileRadar = lazy(() => import('./pages/mobile/Radar'));
-const MobileVault = lazy(() => import('./pages/mobile/Vault'));
-const MobilePass = lazy(() => import('./pages/mobile/Pass'));
+const MobileRadar = lazy(() => import('./pages/mobile/Radar').then(m => ({ default: m.MobileRadar })));
+const MobileVault = lazy(() => import('./pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
+const MobilePass = lazy(() => import('./pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
 
 // Desktop Pages (lazy loaded para performance)
-const DesktopRadar = lazy(() => import('./pages/Radar'));
-const DesktopVault = lazy(() => import('./pages/Vault'));
-const DesktopPass = lazy(() => import('./pages/Pass'));
+const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
+const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
+const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 
 // Mobile Layout Components (lazy loaded)
 const MobileLayout = lazy(() => import('./layouts/MobileLayout'));
