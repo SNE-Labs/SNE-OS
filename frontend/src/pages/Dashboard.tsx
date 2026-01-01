@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
 import { useWallet } from '../hooks/useWallet'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { dashboardApi } from '../services'
 import { formatCurrency, formatPercentage, safeNumber, safeString, cn } from '../lib/utils'
+import {
+  MobilePageShell,
+  SurfaceCard,
+  MobileButton,
+  GateBanner,
+  StatGrid,
+  ListItem,
+  LoadingSkeletonGroup,
+  EmptyState,
+} from '../app/components/mobile'
 
 interface MetricCardProps {
   label: string
@@ -38,7 +49,9 @@ function MetricCard({ label, value, trend, subtitle, color }: MetricCardProps) {
 }
 
 export default function Dashboard() {
-  const { tier, isAuthenticated } = useWallet()
+  const { tier, isAuthenticated, connect } = useWallet()
+  const isMobile = useIsMobile()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
@@ -70,6 +83,164 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [isAuthenticated])
 
+  // Versão Mobile
+  if (isMobile) {
+    if (!isAuthenticated) {
+      return (
+        <MobilePageShell title="Dashboard" subtitle="Análise de mercado em tempo real">
+          <GateBanner
+            type="connect-wallet"
+            onCtaClick={connect}
+          />
+          <EmptyState
+            title="Conecte sua wallet"
+            description="Conecte sua wallet para acessar o dashboard completo"
+            action={
+              <MobileButton variant="primary" onClick={connect}>
+                Conectar Wallet
+              </MobileButton>
+            }
+          />
+        </MobilePageShell>
+      )
+    }
+
+    if (loading) {
+      return (
+        <MobilePageShell title="Dashboard" subtitle="Carregando...">
+          <LoadingSkeletonGroup count={3} />
+        </MobilePageShell>
+      )
+    }
+
+    const topMovers = data?.top_movers || []
+    const marketSummary = data?.market_summary
+
+    // Preparar stats para StatGrid
+    const marketStats = [
+      {
+        label: 'Price',
+        value: marketSummary?.btc_price ? formatCurrency(marketSummary.btc_price) : '--',
+        delta: { value: '+2.4%', positive: true },
+      },
+      {
+        label: '24h',
+        value: marketSummary?.btc_price_24h_change ? formatPercentage(marketSummary.btc_price_24h_change) : '--',
+        delta: { value: '+2.4%', positive: true },
+      },
+      {
+        label: 'Volume',
+        value: marketSummary?.volume_24h ? `$${marketSummary.volume_24h}` : '--',
+        delta: { value: '+15.2%', positive: true },
+      },
+      {
+        label: 'Dominance',
+        value: marketSummary?.btc_dominance ? `${safeNumber(marketSummary.btc_dominance, 0).toFixed(1)}%` : '--',
+        delta: { value: '-0.3%', positive: false },
+      },
+    ]
+
+    return (
+      <MobilePageShell
+        title="Dashboard"
+        subtitle="Análise de mercado em tempo real"
+        action={
+          <button
+            className="p-2 hover:bg-[var(--bg-2)] rounded-lg transition-colors"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw className="w-5 h-5 text-[var(--text-2)]" />
+          </button>
+        }
+        showContext={true}
+      >
+        {/* Gate Banner para Free Tier */}
+        {tier === 'free' && (
+          <GateBanner
+            type="free-limited"
+            onCtaClick={() => navigate('/pricing')}
+          />
+        )}
+
+        {/* Market Summary */}
+        <SurfaceCard>
+          <div className="mb-4">
+            <h3 className="text-[var(--text-1)] mb-1">Market Summary</h3>
+            <p className="text-sm text-[var(--text-2)]">Dados de mercado em tempo real</p>
+          </div>
+          <StatGrid stats={marketStats} columns={2} />
+        </SurfaceCard>
+
+        {/* Top Movers */}
+        {topMovers.length > 0 && (
+          <SurfaceCard padding="none">
+            <div className="p-4 border-b border-[var(--stroke-1)]">
+              <h3 className="text-[var(--text-1)]">Top Movers</h3>
+              {tier === 'free' && (
+                <p className="text-xs text-[var(--text-2)] mt-1">
+                  Mostrando top 5 • <Link to="/pricing" className="text-[var(--accent-orange)]">Upgrade</Link>
+                </p>
+              )}
+            </div>
+            {topMovers.slice(0, tier === 'free' ? 5 : 10).map((mover: any, idx: number) => (
+              <ListItem
+                key={idx}
+                title={mover.symbol}
+                subtitle={`Vol: ${mover.volume}`}
+                meta={formatCurrency(mover.price)}
+                badge={{
+                  label: mover.change24h >= 0 ? 'UP' : 'DOWN',
+                  variant: mover.change24h >= 0 ? 'success' : 'danger',
+                }}
+                showChevron
+                onClick={() => navigate(`/chart?symbol=${mover.symbol}`)}
+              />
+            ))}
+          </SurfaceCard>
+        )}
+
+        {/* Quick Stats */}
+        <SurfaceCard>
+          <h3 className="text-[var(--text-1)] mb-4">Quick Stats</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-[var(--text-2)] mb-1">Análises Hoje</div>
+              <div className="text-2xl font-mono font-bold text-[var(--accent-orange)]">
+                {safeNumber(data?.stats?.analyses_today, 0)}/{currentLimits.analyses}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--text-2)] mb-1">Taxa de Sucesso</div>
+              <div className="text-2xl font-mono font-bold text-[var(--success)]">
+                {data?.stats?.success_rate ? `${safeNumber(data.stats.success_rate, 0).toFixed(1)}%` : '--'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--text-2)] mb-1">Melhor Setup</div>
+              <div className="text-lg font-mono font-bold">
+                {safeString(data?.stats?.best_setup, '--')}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--text-2)] mb-1">Próxima Análise</div>
+              <div className="text-lg font-mono font-bold">
+                {data?.stats?.next_analysis_available ? 'Disponível' : 'Aguardar'}
+              </div>
+            </div>
+          </div>
+        </SurfaceCard>
+
+        {/* CTA Principal */}
+        {tier === 'free' && (
+          <MobileButton variant="primary" className="w-full" onClick={() => navigate('/pricing')}>
+            Upgrade to Pro
+          </MobileButton>
+        )}
+      </MobilePageShell>
+    )
+  }
+
+  // Versão Desktop (mantém código original)
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -198,4 +369,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

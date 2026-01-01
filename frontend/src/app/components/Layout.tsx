@@ -2,11 +2,14 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Menu, X, Wallet, Zap, Github } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWallet } from '../../hooks/useWallet'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { Button } from './Button'
 import { cn, shortenAddress } from '../../lib/utils'
 import WalletModal from './WalletModal'
+import { MobileLayout } from './MobileLayout'
 
 export default function Layout() {
+  const isMobile = useIsMobile()
   const location = useLocation()
   const { address, isConnected, isAuthenticated, tier, connect, signIn, signOut } = useWallet()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -34,6 +37,16 @@ export default function Layout() {
 
   const isActive = (path: string) => location.pathname === path
 
+  // Se for mobile, usar MobileLayout
+  if (isMobile) {
+    return (
+      <MobileLayout>
+        <Outlet />
+      </MobileLayout>
+    )
+  }
+
+  // Layout desktop
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-[#F7F7F8]">
       {/* Wallet Connect Modal */}
