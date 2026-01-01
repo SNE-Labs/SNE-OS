@@ -1,9 +1,26 @@
+import { useAccount, useBalance } from 'wagmi';
+
 export function MobileVault() {
+  const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({
+    address: address,
+  });
+
   return (
     <div className="mobile-vault">
       <div className="mobile-vault-header">
         <h1 className="mobile-vault-title">Vault</h1>
         <p className="mobile-vault-subtitle">Soberania física em desenvolvimento</p>
+        {isConnected && address && (
+          <div className="mobile-wallet-status">
+            <div className="mobile-wallet-balance">
+              <span className="mobile-balance-label">Saldo:</span>
+              <span className="mobile-balance-value">
+                {balance ? `${parseFloat(balance.formatted).toFixed(4)} ${balance.symbol}` : 'Carregando...'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mobile-vault-content">
@@ -12,6 +29,7 @@ export function MobileVault() {
           <p className="mobile-card-text">
             O SNE Vault está sendo desenvolvido para fornecer soberania física
             completa para suas chaves e dados.
+            {isConnected ? ' Integração Web3 ativa.' : ' Conecte sua wallet para visualizar saldo.'}
           </p>
         </div>
 
@@ -113,6 +131,33 @@ const vaultStyles = `
     font-size: 14px;
     color: var(--text-3, #666);
     margin: 0;
+  }
+
+  .mobile-wallet-status {
+    margin-top: 12px;
+  }
+
+  .mobile-wallet-balance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-2, #f5f5f5);
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--stroke-1, #e0e0e0);
+  }
+
+  .mobile-balance-label {
+    font-size: 14px;
+    color: var(--text-2, #333);
+    font-weight: 500;
+  }
+
+  .mobile-balance-value {
+    font-size: 14px;
+    color: var(--text-1, #000);
+    font-weight: 600;
+    font-family: 'Monaco', 'Menlo', monospace;
   }
 `;
 

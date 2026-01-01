@@ -1,9 +1,23 @@
+import { useAccount } from 'wagmi';
+
 export function MobilePass() {
+  const { address, isConnected } = useAccount();
+
   return (
     <div className="mobile-pass">
       <div className="mobile-pass-header">
         <h1 className="mobile-pass-title">Pass</h1>
         <p className="mobile-pass-subtitle">Sistema de licenças SNE</p>
+        {isConnected && address && (
+          <div className="mobile-wallet-status">
+            <div className="mobile-wallet-connected">
+              <span className="mobile-wallet-dot">🟢</span>
+              <span className="mobile-wallet-address">
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mobile-pass-content">
@@ -11,6 +25,7 @@ export function MobilePass() {
           <h3 className="mobile-card-title">Licenças On-chain</h3>
           <p className="mobile-card-text">
             Sistema de licenças baseado em NFTs na Scroll L2 para acesso aos serviços SNE.
+            {isConnected ? ' Conectado e pronto para uso.' : ' Conecte sua wallet para acessar.'}
           </p>
         </div>
 
@@ -112,6 +127,30 @@ const passStyles = `
     font-size: 14px;
     color: var(--text-3, #666);
     margin: 0;
+  }
+
+  .mobile-wallet-status {
+    margin-top: 12px;
+  }
+
+  .mobile-wallet-connected {
+    display: flex;
+    align-items: center;
+    background: var(--ok-green, #10b981);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .mobile-wallet-dot {
+    margin-right: 8px;
+  }
+
+  .mobile-wallet-address {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
   }
 `;
 
