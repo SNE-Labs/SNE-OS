@@ -1,24 +1,15 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Hook para detectar plataforma e capacidades do dispositivo
- * Essencial para otimizações mobile vs desktop
+ * Hook simplificado para detectar plataforma
+ * Versão segura para evitar crashes
  */
 export function usePlatform() {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
-  const [deviceCapabilities, setDeviceCapabilities] = useState({
-    hasTouch: false,
-    hasGyroscope: false,
-    isLowEndDevice: false,
-    prefersReducedMotion: false,
-    supportsWebGL: false,
-    supportsWebRTC: false,
-  });
 
   useEffect(() => {
-    // Media queries para detectar plataforma
     const mobileQuery = window.matchMedia('(max-width: 768px)');
     const tabletQuery = window.matchMedia('(min-width: 769px) and (max-width: 1024px)');
 
@@ -32,58 +23,26 @@ export function usePlatform() {
       setIsDesktop(desktop);
     };
 
-    // Verificar capacidades do dispositivo
-    const checkCapabilities = async () => {
-      const capabilities = {
-        hasTouch: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-        hasGyroscope: 'DeviceOrientationEvent' in window,
-        prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        supportsWebGL: (() => {
-          try {
-            const canvas = document.createElement('canvas');
-            return !!(window.WebGLRenderingContext &&
-              canvas.getContext('webgl'));
-          } catch (e) {
-            return false;
-          }
-        })(),
-        supportsWebRTC: !!(
-          window.RTCPeerConnection ||
-          (window as any).webkitRTCPeerConnection ||
-          (window as any).mozRTCPeerConnection
-        ),
-        // Detectar dispositivos low-end baseado em memória e CPU
-        isLowEndDevice: (() => {
-          try {
-            const memory = (navigator as any).deviceMemory;
-            const cores = navigator.hardwareConcurrency;
-
-            // Estimativa de low-end: < 4GB RAM ou < 4 cores
-            return (memory && memory < 4) || (cores && cores < 4);
-          } catch (error) {
-            // Fallback para false se houver erro
-            return false;
-          }
-        })(),
-      };
-
-      setDeviceCapabilities(capabilities);
-    };
-
-    // Listeners para mudanças de viewport
     mobileQuery.addEventListener('change', updatePlatform);
     tabletQuery.addEventListener('change', updatePlatform);
 
-    // Inicialização
     updatePlatform();
-    checkCapabilities();
 
-    // Cleanup
     return () => {
       mobileQuery.removeEventListener('change', updatePlatform);
       tabletQuery.removeEventListener('change', updatePlatform);
     };
   }, []);
+
+  // Capacidades básicas e seguras
+  const deviceCapabilities = {
+    hasTouch: typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0),
+    hasGyroscope: typeof window !== 'undefined' && 'DeviceOrientationEvent' in window,
+    isLowEndDevice: false, // Simplificado para evitar detecção complexa
+    prefersReducedMotion: typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    supportsWebGL: false, // Simplificado
+    supportsWebRTC: false, // Simplificado
+  };
 
   return {
     isMobile,

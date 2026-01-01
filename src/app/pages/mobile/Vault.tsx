@@ -4,6 +4,9 @@ export function MobileVault() {
       <div className="mobile-vault-header">
         <h1 className="mobile-vault-title">Vault</h1>
         <p className="mobile-vault-subtitle">Soberania física em desenvolvimento</p>
+        <div className="mobile-coming-soon">
+          <span>🚧 Em desenvolvimento</span>
+        </div>
       </div>
 
       <div className="mobile-vault-content">
