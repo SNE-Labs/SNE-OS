@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Shield, Key, BarChart3, DollarSign, FileText } from 'lucide-react';
 
@@ -74,6 +74,7 @@ if (typeof document !== 'undefined') {
 export function MobileLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isInternalNavigation = useRef(false);
 
   const [activeTab, setActiveTab] = useState(() => {
     // Determinar tab ativa baseada na rota atual
@@ -96,29 +97,65 @@ export function MobileLayout() {
     { id: 'docs', label: 'Docs', icon: 'FileText' as const },
   ];
 
-  // Função para mudar tab (apenas estado local, sem navegação externa)
+  // Função para mudar tab e atualizar URL
   const handleTabChange = (tabId: string) => {
     if (tabId === activeTab) return; // Evitar mudanças desnecessárias
+
+    isInternalNavigation.current = true;
     setActiveTab(tabId);
+
+    // Atualizar URL apenas quando necessário
+    const tabRoutes = {
+      radar: '/radar',
+      vault: '/vault',
+      pass: '/pass',
+      pricing: '/pricing',
+      status: '/status',
+      docs: '/docs'
+    };
+
+    const newRoute = tabRoutes[tabId as keyof typeof tabRoutes] || '/radar';
+    if (location.pathname !== newRoute) {
+      navigate(newRoute, { replace: true });
+    }
+
+    // Reset flag after navigation
+    setTimeout(() => {
+      isInternalNavigation.current = false;
+    }, 100);
   };
 
-  // Sincronizar tab com rota atual apenas na montagem inicial
+  // Sincronizar tab com rota atual (apenas navegação externa)
   useEffect(() => {
+    // Só sincronizar se não foi navegação interna
+    if (isInternalNavigation.current) return;
+
     const path = location.pathname;
-    let initialTab = 'radar';
+    let newTab = 'radar';
 
-    if (path === '/radar') initialTab = 'radar';
-    else if (path === '/vault') initialTab = 'vault';
-    else if (path === '/pass') initialTab = 'pass';
-    else if (path === '/pricing') initialTab = 'pricing';
-    else if (path === '/status') initialTab = 'status';
-    else if (path === '/docs') initialTab = 'docs';
+    if (path === '/radar') newTab = 'radar';
+    else if (path === '/vault') newTab = 'vault';
+    else if (path === '/pass') newTab = 'pass';
+    else if (path === '/pricing') newTab = 'pricing';
+    else if (path === '/status') newTab = 'status';
+    else if (path === '/docs') newTab = 'docs';
 
-    setActiveTab(initialTab);
-  }, []); // Só executa uma vez na montagem
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [location.pathname]); // Só depende de location.pathname
 
-  // Get current component
-  const CurrentComponent = routeComponents[location.pathname as keyof typeof routeComponents] || MobileRadar;
+  // Get current component based on active tab
+  const tabComponents = {
+    radar: MobileRadar,
+    vault: MobileVault,
+    pass: MobilePass,
+    pricing: MobilePricing,
+    status: MobileStatus,
+    docs: MobileDocs
+  };
+
+  const CurrentComponent = tabComponents[activeTab as keyof typeof tabComponents] || MobileRadar;
 
   return (
     <div className="mobile-layout">
