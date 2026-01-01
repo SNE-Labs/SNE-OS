@@ -5,6 +5,8 @@ Market data, signals, and analysis for SNE OS Radar
 from flask import Blueprint, request, session, jsonify
 from functools import wraps
 import logging
+import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,91 @@ def require_session(fn):
     return wrapper
 
 radar_bp = Blueprint("radar", __name__)
+
+# ============================================
+# PUBLIC ENDPOINTS (no auth required)
+# ============================================
+
+@radar_bp.get("/market-summary")
+def market_summary():
+    """
+    Get market summary data (public - no auth required)
+    GET /api/radar/market-summary
+    """
+    try:
+        # Dados básicos de mercado (públicos)
+        market_data = {
+            'btc_dominance': 48.2,
+            'market_cap': '1.8T',
+            'volume_24h': '95B',
+            'fear_greed_index': 62,
+            'top_movers': [
+                {
+                    'symbol': 'BTCUSDT',
+                    'price': 43250.50,
+                    'change24h': 0.0523,
+                    'volume': '2.5B'
+                },
+                {
+                    'symbol': 'ETHUSDT',
+                    'price': 2280.75,
+                    'change24h': -0.0214,
+                    'volume': '1.8B'
+                },
+                {
+                    'symbol': 'SOLUSDT',
+                    'price': 98.32,
+                    'change24h': 0.1245,
+                    'volume': '850M'
+                }
+            ],
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        return jsonify(market_data), 200
+        
+    except Exception as e:
+        logger.error(f"Market summary error: {e}")
+        return jsonify({
+            'btc_dominance': None,
+            'market_cap': None,
+            'volume_24h': None,
+            'fear_greed_index': None,
+            'top_movers': []
+        }), 200
+
+@radar_bp.post("/signals")
+def signals_post():
+    """
+    Get market signals via POST (for SNE OS frontend)
+    POST /api/radar/signals
+    Body: { "symbol": "BTC/USD", "timeframe": "4H" }
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        symbol = body.get('symbol', 'BTCUSDT').replace('/', '')
+        timeframe = body.get('timeframe', '4H')
+        
+        # Sinais mock para preview (em produção, viria do motor SNE)
+        signals_data = {
+            'signals': [
+                {
+                    'symbol': symbol,
+                    'signal': 'HOLD',
+                    'strength': 'Moderate',
+                    'timeframe': timeframe,
+                    'updated': 'now',
+                    'change': '+2.5%',
+                    'score': 65
+                }
+            ]
+        }
+        
+        return jsonify(signals_data), 200
+        
+    except Exception as e:
+        logger.error(f"Signals POST error: {e}")
+        return jsonify({'signals': []}), 200
 
 @radar_bp.get("/markets")
 def markets():
@@ -62,7 +149,7 @@ def markets():
     return ok(markets_data)
 
 @radar_bp.get("/signals")
-def signals():
+def signals_get():
     """
     Get market signals (public preview)
     GET /api/radar/signals?market=crypto&limit=10
@@ -83,9 +170,7 @@ def signals():
         if cached_data:
             return ok(json.loads(cached_data))
 
-        # TODO: Integrar com sinais reais do motor SNE
-        # Por enquanto, dados mock representativos
-
+        # Dados mock representativos
         signals_data = {
             "preview": True,
             "market": market,
@@ -98,7 +183,7 @@ def signals():
                     "timeframe": "4H",
                     "price": 45000,
                     "change": "+2.5%",
-                    "timestamp": "2024-01-15T10:30:00Z"
+                    "timestamp": datetime.utcnow().isoformat()
                 },
                 {
                     "symbol": "ETHUSDT",
@@ -107,9 +192,9 @@ def signals():
                     "timeframe": "1H",
                     "price": 2800,
                     "change": "-1.2%",
-                    "timestamp": "2024-01-15T10:25:00Z"
+                    "timestamp": datetime.utcnow().isoformat()
                 }
-            ][:limit],  # Limitar resultados
+            ][:limit],
             "lastUpdated": str(int(time.time()))
         }
 
@@ -122,6 +207,10 @@ def signals():
         logger.error(f"Signals error: {e}")
         return fail("INTERNAL_ERROR", "Failed to fetch signals", 500)
 
+# ============================================
+# AUTHENTICATED ENDPOINTS (require wallet)
+# ============================================
+
 @radar_bp.post("/analyze")
 @require_session
 def analyze():
@@ -132,6 +221,7 @@ def analyze():
     """
     from .motor import analisar_par
     from app.utils.redis_safe import SafeRedis
+    from .auth_siwe import check_tier_limits
     import json
 
     try:

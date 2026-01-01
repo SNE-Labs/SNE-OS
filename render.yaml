@@ -9,15 +9,14 @@ services:
       - key: SECRET_KEY
         value: sne-jwt-secret-change-in-production
       - key: SIWE_DOMAIN
-        value: radar.snelabs.space
+        value: snelabs.space
       - key: SIWE_ORIGIN
-        value: https://radar.snelabs.space
+        value: https://snelabs.space
       - key: DEBUG
         value: false
       - key: FLASK_ENV
         value: production
-      - key: PORT
-        value: 10000
+      # PORT will be set automatically by Render
       - key: COLLECTOR_URL
         value: https://collector.snelabs.space
       - key: COLLECTOR_TOKEN

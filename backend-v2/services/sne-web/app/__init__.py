@@ -86,8 +86,7 @@ def create_app():
     app.register_blueprint(vault_bp, url_prefix="/api/vault")
     app.register_blueprint(passport_bp, url_prefix="/api/passport")
     app.register_blueprint(radar_bp, url_prefix="/api/radar")
-    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")  # /api/dashboard/
-    app.register_blueprint(status_bp, url_prefix="/api/status")  # /api/status/dashboard
+    app.register_blueprint(status_bp, url_prefix="/api/status")
 
     # Register global routes INSIDE create_app()
     @app.route('/', methods=['GET'])
@@ -104,10 +103,3 @@ def create_app():
 
 # Create app instance for production (Gunicorn) - AFTER create_app is defined
 app = create_app()
-
-# Database initialization moved inside create_app() if needed
-# Blueprints are now registered INSIDE create_app()
-# Removed duplicate registration that was causing issues
-
-
-

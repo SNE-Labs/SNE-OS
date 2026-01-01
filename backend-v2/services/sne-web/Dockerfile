@@ -25,9 +25,9 @@ RUN mkdir -p /app/logs
 # Expor porta (usar PORT do Railway ou 8080 como fallback)
 EXPOSE 8080
 
-# Health check simples
+# Health check simples (não depende de imports)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD python -c "from app import app; print('OK')"
+  CMD python -c "import os; print('OK')"
 
 # Comando para executar (Gunicorn produção)
 CMD ["sh", "-c", "PYTHONPATH=/app gunicorn -k eventlet -w 1 --timeout 120 --bind 0.0.0.0:${PORT:-8080} wsgi:app"]

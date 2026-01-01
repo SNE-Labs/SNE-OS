@@ -20,9 +20,10 @@ from app.models import db, get_user_tier, set_user_tier, save_analysis, get_user
 
 auth_bp = Blueprint('auth', __name__)
 
-# Configurações SIWE - compatível com variáveis existentes
-SIWE_DOMAIN = os.getenv('SIWE_DOMAIN', 'radar.snelabs.space')
-SIWE_ORIGIN = os.getenv('SIWE_ORIGIN', 'https://radar.snelabs.space')
+# Configurações SIWE - atualizado para SNE OS
+from .config import Config
+SIWE_DOMAIN = Config.SIWE_DOMAIN
+SIWE_ORIGIN = Config.SIWE_ORIGIN
 JWT_SECRET = os.getenv('SECRET_KEY', 'gerar_automaticamente')  # Usa SECRET_KEY existente
 JWT_ALGORITHM = 'HS256'
 
@@ -346,6 +347,132 @@ def logout():
 # ============================================
 # SNE OS - Endpoints de Sessão e Entitlements
 # ============================================
+
+@auth_bp.route('/api/session', methods=['GET'])
+def get_session():
+    """
+    Retornar informações da sessão atual
+    Usado pelo SNE OS para reidratar sessão no refresh da página
+    """
+    try:
+        # Tentar obter do JWT se houver Authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                exp = datetime.fromtimestamp(payload['exp'])
+                if exp > datetime.utcnow():
+                    return jsonify({
+                        'user': payload['address'],
+                        'tier': payload['tier'],
+                        'exp': payload['exp']
+                    }), 200
+            except:
+                pass
+
+        # Se não há token válido, retornar usuário não logado
+        return jsonify({'user': None}), 200
+
+    except Exception as e:
+        return jsonify({'user': None}), 200
+
+@auth_bp.route('/api/entitlements', methods=['GET'])
+def get_entitlements():
+    """
+    Retornar entitlements baseados na sessão/autenticação
+    Usado pelo SNE OS para controle de acesso e gating
+    """
+    try:
+        # Tentar obter do JWT se houver Authorization header
+        auth_header = request.headers.get('Authorization', '')
+        user_address = None
+        user_tier = 'free'
+
+        if auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                exp = datetime.fromtimestamp(payload['exp'])
+                if exp > datetime.utcnow():
+                    user_address = payload['address']
+                    user_tier = payload['tier']
+            except:
+                pass
+
+        # Mapeamento de features por tier (compatível com SNE OS)
+        tier_features = {
+            'free': [
+                'vault.preview', 'pass.preview', 'radar.preview',
+                'vault.basic', 'pass.basic'
+            ],
+            'premium': [
+                'vault.preview', 'pass.preview', 'radar.preview',
+                'vault.access', 'pass.access', 'radar.basic',
+                'vault.checkout', 'pass.spy'
+            ],
+            'pro': [
+                'vault.preview', 'pass.preview', 'radar.preview',
+                'vault.access', 'pass.access', 'radar.access',
+                'vault.checkout', 'pass.spy', 'radar.trade',
+                'ws.realtime', 'api.full'
+            ]
+        }
+
+        # Limites por tier (baseado no TIER_LIMITS existente)
+        tier_limits = {
+            'free': {
+                'watchlist': 3,
+                'signals_per_day': 3,  # analyses_per_day
+                'vault_items': 1,
+                'api_calls_per_hour': 100
+            },
+            'premium': {
+                'watchlist': 10,
+                'signals_per_day': 50,
+                'vault_items': 10,
+                'api_calls_per_hour': 1000
+            },
+            'pro': {
+                'watchlist': float('inf'),  # ilimitado
+                'signals_per_day': float('inf'),
+                'vault_items': float('inf'),
+                'api_calls_per_hour': 10000
+            }
+        }
+
+        # Calcular expiração (30 dias a partir de agora para tiers pagos)
+        expires_at = None
+        if user_tier in ['premium', 'pro']:
+            expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat() + 'Z'
+
+        return jsonify({
+            'user': user_address,
+            'tier': user_tier,
+            'features': tier_features.get(user_tier, tier_features['free']),
+            'limits': tier_limits.get(user_tier, tier_limits['free']),
+            'expiresAt': expires_at
+        }), 200
+
+    except Exception as e:
+        # Fail-safe: retornar acesso básico
+        return jsonify({
+            'user': None,
+            'tier': 'free',
+            'features': ['vault.preview', 'pass.preview', 'radar.preview'],
+            'limits': {
+                'watchlist': 3,
+                'signals_per_day': 5,
+                'vault_items': 1,
+                'api_calls_per_hour': 50
+            },
+            'expiresAt': None
+        }), 200
+
+# Export decorators for use in other modules
+__all__ = ['require_auth', 'check_tier_limits', 'get_user_tier']
+
+
 
 @auth_bp.route('/api/session', methods=['GET'])
 def get_session():

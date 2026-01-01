@@ -143,11 +143,12 @@ def get_watchlist():
 # SNE OS - Endpoints de Radar (compatibilidade)
 # ============================================
 
-@dashboard_bp.route('/api/radar/market-summary', methods=['GET'])
+@dashboard_bp.route('/market-summary', methods=['GET'])
 def radar_market_summary():
     """
-    Resumo de mercado para SNE OS Radar
-    Endpoint: GET /api/radar/market-summary
+    Resumo de mercado para SNE OS Radar (público)
+    Endpoint: GET /api/dashboard/market-summary
+    Nota: Também disponível em /api/radar/market-summary via radar_api.py
     """
     try:
         # Dados básicos de mercado (sem autenticação obrigatória)
@@ -174,11 +175,11 @@ def radar_market_summary():
             'top_movers': []
         }), 200
 
-@dashboard_bp.route('/api/radar/signals', methods=['POST'])
+@dashboard_bp.route('/signals', methods=['POST'])
 def radar_signals():
     """
-    Sinais de análise para SNE OS Radar
-    Endpoint: POST /api/radar/signals
+    Sinais de análise para SNE OS Radar (público)
+    Endpoint: POST /api/dashboard/signals
     Body: { "symbol": "BTC/USD", "timeframe": "4H" }
     """
     try:

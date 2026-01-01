@@ -6,7 +6,16 @@ Suporta tanto TCP Redis quanto REST API (Upstash)
 import os
 import logging
 from typing import Any, Optional
-import redis
+
+# Try to import redis, fallback if not available
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    redis = None
+    REDIS_AVAILABLE = False
+    logging.warning("Redis not available - using in-memory fallback")
+
 import requests
 import urllib.parse
 
@@ -108,25 +117,27 @@ class SafeRedis:
                 logger.warning(f"Upstash connection failed: {str(e)}")
 
         # Se Upstash falhou, tenta TCP Redis (só se REDIS_URL definido)
-        try:
-            import redis
-            # Suporte a REDIS_URL do ambiente - só tenta se explicitamente configurado
-            redis_url = os.getenv('REDIS_URL')
-            if redis_url:
-                self.redis = redis.from_url(redis_url)
-                # Test connection
-                self.redis.ping()
-                self.available = True
-                self.use_upstash = False
-                logger.info(f"TCP Redis connected: {redis_url}")
-            else:
-                # Em produção, não tenta localhost automaticamente
-                logger.info("No REDIS_URL configured - Redis disabled")
+        if REDIS_AVAILABLE:
+            try:
+                # Suporte a REDIS_URL do ambiente - só tenta se explicitamente configurado
+                redis_url = os.getenv('REDIS_URL')
+                if redis_url:
+                    self.redis = redis.from_url(redis_url)
+                    # Test connection
+                    self.redis.ping()
+                    self.available = True
+                    self.use_upstash = False
+                    logger.info(f"TCP Redis connected: {redis_url}")
+                else:
+                    # Em produção, não tenta localhost automaticamente
+                    logger.info("No REDIS_URL configured - Redis disabled")
+                    self.available = False
+            except Exception as e:
                 self.available = False
-                return
-        except Exception as e:
+                logger.warning(f"Redis unavailable: {str(e)}. Using fallback mode.")
+        else:
             self.available = False
-            logger.warning(f"Redis unavailable ({self.host}:{self.port}): {str(e)}. Using fallback mode.")
+            logger.info("Redis library not available - using fallback mode")
 
     def get(self, key: str) -> Optional[str]:
         """Get com fallback"""
