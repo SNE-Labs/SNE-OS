@@ -16,18 +16,18 @@ import { Pricing } from './pages/Pricing';
 import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
 
-// Mobile Pages (lazy loaded para performance)
-const MobileRadar = lazy(() => import('./pages/mobile/Radar').then(m => ({ default: m.MobileRadar })));
-const MobileVault = lazy(() => import('./pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
-const MobilePass = lazy(() => import('./pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
-
 // Desktop Pages (lazy loaded para performance)
 const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
 const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
 const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 
-// Mobile Layout Components (lazy loaded)
-const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
+// Mobile components (lazy loaded only when needed)
+const getMobileComponents = () => ({
+  MobileRadar: lazy(() => import('./pages/mobile/Radar').then(m => ({ default: m.MobileRadar }))),
+  MobileVault: lazy(() => import('./pages/mobile/Vault').then(m => ({ default: m.MobileVault }))),
+  MobilePass: lazy(() => import('./pages/mobile/Pass').then(m => ({ default: m.MobilePass }))),
+  MobileLayout: lazy(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })))
+});
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
@@ -36,23 +36,35 @@ import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
 function AppContent() {
   // Simplified platform detection without complex hooks
   const [isMobile, setIsMobile] = React.useState(false);
+  const [MobileComponents, setMobileComponents] = React.useState<any>(null);
 
   React.useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+
+      // Lazy load mobile components only when mobile is detected
+      if (mobile && !MobileComponents) {
+        getMobileComponents().then(setMobileComponents);
+      }
     };
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [MobileComponents]);
 
-  if (isMobile) {
+  if (isMobile && MobileComponents) {
+    const { MobileLayout } = MobileComponents;
     return (
       <Suspense fallback={<MobileSkeleton />}>
         <MobileLayout />
       </Suspense>
     );
+  }
+
+  if (isMobile && !MobileComponents) {
+    return <MobileSkeleton />;
   }
 
   // Desktop Layout (existing)
