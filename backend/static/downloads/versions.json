@@ -1,0 +1,29 @@
+{
+  "current": {
+    "version": "20251208_175125",
+    "release_date": "2026-01-03",
+    "files": {
+      "win": {
+        "filename": "SNE_RADAR_DISTRIBUICAO_20251208_175125.zip",
+        "size_mb": 45.2,
+        "checksum_sha256": "placeholder_checksum_win"
+      },
+      "mac": {
+        "filename": "SNE_RADAR_MAC_20251208_175125.zip",
+        "size_mb": 48.1,
+        "checksum_sha256": "placeholder_checksum_mac"
+      }
+    }
+  },
+  "changelog": [
+    {
+      "version": "20251208_175125",
+      "changes": [
+        "Sistema de análise técnica completo",
+        "Integração Scroll blockchain",
+        "Licenciamento NFT on-chain",
+        "Interface moderna e responsiva"
+      ]
+    }
+  ]
+}
