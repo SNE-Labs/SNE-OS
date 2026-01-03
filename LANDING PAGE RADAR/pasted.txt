@@ -1,0 +1,449 @@
+Excelente! Você encontrou 6 pegadinhas críticas que realmente impactariam produção. Suas observações estão tecnicamente precisas e mostram profundo conhecimento de detalhes de implementação. Vou detalhar cada uma e propor soluções robustas:
+
+🔍 As 6 "Pegatinhas" Críticas
+1. P-256 (WebCrypto) vs secp256k1 (Ethereum)
+Problema:
+
+// Estamos gerando P-256 (WebCrypto) mas backend precisa validar
+deviceKeyPair = await crypto.subtle.generateKey({
+  name: 'ECDSA',
+  namedCurve: 'P-256'  // WebCrypto standard
+})
+Solução Correta:
+
+// frontend/src/services/deviceCrypto.ts
+export class DeviceCrypto {
+  static async initializeDevice(): Promise<{publicKey: string, privateKey: string}> {
+    // Para compatibilidade com Ethereum, podemos usar两种方案:
+    
+    // Opção A: P-256 + backend valida P-256 (mais simples)
+    const p256KeyPair = await crypto.subtle.generateKey(
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false, // NON-EXTRACTABLE para segurança
+      ['sign']
+    );
+    
+    // Opção B: usar biblioteca que suporta secp256k1 em browser
+    // import secp256k1 from 'secp256k1';
+    // const privateKey = secp256k1.utils.randomPrivateKey();
+    // const publicKey = secp256k1.getPublicKey(privateKey, true);
+    
+    // Recomendo Opção A + backend específico para device keys
+    return {
+      publicKey: await this.exportCompressedPublicKey(p256KeyPair.publicKey),
+      privateKey: 'NON-EXTRACTABLE' // Não armazenar/exportar
+    };
+  }
+}
+# backend/app/services/device_crypto_validation.py
+class DeviceCryptoValidator:
+    """Validador específico para P-256 device keys"""
+    
+    @staticmethod
+    def verify_p256_signature(public_key_pem: str, message: str, signature: bytes) -> bool:
+        """
+        Verificar assinatura ECDSA P-256 (diferente do secp256k1 do Ethereum)
+        """
+        try:
+            # Usar cryptography library para P-256
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.asymmetric import ec
+            from cryptography.hazmat.primitives.serialization import load_pem_public_key
+            from cryptography.exceptions import InvalidSignature
+            
+            public_key = load_pem_public_key(public_key_pem.encode())
+            
+            # Verificar assinatura P-256
+            public_key.verify(
+                signature,
+                message.encode(),
+                ec.ECDSA(hashes.SHA256())
+            )
+            
+            return True
+            
+        except InvalidSignature:
+            return False
+        except Exception as e:
+            logger.error(f"Error verifying P-256 signature: {e}")
+            return False
+2. extractable: true = Fácil Roubar
+Problema:
+
+// PERIGO: chave exportável pode ser roubada
+const keyPair = await crypto.subtle.generateKey({
+  name: 'ECDSA',
+  namedCurve: 'P-256'
+}, true, // EXTRACTABLE = INSEGURO
+['sign']);
+Solução Segura:
+
+// frontend/src/services/secureDeviceStorage.ts
+export class SecureDeviceStorage {
+  private static readonly DEVICE_KEY_NAME = 'sne_radar_device_key';
+  
+  static async generateAndStoreSecurely(): Promise<string> {
+    // Gerar chave NÃO-EXTRAÍVEL
+    const keyPair = await crypto.subtle.generateKey(
+      {
+        name: 'ECDSA',
+        namedCurve: 'P-256'
+      },
+      false, // NÃO EXTRAÍVEL - CHAVE SEGURA
+      ['sign']
+    );
+    
+    // Armazenar de forma segura (não exportável)
+    if (window.crypto && window.crypto.subtle) {
+      // Browser: usar IndexedDB com storage seguro
+      await this.storeInSecureStorage(keyPair);
+      return await this.getPublicKey(keyPair);
+    } else if (typeof window !== 'undefined' && window.require) {
+      // Electron: usar Keychain/DPAPI nativo
+      const { safeStorage } = window.require('electron');
+      const keyData = await this.getKeyData(keyPair);
+      safeStorage.encryptString(JSON.stringify(keyData));
+    }
+    
+    throw new Error('Unsupported environment for secure key storage');
+  }
+  
+  private static async storeInSecureStorage(keyPair: CryptoKeyPair): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('SNERadarDevice', 1);
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        const store = db.createObjectStore('deviceKeys', { keyPath: 'id' });
+        store.createIndex('createdAt', 'createdAt');
+      };
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction(['deviceKeys'], 'readwrite');
+        const store = transaction.objectStore('deviceKeys');
+        
+        // Armazenar referência não-exportável
+        store.put({
+          id: this.DEVICE_KEY_NAME,
+          publicKey: keyPair.publicKey,
+          privateKey: keyPair.privateKey, // Referência não-exportável
+          createdAt: new Date()
+        });
+        
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+  }
+  
+  static async signWithStoredKey(challenge: string): Promise<string> {
+    // Assinar usando chave não-exportável
+    const keyPair = await this.getStoredKey();
+    if (!keyPair) throw new Error('Device not initialized');
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(challenge);
+    
+    const signature = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      keyPair.privateKey, // Chave não-exportável
+      data
+    );
+    
+    return this.arrayBufferToHex(signature);
+  }
+}
+3. totalSupply() Não Existe em ERC721
+Problema:
+
+// ERRADO: ERC721 padrão não tem totalSupply()
+uint256 tokenId = totalSupply() + 1;
+Solução Correta:
+
+contract SNELicenseRegistryV2 is ERC721, Ownable {
+    using Counters for Counters.Counter;
+    
+    // Counter para tokenId
+    Counters.Counter private _tokenIdCounter;
+    
+    function purchaseLicense(LicenseTier tier, Platform platform) external {
+        uint256 price = tierPrices[tier];
+        require(price > 0, "Invalid tier");
+        
+        paymentToken.transferFrom(msg.sender, address(this), price);
+        
+        // USAR COUNTER CORRETO
+        uint256 tokenId = _tokenIdCounter.current(); // Usar counter, não totalSupply
+        _tokenIdCounter.increment(); // Incrementar counter
+        _mint(msg.sender, tokenId); // Mint com tokenId correto
+        
+        // Resto do código...
+    }
+}
+4. Redis setObject Direto (Precisa Serialização)
+Problema:
+
+# ERRADO: Redis não aceita dict diretamente
+redis_client.setex(f'download_token:{token}', 300, {
+    'token_id': token_id,
+    'device_id': device.id
+})
+Solução Robusta:
+
+# backend/app/services/redis_serialization.py
+import json
+import pickle
+from typing import Any, Dict, Optional
+
+class RedisSecureSerializer:
+    """Serialização segura para Redis com validação"""
+    
+    @staticmethod
+    def serialize_for_redis(data: Any, use_json: bool = True) -> str:
+        """
+        Serializar dados para Redis com validação
+        """
+        if use_json:
+            try:
+                serialized = json.dumps(data, separators=(',', ':'), ensure_ascii=False)
+                # Validar que pode ser deserializado
+                json.loads(serialized)
+                return serialized
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"JSON serialization failed: {e}")
+        else:
+            # Fallback para pickle (mais rápido, mas menos legível)
+            return pickle.dumps(data).hex()
+    
+    @staticmethod
+    def deserialize_from_redis(data: str, expect_json: bool = True) -> Any:
+        """
+        Deserializar dados do Redis com validação
+        """
+        if expect_json:
+            try:
+                result = json.loads(data)
+                if not isinstance(result, dict):
+                    raise ValueError("Expected dict, got other type")
+                return result
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"JSON deserialization failed: {e}")
+        else:
+            try:
+                return pickle.loads(bytes.fromhex(data))
+            except Exception as e:
+                raise ValueError(f"Pickle deserialization failed: {e}")
+
+# Uso correto:
+token_data = {
+    'token_id': token_id,
+    'device_id': device.id,
+    'expires_at': (datetime.utcnow() + timedelta(minutes=5)).isoformat()
+}
+
+redis_client.setex(
+    f'download_token:{one_time_token}',
+    300,
+    RedisSecureSerializer.serialize_for_redis(token_data)  # Serialização segura
+)
+5. CSRF/Sessão SIWE
+Problema:
+
+# INSEGURO: sem CSRF protection para SIWE sessions
+@siwe_required
+def get_download_url():
+    # Vulnerável a CSRF attacks
+Solução Segura:
+
+# backend/app/middleware/csrf_siwe.py
+from flask import g, session, request
+from functools import wraps
+
+def siwe_required_with_csrf(f):
+    """
+    SIWE authentication com CSRF protection
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 1. Verificar SIWE session
+        if not session.get('address'):
+            return jsonify({'error': 'SIWE authentication required'}), 401
+        
+        # 2. CSRF protection para endpoints state-changing
+        if request.method in ['POST', 'PUT', 'DELETE']:
+            csrf_token = request.headers.get('X-CSRF-Token')
+            expected_token = session.get('csrf_token')
+            
+            if not csrf_token or csrf_token != expected_token:
+                return jsonify({'error': 'Invalid CSRF token'}), 403
+        
+        # 3. VerificarSameSite/Domain binding
+        siwe_domain = os.getenv('SIWE_DOMAIN', 'radar.snelabs.space')
+        request_domain = request.host.split(':')[0]
+        
+        if not request_domain.endswith(siwe_domain.replace('radar.', '')):
+            return jsonify({'error': 'Domain mismatch'}), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Gerar CSRF token
+@app.before_request
+def generate_csrf_token():
+    if not session.get('csrf_token'):
+        session['csrf_token'] = secrets.token_hex(16)
+    
+    g.csrf_token = session['csrf_token']
+
+# Frontend CSRF handling
+// frontend/src/hooks/useCSRF.ts
+export const useCSRF = () => {
+  const getCSRFToken = () => {
+    // Meta tag ou cookie
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+           getCookie('csrf_token')
+  }
+  
+  const secureFetch = async (url: string, options: RequestInit = {}) => {
+    const csrfToken = getCSRFToken()
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+        ...options.headers
+      }
+    })
+  }
+  
+  return { secureFetch, getCSRFToken }
+}
+6. Token Extraction Robusto
+Problema:
+
+// FRÁGIL: mistura conceitos e pode falhar
+useContractEvent({
+  fromBlock: 'latest', // Não funciona para transações passadas
+  listener: (logs) => { /* pode não receber */ }
+})
+Solução Correta:
+
+// frontend/src/hooks/useRobustTokenExtraction.ts
+export const useRobustTokenExtraction = (txHash: string) => {
+  const [tokenId, setTokenId] = useState<string | null>(null)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const extractTokenFromReceipt = async () => {
+      if (!txHash) return
+      
+      setIsExtracting(true)
+      setError(null)
+      
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(
+          process.env.REACT_APP_SCROLL_RPC_URL
+        )
+        
+        // Método 1: Transaction receipt + ABI parsing (mais robusto)
+        const receipt = await provider.getTransactionReceipt(txHash)
+        
+        if (!receipt) {
+          throw new Error('Transaction not found')
+        }
+        
+        if (!receipt.status || receipt.status !== 1) {
+          throw new Error('Transaction failed')
+        }
+        
+        // Parsear logs usando ABI
+        const iface = new ethers.utils.Interface(SNELicenseRegistryV2_ABI)
+        let foundTokenId = null
+        
+        for (const log of receipt.logs) {
+          try {
+            const parsedLog = iface.parseLog(log)
+            
+            if (parsedLog.name === 'LicensePurchased') {
+              foundTokenId = parsedLog.args.tokenId?.toString()
+              break
+            }
+          } catch (parseError) {
+            // Ignorar logs que não correspondem ao nosso contrato
+            continue
+          }
+        }
+        
+        if (!foundTokenId) {
+          // Método 2: Fallback - buscar evento diretamente
+          const events = await provider.getLogs({
+            address: process.env.REACT_APP_LICENSE_CONTRACT_ADDRESS,
+            topics: [
+              ethers.utils.id('LicensePurchased(address,uint256,uint8,uint256)'),
+              null, // any user
+              null  // any tokenId
+            ],
+            fromBlock: receipt.blockNumber - 1,
+            toBlock: receipt.blockNumber
+          })
+          
+          for (const event of events) {
+            try {
+              const parsedEvent = iface.parseLog(event)
+              if (parsedEvent.args.user?.toLowerCase() === receipt.from?.toLowerCase()) {
+                foundTokenId = parsedEvent.args.tokenId?.toString()
+                break
+              }
+            } catch (error) {
+              continue
+            }
+          }
+        }
+        
+        if (!foundTokenId) {
+          throw new Error('LicensePurchased event not found in transaction')
+        }
+        
+        setTokenId(foundTokenId)
+        
+      } catch (err) {
+        console.error('Token extraction error:', err)
+        setError(err.message || 'Failed to extract token ID')
+      } finally {
+        setIsExtracting(false)
+      }
+    }
+    
+    extractTokenFromReceipt()
+  }, [txHash])
+  
+  return { tokenId, isExtracting, error }
+}
+🎯 Arquitetura Final Segura
+Diagrama de Segurança:
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ Browser (P-256)│    │ SIWE Session     │    │ One-Time Token  │
+│ Non-extractable│◄──▶│ CSRF Protected   │◄──▶│ Single Use      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ IndexedDB      │    │ Redis Json       │    │ File Streaming  │
+│ Secure Storage  │    │ Serialization   │    │ Browser Direct  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+Validação em Camadas:
+Criptográfica: P-256 keys não-exportáveis
+Sessão: SIWE + CSRF protection
+Temporal: One-time tokens curtos (5min)
+Audit: Full transaction log
+Rate: Anti-abuso por device/IP
+🤔 Qual Abordagem Você Prefere?
+P-256 vs secp256k1 - Backend específico ou usar secp256k1 em browser?
+Storage - IndexedDB vs Keychain nativo para desktop?
+Contract Counter - OpenZeppelin Counters vs custom?
+Token Extraction - receipt parsing ou event filtering?
+CSRF - Header-based ou double-submit cookie?
+Sua avaliação dessas soluções? Alguma outra "pegadinha" que você identifica?
