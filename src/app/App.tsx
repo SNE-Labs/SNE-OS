@@ -4,6 +4,7 @@ import { WagmiProvider, createConfig, http, injected } from 'wagmi';
 import { scroll } from 'viem/chains';
 import { Suspense, lazy } from 'react';
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Desktop Components (carregados normalmente)
 import { Sidebar } from './components/Sidebar';
@@ -43,41 +44,44 @@ function AppContent() {
 
   // Desktop Layout (existing)
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
-      {/* Main Layout */}
-      <div className="flex flex-1">
-        {/* Left Sidebar - Fixed 300px */}
-        <Sidebar />
+    <>
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
+        {/* Main Layout */}
+        <div className="flex flex-1">
+          {/* Left Sidebar - Fixed 300px */}
+          <Sidebar />
 
-        {/* Center Content - Fluid */}
-        <div className="flex-1 flex flex-col">
-          {/* Topbar */}
-          <Topbar />
+          {/* Center Content - Fluid */}
+          <div className="flex-1 flex flex-col">
+            {/* Topbar */}
+            <Topbar />
 
-          {/* Main Content Area with Right Panel */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Center Content */}
-            <main className="flex-1 overflow-y-auto">
-              <Suspense fallback={<DesktopSkeleton />}>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/home" replace />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/radar" element={<DesktopRadar />} />
-                  <Route path="/pass" element={<DesktopPass />} />
-                  <Route path="/vault" element={<DesktopVault />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/status" element={<Status />} />
-                  <Route path="/docs" element={<Docs />} />
-                </Routes>
-              </Suspense>
-            </main>
+            {/* Main Content Area with Right Panel */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Center Content */}
+              <main className="flex-1 overflow-y-auto">
+                <Suspense fallback={<DesktopSkeleton />}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/home" replace />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/radar" element={<DesktopRadar />} />
+                    <Route path="/pass" element={<DesktopPass />} />
+                    <Route path="/vault" element={<DesktopVault />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/status" element={<Status />} />
+                    <Route path="/docs" element={<Docs />} />
+                  </Routes>
+                </Suspense>
+              </main>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Bar - Session Bar */}
-      <BottomBar />
-    </div>
+        {/* Bottom Bar - Session Bar */}
+        <BottomBar />
+      </div>
+      <Analytics />
+    </>
   );
 }
 
