@@ -30,11 +30,6 @@ function AppContent() {
     setIsConnectModalOpen(false);
   };
 
-  // Render AuthDesktop outside the main layout
-  if (location.pathname === '/auth/desktop') {
-    return <AuthDesktop />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
       {/* Main Layout */}
@@ -66,6 +61,7 @@ function AppContent() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/status" element={<Status />} />
                 <Route path="/docs" element={<Docs />} />
+                <Route path="/auth/desktop" element={<AuthDesktop />} />
               </Routes>
             </main>
           </div>
