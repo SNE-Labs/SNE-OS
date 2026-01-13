@@ -4,8 +4,13 @@ import Dashboard from '../pages/Dashboard'
 import Chart from '../pages/Chart'
 import Analysis from '../pages/Analysis'
 import Pricing from '../pages/Pricing'
+import AuthDesktop from '../pages/AuthDesktop'
 
 export const router = createBrowserRouter([
+  {
+    path: '/auth/desktop',
+    element: <AuthDesktop />,
+  },
   {
     path: '/',
     element: <Layout />,
@@ -33,4 +38,5 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
 

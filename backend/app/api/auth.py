@@ -301,6 +301,144 @@ def logout():
     session.clear()
     return response
 
+
+# ============================================
+# Desktop Auth - Deep Link Code Exchange
+# ============================================
+
+def _get_auth_token():
+    """Helper para capturar token (cookie first, fallback para Bearer)"""
+    token = request.cookies.get('sne_token')
+    if token:
+        return token
+
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        return auth_header.replace('Bearer ', '', 1).strip()
+
+    return None
+
+
+@auth_bp.route('/api/auth/desktop-code', methods=['POST'])
+def generate_desktop_code():
+    """
+    Gera um código de autorização para transferir sessão do Browser -> Desktop.
+    Requer usuário autenticado (JWT válido).
+    Armazena no Redis com TTL curto e uso único.
+    """
+    import json
+    
+    token = _get_auth_token()
+    if not token:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        payload = jwt.decode(
+            token,
+            os.getenv('SECRET_KEY'),
+            algorithms=['HS256'],
+            options={'require': ['exp', 'iat']}
+        )
+        address = payload.get('address')
+        tier = payload.get('tier', 'free')
+        if not address:
+            return jsonify({'error': 'Invalid token payload (missing address)'}), 401
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    body = request.get_json(silent=True) or {}
+    incoming_state = body.get('state')  # state vindo do desktop
+    state = incoming_state or secrets.token_hex(8)
+
+    # gera code curto e seguro
+    code = secrets.token_urlsafe(12)  # ~16 chars
+
+    code_key = f'desktop_code:{code}'
+    redis_client.setex(
+        code_key,
+        60,  # TTL 60s
+        json.dumps({
+            'address': address,
+            'tier': tier,
+            'state': state,
+            'iat': int(datetime.utcnow().timestamp())
+        })
+    )
+
+    return jsonify({
+        'code': code,
+        'state': state,
+        'expires_in': 60
+    }), 200
+
+
+@auth_bp.route('/api/auth/exchange', methods=['POST'])
+def exchange_code():
+    """
+    Troca o code (uso único) por um JWT de Desktop (7 dias).
+    Chamado pelo Desktop App após receber o deep link.
+    """
+    import json
+    
+    data = request.get_json(silent=True) or {}
+    code = data.get('code')
+    state = data.get('state')
+
+    if not code:
+        return jsonify({'error': 'Code required'}), 400
+
+    code_key = f'desktop_code:{code}'
+    stored = redis_client.get(code_key)
+
+    if not stored:
+        return jsonify({'error': 'Invalid or expired code'}), 401
+
+    try:
+        code_data = json.loads(stored)
+    except Exception:
+        redis_client.delete(code_key)
+        return jsonify({'error': 'Corrupted code payload'}), 401
+
+    # Proteção CSRF/state
+    if not state:
+        return jsonify({'error': 'State required'}), 400
+
+    if state != code_data.get('state'):
+        return jsonify({'error': 'State mismatch'}), 401
+
+    # uso único
+    redis_client.delete(code_key)
+
+    now = datetime.utcnow()
+    desktop_payload = {
+        'address': code_data['address'],
+        'tier': code_data.get('tier', 'free'),
+        'client': 'desktop',
+        'iat': now,
+        'exp': now + timedelta(days=7)
+    }
+
+    access_token = jwt.encode(
+        desktop_payload,
+        os.getenv('SECRET_KEY'),
+        algorithm='HS256'
+    )
+
+    # PyJWT pode retornar bytes em versões antigas
+    if isinstance(access_token, bytes):
+        access_token = access_token.decode('utf-8')
+
+    return jsonify({
+        'access_token': access_token,
+        'token_type': 'Bearer',
+        'expires_in': 7 * 24 * 3600,
+        'address': code_data['address'],
+        'tier': code_data.get('tier', 'free')
+    }), 200
+
+
 # ============================================
 # SNE OS - Endpoints de Sessão e Entitlements
 # ============================================
