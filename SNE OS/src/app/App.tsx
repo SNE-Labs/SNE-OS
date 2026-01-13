@@ -53,6 +53,7 @@ function AppContent() {
             {/* Center Content */}
             <main className="flex-1 overflow-y-auto">
               <Routes>
+                <Route path="/auth" element={<AuthDesktop />} />
                 <Route path="/auth/desktop" element={<AuthDesktop />} />
                 <Route path="/" element={<Navigate to="/home" replace />} />
                 <Route path="/home" element={<Home />} />
