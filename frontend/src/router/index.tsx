@@ -31,11 +31,11 @@ export const router = createBrowserRouter([
         path: 'pricing',
         element: <Pricing />,
       },
-      {
-        path: 'auth/desktop',
-        element: <AuthDesktop />,
-      },
     ],
+  },
+  {
+    path: '/auth',
+    element: <AuthDesktop />,
   },
 ])
 
