@@ -8,10 +8,6 @@ import AuthDesktop from '../pages/AuthDesktop'
 
 export const router = createBrowserRouter([
   {
-    path: '/auth/desktop',
-    element: <AuthDesktop />,
-  },
-  {
     path: '/',
     element: <Layout />,
     children: [
@@ -34,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: 'pricing',
         element: <Pricing />,
+      },
+      {
+        path: 'auth/desktop',
+        element: <AuthDesktop />,
       },
     ],
   },
