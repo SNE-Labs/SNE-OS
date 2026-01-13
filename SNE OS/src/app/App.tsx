@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -10,11 +10,13 @@ import { Vault } from './pages/Vault';
 import { Pricing } from './pages/Pricing';
 import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
+import { AuthDesktop } from './pages/AuthDesktop';
 import { ConnectWalletModal } from './components/ConnectWalletModal';
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
@@ -28,58 +30,70 @@ export default function App() {
     setIsConnectModalOpen(false);
   };
 
+  // Render AuthDesktop outside the main layout
+  if (location.pathname === '/auth/desktop') {
+    return <AuthDesktop />;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
+      {/* Main Layout */}
+      <div className="flex flex-1">
+        {/* Left Sidebar - Fixed 300px */}
+        <Sidebar />
+
+        {/* Center Content - Fluid */}
+        <div className="flex-1 flex flex-col">
+          {/* Topbar */}
+          <Topbar
+            isWalletConnected={isWalletConnected}
+            walletAddress={walletAddress}
+            onConnectWallet={() => setIsConnectModalOpen(true)}
+            currentApp={currentApp}
+            onAppChange={setCurrentApp}
+          />
+
+          {/* Main Content Area with Right Panel */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Center Content */}
+            <main className="flex-1 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/radar" element={<Radar isWalletConnected={isWalletConnected} />} />
+                <Route path="/pass" element={<Pass isWalletConnected={isWalletConnected} walletAddress={walletAddress} />} />
+                <Route path="/vault" element={<Vault />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/status" element={<Status />} />
+                <Route path="/docs" element={<Docs />} />
+              </Routes>
+            </main>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar - Session Bar */}
+      <BottomBar isWalletConnected={isWalletConnected} walletAddress={walletAddress} />
+
+      {/* Connect Wallet Modal */}
+      <ConnectWalletModal
+        isOpen={isConnectModalOpen}
+        onClose={() => setIsConnectModalOpen(false)}
+        onConnect={handleConnectWallet}
+      />
+    </div>
+  );
+}
+
+export default function App() {
   return (
     <AuthProvider>
       <EntitlementsProvider>
         <BrowserRouter>
-          <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
-            {/* Main Layout */}
-            <div className="flex flex-1">
-              {/* Left Sidebar - Fixed 300px */}
-              <Sidebar />
-
-              {/* Center Content - Fluid */}
-              <div className="flex-1 flex flex-col">
-                {/* Topbar */}
-                <Topbar
-                  isWalletConnected={isWalletConnected}
-                  walletAddress={walletAddress}
-                  onConnectWallet={() => setIsConnectModalOpen(true)}
-                  currentApp={currentApp}
-                  onAppChange={setCurrentApp}
-                />
-
-                {/* Main Content Area with Right Panel */}
-                <div className="flex flex-1 overflow-hidden">
-                  {/* Center Content */}
-                  <main className="flex-1 overflow-y-auto">
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/home" replace />} />
-                      <Route path="/home" element={<Home />} />
-                      <Route path="/radar" element={<Radar isWalletConnected={isWalletConnected} />} />
-                      <Route path="/pass" element={<Pass isWalletConnected={isWalletConnected} walletAddress={walletAddress} />} />
-                      <Route path="/vault" element={<Vault />} />
-                      <Route path="/pricing" element={<Pricing />} />
-                      <Route path="/status" element={<Status />} />
-                      <Route path="/docs" element={<Docs />} />
-                    </Routes>
-                  </main>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Bar - Session Bar */}
-            <BottomBar isWalletConnected={isWalletConnected} walletAddress={walletAddress} />
-
-            {/* Connect Wallet Modal */}
-            <ConnectWalletModal
-              isOpen={isConnectModalOpen}
-              onClose={() => setIsConnectModalOpen(false)}
-              onConnect={handleConnectWallet}
-            />
-          </div>
+          <AppContent />
         </BrowserRouter>
       </EntitlementsProvider>
     </AuthProvider>
   );
 }
+
