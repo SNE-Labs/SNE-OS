@@ -66,11 +66,12 @@ export function AuthDesktop() {
 
     return (
         <div style={{
-            minHeight: '100vh',
+            height: '100%',
+            width: '100%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#000'
+            padding: '2rem'
         }}>
             <div style={{
                 backgroundColor: '#18181b',
