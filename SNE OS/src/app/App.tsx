@@ -53,6 +53,7 @@ function AppContent() {
             {/* Center Content */}
             <main className="flex-1 overflow-y-auto">
               <Routes>
+                <Route path="/auth/desktop" element={<AuthDesktop />} />
                 <Route path="/" element={<Navigate to="/home" replace />} />
                 <Route path="/home" element={<Home />} />
                 <Route path="/radar" element={<Radar isWalletConnected={isWalletConnected} />} />
@@ -61,7 +62,6 @@ function AppContent() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/status" element={<Status />} />
                 <Route path="/docs" element={<Docs />} />
-                <Route path="/auth/desktop" element={<AuthDesktop />} />
               </Routes>
             </main>
           </div>
