@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://snelabs.space/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1

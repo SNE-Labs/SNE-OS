@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, session
 from datetime import datetime, timedelta
 import os
 import secrets
+import json
 import jwt
 import redis
 from web3 import Web3
@@ -39,6 +40,9 @@ def get_nonce():
     def _get_nonce():
         data = request.json
         address = data.get('address')
+        machine_id = data.get('machine_id')  # Desktop auth
+        state = data.get('state')  # Desktop auth
+        app = data.get('app')  # 'desktop' or None (web)
         
         if not address:
             return jsonify({'error': 'Address required'}), 400
@@ -64,6 +68,21 @@ def get_nonce():
             address.lower()
         )
         
+        # ✅ Desktop auth: armazenar state com TTL (anti-replay protection)
+        if app == 'desktop' and machine_id and state:
+            import json
+            state_key = f'auth:state:{state}'
+            redis_client.setex(
+                state_key,
+                600,  # 10 min TTL
+                json.dumps({
+                    'machine_id': machine_id,
+                    'address': address.lower(),
+                    'nonce': nonce,
+                    'created_at': datetime.utcnow().isoformat()
+                })
+            )
+        
         return jsonify({'nonce': nonce})
     
     return _get_nonce()
@@ -87,6 +106,9 @@ def siwe_login():
         data = request.json
         message = data.get('message')
         signature = data.get('signature')
+        machine_id = data.get('machine_id')  # Desktop auth
+        state = data.get('state')  # Desktop auth
+        app = data.get('app')  # 'desktop' or None (web)
         
         if not message or not signature:
             return jsonify({'error': 'Message and signature required'}), 400
@@ -158,7 +180,63 @@ def siwe_login():
                 license_info['tier']
             )
             
-            # ✅ 8. Gerar JWT token (sessão curta: 1 hora)
+            # ✅ DESKTOP AUTH: Gerar code one-time em vez de token
+            if app == 'desktop':
+                import json
+                
+                # Validar state
+                if not state or not machine_id:
+                    return jsonify({'error': 'Desktop auth requires state and machine_id'}), 400
+                
+                state_key = f'auth:state:{state}'
+                state_data = redis_client.get(state_key)
+                
+                if not state_data:
+                    return jsonify({'error': 'STATE_EXPIRED'}), 400
+                
+                try:
+                    state_obj = json.loads(state_data)
+                except:
+                    return jsonify({'error': 'Invalid state data'}), 400
+                
+                # Validar machine_id matches
+                if state_obj.get('machine_id') != machine_id:
+                    return jsonify({'error': 'INVALID_STATE'}), 400
+                
+                # Validar nonce matches (extra security)
+                if state_obj.get('nonce') != parsed_temp.nonce:
+                    return jsonify({'error': 'Nonce mismatch'}), 401
+                
+                # Invalidar state (single-use, anti-replay)
+                redis_client.delete(state_key)
+                
+                # Gerar ONE-TIME CODE (60 sec TTL)
+                code = secrets.token_urlsafe(32)
+                code_key = f'desktop_code:{code}'
+                redis_client.setex(
+                    code_key,
+                    60,  # 60 sec TTL
+                    json.dumps({
+                        'address': address,
+                        'tier': license_info['tier'],
+                        'state': state,  # Para validação no exchange
+                        'iat': datetime.utcnow().isoformat()
+                    })
+                )
+                
+                # Logging
+                duration = time.time() - start_time
+                log_siwe_attempt(address, success=True, tier=license_info['tier'])
+                login_success.labels(tier=license_info['tier']).inc()
+                siwe_duration.observe(duration)
+                
+                # Retornar code (não token)
+                return jsonify({
+                    'code': code,
+                    'tier': license_info['tier']
+                })
+            
+            # ✅ WEB AUTH: Gerar JWT token (sessão curta: 1 hora)
             token = jwt.encode({
                 'address': address,
                 'tier': license_info['tier'],
@@ -384,7 +462,7 @@ def exchange_code():
     
     data = request.get_json(silent=True) or {}
     code = data.get('code')
-    state = data.get('state')
+    machine_id = data.get('machine_id')  # Desktop envia machine_id
 
     if not code:
         return jsonify({'error': 'Code required'}), 400
@@ -401,21 +479,20 @@ def exchange_code():
         redis_client.delete(code_key)
         return jsonify({'error': 'Corrupted code payload'}), 401
 
-    # Proteção CSRF/state
-    if not state:
-        return jsonify({'error': 'State required'}), 400
-
-    if state != code_data.get('state'):
-        return jsonify({'error': 'State mismatch'}), 401
+    # Proteção CSRF/state (opcional para desktop, mas mantém compatibilidade)
+    # Desktop não envia state no exchange, apenas code + machine_id
 
     # uso único
     redis_client.delete(code_key)
 
     now = datetime.utcnow()
+    
+    # Access token (7 dias para desktop)
     desktop_payload = {
         'address': code_data['address'],
         'tier': code_data.get('tier', 'free'),
         'client': 'desktop',
+        'machine_id': machine_id,  # Bind to machine
         'iat': now,
         'exp': now + timedelta(days=7)
     }
@@ -425,16 +502,34 @@ def exchange_code():
         os.getenv('SECRET_KEY'),
         algorithm='HS256'
     )
+    
+    # Refresh token (30 dias para desktop)
+    refresh_payload = {
+        'address': code_data['address'],
+        'type': 'refresh',
+        'client': 'desktop',
+        'machine_id': machine_id,
+        'iat': now,
+        'exp': now + timedelta(days=30)
+    }
+    
+    refresh_token = jwt.encode(
+        refresh_payload,
+        os.getenv('SECRET_KEY'),
+        algorithm='HS256'
+    )
 
     # PyJWT pode retornar bytes em versões antigas
     if isinstance(access_token, bytes):
         access_token = access_token.decode('utf-8')
+    if isinstance(refresh_token, bytes):
+        refresh_token = refresh_token.decode('utf-8')
 
     return jsonify({
         'access_token': access_token,
-        'token_type': 'Bearer',
-        'expires_in': 7 * 24 * 3600,
-        'address': code_data['address'],
+        'refresh_token': refresh_token,  # Desktop espera refresh_token
+        'expires': (now + timedelta(days=7)).isoformat(),  # Desktop espera expires
+        'wallet': code_data['address'],  # Desktop espera 'wallet' (não 'address')
         'tier': code_data.get('tier', 'free')
     }), 200
 

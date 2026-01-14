@@ -21,6 +21,9 @@ const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.
 const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
 const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 
+// Desktop Auth Page (lazy loaded, fullscreen outside main layout)
+const AuthDesktop = lazy(() => import('./pages/AuthDesktop').then(m => ({ default: m.AuthDesktop })));
+
 // Mobile components (lazy loaded only when needed)
 const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
 
@@ -99,6 +102,15 @@ function MobileSkeleton() {
   );
 }
 
+// Skeleton para auth (terminal style)
+function AuthSkeleton() {
+  return (
+    <div className="min-h-screen w-full bg-black flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default function App() {
   // Create QueryClient for React Query
   const queryClient = new QueryClient({
@@ -128,7 +140,17 @@ export default function App() {
         <AuthProvider>
           <EntitlementsProvider>
             <BrowserRouter>
-              <AppContent />
+              <Routes>
+                {/* Desktop Auth Route - Fullscreen outside main layout */}
+                <Route path="/auth" element={
+                  <Suspense fallback={<AuthSkeleton />}>
+                    <AuthDesktop />
+                  </Suspense>
+                } />
+
+                {/* Main App Routes */}
+                <Route path="/*" element={<AppContent />} />
+              </Routes>
             </BrowserRouter>
           </EntitlementsProvider>
         </AuthProvider>
