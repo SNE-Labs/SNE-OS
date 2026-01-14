@@ -2,7 +2,7 @@
 SNE Radar Backend - Flask + Socket.IO
 """
 import os
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
@@ -104,6 +104,13 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
+
+# ✅ CORREÇÃO CORS: Handle OPTIONS preflight requests
+@app.before_request
+def handle_preflight():
+    """Handle CORS preflight OPTIONS requests globally"""
+    if request.method == "OPTIONS":
+        return ("", 204)
 
 # Registrar blueprints
 from app.api.auth import auth_bp
