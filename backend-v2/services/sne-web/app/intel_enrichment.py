@@ -251,6 +251,50 @@ def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str
     return payload
 
 
+def _openai_responses_payload(model: str, instructions: str, user_input: str, max_output_tokens: int) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "model": model,
+        "instructions": instructions,
+        "input": [
+            {
+                "role": "user",
+                "content": user_input,
+            }
+        ],
+        "text": {
+            "format": {
+                "type": "json_object",
+            }
+        },
+        "max_output_tokens": max_output_tokens,
+    }
+    if model.startswith("gpt-5"):
+        payload["reasoning"] = {"effort": "low"}
+    return payload
+
+
+def _extract_response_text(data: Dict[str, Any]) -> str:
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    output = data.get("output")
+    if not isinstance(output, list):
+        return ""
+
+    chunks: List[str] = []
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []):
+            if not isinstance(content, dict):
+                continue
+            text = content.get("text")
+            if isinstance(text, str) and text.strip():
+                chunks.append(text)
+    return "\n".join(chunks).strip()
+
+
 class IntelEnricher:
     def __init__(self):
         self.provider = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic").strip().lower()
@@ -402,33 +446,26 @@ class IntelEnricher:
         }
         try:
             response = requests.post(
-                f"{self.base_url}/chat/completions",
+                f"{self.base_url}/responses",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 },
-                json=_openai_chat_payload(
+                json=_openai_responses_payload(
                     self.model,
-                    [
-                        {
-                            "role": "system",
-                            "content": (
-                                "Voce e o editor-chefe da Intelligence Layer do SNE OS. "
-                                "Produza JSON valido em pt-BR, sem markdown fora do campo body_markdown. "
-                                "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": json.dumps(prompt, ensure_ascii=False),
-                        },
-                    ],
+                    (
+                        "Voce e o editor-chefe da Intelligence Layer do SNE OS. "
+                        "Produza JSON valido em pt-BR, sem markdown fora do campo body_markdown. "
+                        "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
+                    ),
+                    json.dumps(prompt, ensure_ascii=False),
+                    1800 if editorial_kind == "dossier" else 900,
                 ),
                 timeout=25,
             )
             response.raise_for_status()
             data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            content = _extract_response_text(data)
             parsed = _extract_json(content)
             if not isinstance(parsed, dict):
                 logger.warning("Intel LLM post returned non-JSON payload for %s", item_id)

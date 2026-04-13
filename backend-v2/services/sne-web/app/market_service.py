@@ -65,6 +65,50 @@ def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str
     return payload
 
 
+def _openai_responses_payload(model: str, instructions: str, user_input: str) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "model": model,
+        "instructions": instructions,
+        "input": [
+            {
+                "role": "user",
+                "content": user_input,
+            }
+        ],
+        "text": {
+            "format": {
+                "type": "json_object",
+            }
+        },
+        "max_output_tokens": 900,
+    }
+    if model.startswith("gpt-5"):
+        payload["reasoning"] = {"effort": "low"}
+    return payload
+
+
+def _extract_response_text(data: Dict[str, Any]) -> str:
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    output = data.get("output")
+    if not isinstance(output, list):
+        return ""
+
+    chunks: List[str] = []
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []):
+            if not isinstance(content, dict):
+                continue
+            text = content.get("text")
+            if isinstance(text, str) and text.strip():
+                chunks.append(text)
+    return "\n".join(chunks).strip()
+
+
 def _market_regime(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not entries:
         return {"label": "sem dados", "tone": "pending", "avg_change_24h": 0.0}
@@ -174,33 +218,25 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
 
     try:
         response = requests.post(
-            f"{base_url}/chat/completions",
+            f"{base_url}/responses",
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json=_openai_chat_payload(
+            json=_openai_responses_payload(
                 model,
-                [
-                    {
-                        "role": "system",
-                        "content": (
-                            "Voce e um editor de mercado cripto multichain para a Home do SNE OS. "
-                            "Responda JSON valido em pt-BR com headline, summary_pt, watch_items e highlights. "
-                            "watch_items deve ser array de strings curtas. highlights deve ser array de objetos com symbol e note."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": json.dumps(market_payload, ensure_ascii=False),
-                    },
-                ],
+                (
+                    "Voce e um editor de mercado cripto multichain para a Home do SNE OS. "
+                    "Responda JSON valido em pt-BR com headline, summary_pt, watch_items e highlights. "
+                    "watch_items deve ser array de strings curtas. highlights deve ser array de objetos com symbol e note."
+                ),
+                json.dumps(market_payload, ensure_ascii=False),
             ),
             timeout=20,
         )
         response.raise_for_status()
         data = response.json()
-        content = data["choices"][0]["message"]["content"]
+        content = _extract_response_text(data)
         parsed = _extract_json(content)
         if not isinstance(parsed, dict):
             logger.warning("Market editorial returned non-JSON payload")
