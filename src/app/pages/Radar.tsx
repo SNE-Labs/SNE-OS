@@ -102,6 +102,9 @@ export function Radar() {
   const movers = overview?.universe ?? [];
   const featured = overview?.featured ?? null;
   const signal = overview?.signal ?? null;
+  const regime = overview?.market_regime;
+  const momentumRanking = overview?.rankings?.momentum ?? [];
+  const liquidityRanking = overview?.rankings?.liquidity ?? [];
   const executionState = overview?.execution ?? {
     label: hasAccess ? 'ready' : 'preview',
     tone: hasAccess ? ('active' as const) : ('warning' as const),
@@ -155,27 +158,6 @@ export function Radar() {
                     <p className="max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
                       {overview?.hero.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}
                     </p>
-
-                    <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-                      {(overview?.hero.metrics ?? []).map((metric) => (
-                        <div
-                          key={metric.label}
-                          className="rounded-2xl px-4 py-3"
-                          style={{
-                            backgroundColor: 'rgba(255,255,255,0.04)',
-                            borderWidth: '1px',
-                            borderColor: 'rgba(255,255,255,0.06)',
-                          }}
-                        >
-                          <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                            {metric.label}
-                          </div>
-                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                            {metric.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   <div
@@ -321,7 +303,7 @@ export function Radar() {
                       Par selecionado
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Contexto corrente para leitura tática.
+                      Leitura derivada do ativo que você escolheu no Radar.
                     </div>
                   </div>
                   <StatusBadge status={signalBadgeTone(signal?.signal)}>
@@ -330,16 +312,16 @@ export function Radar() {
                 </div>
 
                 <div className="mb-5 rounded-[24px] p-4" style={{ ...signalAccent(signal?.signal), borderWidth: '1px' }}>
-                  <div className="mb-2 text-xs uppercase tracking-[0.2em]">ativo em foco</div>
+                  <div className="mb-2 text-xs uppercase tracking-[0.2em]">ativo selecionado</div>
                   <div className="text-3xl font-semibold" style={{ color: 'inherit' }}>
                     {selectedMarket?.symbol ?? activeSymbol}
                   </div>
                   <div className="mt-2 text-sm" style={{ color: 'inherit' }}>
                     {signal?.signal === 'BUY'
-                      ? 'Fluxo positivo acima do limiar do Radar.'
+                      ? 'Você selecionou este par, e o snapshot atual aponta fluxo positivo acima do limiar do Radar.'
                       : signal?.signal === 'SELL'
-                        ? 'Pressão negativa material na janela observada.'
-                        : 'Mercado sem gatilho forte. Leitura segue neutra.'}
+                        ? 'Você selecionou este par, e o snapshot atual mostra pressão negativa material na janela observada.'
+                        : 'Você selecionou este par, e o Radar não encontrou gatilho forte na janela atual.'}
                   </div>
                 </div>
 
@@ -374,6 +356,113 @@ export function Radar() {
                     </div>
                     <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
                       {signal?.score ?? '--'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <div
+                    className="rounded-[24px] p-4"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          Regime de mercado
+                        </div>
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          Direção agregada do universo líquido do Radar.
+                        </div>
+                      </div>
+                      <StatusBadge status={regime?.tone ?? 'pending'}>{regime?.label ?? 'mixed'}</StatusBadge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          Média 24h
+                        </div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {regime ? `${regime.avg_change_24h >= 0 ? '+' : ''}${(regime.avg_change_24h * 100).toFixed(2)}%` : '--'}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          Snapshot
+                        </div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {formatUpdatedAt(overview?.last_updated)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                      {regime?.summary ?? 'O Radar classifica o mercado a partir de liquidez relevante e variação recente.'}
+                    </div>
+                  </div>
+
+                  <div
+                    className="rounded-[24px] p-4"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          Rankings do Radar
+                        </div>
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          Leitura separada por velocidade de preço e profundidade de fluxo.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                      <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="mb-3 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          Momentum
+                        </div>
+                        <div className="space-y-2">
+                          {momentumRanking.slice(0, 3).map((item, index) => (
+                            <div key={`momentum-${item.symbol}`} className="flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(255,140,66,0.10)', color: 'var(--accent-orange)' }}>
+                                  {index + 1}
+                                </div>
+                                <div className="truncate text-sm" style={{ color: 'var(--text-1)' }}>
+                                  {item.symbol}
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold" style={{ color: item.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)' }}>
+                                {item.change24h >= 0 ? '+' : ''}
+                                {(item.change24h * 100).toFixed(1)}%
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="mb-3 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          Liquidez
+                        </div>
+                        <div className="space-y-2">
+                          {liquidityRanking.slice(0, 3).map((item, index) => (
+                            <div key={`liquidity-${item.symbol}`} className="flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}>
+                                  {index + 1}
+                                </div>
+                                <div className="truncate text-sm" style={{ color: 'var(--text-1)' }}>
+                                  {item.symbol}
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                ${compact(Number(item.volume))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -425,8 +514,9 @@ export function Radar() {
               ) : (
                 <div className="space-y-3">
                   {movers.map((mover, index) => {
-                    const microSignal = deriveMicroSignal(mover.change24h);
                     const active = selectedMarket?.symbol === mover.symbol;
+                    const liquidityRank = liquidityRanking.findIndex((item) => item.symbol === mover.symbol);
+                    const momentumRank = momentumRanking.findIndex((item) => item.symbol === mover.symbol);
                     return (
                       <button
                         key={mover.symbol}
@@ -454,13 +544,14 @@ export function Radar() {
                               <div className="truncate font-semibold" style={{ color: 'var(--text-1)' }}>
                                 {mover.symbol}
                               </div>
-                              <StatusBadge status={signalBadgeTone(microSignal)}>{microSignal}</StatusBadge>
+                              {momentumRank >= 0 ? <StatusBadge status="pending">M#{momentumRank + 1}</StatusBadge> : null}
+                              {liquidityRank >= 0 ? <StatusBadge status="success">L#{liquidityRank + 1}</StatusBadge> : null}
                             </div>
                             <div className="grid grid-cols-1 gap-1 text-sm md:grid-cols-3">
                               <span style={{ color: 'var(--text-2)' }}>Preço ${formatPrice(mover.price)}</span>
                               <span style={{ color: 'var(--text-3)' }}>Vol. ${compact(Number(mover.volume))}</span>
                               <span style={{ color: 'var(--text-3)' }}>
-                                Direção {mover.change24h >= 0 ? 'positiva' : 'negativa'}
+                                Score {(Number(mover.score ?? 0)).toFixed(1)}
                               </span>
                             </div>
                           </div>

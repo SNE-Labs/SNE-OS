@@ -32,13 +32,80 @@ def get_radar_snapshot(limit: int = 6) -> List[Dict[str, Any]]:
     return get_live_market_snapshot(limit=limit)
 
 
+def _market_regime(markets: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not markets:
+        return {
+            "label": "sem dados",
+            "tone": "pending",
+            "avg_change_24h": 0.0,
+            "summary": "O Radar ainda nao tem snapshot suficiente para classificar o mercado.",
+        }
+
+    avg_change = sum(float(item.get("change24h", 0) or 0) for item in markets) / len(markets)
+    positive = sum(1 for item in markets if float(item.get("change24h", 0) or 0) > 0)
+    negative = sum(1 for item in markets if float(item.get("change24h", 0) or 0) < 0)
+
+    if avg_change >= 0.015 and positive >= max(3, len(markets) // 2):
+        return {
+            "label": "risk-on",
+            "tone": "active",
+            "avg_change_24h": avg_change,
+            "summary": "Fluxo comprador domina o universo liquido monitorado pelo Radar.",
+        }
+    if avg_change <= -0.015 and negative >= max(3, len(markets) // 2):
+        return {
+            "label": "risk-off",
+            "tone": "warning",
+            "avg_change_24h": avg_change,
+            "summary": "Pressao vendedora domina a janela atual do universo Radar.",
+        }
+    return {
+        "label": "mixed",
+        "tone": "pending",
+        "avg_change_24h": avg_change,
+        "summary": "Mercado dividido, sem dominancia clara entre risco e defensividade.",
+    }
+
+
+def _build_rankings(markets: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    base = [
+        {
+            "symbol": item["symbol"],
+            "price": item["price"],
+            "change24h": item["change24h"],
+            "volume": item["volume"],
+            "score": item.get("score", 0),
+        }
+        for item in markets
+    ]
+
+    momentum = sorted(
+        base,
+        key=lambda item: (abs(float(item.get("change24h", 0) or 0)), float(item.get("score", 0) or 0)),
+        reverse=True,
+    )[:5]
+    liquidity = sorted(
+        base,
+        key=lambda item: float(item.get("volume", 0) or 0),
+        reverse=True,
+    )[:5]
+
+    return {
+        "momentum": momentum,
+        "liquidity": liquidity,
+    }
+
+
 def build_radar_overview(active_symbol: Optional[str], authenticated: bool, has_access: bool, timeframe: str = "24H") -> Dict[str, Any]:
-    movers = get_radar_snapshot(limit=6)
+    markets = get_radar_snapshot(limit=12)
+    movers = markets[:6]
     featured = next((item for item in movers if item["symbol"] == active_symbol), None) if active_symbol else None
     if featured is None and movers:
         featured = movers[0]
 
     signal = derive_signal_from_ticker(featured, timeframe) if featured else None
+    market_regime = _market_regime(markets)
+    rankings = _build_rankings(markets)
 
     if not authenticated:
         execution = {"label": "offline", "tone": "pending"}
@@ -52,17 +119,15 @@ def build_radar_overview(active_symbol: Optional[str], authenticated: bool, has_
         "hero": {
             "headline": "Mercados líquidos. Sinais em tempo real.",
             "summary": "Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.",
-            "metrics": [
-                {"label": "Pares ativos", "value": f"{len(movers)} ao vivo" if movers else "0 ao vivo"},
-                {"label": "Par em foco", "value": featured["symbol"] if featured else (active_symbol or "--")},
-                {"label": "Sinal", "value": signal["signal"] if signal else "--"},
-            ],
+            "metrics": [],
         },
         "market_state": {
             "label": "Ao vivo." if movers else "Sem dados.",
             "access": "completo" if has_access else "prévia",
             "execution": "bloqueada",
         },
+        "market_regime": market_regime,
+        "rankings": rankings,
         "featured": featured,
         "signal": signal,
         "universe": movers,

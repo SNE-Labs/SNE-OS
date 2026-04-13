@@ -91,12 +91,15 @@ def overview():
           "hero": {
               "headline": "Mercados líquidos. Sinais em tempo real.",
               "summary": "O Radar está indisponível agora.",
-              "metrics": [
-                  {"label": "Pares ativos", "value": "0 ao vivo"},
-                  {"label": "Par em foco", "value": "--"},
-                  {"label": "Sinal", "value": "--"},
-              ],
+              "metrics": [],
           },
+          "market_regime": {
+              "label": "sem dados",
+              "tone": "pending",
+              "avg_change_24h": 0.0,
+              "summary": "O Radar ainda nao tem snapshot suficiente para classificar o mercado.",
+          },
+          "rankings": {"momentum": [], "liquidity": []},
           "market_state": {"label": "Sem dados.", "access": "prévia", "execution": "bloqueada"},
           "featured": None,
           "signal": None,

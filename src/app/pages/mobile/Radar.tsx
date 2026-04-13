@@ -47,6 +47,9 @@ export function MobileRadar() {
   const overview = overviewQuery.data;
   const movers = overview?.universe ?? [];
   const featured = overview?.featured ?? null;
+  const regime = overview?.market_regime;
+  const momentumRanking = overview?.rankings?.momentum ?? [];
+  const liquidityRanking = overview?.rankings?.liquidity ?? [];
 
   return (
     <MobilePageShell
@@ -72,13 +75,12 @@ export function MobileRadar() {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          {(overview?.hero.metrics ?? []).slice(0, 3).map((metric) => (
-            <div key={metric.label} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-              <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">{metric.label}</div>
-              <div className="text-[var(--text-1)]">{metric.value}</div>
-            </div>
-          ))}
+        <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="text-[var(--text-1)]">Regime de mercado</div>
+            <Badge variant={toBadgeVariant(regime?.tone)} size="sm">{regime?.label ?? 'mixed'}</Badge>
+          </div>
+          <div className="text-sm text-[var(--text-2)]">{regime?.summary ?? 'O Radar classifica o mercado a partir de liquidez e direção recente.'}</div>
         </div>
       </SurfaceCard>
 
@@ -214,6 +216,46 @@ export function MobileRadar() {
 
           <SurfaceCard>
             <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-[var(--text-1)]">Rankings</h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-2">Momentum</div>
+                <div className="space-y-2">
+                  {momentumRanking.slice(0, 3).map((item, index) => (
+                    <div key={`mobile-momentum-${item.symbol}`} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-[rgba(255,140,66,0.10)] text-[var(--accent-orange)] text-xs flex items-center justify-center">{index + 1}</div>
+                        <div className="truncate text-[var(--text-1)]">{item.symbol}</div>
+                      </div>
+                      <div className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
+                        {item.change24h >= 0 ? '+' : ''}{(item.change24h * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-2">Liquidez</div>
+                <div className="space-y-2">
+                  {liquidityRanking.slice(0, 3).map((item, index) => (
+                    <div key={`mobile-liquidity-${item.symbol}`} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--text-2)] text-xs flex items-center justify-center">{index + 1}</div>
+                        <div className="truncate text-[var(--text-1)]">{item.symbol}</div>
+                      </div>
+                      <div className="text-[var(--text-1)]">${compact(Number(item.volume))}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center justify-between gap-3 mb-3">
               <h3 className="text-[var(--text-1)]">Universo Radar</h3>
               <Badge variant="neutral" size="sm">{movers.length}</Badge>
             </div>
@@ -232,7 +274,12 @@ export function MobileRadar() {
                     className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <div className="text-[var(--text-1)]">{item.symbol}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-[var(--text-1)]">{item.symbol}</div>
+                        {momentumRanking.findIndex((entry) => entry.symbol === item.symbol) >= 0 ? (
+                          <Badge variant="neutral" size="sm">M#{momentumRanking.findIndex((entry) => entry.symbol === item.symbol) + 1}</Badge>
+                        ) : null}
+                      </div>
                       <div className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
                         {item.change24h >= 0 ? '+' : ''}{(item.change24h * 100).toFixed(1)}%
                       </div>

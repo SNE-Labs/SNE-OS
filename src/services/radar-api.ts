@@ -34,6 +34,28 @@ export interface RadarOverview {
     summary: string;
     metrics: Array<{ label: string; value: string }>;
   };
+  market_regime: {
+    label: string;
+    tone: 'active' | 'success' | 'warning' | 'pending';
+    avg_change_24h: number;
+    summary: string;
+  };
+  rankings: {
+    momentum: Array<{
+      symbol: string;
+      price: number;
+      change24h: number;
+      volume: string | number;
+      score?: number;
+    }>;
+    liquidity: Array<{
+      symbol: string;
+      price: number;
+      change24h: number;
+      volume: string | number;
+      score?: number;
+    }>;
+  };
   market_state: {
     label: string;
     access: string;
