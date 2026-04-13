@@ -1,6 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { radarApi } from '../services/radar-api';
-import type { MarketSummary, Signal, WatchlistResponse } from '../services/radar-api';
+import type { MarketSummary, RadarOverview, Signal, WatchlistResponse } from '../services/radar-api';
+
+export function useRadarOverview(symbol: string, timeframe: string = '24H') {
+  return useQuery({
+    queryKey: ['radar', 'overview', symbol, timeframe],
+    queryFn: () => radarApi.getOverview(symbol, timeframe),
+    enabled: !!symbol && !!timeframe,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
+    refetchInterval: 60 * 1000,
+  });
+}
 
 /**
  * Hook para dados de mercado (market summary)
@@ -91,5 +104,4 @@ export function useSystemStatus() {
     retry: 3,
   });
 }
-
 

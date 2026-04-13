@@ -5,7 +5,7 @@ import { isAddress } from 'viem';
 
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
-import { useConnectedBalance, useGasPrice, useLookupAddress } from '../../hooks/usePassportData';
+import { usePassportOverview } from '../../hooks/usePassportData';
 import { formatAddress } from '@/utils/format';
 
 type PassportTab = 'identity' | 'lookup' | 'watch';
@@ -17,23 +17,25 @@ export function Pass() {
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  const connectedLookup = useLookupAddress(isConnected && address ? address : null);
-  const publicLookup = useLookupAddress(lookupTarget);
-  const balanceQuery = useConnectedBalance();
-  const gasQuery = useGasPrice();
+  const overviewQuery = usePassportOverview(isConnected && address ? address : null);
+  const publicOverview = usePassportOverview(lookupTarget);
 
-  const connectedProfile = connectedLookup.data;
-  const publicProfile = publicLookup.data;
+  const connectedProfile = overviewQuery.data?.profile;
+  const publicProfile = publicOverview.data?.profile;
 
   const currentProfile = activeTab === 'lookup' ? publicProfile : connectedProfile;
 
-  const identityStatus = useMemo(() => {
-    if (!isConnected) return { label: 'offline', tone: 'pending' as const };
-    if (connectedLookup.isLoading) return { label: 'syncing', tone: 'pending' as const };
-    if ((connectedProfile?.licenses.length ?? 0) > 0) return { label: 'verified', tone: 'success' as const };
-    if (connectedProfile?.identity?.hasActivity) return { label: 'active', tone: 'active' as const };
-    return { label: 'pending', tone: 'warning' as const };
-  }, [connectedLookup.isLoading, connectedProfile?.identity?.hasActivity, connectedProfile?.licenses.length, isConnected]);
+  const identityStatus = overviewQuery.data?.status ?? (
+    !isConnected
+      ? { label: 'offline', tone: 'pending' as const }
+      : overviewQuery.isLoading
+        ? { label: 'syncing', tone: 'pending' as const }
+        : (connectedProfile?.licenses.length ?? 0) > 0
+          ? { label: 'verified', tone: 'success' as const }
+          : connectedProfile?.identity?.hasActivity
+            ? { label: 'active', tone: 'active' as const }
+            : { label: 'pending', tone: 'warning' as const }
+  );
 
   const tabs = [
     { id: 'identity', label: 'Identidade', icon: BadgeCheck },
@@ -42,13 +44,27 @@ export function Pass() {
   ] as const;
 
   const inventory = useMemo(
-    () => [
-      { label: 'Asserções', value: `${currentProfile?.assertions?.length ?? 0}`, icon: BadgeCheck },
-      { label: 'Licenças', value: `${currentProfile?.licenses.length ?? 0}`, icon: Shield },
-      { label: 'Chaves', value: `${currentProfile?.keys.length ?? 0}`, icon: KeyRound },
-      { label: 'Caixas', value: `${currentProfile?.boxes.length ?? 0}`, icon: Box },
-    ],
-    [currentProfile]
+    () => (
+      activeTab === 'identity' && overviewQuery.data?.inventory
+        ? overviewQuery.data.inventory.map((item) => ({
+            ...item,
+            icon:
+              item.label === 'Asserções'
+                ? BadgeCheck
+                : item.label === 'Licenças'
+                  ? Shield
+                  : item.label === 'Chaves'
+                    ? KeyRound
+                    : Box,
+          }))
+        : [
+            { label: 'Asserções', value: `${currentProfile?.assertions?.length ?? 0}`, icon: BadgeCheck },
+            { label: 'Licenças', value: `${currentProfile?.licenses.length ?? 0}`, icon: Shield },
+            { label: 'Chaves', value: `${currentProfile?.keys.length ?? 0}`, icon: KeyRound },
+            { label: 'Caixas', value: `${currentProfile?.boxes.length ?? 0}`, icon: Box },
+          ]
+    ),
+    [activeTab, currentProfile, overviewQuery.data?.inventory]
   );
 
   const handleLookupSubmit = (event: React.FormEvent) => {
@@ -105,7 +121,7 @@ export function Pass() {
                   >
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Endereço</div>
                     <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
-                      {isConnected && address ? formatAddress(address) : 'Não conectado'}
+                      {overviewQuery.data?.surface.address ? formatAddress(overviewQuery.data.surface.address) : 'Não conectado'}
                     </div>
                   </div>
                   <div
@@ -114,7 +130,7 @@ export function Pass() {
                   >
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Capital</div>
                     <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>
-                      {balanceQuery.data?.eth?.formatted ?? '--'}
+                      {overviewQuery.data?.surface.capital ?? '--'}
                     </div>
                   </div>
                   <div
@@ -123,7 +139,7 @@ export function Pass() {
                   >
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Gas</div>
                     <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>
-                      {gasQuery.data?.gasPriceFormatted ?? '--'}
+                      {overviewQuery.data?.surface.gas ?? '--'}
                     </div>
                   </div>
                 </div>
@@ -142,7 +158,7 @@ export function Pass() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
-                      {isConnected && address ? formatAddress(address) : 'Conecte sua carteira'}
+                      {overviewQuery.data?.surface.address ? formatAddress(overviewQuery.data.surface.address) : 'Conecte sua carteira'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                       {isConnected ? 'O Passport está lendo o estado público desta conta.' : 'Conecte uma carteira para carregar seu Passport.'}
@@ -208,7 +224,7 @@ export function Pass() {
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                       Conecte uma carteira para carregar suas asserções de identidade.
                     </div>
-                  ) : connectedLookup.isLoading ? (
+                  ) : overviewQuery.isLoading ? (
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                       Lendo estado on-chain da conta...
                     </div>
@@ -409,11 +425,11 @@ export function Pass() {
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                     Informe um endereço para resolver um perfil público de Passport.
                   </div>
-                ) : publicLookup.isLoading ? (
+                ) : publicOverview.isLoading ? (
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                     Resolvendo endereço...
                   </div>
-                ) : publicLookup.isError ? (
+                ) : publicOverview.isError ? (
                   <div className="text-sm" style={{ color: 'var(--danger-red)' }}>
                     Falha ao resolver este endereço.
                   </div>

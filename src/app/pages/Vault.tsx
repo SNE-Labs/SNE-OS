@@ -1,79 +1,35 @@
 import { useMemo } from 'react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, KeyRound, Shield, Wallet, Waves, Zap } from 'lucide-react';
 
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
-import { useConnectedBalance, useGasPrice, useLookupAddress } from '../../hooks/usePassportData';
+import { useVaultOverview } from '../../hooks/useVaultData';
 import { formatAddress } from '@/utils/format';
 
 export function Vault() {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+  const overviewQuery = useVaultOverview(isConnected && address ? address : null);
+  const overview = overviewQuery.data;
 
-  const balanceQuery = useConnectedBalance();
-  const gasQuery = useGasPrice();
-  const lookupQuery = useLookupAddress(isConnected && address ? address : null);
-
-  const profile = lookupQuery.data;
-
-  const vaultStatus = useMemo(() => {
-    if (!isConnected) return { label: 'offline', tone: 'pending' as const };
-    if (lookupQuery.isLoading || balanceQuery.isLoading) return { label: 'syncing', tone: 'pending' as const };
-    if (profile?.identity?.hasActivity) return { label: 'capital online', tone: 'active' as const };
-    return { label: 'idle', tone: 'warning' as const };
-  }, [balanceQuery.isLoading, isConnected, lookupQuery.isLoading, profile?.identity?.hasActivity]);
+  const vaultStatus = overview?.status ?? { label: 'offline', tone: 'pending' as const };
 
   const capitalCards = useMemo(
-    () => [
-      {
-        label: 'Saldo',
-        value: balanceQuery.data?.eth?.formatted ?? '--',
-        hint: profile?.identity?.balanceEth ? `${profile.identity.balanceEth} ETH` : 'Sem capital carregado',
-        icon: Wallet,
-      },
-      {
-        label: 'Gas',
-        value: gasQuery.data?.gasPriceFormatted ?? '--',
-        hint: 'Scroll RPC',
-        icon: Zap,
-      },
-      {
-        label: 'Conta',
-        value: profile?.identity?.accountType ?? '--',
-        hint: profile?.identity?.hasActivity ? `${profile.identity.txCount} tx` : 'Sem atividade visível',
-        icon: Shield,
-      },
-      {
-        label: 'Proteção',
-        value: (profile?.boxes.length ?? 0) > 0 ? 'dispositivos detectados' : 'sem dispositivos',
-        hint: (profile?.keys.length ?? 0) > 0 ? `${profile?.keys.length ?? 0} chaves vinculadas` : 'Nenhum dispositivo confiável',
-        icon: Box,
-      },
-    ],
-    [balanceQuery.data?.eth?.formatted, gasQuery.data?.gasPriceFormatted, profile]
+    () => (overview?.capital_cards ?? []).map((card) => ({
+      ...card,
+      icon:
+        card.icon === 'wallet'
+          ? Wallet
+          : card.icon === 'zap'
+            ? Zap
+            : card.icon === 'shield'
+              ? Shield
+              : Box,
+    })),
+    [overview?.capital_cards]
   );
 
-  const vaultSignals = useMemo(
-    () => [
-      {
-        title: 'Estado do capital',
-        value: balanceQuery.data?.eth?.formatted ?? '--',
-        detail: isConnected ? 'Saldo ao vivo da carteira' : 'Conecte uma carteira para carregar o capital',
-      },
-      {
-        title: 'Superfície de acesso',
-        value: `${profile?.keys.length ?? 0} chaves`,
-        detail: (profile?.keys.length ?? 0) > 0 ? 'Acesso portátil detectado' : 'Nenhuma chave vinculada ainda',
-      },
-      {
-        title: 'Camada de proteção',
-        value: `${profile?.boxes.length ?? 0} dispositivos`,
-        detail: (profile?.boxes.length ?? 0) > 0 ? 'Hardware confiável presente' : 'Nenhum dispositivo registrado',
-      },
-    ],
-    [balanceQuery.data?.eth?.formatted, isConnected, profile?.boxes.length, profile?.keys.length]
-  );
+  const vaultSignals = overview?.signals ?? [];
 
   return (
     <div className="flex flex-1">
@@ -137,10 +93,10 @@ export function Vault() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
-                      {isConnected && address ? formatAddress(address) : 'Conecte sua carteira'}
+                      {overview?.surface.address ? formatAddress(overview.surface.address) : 'Conecte sua carteira'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {isConnected ? 'Saldo e postura da conta carregados ao vivo.' : 'Conecte uma carteira para carregar seu capital.'}
+                      {overview?.connected ? 'Saldo e postura da conta carregados ao vivo.' : 'Conecte uma carteira para carregar seu capital.'}
                     </div>
                   </div>
                 </div>
@@ -150,11 +106,11 @@ export function Vault() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Rede</div>
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{chainId ?? '--'}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.surface.network ?? '--'}</div>
                     </div>
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{profile?.metadata?.source ?? 'wagmi/rpc'}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.surface.source ?? 'rpc'}</div>
                     </div>
                   </div>
                 </div>
@@ -205,30 +161,12 @@ export function Vault() {
                   Postura da Conta
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tipo</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {profile?.identity?.accountType ?? '--'}
+                  {(overview?.posture ?? []).map((item) => (
+                    <div key={item.label} className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>{item.label}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{item.value}</div>
                     </div>
-                  </div>
-                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Transações</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {profile?.identity?.txCount ?? '--'}
-                    </div>
-                  </div>
-                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Chaves</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {profile?.keys.length ?? 0}
-                    </div>
-                  </div>
-                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Dispositivos</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {profile?.boxes.length ?? 0}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
@@ -246,7 +184,7 @@ export function Vault() {
                       <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Estado atual</div>
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Visibilidade de capital ativa. Rotas de staking e provisionamento de hardware ainda não estão disponíveis para esta conta.
+                      {overview?.protection.state ?? 'Visibilidade de capital indisponível.'}
                     </div>
                   </div>
 
@@ -256,7 +194,7 @@ export function Vault() {
                       <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Fronteira</div>
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Chaves e Dispositivos são primitivos de proteção. Gerenciamento de grants fica em Chaves; execução fica no Radar.
+                      {overview?.protection.boundary ?? 'Chaves e Dispositivos continuam sendo a fronteira de proteção do Vault.'}
                     </div>
                   </div>
                 </div>
@@ -294,7 +232,7 @@ export function Vault() {
                   <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Custódia</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  Não custodial. O capital permanece na carteira conectada.
+                  {overview?.readiness.custody ?? 'Não custodial. O capital permanece na carteira conectada.'}
                 </div>
               </div>
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
@@ -303,7 +241,7 @@ export function Vault() {
                   <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Staking</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  Nenhuma rota de staking disponível para esta conta.
+                  {overview?.readiness.staking ?? 'Nenhuma rota de staking disponível para esta conta.'}
                 </div>
               </div>
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
@@ -312,7 +250,7 @@ export function Vault() {
                   <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Provisionamento</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  Provisionamento de hardware requer um dispositivo SNE Vault vinculado.
+                  {overview?.readiness.provisioning ?? 'Provisionamento de hardware requer um dispositivo SNE Vault vinculado.'}
                 </div>
               </div>
             </div>

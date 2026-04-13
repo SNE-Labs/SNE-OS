@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { lookupAddress, getBalance, getGasPrice, getProducts, checkLicense } from '../services/passport-api';
+import { lookupAddress, getBalance, getGasPrice, getProducts, checkLicense, getPassportOverview } from '../services/passport-api';
 import { useAccount, useBalance as useWagmiBalance } from 'wagmi';
 import type { Address } from '../types/passport';
 
@@ -19,6 +19,17 @@ export function useLookupAddress(address: string | null) {
     enabled: !!address && address.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos (antigo cacheTime)
+  });
+}
+
+export function usePassportOverview(address: string | null) {
+  return useQuery({
+    queryKey: ['passport', 'overview', address],
+    queryFn: () => getPassportOverview(address),
+    enabled: address === null || address.length > 0,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
   });
 }
 
@@ -109,5 +120,4 @@ export function useCheckLicense(nodeId: string | null) {
     gcTime: 5 * 60 * 1000,
   });
 }
-
 

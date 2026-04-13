@@ -32,6 +32,33 @@ def require_session(fn):
 
 passport_bp = Blueprint("passport", __name__)
 
+
+@passport_bp.get("/overview")
+def overview():
+    """
+    Aggregated Passport page payload.
+    GET /api/passport/overview?address=0x...
+    If address is omitted, uses the authenticated session address when available.
+    """
+    from .passport_service import build_passport_overview
+
+    try:
+        address = request.args.get("address") or session.get("siwe_address")
+        return jsonify(build_passport_overview(address)), 200
+    except Exception as e:
+        logger.error(f"Passport overview error: {e}")
+        return jsonify({
+            "connected": False,
+            "status": {"label": "offline", "tone": "pending"},
+            "profile": None,
+            "surface": {
+                "address": None,
+                "capital": "--",
+                "gas": "--",
+            },
+            "inventory": [],
+        }), 200
+
 @passport_bp.get("/balance")
 @require_session
 def balance():

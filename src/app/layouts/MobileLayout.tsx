@@ -1,13 +1,13 @@
 import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Shield, Key, BarChart3, DollarSign, FileText } from 'lucide-react';
+import { Activity, Shield, Key, KeyRound, FileText } from 'lucide-react';
 
 // Lazy load mobile pages
 const MobileHome = lazy(() => import('../pages/mobile/Home').then(m => ({ default: m.MobileHome })));
 const MobileRadar = lazy(() => import('../pages/mobile/Radar').then(m => ({ default: m.MobileRadar })));
 const MobileVault = lazy(() => import('../pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
 const MobilePass = lazy(() => import('../pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
-const MobilePricing = lazy(() => import('../pages/mobile/Pricing').then(m => ({ default: m.MobilePricing })));
+const MobileKeys = lazy(() => import('../pages/mobile/Keys').then(m => ({ default: m.MobileKeys })));
 // const MobileStatus = lazy(() => import('../pages/mobile/Status').then(m => ({ default: m.MobileStatus }))); // desativado temporariamente
 const MobileDocs = lazy(() => import('../pages/mobile/Docs').then(m => ({ default: m.MobileDocs })));
 
@@ -82,7 +82,7 @@ export function MobileLayout() {
     if (path.includes('/radar')) return 'radar';
     if (path.includes('/vault')) return 'vault';
     if (path.includes('/pass')) return 'pass';
-    if (path.includes('/pricing')) return 'pricing';
+    if (path.includes('/keys')) return 'keys';
     // if (path.includes('/status')) return 'status'; // desativado temporariamente
     if (path.includes('/docs')) return 'docs';
     return 'radar'; // default
@@ -92,7 +92,7 @@ export function MobileLayout() {
     { id: 'radar', label: 'Radar', icon: 'Activity' as const },
     { id: 'vault', label: 'Vault', icon: 'Shield' as const },
     { id: 'pass', label: 'Pass', icon: 'Key' as const },
-    { id: 'pricing', label: 'Pricing', icon: 'DollarSign' as const },
+    { id: 'keys', label: 'Keys', icon: 'KeyRound' as const },
     // { id: 'status', label: 'Status', icon: 'BarChart3' as const }, // desativado temporariamente
     { id: 'docs', label: 'Docs', icon: 'FileText' as const },
   ];
@@ -109,7 +109,7 @@ export function MobileLayout() {
       radar: '/radar',
       vault: '/vault',
       pass: '/pass',
-      pricing: '/pricing',
+      keys: '/keys',
       // status: '/status', // desativado temporariamente
       docs: '/docs'
     };
@@ -136,7 +136,7 @@ export function MobileLayout() {
     if (path === '/radar') newTab = 'radar';
     else if (path === '/vault') newTab = 'vault';
     else if (path === '/pass') newTab = 'pass';
-    else if (path === '/pricing') newTab = 'pricing';
+    else if (path === '/keys') newTab = 'keys';
     // else if (path === '/status') newTab = 'status'; // desativado temporariamente
     else if (path === '/docs') newTab = 'docs';
 
@@ -150,7 +150,7 @@ export function MobileLayout() {
     radar: MobileRadar,
     vault: MobileVault,
     pass: MobilePass,
-    pricing: MobilePricing,
+    keys: MobileKeys,
     // status: MobileStatus, // desativado temporariamente
     docs: MobileDocs
   };
@@ -177,6 +177,8 @@ export function MobileLayout() {
             {tab.icon === 'Activity' && <Activity size={20} />}
             {tab.icon === 'Shield' && <Shield size={20} />}
             {tab.icon === 'Key' && <Key size={20} />}
+            {tab.icon === 'KeyRound' && <KeyRound size={20} />}
+            {tab.icon === 'FileText' && <FileText size={20} />}
             {/* tab.icon === 'BarChart3' desativado com Status */}
             <span>{tab.label}</span>
           </button>
@@ -192,7 +194,7 @@ const routeComponents = {
   '/radar': MobileRadar,
   '/vault': MobileVault,
   '/pass': MobilePass,
-  '/pricing': MobilePricing,
+  '/keys': MobileKeys,
   // '/status': MobileStatus, // desativado temporariamente
   '/docs': MobileDocs,
 };

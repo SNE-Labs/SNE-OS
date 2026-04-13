@@ -24,6 +24,37 @@ export interface Signal {
   price?: number;
 }
 
+export interface RadarOverview {
+  execution: {
+    label: string;
+    tone: 'active' | 'success' | 'warning' | 'pending';
+  };
+  hero: {
+    headline: string;
+    summary: string;
+    metrics: Array<{ label: string; value: string }>;
+  };
+  market_state: {
+    label: string;
+    access: string;
+    execution: string;
+  };
+  featured: {
+    symbol: string;
+    price: number;
+    change24h: number;
+    volume: string | number;
+  } | null;
+  signal: Signal | null;
+  universe: Array<{
+    symbol: string;
+    price: number;
+    change24h: number;
+    volume: string | number;
+  }>;
+  last_updated: string;
+}
+
 export interface WatchlistItem {
   symbol: string;
   addedAt: number;
@@ -47,6 +78,9 @@ export interface WatchlistResponse {
  * - GET  /api/radar/markets (público)
  */
 export const radarApi = {
+  getOverview: (symbol: string, timeframe: string = '24H'): Promise<RadarOverview> =>
+    apiGet(`/api/radar/overview?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`),
+
   // Market summary público (não requer auth)
   getMarketSummary: (): Promise<MarketSummary> =>
     apiGet('/api/radar/market-summary'),
@@ -81,4 +115,3 @@ export const radarApi = {
   getSystemStatus: () =>
     apiGet('/api/status/dashboard'),
 };
-

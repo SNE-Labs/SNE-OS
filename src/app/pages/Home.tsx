@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi';
 import {
   Activity,
   AlertTriangle,
@@ -18,8 +17,6 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
-import { useConnectedBalance, useLookupAddress } from '../../hooks/usePassportData';
-import { useMarketSummary } from '../../hooks/useRadarData';
 import { apiGet } from '@/lib/api/http';
 import { formatAddress } from '@/utils/format';
 
@@ -30,10 +27,6 @@ type DashboardPayload = {
   activities: Array<{ event: string; component: string; time: string; status: string; timestamp: string }>;
   alerts: Array<{ message: string; type: string; time: string }>;
   last_updated: string;
-};
-
-type DashboardResponse = {
-  data: DashboardPayload;
 };
 
 type IntelItem = {
@@ -49,8 +42,55 @@ type IntelItem = {
   agent_note: string;
 };
 
-type IntelResponse = {
-  items: IntelItem[];
+type MarketMover = {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume: string | number;
+};
+
+type HomeResponse = {
+  session: {
+    authenticated: boolean;
+    address: string | null;
+  };
+  wallet: {
+    address: string;
+    status: string;
+    balance_eth: number | null;
+    tx_count: number | null;
+    account_type: string | null;
+    last_updated: string;
+  } | null;
+  brief: {
+    badge: string;
+    badge_status: 'active' | 'success' | 'warning' | 'pending';
+    headline: string;
+    summary: string;
+  };
+  brief_signals: Array<{
+    label: string;
+    value: string;
+  }>;
+  modules: Array<{
+    title: string;
+    path: string;
+    label: string;
+    status: 'active' | 'success' | 'warning' | 'pending';
+  }>;
+  system: {
+    tags: Array<{ label: string; value: string }>;
+    workspace: Array<{ label: string; value: string }>;
+  };
+  dashboard: DashboardPayload;
+  market: {
+    top_movers: MarketMover[];
+    last_updated: string;
+  };
+  intel: {
+    items: IntelItem[];
+    last_updated: string;
+  };
   last_updated: string;
 };
 
@@ -58,30 +98,20 @@ const QUICK_ACTIONS = [
   { label: 'Radar', path: '/radar', icon: Waves },
   { label: 'Passport', path: '/pass', icon: BadgeCheck },
   { label: 'Vault', path: '/vault', icon: Shield },
+  { label: 'Keys', path: '/keys', icon: KeyRound },
   { label: 'Docs', path: '/docs', icon: FileText },
   { label: 'Explorar', path: '/docs#overview', icon: Compass },
 ];
 
 export function Home() {
   const navigate = useNavigate();
-  const { address, isConnected } = useAccount();
-  const balanceQuery = useConnectedBalance();
-  const lookupQuery = useLookupAddress(isConnected && address ? address : null);
-  const marketQuery = useMarketSummary();
   const [now, setNow] = useState(new Date());
 
-  const { data: dashboardResponse, isLoading, error } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => apiGet<DashboardResponse>('/api/dashboard/'),
+  const { data: homeData, isLoading, error } = useQuery({
+    queryKey: ['home'],
+    queryFn: () => apiGet<HomeResponse>('/api/home'),
     refetchInterval: 30000,
     retry: 3,
-  });
-  const intelQuery = useQuery({
-    queryKey: ['intel', 'briefing'],
-    queryFn: () => apiGet<IntelResponse>('/api/intel/briefing'),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
-    retry: 2,
   });
 
   useEffect(() => {
@@ -89,8 +119,8 @@ export function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const data = dashboardResponse?.data;
-  const liveMovers = marketQuery.status === 'success' ? (marketQuery.data?.top_movers ?? []) : [];
+  const data = homeData?.dashboard;
+  const liveMovers = homeData?.market.top_movers ?? [];
 
   const formattedTime = useMemo(
     () =>
@@ -115,103 +145,25 @@ export function Home() {
     return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
   };
 
-  const brief = useMemo(() => {
-    const moverCount = liveMovers.length;
-
-    if (!isConnected) {
-      return {
-        badge: 'sem carteira',
-        badgeStatus: 'pending' as const,
-        headline: 'Seu hub está pronto.',
-        summary: moverCount > 0
-          ? `Conecte uma carteira para carregar seu Passport e Vault. O Radar está monitorando ${moverCount} mercados ao vivo.`
-          : 'Conecte uma carteira para acessar Passport e Vault.',
-      };
-    }
-
-    if (lookupQuery.isLoading) {
-      return {
-        badge: 'sincronizando',
-        badgeStatus: 'pending' as const,
-        headline: 'Carregando seu perfil.',
-        summary: 'Lendo estado on-chain para Passport e Vault.',
-      };
-    }
-
-    if ((lookupQuery.data?.licenses?.length ?? 0) === 0) {
-      return {
-        badge: 'passport pendente',
-        badgeStatus: 'warning' as const,
-        headline: 'Carteira conectada.',
-        summary: moverCount > 0
-          ? `Nenhuma asserção de Passport encontrada ainda. O Radar está monitorando ${moverCount} mercados ao vivo.`
-          : 'Nenhuma asserção de Passport encontrada ainda.',
-      };
-    }
-
-    return {
-      badge: 'hub ativo',
-      badgeStatus: 'active' as const,
-      headline: 'Tudo está ativo.',
-      summary: moverCount > 0
-        ? `${lookupQuery.data?.licenses.length ?? 0} asserção(ões) de Passport ativa(s). O Radar está monitorando ${moverCount} mercados.`
-        : `${lookupQuery.data?.licenses.length ?? 0} asserção(ões) de Passport carregada(s).`,
-    };
-  }, [isConnected, liveMovers.length, lookupQuery.isLoading, lookupQuery.data]);
-
-  const briefSignals = useMemo(
-    () => [
-      {
-        label: 'Passport',
-        value: isConnected ? ((lookupQuery.data?.licenses?.length ?? 0) > 0 ? 'verificado' : 'pendente') : 'offline',
-      },
-      {
-        label: 'Vault',
-        value: isConnected ? (balanceQuery.data?.eth?.formatted ?? 'carregando') : 'offline',
-      },
-      {
-        label: 'Radar',
-        value: liveMovers.length ? `${liveMovers.length} ao vivo` : 'inativo',
-      },
-    ],
-    [balanceQuery.data?.eth?.formatted, isConnected, liveMovers.length, lookupQuery.data?.licenses?.length]
-  );
+  const brief = homeData?.brief;
+  const briefSignals = homeData?.brief_signals ?? [];
 
   const moduleCards = useMemo(
-    () => [
-      {
-        title: 'Passport',
-        path: '/pass',
-        icon: BadgeCheck,
-        label: isConnected ? ((lookupQuery.data?.licenses?.length ?? 0) > 0 ? 'ativo' : 'pendente') : 'offline',
-        status: isConnected ? ((lookupQuery.data?.licenses?.length ?? 0) > 0 ? 'success' : 'warning') : 'pending',
-      },
-      {
-        title: 'Vault',
-        path: '/vault',
-        icon: Shield,
-        label: isConnected ? 'pronto' : 'offline',
-        status: isConnected ? 'active' : 'pending',
-      },
-      {
-        title: 'Chaves',
-        path: '/docs#keys',
-        icon: KeyRound,
-        label: (lookupQuery.data?.keys?.length ?? 0) > 0 ? 'carregado' : 'inativo',
-        status: (lookupQuery.data?.keys?.length ?? 0) > 0 ? 'success' : 'pending',
-      },
-      {
-        title: 'Radar',
-        path: '/radar',
-        icon: Waves,
-        label: marketQuery.isLoading ? 'sincronizando' : liveMovers.length ? 'ao vivo' : 'inativo',
-        status: marketQuery.isLoading ? 'pending' : liveMovers.length ? 'active' : 'pending',
-      },
-    ],
-    [isConnected, liveMovers.length, lookupQuery.data?.keys?.length, lookupQuery.data?.licenses?.length, marketQuery.isLoading]
+    () => (homeData?.modules ?? []).map((item) => ({
+      ...item,
+      icon:
+        item.title === 'Passport'
+          ? BadgeCheck
+          : item.title === 'Vault'
+            ? Shield
+            : item.title === 'Chaves'
+              ? KeyRound
+              : Waves,
+    })),
+    [homeData?.modules]
   );
 
-  const intelItems = intelQuery.data?.items ?? [];
+  const intelItems = homeData?.intel.items ?? [];
   const featuredIntel = intelItems[0];
   const secondaryIntel = intelItems.slice(1, 5);
 
@@ -223,24 +175,14 @@ export function Home() {
   const secondaryMovers = marketPulse.slice(1);
 
   const workspaceItems = useMemo(
-    () => [
-      { label: 'Latência', value: data?.metrics.latency_ms != null ? `${data.metrics.latency_ms} ms` : '--', icon: Zap },
-      { label: 'Uptime', value: data?.metrics.uptime_percentage != null ? `${data.metrics.uptime_percentage}%` : '--', icon: Activity },
-      { label: 'Última prova', value: data?.metrics.last_proof_minutes != null ? `${data.metrics.last_proof_minutes}m` : '--', icon: Clock },
-      { label: 'Componentes', value: data ? `${data.components.length}` : '--', icon: BadgeCheck },
-    ],
-    [data]
+    () => (homeData?.system.workspace ?? []).map((item, index) => ({
+      ...item,
+      icon: [Zap, Activity, Clock, BadgeCheck][index] ?? BadgeCheck,
+    })),
+    [homeData?.system.workspace]
   );
 
-  const systemTags = useMemo(
-    () => [
-      { label: 'Rede', value: 'Scroll L2' },
-      { label: 'Modo', value: isConnected ? 'Carteira vinculada' : 'Público' },
-      { label: 'Passport', value: (lookupQuery.data?.licenses?.length ?? 0) > 0 ? 'Carregado' : 'Pendente' },
-      { label: 'Radar', value: marketQuery.isLoading ? 'Sincronizando' : liveMovers.length ? `${liveMovers.length} ao vivo` : 'Sem dados' },
-    ],
-    [isConnected, liveMovers.length, lookupQuery.data?.licenses?.length, marketQuery.isLoading]
-  );
+  const systemTags = homeData?.system.tags ?? [];
 
   const systemActions = useMemo(
     () => [
@@ -297,24 +239,26 @@ export function Home() {
                 <div className="px-3 py-1.5 rounded-full border text-sm" style={{ borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}>
                   {formattedTime}
                 </div>
-                <StatusBadge status={isConnected ? 'active' : 'pending'}>{isConnected ? 'carteira online' : 'sem carteira'}</StatusBadge>
-                <StatusBadge status={marketQuery.isLoading ? 'pending' : 'active'}>
-                  {marketQuery.isLoading ? 'radar sincronizando' : 'radar ao vivo'}
+                <StatusBadge status={homeData?.session.authenticated ? 'active' : 'pending'}>
+                  {homeData?.session.authenticated ? 'carteira online' : 'sem carteira'}
                 </StatusBadge>
-                <StatusBadge status={data.status.overall_status === 'All Systems Operational' ? 'success' : 'warning'}>
+                <StatusBadge status={liveMovers.length > 0 ? 'active' : 'pending'}>
+                  {liveMovers.length > 0 ? 'radar ao vivo' : 'radar sem dados'}
+                </StatusBadge>
+                <StatusBadge status={data.status.overall_status === 'Operational' ? 'success' : 'warning'}>
                   {data.status.overall_status}
                 </StatusBadge>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {isConnected && address && (
+                {homeData?.session.address && (
                   <div className="px-3 py-1.5 rounded-full border text-sm" style={{ borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}>
-                    {formatAddress(address)}
+                    {formatAddress(homeData.session.address)}
                   </div>
                 )}
-                {balanceQuery.data?.eth?.formatted && (
+                {homeData?.wallet?.balance_eth != null && (
                   <div className="px-3 py-1.5 rounded-full border text-sm" style={{ borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}>
-                    {balanceQuery.data.eth.formatted}
+                    {homeData.wallet.balance_eth.toFixed(4)} ETH
                   </div>
                 )}
               </div>
@@ -334,7 +278,7 @@ export function Home() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.68fr_0.32fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={brief.badgeStatus}>{brief.badge}</StatusBadge>
+                  <StatusBadge status={brief.badge_status}>{brief.badge}</StatusBadge>
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Início</div>
                 </div>
 
@@ -377,11 +321,11 @@ export function Home() {
                     </div>
                     <div className="min-w-0">
                       <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
-                        {isConnected && address ? formatAddress(address) : 'Conecte sua carteira'}
+                        {homeData?.session.address ? formatAddress(homeData.session.address) : 'Conecte sua carteira'}
                       </div>
                       <div className="text-sm break-words" style={{ color: 'var(--text-2)' }}>
-                        {isConnected
-                          ? 'Acesso completo habilitado.'
+                        {homeData?.session.authenticated
+                          ? 'Sessão ativa no hub.'
                           : 'Desbloqueie Passport, Vault e Radar.'}
                       </div>
                     </div>
@@ -391,11 +335,11 @@ export function Home() {
                     <WalletConnect />
                     <div className="flex flex-wrap gap-3">
                       <button
-                        onClick={() => navigate(isConnected ? '/radar' : '/pass')}
+                        onClick={() => navigate(homeData?.session.authenticated ? '/radar' : '/pass')}
                         className="px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
                         style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
                       >
-                        {isConnected ? 'Radar' : 'Passport'}
+                        {homeData?.session.authenticated ? 'Radar' : 'Passport'}
                         <ArrowUpRight className="w-4 h-4" />
                       </button>
                       <button

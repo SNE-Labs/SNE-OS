@@ -1,6 +1,13 @@
-// In production: use relative paths (Vercel proxy handles /api/* → backend)
-// In development: Vite proxy handles /api/* → localhost:5000
-export const API_BASE = "";
+const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+
+// Use explicit API base in production when configured.
+// Fallback to relative paths so local Vite proxy keeps working.
+export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
+
+function withApiBase(path: string): string {
+  if (!API_BASE) return path;
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 export async function apiGet<T>(path: string): Promise<T> {
   try {
@@ -12,7 +19,7 @@ export async function apiGet<T>(path: string): Promise<T> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(withApiBase(path), {
       method: "GET",
       credentials: "include",
       headers,
@@ -41,7 +48,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(withApiBase(path), {
       method: "POST",
       credentials: "include",
       headers,
@@ -71,7 +78,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(withApiBase(path), {
       method: "DELETE",
       credentials: "include",
       headers,

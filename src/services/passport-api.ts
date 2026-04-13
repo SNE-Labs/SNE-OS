@@ -1,5 +1,6 @@
 import type { Address } from '../types/passport';
 import type { LookupResult, BalanceResponse, GasResponse, ProductsResponse, ErrorResponse } from '../types/passport';
+import { apiGet } from '@/lib/api/http';
 
 /**
  * Cliente para API do SNE Scroll Passport
@@ -299,4 +300,19 @@ export async function getProducts(): Promise<ProductsResponse> {
     // Re-throw para que o hook possa tratar
     throw error;
   }
+}
+
+export async function getPassportOverview(address?: string | null): Promise<{
+  connected: boolean;
+  status: { label: string; tone: 'active' | 'success' | 'warning' | 'pending' };
+  profile: LookupResult | null;
+  surface: {
+    address: string | null;
+    capital: string;
+    gas: string;
+  };
+  inventory: Array<{ label: string; value: string }>;
+}> {
+  const query = address ? `?address=${encodeURIComponent(address)}` : '';
+  return apiGet(`/api/passport/overview${query}`);
 }

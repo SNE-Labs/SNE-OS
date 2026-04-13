@@ -74,9 +74,11 @@ def create_app():
     from . import auth_siwe, dashboard_api, charts_api  # Import modules here
     from .vault_api import vault_bp
     from .passport_api import passport_bp
+    from .keys_api import keys_bp
     from .radar_api import radar_bp
     from .status_api import status_bp, dashboard_bp as status_dashboard_bp
     from .intel_api import intel_bp
+    from .home_api import home_bp
 
     # Existing blueprints
     app.register_blueprint(auth_siwe.auth_bp)
@@ -88,9 +90,11 @@ def create_app():
     # New SNE OS blueprints
     app.register_blueprint(vault_bp, url_prefix="/api/vault")
     app.register_blueprint(passport_bp, url_prefix="/api/passport")
+    app.register_blueprint(keys_bp, url_prefix="/api/keys")
     app.register_blueprint(radar_bp, url_prefix="/api/radar")
     app.register_blueprint(status_bp, url_prefix="/api/status")
     app.register_blueprint(intel_bp, url_prefix="/api/intel")
+    app.register_blueprint(home_bp, url_prefix="/api")
 
     # Register global routes INSIDE create_app()
     @app.route('/', methods=['GET'])

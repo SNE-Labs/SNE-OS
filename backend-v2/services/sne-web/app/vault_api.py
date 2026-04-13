@@ -32,6 +32,23 @@ def require_session(fn):
 
 vault_bp = Blueprint("vault", __name__)
 
+
+@vault_bp.get("/overview")
+def overview():
+    """
+    Aggregated Vault page payload.
+    GET /api/vault/overview?address=0x...
+    If address is omitted, uses the authenticated session address when available.
+    """
+    from .vault_service import build_vault_overview
+
+    try:
+        address = request.args.get("address") or session.get("siwe_address")
+        return jsonify(build_vault_overview(address)), 200
+    except Exception as e:
+        logger.error(f"Vault overview error: {e}")
+        return jsonify(build_vault_overview(None)), 200
+
 # Public products (no wallet required)
 @vault_bp.get("/products")
 def products():

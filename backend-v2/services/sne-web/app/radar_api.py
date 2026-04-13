@@ -8,6 +8,7 @@ import logging
 import time
 from datetime import datetime
 from .collector_client import get_live_market_snapshot
+from .radar_service import build_radar_overview, derive_signal_from_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,41 @@ def market_summary():
             'top_movers': []
         }), 200
 
+
+@radar_bp.get("/overview")
+def overview():
+    """
+    Aggregated Radar page payload.
+    GET /api/radar/overview?symbol=ETHUSDT&timeframe=24H
+    """
+    try:
+      active_symbol = request.args.get("symbol", "ETHUSDT").replace("/", "")
+      timeframe = request.args.get("timeframe", "24H")
+      authenticated = bool(session.get("siwe_address"))
+      tier = session.get("tier", "free")
+      has_access = tier in {"premium", "pro"}
+
+      return jsonify(build_radar_overview(active_symbol, authenticated, has_access, timeframe)), 200
+    except Exception as e:
+      logger.error(f"Radar overview error: {e}")
+      return jsonify({
+          "execution": {"label": "offline", "tone": "pending"},
+          "hero": {
+              "headline": "Mercados líquidos. Sinais em tempo real.",
+              "summary": "O Radar está indisponível agora.",
+              "metrics": [
+                  {"label": "Pares ativos", "value": "0 ao vivo"},
+                  {"label": "Par em foco", "value": "--"},
+                  {"label": "Sinal", "value": "--"},
+              ],
+          },
+          "market_state": {"label": "Sem dados.", "access": "prévia", "execution": "bloqueada"},
+          "featured": None,
+          "signal": None,
+          "universe": [],
+          "last_updated": datetime.utcnow().isoformat(),
+      }), 200
+
 @radar_bp.post("/signals")
 def signals_post():
     """
@@ -86,25 +122,8 @@ def signals_post():
         if not ticker:
             return jsonify({'signals': []}), 200
 
-        change_pct = ticker["change24h"] * 100
-        abs_change = abs(change_pct)
-        signal = 'BUY' if change_pct >= 2 else 'SELL' if change_pct <= -2 else 'HOLD'
-        strength = 'Strong' if abs_change >= 5 else 'Moderate' if abs_change >= 2 else 'Weak'
-        score = min(int(abs_change * 12), 95)
-
         signals_data = {
-            'signals': [
-                {
-                    'symbol': symbol,
-                    'signal': signal,
-                    'strength': strength,
-                    'timeframe': timeframe,
-                    'updated': datetime.utcnow().isoformat(),
-                    'change': f'{change_pct:+.2f}%',
-                    'score': score,
-                    'price': ticker["price"],
-                }
-            ]
+            'signals': [derive_signal_from_ticker(ticker, timeframe)]
         }
 
         return jsonify(signals_data), 200

@@ -1,28 +1,22 @@
-import { useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useState } from 'react';
 import { ArrowUpRight, Lock, RefreshCw, Waves } from 'lucide-react';
 
 import { StatusBadge } from '../components/sne/StatusBadge';
-import { useMarketSummary, useSignals } from '../../hooks/useRadarData';
+import { useRadarOverview } from '../../hooks/useRadarData';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
 export function Radar() {
-  const { isConnected } = useAccount();
   const { entitlements } = useEntitlements();
   const hasAccess = entitlements?.features?.includes('radar.access') || false;
 
   const [activeSymbol, setActiveSymbol] = useState('ETHUSDT');
 
-  const marketQuery = useMarketSummary();
-  const signalsQuery = useSignals(activeSymbol, '24H', true);
-
-  const movers = marketQuery.status === 'success' ? (marketQuery.data?.top_movers ?? []) : [];
-  const featured = useMemo(
-    () => movers.find((item) => item.symbol === activeSymbol) ?? movers[0],
-    [activeSymbol, movers]
-  );
+  const overviewQuery = useRadarOverview(activeSymbol, '24H');
+  const overview = overviewQuery.data;
+  const movers = overview?.universe ?? [];
+  const featured = overview?.featured ?? null;
 
   const formattedPrice = (value: number) => {
     if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -36,17 +30,11 @@ export function Radar() {
       maximumFractionDigits: 1,
     }).format(value);
 
-  const signal = signalsQuery.data?.signals?.[0];
-
-  const executionState = useMemo(() => {
-    if (!isConnected) return { label: 'offline', tone: 'pending' as const };
-    if (!hasAccess) return { label: 'leitura', tone: 'warning' as const };
-    return { label: 'aguardando', tone: 'active' as const };
-  }, [hasAccess, isConnected]);
+  const signal = overview?.signal ?? null;
+  const executionState = overview?.execution ?? { label: hasAccess ? 'ready' : 'preview', tone: hasAccess ? 'active' as const : 'warning' as const };
 
   const handleRefresh = () => {
-    marketQuery.refetch();
-    signalsQuery.refetch();
+    overviewQuery.refetch();
   };
 
   const translateStrength = (value: string | undefined) => {
@@ -84,34 +72,23 @@ export function Radar() {
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
-                  Mercados líquidos. Sinais em tempo real.
+                  {overview?.hero.headline ?? 'Mercados líquidos. Sinais em tempo real.'}
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
-                  Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.
+                  {overview?.hero.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Pares ativos</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{movers.length || 0} ao vivo</div>
-                  </div>
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Par em foco</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{featured?.symbol ?? activeSymbol}</div>
-                  </div>
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Sinal</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{signal?.signal ?? '--'}</div>
-                  </div>
+                  {(overview?.hero.metrics ?? []).map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="rounded-lg px-4 py-3"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>{metric.label}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{metric.value}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -123,7 +100,7 @@ export function Radar() {
                   <div>
                     <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Dados de mercado</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {marketQuery.isLoading ? 'Carregando...' : 'Ao vivo.'}
+                      {overviewQuery.isLoading ? 'Carregando...' : overview?.market_state.label ?? 'Ao vivo.'}
                     </div>
                   </div>
                   <button
@@ -131,7 +108,7 @@ export function Radar() {
                     className="px-3 py-2 rounded-lg inline-flex items-center gap-2 text-sm font-medium"
                     style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                   >
-                    <RefreshCw className={`w-4 h-4 ${marketQuery.isFetching || signalsQuery.isFetching ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
                     Atualizar
                   </button>
                 </div>
@@ -139,11 +116,11 @@ export function Radar() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Acesso</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{hasAccess ? 'completo' : 'prévia'}</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.market_state.access ?? (hasAccess ? 'completo' : 'prévia')}</div>
                   </div>
                   <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Execução</div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>bloqueada</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.market_state.execution ?? 'bloqueada'}</div>
                   </div>
                 </div>
               </div>
