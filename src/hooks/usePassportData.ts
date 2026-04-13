@@ -43,10 +43,11 @@ export function usePassportOverview(address: string | null) {
   });
 }
 
-export function usePassportIdentity() {
+export function usePassportIdentity(enabled = true) {
   return useQuery({
     queryKey: ['passport', 'identity'],
     queryFn: () => getPassportIdentity(),
+    enabled,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 1,

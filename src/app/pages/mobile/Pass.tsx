@@ -1,10 +1,34 @@
-import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi';
-import { Activity, ArrowUpRight, BadgeCheck, Globe, Search, Shield, Wallet } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowUpRight, BadgeCheck, Globe, Link2, Search, Shield, Wallet } from 'lucide-react';
+import { isAddress } from 'viem';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
-import { usePassportOverview } from '../../../hooks/usePassportData';
+import { WalletConnect } from '../../components/passport/WalletConnect';
+import { PassportWalletLinkPanel } from '../../components/passport/PassportWalletLinkPanel';
+import { usePassportIdentity, usePassportOverview } from '../../../hooks/usePassportData';
+import { useAuth } from '@/lib/auth/AuthProvider';
 import { formatAddress } from '@/utils/format';
+
+type LinkedAccount = {
+  network: string;
+  address: string;
+  primary?: boolean;
+  status?: string;
+};
+
+type OverviewProfile = {
+  assertions?: Array<{ id: string; label: string; status: string; value?: string | null; source?: string }>;
+  linked_accounts?: LinkedAccount[];
+  identity?: { address?: string; accountType?: string; txCount?: number; balanceEth?: string };
+  metadata?: { source?: string };
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString('pt-BR');
+}
 
 function toBadgeVariant(
   tone?: 'active' | 'success' | 'warning' | 'pending'
@@ -15,53 +39,69 @@ function toBadgeVariant(
   return 'neutral';
 }
 
-type LinkedAccount = {
-  network: string;
-  address: string;
-  primary?: boolean;
-  status?: string;
-  account_type?: string;
-};
-
 export function MobilePass() {
-  const navigate = useNavigate();
-  const { address, isConnected } = useAccount();
-  const overviewQuery = usePassportOverview(isConnected && address ? address : null);
-  const overview = overviewQuery.data;
-  const profile = (overview?.profile ?? null) as {
-    assertions?: Array<{ id: string; label: string; status: string; value?: string | null; source?: string }>;
-    linked_accounts?: LinkedAccount[];
-    network_scope?: Array<{ network: string; link_strategy?: string; enabled?: boolean }>;
-    identity?: { accountType?: string; txCount?: number; balanceEth?: string };
-    metadata?: { source?: string };
-  } | null;
+  const { address, isAuthenticated, connect } = useAuth();
+  const [lookupInput, setLookupInput] = useState('');
+  const [lookupTarget, setLookupTarget] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [showLinkPanel, setShowLinkPanel] = useState(false);
 
-  const linkedAccounts = profile?.linked_accounts ?? [];
-  const assertions = profile?.assertions ?? [];
-  const networkScope = profile?.network_scope ?? [];
+  const identityQuery = usePassportIdentity(isAuthenticated);
+  const connectedOverviewQuery = usePassportOverview(isAuthenticated && address ? address : null);
+  const publicOverviewQuery = usePassportOverview(lookupTarget);
+
+  const identity = identityQuery.data;
+  const connectedProfile = connectedOverviewQuery.data?.profile as OverviewProfile | null;
+  const publicProfile = publicOverviewQuery.data?.profile as OverviewProfile | null;
+  const linkedAccounts = connectedProfile?.linked_accounts ?? [];
+
+  useEffect(() => {
+    if (!lookupTarget) return;
+    setLookupInput(lookupTarget);
+  }, [lookupTarget]);
+
+  const handleLookup = () => {
+    const candidate = lookupInput.trim();
+    if (!candidate) {
+      setLookupError('Informe um endereço.');
+      return;
+    }
+    if (!isAddress(candidate)) {
+      setLookupError('Endereço inválido.');
+      return;
+    }
+    setLookupError(null);
+    setLookupTarget(candidate);
+  };
+
+  const statusTone = !isAuthenticated
+    ? 'pending'
+    : identityQuery.isLoading
+      ? 'pending'
+      : identityQuery.isError
+        ? 'warning'
+        : (identity?.stats.wallets_total ?? 0) > 1
+          ? 'success'
+          : 'active';
+
+  const statusLabel = !isAuthenticated
+    ? 'offline'
+    : identityQuery.isLoading
+      ? 'syncing'
+      : identityQuery.isError
+        ? 'degraded'
+        : (identity?.stats.wallets_total ?? 0) > 1
+          ? 'linked'
+          : 'active';
 
   return (
     <MobilePageShell
       title="Passport"
-      subtitle="SNE Identity across linked accounts and networks."
-      statusPill={{
-        label: overview?.status.label ?? 'offline',
-        variant: toBadgeVariant(overview?.status.tone),
-      }}
+      subtitle="Checkpoint de identidade Web3 do OS."
+      statusPill={{ label: statusLabel, variant: toBadgeVariant(statusTone) }}
       showContext
     >
-      {overviewQuery.isLoading ? (
-        <div className="space-y-3">
-          <SurfaceCard className="h-32 animate-pulse bg-[var(--bg-1)]" />
-          <SurfaceCard className="h-48 animate-pulse bg-[var(--bg-1)]" />
-        </div>
-      ) : overviewQuery.isError || !overview ? (
-        <ErrorState
-          title="Passport indisponível"
-          description="A identidade da sessão não carregou agora."
-          onRetry={() => overviewQuery.refetch()}
-        />
-      ) : (
+      {!isAuthenticated ? (
         <>
           <SurfaceCard variant="elevated">
             <div className="flex items-start gap-3 mb-4">
@@ -69,25 +109,68 @@ export function MobilePass() {
                 <Wallet className="w-5 h-5" />
               </div>
               <div className="min-w-0">
+                <div className="text-[var(--text-1)] mb-1">Crie sua identidade Passport</div>
+                <p className="text-sm text-[var(--text-2)]">
+                  A primeira wallet autenticada vira a âncora do seu identity graph dentro do OS.
+                </p>
+              </div>
+            </div>
+
+            <WalletConnect />
+
+            <MobileButton className="w-full mt-3" onClick={() => void connect()}>
+              Conectar primeira wallet
+            </MobileButton>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
+              <Search className="w-4 h-4 text-[var(--accent-orange)]" />
+              <span>Lookup público</span>
+            </div>
+            <div className="text-sm text-[var(--text-2)]">
+              Mesmo sem autenticar, o Passport continua sendo a superfície pública de lookup on-chain do OS.
+            </div>
+          </SurfaceCard>
+        </>
+      ) : identityQuery.isLoading ? (
+        <div className="space-y-3">
+          <SurfaceCard className="h-32 animate-pulse bg-[var(--bg-1)]" />
+          <SurfaceCard className="h-44 animate-pulse bg-[var(--bg-1)]" />
+        </div>
+      ) : identityQuery.isError || !identity ? (
+        <ErrorState
+          title="Passport indisponível"
+          description="A identidade autenticada não carregou agora."
+          onRetry={() => identityQuery.refetch()}
+        />
+      ) : (
+        <>
+          <SurfaceCard variant="elevated">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-[var(--accent-orange-dim)] text-[var(--accent-orange)] flex items-center justify-center">
+                <BadgeCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
                 <div className="text-[var(--text-1)] mb-1">
-                  {overview.surface.address ? formatAddress(overview.surface.address) : 'No primary account'}
+                  {identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : 'No primary wallet'}
                 </div>
                 <p className="text-sm text-[var(--text-2)]">
-                  {overview.connected
-                    ? 'Identity surface loaded from the connected account.'
-                    : 'Connect a wallet to load linked accounts and assertions.'}
+                  {identity.stats.wallets_total > 1
+                    ? 'Qualquer wallet ativa deste Passport deve reabrir a mesma identidade.'
+                    : 'Sua primeira wallet já está ancorada. Agora você pode vincular as próximas.'}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Capital</div>
-                <div className="text-[var(--text-1)]">{overview.surface.capital}</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Primary</div>
+                <div className="text-[var(--text-1)]">{identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : '--'}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Gas</div>
-                <div className="text-[var(--text-1)]">{overview.surface.gas}</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Wallets</div>
+                <div className="text-[var(--text-1)]">{identity.stats.wallets_total}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                 <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Links</div>
@@ -96,76 +179,63 @@ export function MobilePass() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <MobileButton className="w-full" onClick={() => navigate('/keys')}>
-                Open Keys
+              <MobileButton className="w-full" onClick={() => setShowLinkPanel((current) => !current)}>
+                <Link2 className="w-4 h-4 mr-2" />
+                {showLinkPanel ? 'Fechar vínculo' : 'Adicionar wallet'}
               </MobileButton>
-              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/home')}>
-                Back Home
+              <MobileButton variant="secondary" className="w-full" onClick={handleLookup}>
+                <Search className="w-4 h-4 mr-2" />
+                Lookup
               </MobileButton>
             </div>
           </SurfaceCard>
 
+          {showLinkPanel ? (
+            <PassportWalletLinkPanel currentAddress={address} onLinked={() => identityQuery.refetch()} />
+          ) : null}
+
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Identity Assertions</h3>
-              <Badge variant="neutral" size="sm">{assertions.length}</Badge>
+              <h3 className="text-[var(--text-1)]">Wallet Graph</h3>
+              <Badge variant="neutral" size="sm">{identity.wallets.length}</Badge>
             </div>
-
-            {assertions.length === 0 ? (
-              <EmptyState
-                title="No assertions loaded"
-                description="Connect a wallet to resolve the identity surface."
-              />
-            ) : (
-              <div className="space-y-3">
-                {assertions.slice(0, 4).map((assertion) => (
-                  <div key={assertion.id} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <div className="text-[var(--text-1)]">{assertion.label}</div>
-                      <Badge
-                        variant={
-                          assertion.status === 'present'
-                            ? 'success'
-                            : assertion.status === 'inactive'
-                              ? 'warning'
-                              : 'neutral'
-                        }
-                        size="sm"
-                      >
-                        {assertion.status}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-[var(--text-2)] break-words">{assertion.value ?? '--'}</div>
-                    <div className="text-[10px] uppercase text-[var(--text-3)] mt-2">{assertion.source ?? 'derived'}</div>
+            <div className="space-y-3">
+              {identity.wallets.map((wallet) => (
+                <div key={wallet.id} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div className="text-[var(--text-1)]">{wallet.label}</div>
+                    <Badge variant={wallet.is_primary ? 'orange' : wallet.status === 'active' ? 'success' : 'neutral'} size="sm">
+                      {wallet.is_primary ? 'primary' : wallet.status}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="text-sm text-[var(--text-2)] break-all mb-1">{wallet.address}</div>
+                  <div className="text-[10px] uppercase text-[var(--text-3)]">
+                    last login {formatDate(wallet.last_login_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </SurfaceCard>
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Linked Accounts</h3>
-              <Badge variant="neutral" size="sm">{linkedAccounts.length}</Badge>
+              <h3 className="text-[var(--text-1)]">Eventos</h3>
+              <Badge variant="neutral" size="sm">{identity.events.length}</Badge>
             </div>
-
-            {linkedAccounts.length === 0 ? (
+            {identity.events.length === 0 ? (
               <EmptyState
-                title="No linked accounts"
-                description="The Passport still has no multi-chain account surface for this session."
+                title="Sem eventos ainda"
+                description="Novos vínculos e mudanças de identidade aparecem aqui."
               />
             ) : (
               <div className="space-y-3">
-                {linkedAccounts.map((account) => (
-                  <div key={`${account.network}-${account.address}`} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <div className="text-[var(--text-1)]">{account.network}</div>
-                      <Badge variant={account.primary ? 'orange' : 'neutral'} size="sm">
-                        {account.primary ? 'primary' : account.status ?? 'linked'}
-                      </Badge>
+                {identity.events.map((event) => (
+                  <div key={event.id} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                    <div className="text-[var(--text-1)] mb-1">{event.type.replaceAll('_', ' ')}</div>
+                    <div className="text-sm text-[var(--text-2)] break-all">
+                      {event.target_address ?? 'identity event'}
                     </div>
-                    <div className="text-sm text-[var(--text-2)] break-all mb-1">{formatAddress(account.address)}</div>
-                    <div className="text-[10px] uppercase text-[var(--text-3)]">{account.account_type ?? 'account'}</div>
+                    <div className="text-[10px] uppercase text-[var(--text-3)] mt-2">{formatDate(event.created_at)}</div>
                   </div>
                 ))}
               </div>
@@ -175,25 +245,61 @@ export function MobilePass() {
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
               <Globe className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Network Scope</span>
+              <span>Lookup público</span>
             </div>
-
             <div className="space-y-3">
-              {networkScope.length ? networkScope.map((item) => (
-                <div key={item.network} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="text-[var(--text-1)]">{item.network}</div>
-                    <Badge variant={item.enabled ? 'success' : 'neutral'} size="sm">
-                      {item.enabled ? 'enabled' : 'inactive'}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-[var(--text-2)]">
-                    {item.link_strategy ?? 'linked from the primary identity surface'}
-                  </div>
+              <input
+                type="text"
+                value={lookupInput}
+                onChange={(event) => {
+                  setLookupInput(event.target.value);
+                  setLookupError(null);
+                }}
+                placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+                className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-4 py-3 font-mono text-sm text-[var(--text-1)]"
+              />
+              {lookupError ? <div className="text-sm text-[var(--danger-red)]">{lookupError}</div> : null}
+              <MobileButton variant="secondary" className="w-full" onClick={handleLookup}>
+                Consultar endereço
+              </MobileButton>
+
+              {!lookupTarget ? (
+                <div className="text-sm text-[var(--text-2)]">
+                  Digite um endereço para abrir o perfil público on-chain.
                 </div>
-              )) : (
-                <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-sm text-[var(--text-2)]">
-                  No explicit network scope returned for this identity yet.
+              ) : publicOverviewQuery.isLoading ? (
+                <div className="text-sm text-[var(--text-2)]">Resolvendo endereço...</div>
+              ) : publicOverviewQuery.isError || !publicProfile ? (
+                <div className="text-sm text-[var(--danger-red)]">Falha ao resolver o perfil público.</div>
+              ) : (
+                <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="text-[var(--text-1)]">{formatAddress(publicProfile.identity?.address ?? lookupTarget)}</div>
+                    <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Type</div>
+                      <div className="text-[var(--text-1)]">{publicProfile.identity?.accountType ?? '--'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Balance</div>
+                      <div className="text-[var(--text-1)]">{publicProfile.identity?.balanceEth ? `${publicProfile.identity.balanceEth} ETH` : '--'}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {(publicProfile.assertions ?? []).slice(0, 3).map((assertion) => (
+                      <div key={assertion.id} className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
+                        <div className="flex items-center justify-between gap-3 mb-1">
+                          <div className="text-[var(--text-1)]">{assertion.label}</div>
+                          <Badge variant={assertion.status === 'present' ? 'success' : assertion.status === 'inactive' ? 'warning' : 'neutral'} size="sm">
+                            {assertion.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-[var(--text-2)] break-words">{assertion.value ?? '--'}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -201,50 +307,17 @@ export function MobilePass() {
 
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
-              <Activity className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Identity Surface</span>
+              <Shield className="w-4 h-4 text-[var(--accent-orange)]" />
+              <span>Fronteiras</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="space-y-3 text-sm text-[var(--text-2)]">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Type</div>
-                <div className="text-[var(--text-1)]">{profile?.identity?.accountType ?? '--'}</div>
+                Passport resolve identidade, múltiplas wallets e lookup público.
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Tx Count</div>
-                <div className="text-[var(--text-1)]">{profile?.identity?.txCount ?? '--'}</div>
-              </div>
-              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Balance</div>
-                <div className="text-[var(--text-1)]">{profile?.identity?.balanceEth ? `${profile.identity.balanceEth} ETH` : '--'}</div>
-              </div>
-              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Source</div>
-                <div className="text-[var(--text-1)]">{profile?.metadata?.source ?? 'api'}</div>
+                Keys continua sendo a camada de grants, licenças e dispositivos.
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/keys')}>
-                <Shield className="w-4 h-4 mr-2" />
-                Keys
-              </MobileButton>
-              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/docs')}>
-                <Search className="w-4 h-4 mr-2" />
-                Docs
-              </MobileButton>
-            </div>
-
-            <button
-              onClick={() => navigate('/keys')}
-              className="w-full mt-3 rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-3 flex items-center justify-between text-left"
-            >
-              <div>
-                <div className="text-[var(--text-1)] mb-1">Identity proves. Keys grants.</div>
-                <div className="text-sm text-[var(--text-2)]">Move from Passport to the access layer.</div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
-            </button>
           </SurfaceCard>
         </>
       )}

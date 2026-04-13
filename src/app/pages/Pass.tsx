@@ -1,79 +1,127 @@
-import { useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
-import { BadgeCheck, Search, Shield, Wallet, ArrowUpRight, AlertCircle, KeyRound, Box, Activity } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Activity,
+  ArrowUpRight,
+  BadgeCheck,
+  Clock3,
+  Globe,
+  Link2,
+  Network,
+  Search,
+  Shield,
+  Sparkles,
+  Wallet,
+} from 'lucide-react';
 import { isAddress } from 'viem';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
-import { usePassportOverview } from '../../hooks/usePassportData';
-import { resolveModuleState } from '../../lib/moduleState';
+import { PassportWalletLinkPanel } from '../components/passport/PassportWalletLinkPanel';
+import { usePassportIdentity, usePassportOverview } from '../../hooks/usePassportData';
+import { useAuth } from '@/lib/auth/AuthProvider';
 import { formatAddress } from '@/utils/format';
 
-type PassportTab = 'identity' | 'lookup' | 'watch';
+type PassportTab = 'identity' | 'lookup' | 'social';
+
+type LinkedAccount = {
+  network: string;
+  address: string;
+  primary?: boolean;
+  status?: string;
+  account_type?: string;
+};
+
+type NetworkScope = {
+  network: string;
+  link_strategy?: string;
+  enabled?: boolean;
+};
+
+type OverviewProfile = {
+  assertions?: Array<{ id: string; label: string; status: string; value?: string | null; source?: string }>;
+  linked_accounts?: LinkedAccount[];
+  network_scope?: NetworkScope[];
+  identity?: { address?: string; accountType?: string; txCount?: number; balanceEth?: string; hasActivity?: boolean };
+  metadata?: { source?: string };
+};
+
+const RECENT_LOOKUPS_KEY = 'sne-passport-recent-lookups';
+
+function readRecentLookups(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_LOOKUPS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentLookups(addresses: string[]) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(RECENT_LOOKUPS_KEY, JSON.stringify(addresses.slice(0, 8)));
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString('pt-BR');
+}
 
 export function Pass() {
-  const { address, isConnected } = useAccount();
+  const { address, isAuthenticated, connect } = useAuth();
   const [activeTab, setActiveTab] = useState<PassportTab>('identity');
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [showLinkPanel, setShowLinkPanel] = useState(false);
+  const [recentLookups, setRecentLookups] = useState<string[]>(() => readRecentLookups());
 
-  const overviewQuery = usePassportOverview(isConnected && address ? address : null);
-  const publicOverview = usePassportOverview(lookupTarget);
-  const identityModuleState = resolveModuleState({
-    isConnected,
-    isLoading: overviewQuery.isLoading,
-    isError: overviewQuery.isError,
-    data: overviewQuery.data,
-  });
+  const identityQuery = usePassportIdentity(isAuthenticated);
+  const connectedOverviewQuery = usePassportOverview(isAuthenticated && address ? address : null);
+  const publicOverviewQuery = usePassportOverview(lookupTarget);
 
-  const connectedProfile = overviewQuery.data?.profile;
-  const publicProfile = publicOverview.data?.profile;
+  const identity = identityQuery.data;
+  const connectedProfile = connectedOverviewQuery.data?.profile as OverviewProfile | null;
+  const publicProfile = publicOverviewQuery.data?.profile as OverviewProfile | null;
 
-  const currentProfile = activeTab === 'lookup' ? publicProfile : connectedProfile;
+  const connectedLinkedAccounts = connectedProfile?.linked_accounts ?? [];
+  const connectedNetworkScope = connectedProfile?.network_scope ?? [];
 
-  const identityStatus = overviewQuery.data?.status ?? (
-    !isConnected
-      ? { label: 'offline', tone: 'pending' as const }
-      : overviewQuery.isLoading
-        ? { label: 'syncing', tone: 'pending' as const }
-        : (connectedProfile?.licenses.length ?? 0) > 0
-          ? { label: 'verified', tone: 'success' as const }
-          : connectedProfile?.identity?.hasActivity
-            ? { label: 'active', tone: 'active' as const }
-            : { label: 'pending', tone: 'warning' as const }
-  );
+  useEffect(() => {
+    writeRecentLookups(recentLookups);
+  }, [recentLookups]);
+
+  useEffect(() => {
+    if (!lookupTarget || !publicOverviewQuery.isSuccess) return;
+    setRecentLookups((current) => [lookupTarget, ...current.filter((item) => item.toLowerCase() !== lookupTarget.toLowerCase())].slice(0, 8));
+  }, [lookupTarget, publicOverviewQuery.isSuccess]);
+
+  const identityStatus = useMemo(() => {
+    if (!isAuthenticated) {
+      return { label: 'offline', tone: 'pending' as const };
+    }
+    if (identityQuery.isLoading) {
+      return { label: 'syncing', tone: 'pending' as const };
+    }
+    if (identityQuery.isError) {
+      return { label: 'degraded', tone: 'warning' as const };
+    }
+    if ((identity?.stats.wallets_total ?? 0) > 1) {
+      return { label: 'linked', tone: 'success' as const };
+    }
+    return { label: 'active', tone: 'active' as const };
+  }, [identity?.stats.wallets_total, identityQuery.isError, identityQuery.isLoading, isAuthenticated]);
 
   const tabs = [
-    { id: 'identity', label: 'Identidade', icon: BadgeCheck },
-    { id: 'lookup', label: 'Consulta Pública', icon: Search },
-    { id: 'watch', label: 'Camada de Acesso', icon: Shield },
+    { id: 'identity', label: 'Minha Identidade', icon: BadgeCheck },
+    { id: 'lookup', label: 'Lookup Público', icon: Search },
+    { id: 'social', label: 'Rede', icon: Sparkles },
   ] as const;
-
-  const inventory = useMemo(
-    () => (
-      activeTab === 'identity' && overviewQuery.data?.inventory
-        ? overviewQuery.data.inventory.map((item) => ({
-            ...item,
-            icon:
-              item.label === 'Asserções'
-                ? BadgeCheck
-                : item.label === 'Licenças'
-                  ? Shield
-                  : item.label === 'Chaves'
-                    ? KeyRound
-                    : Box,
-          }))
-        : [
-            { label: 'Asserções', value: `${currentProfile?.assertions?.length ?? 0}`, icon: BadgeCheck },
-            { label: 'Licenças', value: `${currentProfile?.licenses.length ?? 0}`, icon: Shield },
-            { label: 'Chaves', value: `${currentProfile?.keys.length ?? 0}`, icon: KeyRound },
-            { label: 'Caixas', value: `${currentProfile?.boxes.length ?? 0}`, icon: Box },
-          ]
-    ),
-    [activeTab, currentProfile, overviewQuery.data?.inventory]
-  );
 
   const handleLookupSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -83,16 +131,21 @@ export function Pass() {
       setLookupError('Informe um endereço para consultar.');
       return;
     }
-
     if (!isAddress(candidate)) {
       setLookupError('Endereço Ethereum inválido.');
       return;
     }
 
-    setLookupError(null);
     setLookupTarget(candidate);
+    setLookupError(null);
     setActiveTab('lookup');
   };
+
+  const statCardStyle = {
+    backgroundColor: 'var(--bg-3)',
+    borderWidth: '1px',
+    borderColor: 'var(--stroke-1)',
+  } as const;
 
   return (
     <div className="flex flex-1">
@@ -108,46 +161,37 @@ export function Pass() {
               boxShadow: 'var(--shadow-1)',
             }}
           >
-            <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-[0.72fr_0.28fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <StatusBadge status={identityStatus.tone}>{identityStatus.label}</StatusBadge>
-                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>Passaporte</div>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>Passport</div>
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
-                  Sua identidade on-chain, resolvida.
+                  Identidade única do OS, resolvida por múltiplas wallets.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
-                  O Passport lê sua conta conectada via RPC e expõe asserções de identidade, inventário de acesso e postura da conta — tudo a partir do estado público on-chain.
+                  O Passport é o checkpoint de identidade Web3 do SNE OS. A primeira wallet autenticada vira a âncora da identidade; as próximas podem ser vinculadas ao mesmo grafo, sem perder o lookup público on-chain.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Endereço</div>
+                  <div className="rounded-lg px-4 py-3" style={statCardStyle}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Wallet primária</div>
                     <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
-                      {overviewQuery.data?.surface.address ? formatAddress(overviewQuery.data.surface.address) : 'Não conectado'}
+                      {identity?.primary_wallet ? formatAddress(identity.primary_wallet.address) : 'Não autenticado'}
                     </div>
                   </div>
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Capital</div>
-                    <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>
-                      {overviewQuery.data?.surface.capital ?? '--'}
+                  <div className="rounded-lg px-4 py-3" style={statCardStyle}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Wallets vinculadas</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {identity?.stats.wallets_total ?? 0}
                     </div>
                   </div>
-                  <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Gas</div>
-                    <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>
-                      {overviewQuery.data?.surface.gas ?? '--'}
+                  <div className="rounded-lg px-4 py-3" style={statCardStyle}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Checkpoint</div>
+                    <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                      {identity?.identity_id ?? identity?.identity.id ?? '--'}
                     </div>
                   </div>
                 </div>
@@ -166,10 +210,12 @@ export function Pass() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
-                      {overviewQuery.data?.surface.address ? formatAddress(overviewQuery.data.surface.address) : 'Conecte sua carteira'}
+                      {address ? formatAddress(address) : 'Conecte sua wallet'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {isConnected ? 'O Passport está lendo o estado público desta conta.' : 'Conecte uma carteira para carregar seu Passport.'}
+                      {isAuthenticated
+                        ? 'Use qualquer wallet vinculada para voltar à mesma identidade do OS.'
+                        : 'Autentique a primeira wallet para criar a âncora do seu Passport.'}
                     </div>
                   </div>
                 </div>
@@ -177,12 +223,20 @@ export function Pass() {
                 <div className="mt-5 space-y-3">
                   <WalletConnect />
                   <button
+                    onClick={() => (isAuthenticated ? setShowLinkPanel((current) => !current) : void connect())}
+                    className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium"
+                    style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    {isAuthenticated ? 'Vincular nova wallet' : 'Criar identidade Passport'}
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => setActiveTab('lookup')}
                     className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium"
                     style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                   >
                     Consultar endereço público
-                    <ArrowUpRight className="w-4 h-4" />
+                    <Search className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -219,175 +273,259 @@ export function Pass() {
 
           {activeTab === 'identity' && (
             <>
-              <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] gap-5">
-                <div
-                  className="rounded-xl p-5"
-                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-                >
-                  <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                    Asserções de Identidade
-                  </div>
+              {!isAuthenticated ? (
+                <ModuleStateCard
+                  tone="disconnected"
+                  title="Conecte a primeira wallet"
+                  description="O Passport cria uma identidade âncora a partir da sua primeira autenticação SIWE. Depois disso, outras wallets entram no mesmo identity graph."
+                  actionLabel="Conectar wallet"
+                  onAction={() => void connect()}
+                />
+              ) : identityQuery.isLoading ? (
+                <ModuleStateCard
+                  tone="loading"
+                  title="Resolvendo identidade"
+                  description="Carregando wallet primária, grafo de carteiras e trilha recente de eventos."
+                />
+              ) : identityQuery.isError || !identity ? (
+                <ModuleStateCard
+                  tone="error"
+                  title="Falha ao carregar o Passport"
+                  description="A identidade autenticada não pôde ser resolvida agora."
+                  actionLabel="Tentar novamente"
+                  onAction={() => identityQuery.refetch()}
+                />
+              ) : (
+                <>
+                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
+                    <div
+                      className="rounded-xl p-5"
+                      style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                    >
+                      <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                        Checkpoint da Identidade
+                      </div>
 
-                  {identityModuleState === 'disconnected' ? (
-                    <ModuleStateCard
-                      tone="disconnected"
-                      title="Conecte uma carteira"
-                      description="O Passport precisa de uma carteira conectada para resolver identidade, linked accounts e assertions."
-                    />
-                  ) : identityModuleState === 'loading' ? (
-                    <ModuleStateCard
-                      tone="loading"
-                      title="Lendo identidade"
-                      description="Resolvendo conta principal, assertions e superfície pública da identidade."
-                    />
-                  ) : identityModuleState === 'error' ? (
-                    <ModuleStateCard
-                      tone="error"
-                      title="Falha ao carregar Passport"
-                      description="A identidade conectada não pôde ser resolvida agora."
-                      actionLabel="Tentar novamente"
-                      onAction={() => overviewQuery.refetch()}
-                    />
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {(connectedProfile?.assertions ?? []).map((assertion) => (
-                        <div
-                          key={assertion.id}
-                          className="rounded-lg p-4 min-w-0"
-                          style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                        >
-                          <div className="flex items-center justify-between gap-3 mb-3">
-                            <div className="font-semibold min-w-0 truncate" style={{ color: 'var(--text-1)' }}>
-                              {assertion.label}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Identity ID</div>
+                          <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                            {identity.identity.id}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Wallet âncora</div>
+                          <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                            {formatAddress(identity.identity.anchor_address)}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Primária atual</div>
+                          <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                            {identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : '--'}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Criada em</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {formatDate(identity.identity.created_at)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tipo</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {connectedProfile?.identity?.accountType ?? '--'}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Transações</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {connectedProfile?.identity?.txCount ?? '--'}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Saldo</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {connectedProfile?.identity?.balanceEth ? `${connectedProfile.identity.balanceEth} ETH` : '--'}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {connectedProfile?.metadata?.source ?? '--'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="rounded-xl p-5"
+                      style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                    >
+                      <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                        Eventos recentes
+                      </div>
+                      {identity.events.length === 0 ? (
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          A trilha de eventos do Passport aparece aqui conforme novas wallets entram ou a identidade sofre mudanças.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {identity.events.map((event) => (
+                            <div key={event.id} className="rounded-lg p-4" style={statCardStyle}>
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                                  {event.type.replaceAll('_', ' ')}
+                                </div>
+                                <Clock3 className="w-4 h-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+                              </div>
+                              <div className="text-sm break-words" style={{ color: 'var(--text-2)' }}>
+                                {event.target_address ? formatAddress(event.target_address) : 'Sem alvo explícito'}
+                              </div>
+                              <div className="text-[11px] uppercase tracking-wide mt-2" style={{ color: 'var(--text-3)' }}>
+                                {formatDate(event.created_at)}
+                              </div>
                             </div>
-                            <StatusBadge
-                              status={
-                                assertion.status === 'present'
-                                  ? 'success'
-                                  : assertion.status === 'inactive'
-                                  ? 'warning'
-                                  : 'pending'
-                              }
-                            >
-                              {assertion.status}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section
+                    className="rounded-xl p-5"
+                    style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          Wallet Graph
+                        </div>
+                        <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
+                          Qualquer wallet ativa desta lista deve conseguir abrir a mesma identidade do OS.
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowLinkPanel((current) => !current)}
+                        className="px-4 py-2 rounded-lg inline-flex items-center gap-2 text-sm font-medium"
+                        style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                      >
+                        <Link2 className="w-4 h-4" />
+                        {showLinkPanel ? 'Fechar vínculo' : 'Adicionar wallet'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {identity.wallets.map((wallet) => (
+                        <div key={wallet.id} className="rounded-lg p-4 min-w-0" style={statCardStyle}>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                              {wallet.label}
+                            </div>
+                            <StatusBadge status={wallet.status === 'active' ? 'success' : wallet.status === 'revoked' ? 'warning' : 'pending'}>
+                              {wallet.is_primary ? 'primary' : wallet.status}
                             </StatusBadge>
                           </div>
-                          <div className="text-sm break-words" style={{ color: 'var(--text-2)' }}>
-                            {assertion.value ?? '--'}
+                          <div className="text-sm font-mono break-all mb-3" style={{ color: 'var(--text-2)' }}>
+                            {wallet.address}
                           </div>
-                          <div className="text-xs mt-2 uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>
-                            {assertion.source}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Família</div>
+                              <div style={{ color: 'var(--text-1)' }}>{wallet.chain_family}</div>
+                            </div>
+                            <div>
+                              <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Último login</div>
+                              <div style={{ color: 'var(--text-1)' }}>{formatDate(wallet.last_login_at)}</div>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </section>
 
-                <div className="space-y-5">
-                  <div
-                    className="rounded-xl p-4"
-                    style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-                  >
-                    <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                      Superfície de Identidade
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tipo</div>
-                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {connectedProfile?.identity?.accountType ?? '--'}
-                        </div>
-                      </div>
-                      <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Transações</div>
-                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {connectedProfile?.identity?.txCount ?? '--'}
-                        </div>
-                      </div>
-                      <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Saldo</div>
-                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {connectedProfile?.identity?.balanceEth ? `${connectedProfile.identity.balanceEth} ETH` : '--'}
-                        </div>
-                      </div>
-                      <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Origem</div>
-                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {connectedProfile?.metadata?.source ?? '--'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {showLinkPanel ? (
+                    <PassportWalletLinkPanel currentAddress={address} onLinked={() => identityQuery.refetch()} />
+                  ) : null}
 
-                  <div
-                    className="rounded-xl p-4"
-                    style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-                  >
-                    <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                      Inventário
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {inventory.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <div
-                            key={item.label}
-                            className="rounded-lg p-3 min-w-0"
-                            style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                          >
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <span className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>{item.label}</span>
-                              <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
+                    <div
+                      className="rounded-xl p-5"
+                      style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                    >
+                      <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                        Presença pública multi-network
+                      </div>
+                      {connectedLinkedAccounts.length === 0 ? (
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          O Passport ainda não expôs linked accounts públicos para esta identidade.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {connectedLinkedAccounts.map((account) => (
+                            <div key={`${account.network}-${account.address}`} className="rounded-lg p-4" style={statCardStyle}>
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                                  {account.network}
+                                </div>
+                                <StatusBadge status={account.primary ? 'success' : account.status === 'active' ? 'active' : 'pending'}>
+                                  {account.primary ? 'primary' : account.status ?? 'linked'}
+                                </StatusBadge>
+                              </div>
+                              <div className="text-sm font-mono break-all" style={{ color: 'var(--text-2)' }}>
+                                {account.address}
+                              </div>
                             </div>
-                            <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{item.value}</div>
-                          </div>
-                        );
-                      })}
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
-              </section>
 
-              <section
-                className="rounded-xl p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Fronteiras da Identidade
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que o Passport prova</div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Resolução de endereço, atividade on-chain, tipo de conta e qualquer asserção de identidade SNE visível publicamente.
+                    <div
+                      className="rounded-xl p-5"
+                      style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                    >
+                      <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                        Fronteiras do Passport
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que o Passport resolve</div>
+                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                            Continuidade de login no OS, vínculo entre wallets, checkpoint de identidade e lookup público do estado on-chain.
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que fica em Keys</div>
+                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                            Licenças, grants, dispositivos e credenciais portáteis continuam pertencendo à camada de acesso.
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Escopo atual</div>
+                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                            O graph privado da identidade já está ativo. Camadas sociais e watchlists públicas entram na sequência.
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que as Chaves concedem</div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Licenças, vínculos, dispositivos e credenciais portáteis pertencem à camada de acesso, não à superfície de identidade.
-                    </div>
-                  </div>
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Estado atual</div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      O Passport está ativo. Contratos de licença SNE ainda não estão em produção, então o inventário pode aparecer vazio.
-                    </div>
-                  </div>
-                </div>
-              </section>
+                  </section>
+                </>
+              )}
             </>
           )}
 
           {activeTab === 'lookup' && (
-            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
+            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-5">
               <div
                 className="rounded-xl p-5"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Consulta Pública
+                  Lookup público on-chain
                 </div>
                 <form onSubmit={handleLookupSubmit} className="space-y-4">
                   <div className="relative">
@@ -408,12 +546,11 @@ export function Pass() {
                     />
                   </div>
 
-                  {lookupError && (
-                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--danger-red)' }}>
-                      <AlertCircle className="w-4 h-4" />
-                      <span>{lookupError}</span>
+                  {lookupError ? (
+                    <div className="text-sm" style={{ color: 'var(--danger-red)' }}>
+                      {lookupError}
                     </div>
-                  )}
+                  ) : null}
 
                   <button
                     type="submit"
@@ -425,10 +562,37 @@ export function Pass() {
                   </button>
                 </form>
 
-                <div className="mt-5 rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                  <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que a consulta retorna</div>
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    O Passport lê o estado público da conta diretamente via RPC: saldo, contagem de transações, tipo de conta e o inventário SNE visível on-chain.
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-lg p-4" style={statCardStyle}>
+                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que esta leitura mostra</div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      Tipo de conta, atividade, saldo, assertions públicas e qualquer linked account exposta via Passport.
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg p-4" style={statCardStyle}>
+                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Perfis consultados recentemente</div>
+                    {recentLookups.length === 0 ? (
+                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                        As consultas públicas recentes aparecem aqui para virar a memória social inicial do Passport.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {recentLookups.map((recentAddress) => (
+                          <button
+                            key={recentAddress}
+                            onClick={() => {
+                              setLookupInput(recentAddress);
+                              setLookupTarget(recentAddress);
+                            }}
+                            className="w-full rounded-lg px-3 py-2 text-left font-mono text-sm"
+                            style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                          >
+                            {recentAddress}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -438,54 +602,101 @@ export function Pass() {
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Resultado da Consulta
+                  Perfil público resolvido
                 </div>
 
                 {!lookupTarget ? (
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    Informe um endereço para resolver um perfil público de Passport.
+                    Digite um endereço para abrir a leitura pública do Passport.
                   </div>
-                ) : publicOverview.isLoading ? (
+                ) : publicOverviewQuery.isLoading ? (
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                     Resolvendo endereço...
                   </div>
-                ) : publicOverview.isError ? (
+                ) : publicOverviewQuery.isError || !publicProfile ? (
                   <div className="text-sm" style={{ color: 'var(--danger-red)' }}>
-                    Falha ao resolver este endereço.
+                    Falha ao resolver esse endereço agora.
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="rounded-lg p-4" style={statCardStyle}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Address</div>
                       <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
-                        {publicProfile?.identity?.address ?? lookupTarget}
+                        {publicProfile.identity?.address ?? lookupTarget}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {(publicProfile?.assertions ?? []).map((assertion) => (
-                        <div
-                          key={assertion.id}
-                          className="rounded-lg p-4"
-                          style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                        >
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{assertion.label}</div>
-                            <StatusBadge
-                              status={
-                                assertion.status === 'present'
-                                  ? 'success'
-                                  : assertion.status === 'inactive'
-                                  ? 'warning'
-                                  : 'pending'
-                              }
-                            >
-                              {assertion.status}
-                            </StatusBadge>
-                          </div>
-                          <div className="text-sm break-words" style={{ color: 'var(--text-2)' }}>{assertion.value ?? '--'}</div>
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tipo</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {publicProfile.identity?.accountType ?? '--'}
                         </div>
-                      ))}
+                      </div>
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tx Count</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {publicProfile.identity?.txCount ?? '--'}
+                        </div>
+                      </div>
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Saldo</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {publicProfile.identity?.balanceEth ? `${publicProfile.identity.balanceEth} ETH` : '--'}
+                        </div>
+                      </div>
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {publicProfile.metadata?.source ?? '--'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          Assertions públicas
+                        </div>
+                        <div className="space-y-3">
+                          {(publicProfile.assertions ?? []).map((assertion) => (
+                            <div key={assertion.id} className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                              <div className="flex items-center justify-between gap-3 mb-1">
+                                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{assertion.label}</div>
+                                <StatusBadge status={assertion.status === 'present' ? 'success' : assertion.status === 'inactive' ? 'warning' : 'pending'}>
+                                  {assertion.status}
+                                </StatusBadge>
+                              </div>
+                              <div className="text-sm break-words" style={{ color: 'var(--text-2)' }}>{assertion.value ?? '--'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg p-4" style={statCardStyle}>
+                        <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          Presença por rede
+                        </div>
+                        {(publicProfile.linked_accounts ?? []).length === 0 ? (
+                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                            Nenhuma superfície multi-network explícita foi retornada para este perfil.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {(publicProfile.linked_accounts ?? []).map((account) => (
+                              <div key={`${account.network}-${account.address}`} className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                                <div className="flex items-center justify-between gap-3 mb-1">
+                                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{account.network}</div>
+                                  <StatusBadge status={account.primary ? 'success' : account.status === 'active' ? 'active' : 'pending'}>
+                                    {account.primary ? 'primary' : account.status ?? 'linked'}
+                                  </StatusBadge>
+                                </div>
+                                <div className="text-sm font-mono break-all" style={{ color: 'var(--text-2)' }}>{account.address}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -493,42 +704,60 @@ export function Pass() {
             </section>
           )}
 
-          {activeTab === 'watch' && (
-            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] gap-5">
+          {activeTab === 'social' && (
+            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] gap-5">
               <div
                 className="rounded-xl p-5"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Camada de Acesso
+                  Memória social do Passport
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="rounded-lg p-4" style={statCardStyle}>
                     <div className="flex items-center gap-2 mb-3">
-                      <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Licenças</div>
+                      <Search className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Perfis vistos</div>
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {connectedProfile?.licenses.length ?? 0} registro(s) de licença visível(is).
+                    <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {recentLookups.length}
+                    </div>
+                    <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
+                      consultas públicas recentes desta sessão
                     </div>
                   </div>
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                  <div className="rounded-lg p-4" style={statCardStyle}>
                     <div className="flex items-center gap-2 mb-3">
-                      <KeyRound className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Chaves</div>
+                      <Network className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Redes ligadas</div>
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {connectedProfile?.keys.length ?? 0} vínculo(s) de chave carregado(s).
+                    <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {connectedNetworkScope.length}
+                    </div>
+                    <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
+                      escopos públicos expostos na identidade atual
                     </div>
                   </div>
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                  <div className="rounded-lg p-4" style={statCardStyle}>
                     <div className="flex items-center gap-2 mb-3">
-                      <Box className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Caixas</div>
+                      <Activity className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Atividade</div>
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {connectedProfile?.boxes.length ?? 0} registro(s) de dispositivo confiável.
+                    <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {connectedProfile?.identity?.hasActivity ? 'ativa' : '--'}
                     </div>
+                    <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
+                      leitura on-chain da identidade conectada
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-lg p-4" style={statCardStyle}>
+                  <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                    O Passport como rede social cripto
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                    O lookup já funciona como perfil público de wallet. A próxima camada adiciona watchlists, aliases, observação persistente e contexto relacional entre perfis consultados.
                   </div>
                 </div>
               </div>
@@ -538,25 +767,53 @@ export function Pass() {
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Estado de Acesso Atual
+                  Perfis recentemente observados
                 </div>
-                <div className="space-y-3">
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Fronteira</div>
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Nenhum grant SNE está vinculado a esta conta ainda. O estado de identidade continua legível.
-                    </div>
+                {recentLookups.length === 0 ? (
+                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                    Ainda não há perfis observados nesta sessão. Use o lookup público para começar a montar a camada social do Passport.
                   </div>
-                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Próxima camada</div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentLookups.map((recentAddress) => (
+                      <button
+                        key={recentAddress}
+                        onClick={() => {
+                          setLookupInput(recentAddress);
+                          setLookupTarget(recentAddress);
+                          setActiveTab('lookup');
+                        }}
+                        className="w-full rounded-lg p-4 text-left"
+                        style={statCardStyle}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{formatAddress(recentAddress)}</div>
+                          <ArrowUpRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                        </div>
+                        <div className="text-sm font-mono break-all" style={{ color: 'var(--text-2)' }}>
+                          {recentAddress}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-5 rounded-lg p-4" style={statCardStyle}>
+                  <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                    Roadmap imediato
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 text-sm" style={{ color: 'var(--text-2)' }}>
+                    <div className="flex items-start gap-2">
+                      <Shield className="w-4 h-4 mt-0.5" style={{ color: 'var(--accent-orange)' }} />
+                      <span>Watchlist persistente por identidade</span>
                     </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Grants, dispositivos e revogações são gerenciados na camada de Chaves.
+                    <div className="flex items-start gap-2">
+                      <Globe className="w-4 h-4 mt-0.5" style={{ color: 'var(--accent-orange)' }} />
+                      <span>Perfis públicos com aliases e notas</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 mt-0.5" style={{ color: 'var(--accent-orange)' }} />
+                      <span>Provas e sinais sociais derivados do histórico on-chain</span>
                     </div>
                   </div>
                 </div>
