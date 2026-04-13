@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
+import re
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
@@ -15,6 +16,49 @@ from .intel_sources import fetch_multi_source_entries
 
 logger = logging.getLogger(__name__)
 
+CRYPTO_RELEVANCE_TOKENS = {
+    "bitcoin",
+    "btc",
+    "ethereum",
+    "eth",
+    "solana",
+    "sol",
+    "polygon",
+    "matic",
+    "scroll",
+    "arbitrum",
+    "optimism",
+    "base",
+    "crypto",
+    "blockchain",
+    "wallet",
+    "wallets",
+    "defi",
+    "stablecoin",
+    "stablecoins",
+    "token",
+    "tokens",
+    "nft",
+    "bridge",
+    "bridges",
+    "rollup",
+    "zk",
+    "mev",
+    "validator",
+    "validators",
+    "staking",
+    "swap",
+    "protocol",
+    "onchain",
+    "on-chain",
+    "rpc",
+    "airdrops",
+    "airdrop",
+}
+
+GENERALIST_SOURCES = {"hn_front_page"}
+COMMUNITY_SOURCE_CAP = 1
+
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -22,6 +66,26 @@ def _iso_now() -> str:
 
 def _normalize_title(title: str) -> str:
     return "".join(ch for ch in title.lower() if ch.isalnum() or ch.isspace()).strip()
+
+
+def _normalized_text(text: str) -> str:
+    lowered = text.lower()
+    lowered = re.sub(r"[^a-z0-9\s:/._-]+", " ", lowered)
+    return re.sub(r"\s+", " ", lowered).strip()
+
+
+def _tokenize(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", _normalized_text(text)))
+
+
+def _relevance_hits(entry: Dict[str, Any]) -> set[str]:
+    text = " ".join([
+        entry.get("title", ""),
+        entry.get("url", ""),
+        " ".join(entry.get("tags", [])),
+        entry.get("source", ""),
+    ])
+    return _tokenize(text).intersection(CRYPTO_RELEVANCE_TOKENS)
 
 
 def _recency_score(created_at: str) -> int:
@@ -49,18 +113,27 @@ def _source_weight(source_tier: str) -> int:
 
 
 def _curation_score(entry: Dict[str, Any]) -> int:
-    keyword_bonus = 0
-    title = entry["title"].lower()
-    for token in ["ethereum", "bitcoin", "solana", "defi", "security", "wallet", "api", "rollup"]:
-        if token in title:
-            keyword_bonus += 4
+    relevance_hits = _relevance_hits(entry)
+    keyword_bonus = len(relevance_hits) * 8
+    source_penalty = -18 if entry.get("source_key") in GENERALIST_SOURCES else 0
     return (
         _source_weight(entry.get("source_tier", "community"))
         + _recency_score(entry.get("created_at", _iso_now()))
         + min(25, int(entry.get("points", 0)))
         + min(18, int(entry.get("comments", 0)))
         + keyword_bonus
+        + source_penalty
     )
+
+
+def _is_relevant_entry(entry: Dict[str, Any]) -> bool:
+    if entry.get("source_tier") in {"protocol", "media"}:
+        return True
+
+    relevance_hits = _relevance_hits(entry)
+    if entry.get("source_key") in GENERALIST_SOURCES:
+        return len(relevance_hits) >= 2
+    return bool(relevance_hits)
 
 
 def _dedupe(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -82,8 +155,22 @@ def _dedupe(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def _curate(entries: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
     deduped = _dedupe(entries)
-    ranked = sorted(deduped, key=_curation_score, reverse=True)
-    return ranked[:limit]
+    relevant = [entry for entry in deduped if _is_relevant_entry(entry)]
+    ranked = sorted(relevant, key=_curation_score, reverse=True)
+
+    curated: List[Dict[str, Any]] = []
+    community_count = 0
+    for entry in ranked:
+        is_community = entry.get("source_key") in GENERALIST_SOURCES
+        if is_community and community_count >= COMMUNITY_SOURCE_CAP:
+            continue
+        curated.append(entry)
+        if is_community:
+            community_count += 1
+        if len(curated) >= limit:
+            break
+
+    return curated
 
 
 def _executive_summary(items: List[Dict[str, Any]]) -> Dict[str, Any]:

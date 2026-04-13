@@ -19,6 +19,8 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
+CACHE_VERSION = "v2"
+
 TRANSLATION_GLOSSARY = [
     ("zero knowledge", "conhecimento zero"),
     ("smart contract", "contrato inteligente"),
@@ -26,31 +28,31 @@ TRANSLATION_GLOSSARY = [
     ("open source", "código aberto"),
     ("data breach", "vazamento de dados"),
     ("supply chain", "cadeia de suprimentos"),
-    ("stablecoin", "stablecoin"),
     ("stablecoins", "stablecoins"),
-    ("wallet", "carteira"),
+    ("stablecoin", "stablecoin"),
     ("wallets", "carteiras"),
+    ("wallet", "carteira"),
     ("privacy", "privacidade"),
     ("private", "privado"),
     ("security", "segurança"),
     ("identity", "identidade"),
-    ("market", "mercado"),
     ("markets", "mercados"),
+    ("market", "mercado"),
     ("trading", "trading"),
     ("exchange", "exchange"),
     ("bridges", "bridges"),
     ("bridge", "bridge"),
-    ("token", "token"),
     ("tokens", "tokens"),
+    ("token", "token"),
     ("liquidity", "liquidez"),
     ("payments", "pagamentos"),
     ("payment", "pagamento"),
     ("rollup", "rollup"),
     ("proof", "prova"),
-    ("developer", "desenvolvedor"),
     ("developers", "desenvolvedores"),
-    ("api", "API"),
+    ("developer", "desenvolvedor"),
     ("apis", "APIs"),
+    ("api", "API"),
 ]
 
 TOPIC_RULES = {
@@ -122,15 +124,36 @@ def _agent_note(module: str) -> str:
 def _translate_title_pt(title: str) -> str:
     translated = title
     for source, target in TRANSLATION_GLOSSARY:
-        translated = re.sub(source, target, translated, flags=re.IGNORECASE)
+        translated = re.sub(rf"\b{re.escape(source)}\b", target, translated, flags=re.IGNORECASE)
     return translated
+
+
+def _normalized_text(text: str) -> str:
+    lowered = text.lower()
+    lowered = re.sub(r"[^a-z0-9\s:/._-]+", " ", lowered)
+    return re.sub(r"\s+", " ", lowered).strip()
+
+
+def _tokenize(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", _normalized_text(text)))
 
 
 def _extract_matches(text: str, rules: Dict[str, List[str]]) -> List[str]:
     matches: List[str] = []
-    haystack = text.lower()
-    for label, tokens in rules.items():
-        if any(token in haystack for token in tokens):
+    haystack = _normalized_text(text)
+    word_tokens = _tokenize(text)
+    for label, rule_tokens in rules.items():
+        found = False
+        for token in rule_tokens:
+            normalized = _normalized_text(token)
+            if " " in normalized:
+                if f" {normalized} " in f" {haystack} ":
+                    found = True
+                    break
+            elif normalized in word_tokens:
+                found = True
+                break
+        if found:
             matches.append(label)
     return matches
 
@@ -248,6 +271,13 @@ class IntelEnricher:
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
         self.redis = SafeRedis()
+        provider_state = "enabled" if self.provider != "heuristic" and self.api_key else "fallback"
+        logger.info(
+            "Intel enrichment provider=%s model=%s state=%s",
+            self.provider,
+            self.model,
+            provider_state,
+        )
 
     def enrich_item(self, raw_item: Dict[str, Any]) -> Dict[str, Any]:
         cache_key = self._cache_key("enrich", raw_item["id"])
@@ -292,7 +322,7 @@ class IntelEnricher:
 
     def _cache_key(self, kind: str, seed: str) -> str:
         digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
-        return f"intel:{kind}:{digest}"
+        return f"intel:{kind}:{CACHE_VERSION}:{self.provider}:{digest}"
 
     def _heuristic_enrichment(self, raw_item: Dict[str, Any]) -> Dict[str, Any]:
         title_original = raw_item["title"]
@@ -332,7 +362,12 @@ class IntelEnricher:
         }
 
     def _llm_enrichment(self, raw_item: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any] | None:
-        if self.provider == "heuristic" or not self.api_key:
+        if self.provider == "heuristic":
+            logger.info("Intel LLM enrichment skipped for %s: provider set to heuristic", raw_item["id"])
+            return None
+
+        if not self.api_key:
+            logger.warning("Intel LLM enrichment skipped for %s: OPENAI_API_KEY missing", raw_item["id"])
             return None
 
         prompt = {
@@ -376,7 +411,11 @@ class IntelEnricher:
             data = response.json()
             content = data["choices"][0]["message"]["content"]
             parsed = _extract_json(content)
-            return parsed if isinstance(parsed, dict) else None
+            if isinstance(parsed, dict):
+                logger.info("Intel LLM enrichment succeeded for %s from %s", raw_item["id"], raw_item["source"])
+                return parsed
+            logger.warning("Intel LLM enrichment returned non-JSON payload for %s", raw_item["id"])
+            return None
         except Exception as exc:
             logger.warning(f"Intel LLM enrichment failed: {exc}")
             return None
@@ -467,7 +506,12 @@ class IntelEnricher:
         }
 
     def _llm_post(self, item: Dict[str, Any]) -> Dict[str, Any] | None:
-        if self.provider == "heuristic" or not self.api_key:
+        if self.provider == "heuristic":
+            logger.info("Intel LLM post skipped for %s: provider set to heuristic", item["id"])
+            return None
+
+        if not self.api_key:
+            logger.warning("Intel LLM post skipped for %s: OPENAI_API_KEY missing", item["id"])
             return None
 
         prompt = {
@@ -508,9 +552,11 @@ class IntelEnricher:
             content = data["choices"][0]["message"]["content"]
             parsed = _extract_json(content)
             if not isinstance(parsed, dict):
+                logger.warning("Intel LLM post returned non-JSON payload for %s", item["id"])
                 return None
 
             slug = _slugify(parsed.get("title") or item["title_pt"])
+            logger.info("Intel LLM post generation succeeded for %s", item["id"])
             return {
                 "id": f"post:{slug}",
                 "slug": slug,
