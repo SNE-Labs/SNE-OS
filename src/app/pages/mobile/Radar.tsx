@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Lock, RefreshCw, Waves } from 'lucide-react';
+import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { useRadarOverview } from '../../../hooks/useRadarData';
@@ -32,10 +32,10 @@ function compact(value: number) {
 function translateStrength(value?: string | null) {
   if (!value) return '--';
   const map: Record<string, string> = {
-    Strong: 'Strong',
-    Moderate: 'Moderate',
-    Weak: 'Weak',
-    Neutral: 'Neutral',
+    Strong: 'Forte',
+    Moderate: 'Moderado',
+    Weak: 'Fraco',
+    Neutral: 'Neutro',
   };
   return map[value] ?? value;
 }
@@ -51,7 +51,7 @@ export function MobileRadar() {
   return (
     <MobilePageShell
       title="Radar"
-      subtitle="Live market structure, curated movers and directional signal."
+      subtitle="Mercado líquido, leitura direcional e contexto antes da execução."
       statusPill={{
         label: overview?.execution.label ?? 'loading',
         variant: toBadgeVariant(overview?.execution.tone),
@@ -61,8 +61,8 @@ export function MobileRadar() {
       <SurfaceCard variant="elevated">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
-            <div className="text-[var(--text-1)] mb-1">{overview?.hero.headline ?? 'Markets in motion.'}</div>
-            <div className="text-sm text-[var(--text-2)]">{overview?.hero.summary ?? 'Loading curated market context.'}</div>
+            <div className="text-[var(--text-1)] mb-1">{overview?.hero.headline ?? 'Mercados líquidos. Sinais em tempo real.'}</div>
+            <div className="text-sm text-[var(--text-2)]">{overview?.hero.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}</div>
           </div>
           <button
             onClick={() => overviewQuery.refetch()}
@@ -84,7 +84,7 @@ export function MobileRadar() {
 
       <SurfaceCard>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[var(--text-1)]">Universe</h3>
+          <h3 className="text-[var(--text-1)]">Seleção rápida</h3>
           <Badge variant="neutral" size="sm">{RADAR_SYMBOLS.length}</Badge>
         </div>
 
@@ -121,7 +121,7 @@ export function MobileRadar() {
         <>
           <SurfaceCard>
             <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="text-[var(--text-1)]">Lead Market</h3>
+              <h3 className="text-[var(--text-1)]">Par em foco</h3>
               <Badge variant="neutral" size="sm">{featured?.symbol ?? activeSymbol}</Badge>
             </div>
 
@@ -130,7 +130,7 @@ export function MobileRadar() {
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div>
                     <div className="text-[var(--text-1)] mb-1">{featured.symbol}</div>
-                    <div className="text-sm text-[var(--text-2)]">Featured market inside the current Radar universe.</div>
+                    <div className="text-sm text-[var(--text-2)]">Ativo mais líquido dentro do universo Radar atual.</div>
                   </div>
                   <div className={featured.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
                     {featured.change24h >= 0 ? '+' : ''}{(featured.change24h * 100).toFixed(1)}%
@@ -139,7 +139,7 @@ export function MobileRadar() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
-                    <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Price</div>
+                    <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Preço</div>
                     <div className="text-[var(--text-1)]">${formatPrice(featured.price)}</div>
                   </div>
                   <div className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
@@ -150,15 +150,15 @@ export function MobileRadar() {
               </div>
             ) : (
               <EmptyState
-                title="No featured market"
-                description="The Radar overview did not return a featured market."
+                title="Sem par em foco"
+                description="O Radar não retornou um destaque agora."
               />
             )}
           </SurfaceCard>
 
           <SurfaceCard>
             <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="text-[var(--text-1)]">Signal</h3>
+              <h3 className="text-[var(--text-1)]">Sinal operacional</h3>
               <Badge
                 variant={
                   overview.signal?.signal === 'BUY'
@@ -174,42 +174,54 @@ export function MobileRadar() {
             </div>
 
             {overview.signal ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <div className="rounded-xl border border-[var(--stroke-1)] bg-[rgba(255,140,66,0.08)] p-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="text-[var(--text-1)]">{overview.signal.symbol}</div>
+                    <Sparkles className="w-4 h-4 text-[var(--accent-orange)]" />
+                  </div>
+                  <div className="text-sm text-[var(--text-2)]">
+                    {overview.signal.change} na janela {overview.signal.timeframe} com score {overview.signal.score ?? '--'}.
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Strength</div>
+                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Força</div>
                   <div className="text-[var(--text-1)]">{translateStrength(overview.signal.strength)}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Window</div>
+                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Janela</div>
                   <div className="text-[var(--text-1)]">{overview.signal.timeframe}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Change</div>
+                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Variação</div>
                   <div className="text-[var(--text-1)]">{overview.signal.change}</div>
                 </div>
                 <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Score</div>
+                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Pontuação</div>
                   <div className="text-[var(--text-1)]">{overview.signal.score ?? '--'}</div>
+                </div>
                 </div>
               </div>
             ) : (
               <EmptyState
-                title="No signal available"
-                description="The current asset did not return a directional signal."
+                title="Sem sinal disponível"
+                description="O ativo atual não retornou leitura direcional."
               />
             )}
           </SurfaceCard>
 
           <SurfaceCard>
             <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="text-[var(--text-1)]">Market Board</h3>
+              <h3 className="text-[var(--text-1)]">Universo Radar</h3>
               <Badge variant="neutral" size="sm">{movers.length}</Badge>
             </div>
 
             {movers.length === 0 ? (
               <EmptyState
-                title="No live movers"
-                description="The curated market universe is empty right now."
+                title="Sem mercados ao vivo"
+                description="O universo curado está vazio agora."
               />
             ) : (
               <div className="space-y-3">
@@ -238,17 +250,23 @@ export function MobileRadar() {
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
               <Lock className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Execution Surface</span>
+              <span>Limite de execução</span>
             </div>
 
             <div className="space-y-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Access</div>
+                <div className="text-[var(--text-1)] mb-1">Acesso</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.market_state.access}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Execution</div>
+                <div className="text-[var(--text-1)] mb-1">Execução</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.market_state.execution}</div>
+              </div>
+              <div className="rounded-xl border border-[rgba(255,140,66,0.16)] bg-[rgba(255,140,66,0.08)] p-3">
+                <div className="text-[var(--text-1)] mb-1">Próxima camada</div>
+                <div className="text-sm text-[var(--text-2)]">
+                  O passo seguinte é contexto DeFi e rota real, não um botão de compra genérico.
+                </div>
               </div>
             </div>
 
