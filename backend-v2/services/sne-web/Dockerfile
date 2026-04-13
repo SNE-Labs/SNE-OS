@@ -22,12 +22,12 @@ COPY wsgi.py .
 # Criar diretório para logs
 RUN mkdir -p /app/logs
 
-# Expor porta (usar PORT do Railway ou 8080 como fallback)
-EXPOSE 8080
+# Expor porta (usar PORT do Railway ou 10000 como fallback)
+EXPOSE 10000
 
 # Health check simples (não depende de imports)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD python -c "import os; print('OK')"
 
-# Comando para executar (Gunicorn produção)
-CMD ["sh", "-c", "PYTHONPATH=/app gunicorn -k eventlet -w 1 --timeout 120 --bind 0.0.0.0:${PORT:-8080} wsgi:app"]
+# Comando para executar (Gunicorn produção sem eventlet)
+CMD ["sh", "-c", "PYTHONPATH=/app gunicorn --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:${PORT:-10000} wsgi:app"]
