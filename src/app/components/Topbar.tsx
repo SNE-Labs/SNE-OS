@@ -1,9 +1,14 @@
 import { Bell, ChevronDown, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { resolveRouteMeta } from '../navigation';
 
 export function Topbar() {
   const { isConnected, isAuthenticated, address, tier, connect } = useAuth();
+  const location = useLocation();
+  const routeMeta = resolveRouteMeta(location.pathname);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -27,16 +32,17 @@ export function Topbar() {
       className="h-16 border-b flex items-center justify-between px-6"
       style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
     >
-      {/* Logo/Title */}
-      <div className="flex items-center gap-2">
-        <span className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
-          SNE OS
-        </span>
+      <div className="min-w-0">
+        <div className="text-lg font-semibold truncate" style={{ color: 'var(--text-1)' }}>
+          {routeMeta.title}
+        </div>
+        <div className="text-xs truncate" style={{ color: 'var(--text-3)' }}>
+          {routeMeta.descriptor}
+        </div>
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        {/* Tier Badge */}
         <div
           className="px-3 py-1.5 rounded-lg text-xs font-semibold uppercase"
           style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
@@ -44,10 +50,9 @@ export function Topbar() {
           {tier === 'free' ? 'GRATUITO' : tier === 'pro' ? 'PRO' : tier?.toUpperCase()}
         </div>
 
-        {/* Network Indicator */}
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--ok-green)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Rede</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>{routeMeta.context}</span>
         </div>
 
         {/* Notifications */}
@@ -136,10 +141,10 @@ export function Topbar() {
                     <div className="w-2 h-2 rounded-full mt-2" style={{ backgroundColor: 'var(--ok-green)' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Rede
+                        {routeMeta.context}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                        Todos os serviços operando normalmente.
+                        {routeMeta.descriptor}
                       </p>
                     </div>
                   </div>

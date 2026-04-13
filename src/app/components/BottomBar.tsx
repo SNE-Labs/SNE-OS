@@ -1,18 +1,22 @@
 import { Activity, Command } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { useLocation } from 'react-router-dom';
+
+import { resolveRouteMeta } from '../navigation';
 
 export function BottomBar() {
   const { isConnected, address } = useAuth();
+  const location = useLocation();
+  const routeMeta = resolveRouteMeta(location.pathname);
   return (
     <footer
       className="h-12 border-t flex items-center justify-between px-6"
       style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
     >
       <div className="flex items-center gap-6">
-        {/* Network Status */}
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--ok-green)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Rede</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>{routeMeta.context}</span>
         </div>
 
         {/* Wallet Status */}

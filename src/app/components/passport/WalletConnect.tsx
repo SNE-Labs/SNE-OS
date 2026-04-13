@@ -1,63 +1,87 @@
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
-import { Button } from '../ui/button';
-import { Wallet, LogOut, CheckCircle2 } from 'lucide-react';
-import { formatAddress } from '../../../utils/format';
+import { useDisconnect } from 'wagmi';
+import { CheckCircle2, LogOut, Wallet } from 'lucide-react';
 
-/**
- * Componente de conexão de wallet
- * PoC para Sprint 1 - integração básica com Wagmi
- */
-export function WalletConnect() {
-  const { address, isConnected } = useAccount();
-  const { connect, isPending } = useConnect();
+import { formatAddress } from '../../../utils/format';
+import { useAuth } from '@/lib/auth/AuthProvider';
+
+type WalletConnectProps = {
+  showConnectButton?: boolean;
+  showDisconnectButton?: boolean;
+};
+
+export function WalletConnect({
+  showConnectButton = false,
+  showDisconnectButton = false,
+}: WalletConnectProps) {
+  const { address, isConnected, isAuthenticated, connect, logout } = useAuth();
   const { disconnect } = useDisconnect();
 
-  if (isConnected && address) {
+  const handleLogout = async () => {
+    await logout();
+    disconnect();
+  };
+
+  if (isAuthenticated && isConnected && address) {
+    if (!showDisconnectButton && !showConnectButton) {
+      return null;
+    }
+
     return (
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-2 rounded border" style={{
-          backgroundColor: 'var(--sne-surface-1)',
-          borderColor: 'var(--sne-accent)',
-          borderWidth: '1px'
-        }}>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+          style={{
+            backgroundColor: 'var(--bg-2)',
+            borderColor: 'var(--stroke-1)',
+            borderWidth: '1px',
+          }}
+        >
           <div className="relative">
-            <Wallet className="w-4 h-4" style={{ color: 'var(--sne-accent)' }} />
-            <CheckCircle2 className="w-3 h-3 absolute -top-1 -right-1" style={{ color: 'var(--sne-accent)' }} fill="currentColor" />
+            <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+            <CheckCircle2 className="w-3 h-3 absolute -top-1 -right-1" style={{ color: 'var(--accent-orange)' }} fill="currentColor" />
           </div>
           <div className="flex flex-col">
-            <span style={{ color: 'var(--sne-text-primary)', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'var(--font-family-mono)' }}>
+            <span
+              style={{
+                color: 'var(--text-1)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                fontFamily: 'var(--font-family-mono)',
+              }}
+            >
               {formatAddress(address)}
             </span>
-            <span style={{ color: 'var(--sne-text-secondary)', fontSize: '0.75rem' }}>
-              Carteira conectada
+            <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>
+              Sessão autenticada
             </span>
           </div>
         </div>
-        <Button
-          onClick={() => disconnect()}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Desconectar
-        </Button>
+        {showDisconnectButton ? (
+          <button
+            onClick={() => void handleLogout()}
+            className="px-3 py-2 rounded-lg text-sm inline-flex items-center gap-2"
+            style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
+            <LogOut className="w-4 h-4" />
+            Desconectar
+          </button>
+        ) : null}
       </div>
     );
   }
 
+  if (!showConnectButton) {
+    return null;
+  }
+
   return (
-    <Button
-      onClick={() => connect({ connector: injected() })}
-      disabled={isPending}
-      style={{ backgroundColor: 'var(--sne-accent)', color: '#0B0B0B' }}
-      className="flex items-center gap-2"
+    <button
+      onClick={() => void connect()}
+      className="px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2"
+      style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
     >
       <Wallet className="w-4 h-4" />
-      {isPending ? 'Conectando...' : 'Conectar Wallet'}
-    </Button>
+      {isConnected ? 'Autenticar SIWE' : 'Conectar Wallet'}
+    </button>
   );
 }
-
-

@@ -1,20 +1,15 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Activity, Shield, Lock, DollarSign, FileText, Search, KeyRound, LockKeyhole, Newspaper } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Search } from 'lucide-react';
 
-const menuItems = [
-  { path: '/home', label: 'Início', icon: Home },
-  { path: '/radar', label: 'Radar', icon: Activity },
-  { path: '/pass', label: 'Passport', icon: Shield },
-  { path: '/vault', label: 'Vault', icon: Lock },
-  { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
-  { path: '/keys', label: 'Keys', icon: KeyRound },
-  { path: '/blog', label: 'Blog', icon: Newspaper },
-  { path: '/pricing', label: 'Planos', icon: DollarSign },
-  // { path: '/status', label: 'Status', icon: AlertCircle }, // desativado temporariamente
-  { path: '/docs', label: 'Documentação', icon: FileText },
-];
+import { navigationItems, resolveRouteMeta } from '../navigation';
+import { useAuth } from '@/lib/auth/AuthProvider';
+import { formatAddress } from '@/utils/format';
 
 export function Sidebar() {
+  const location = useLocation();
+  const { isAuthenticated, address, tier } = useAuth();
+  const routeMeta = resolveRouteMeta(location.pathname);
+
   return (
     <aside
       className="w-[300px] flex-shrink-0 flex flex-col border-r"
@@ -49,7 +44,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-2">
         <div className="space-y-1">
-          {menuItems.map((item) => (
+          {navigationItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -98,16 +93,16 @@ export function Sidebar() {
                 className="text-xs font-semibold px-2 py-0.5 rounded"
                 style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
               >
-                GRATUITO
+                {tier === 'free' ? 'GRATUITO' : tier === 'pro' ? 'PRO' : tier?.toUpperCase()}
               </span>
             </div>
             <p className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>
-              Sem carteira conectada
+              {isAuthenticated && address ? formatAddress(address) : 'Sem carteira conectada'}
             </p>
           </div>
           <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-3)' }}>
-            <span>Rede</span>
-            <span style={{ color: 'var(--text-2)' }}>Rede</span>
+            <span>Contexto</span>
+            <span style={{ color: 'var(--text-2)' }}>{routeMeta.context}</span>
           </div>
         </div>
       </div>

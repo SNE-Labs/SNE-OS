@@ -116,7 +116,7 @@ export function MobilePass() {
               </div>
             </div>
 
-            <WalletConnect />
+            <WalletConnect showConnectButton />
 
             <MobileButton className="w-full mt-3" onClick={() => void connect()}>
               Conectar primeira wallet
