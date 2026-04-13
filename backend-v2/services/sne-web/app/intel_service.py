@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 from .intel_enrichment import IntelEnricher
 from .intel_sources import fetch_multi_source_entries
+from .market_service import build_home_market_payload
 from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ COMMUNITY_SOURCE_CAP = 1
 BLOG_SOURCE_NAME = "SNE Enterprise Blog"
 BLOG_DAILY_LIMIT = 5
 BLOG_SURFACE_LIMIT = 2
+BLOG_MARKET_DAILY_LIMIT = 3
+BLOG_TOTAL_LIMIT = 24
 POST_CACHE_KEY = "intel:enterprise:posts"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 
@@ -270,6 +273,104 @@ def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
+def _post_sort_key(post: Dict[str, Any]) -> str:
+    return str(post.get("generated_at") or post.get("created_at") or "")
+
+
+def _asset_to_chain(asset: str) -> str | None:
+    return {
+        "BTC": "bitcoin",
+        "ETH": "ethereum",
+        "SOL": "solana",
+        "BNB": "bnb",
+        "XRP": "xrp",
+        "ADA": "cardano",
+        "LINK": "chainlink",
+        "AVAX": "avalanche",
+        "ARB": "arbitrum",
+        "OP": "optimism",
+        "UNI": "uniswap",
+        "MKR": "maker",
+    }.get(asset.upper())
+
+
+def _market_symbol_url(symbol: str) -> str:
+    base = symbol.replace("USDT", "_USDT")
+    return f"https://www.binance.com/en/trade/{base}?type=spot"
+
+
+def _market_blog_candidates(limit: int = BLOG_MARKET_DAILY_LIMIT) -> List[Dict[str, Any]]:
+    market = build_home_market_payload()
+    candidates: List[Dict[str, Any]] = []
+    seen_symbols: set[str] = set()
+
+    pools = [
+        market.get("volume_leaders", []),
+        market.get("top_movers", []),
+        market.get("top_losers", []),
+    ]
+
+    for pool in pools:
+        for item in pool:
+            symbol = str(item.get("symbol", "")).upper()
+            if not symbol or symbol in seen_symbols:
+                continue
+            seen_symbols.add(symbol)
+
+            asset = symbol.replace("USDT", "")
+            chain = _asset_to_chain(asset)
+            change_pct = float(item.get("change24h", 0) or 0) * 100
+            direction = "alta" if change_pct >= 0 else "queda"
+            magnitude = f"{abs(change_pct):.1f}%"
+            title = f"{asset} em foco: resumo diário após {direction} de {magnitude}"
+            summary = (
+                f"{asset} encerra a janela recente com {direction} de {magnitude}, "
+                f"preço em {item.get('price')} e volume relevante para leitura tática."
+            )
+            why = (
+                f"{asset} concentra atenção no market pulse e merece acompanhamento em liquidez, "
+                f"regime de risco e continuidade de fluxo nas próximas horas."
+            )
+            watch_items = [
+                f"momentum de {asset}",
+                f"liquidez de {asset}",
+                "continuidade do regime intradiario",
+            ]
+
+            candidates.append({
+                "id": f"market:{_utc_day_key()}:{symbol}",
+                "title": title,
+                "title_original": title,
+                "title_pt": title,
+                "summary": summary,
+                "summary_pt": summary,
+                "url": _market_symbol_url(symbol),
+                "source": "SNE Market Engine",
+                "source_tier": "editorial",
+                "author": "SNE Market Engine",
+                "created_at": _iso_now(),
+                "points": 0,
+                "comments": 0,
+                "language": "pt-BR",
+                "translated": True,
+                "module": "Radar",
+                "agent_note": "Resenha diaria de mercado sobre ativos lideres do ecossistema.",
+                "impact": {"label": "alto" if abs(change_pct) >= 3 else "medio", "score": min(100, int(abs(change_pct) * 10) + 35), "direction": "positiva" if change_pct >= 0 else "negativa"},
+                "topics": ["mercado", "momentum"],
+                "chains": [chain] if chain else [],
+                "protocols": [],
+                "assets": [asset],
+                "why_it_matters": why,
+                "watch_items": watch_items,
+                "surface": ["Home", "Radar", "Intel"],
+            })
+
+            if len(candidates) >= limit:
+                return candidates
+
+    return candidates
+
+
 def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
     cached = redis_client.get(POST_CACHE_KEY)
     if not cached:
@@ -287,7 +388,8 @@ def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
     try:
         import json
-        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps([_normalize_post(post) for post in posts]))
+        ordered = sorted((_normalize_post(post) for post in posts), key=_post_sort_key, reverse=True)
+        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps(ordered))
     except Exception:
         pass
 
@@ -298,6 +400,15 @@ def _blog_daily_count(redis_client: SafeRedis) -> int:
         return int(count or 0)
     except Exception:
         return 0
+
+
+def _blog_daily_market_count(posts: List[Dict[str, Any]]) -> int:
+    today = _utc_day_key()
+    return sum(
+        1
+        for post in posts
+        if post.get("category") == "market" and str(post.get("generated_at", "")).startswith(today)
+    )
 
 
 def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
@@ -311,16 +422,26 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
     redis_client = SafeRedis()
     try:
         existing = _load_cached_posts(redis_client)
-        if len(existing) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+        if _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
             return
 
-        briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
         enricher = IntelEnricher()
-        posts = list(existing)
+        posts = list(existing)[:BLOG_TOTAL_LIMIT]
         existing_slugs = {post["slug"] for post in posts}
+        daily_count = _blog_daily_count(redis_client)
+        market_daily_count = _blog_daily_market_count(posts)
 
+        candidates: List[tuple[Dict[str, Any], str]] = []
+        if market_daily_count < BLOG_MARKET_DAILY_LIMIT:
+            for item in _market_blog_candidates(limit=BLOG_MARKET_DAILY_LIMIT - market_daily_count):
+                candidates.append((item, "market"))
+
+        briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
         for item in briefing["items"]:
-            if len(posts) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+            candidates.append((item, "news"))
+
+        for item, category in candidates:
+            if daily_count >= BLOG_DAILY_LIMIT:
                 break
             try:
                 post = enricher.build_post(item)
@@ -331,9 +452,15 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
                 continue
             if post["slug"] in existing_slugs:
                 continue
-            posts.append(post)
+            post["category"] = category
+            posts.insert(0, post)
             existing_slugs.add(post["slug"])
             _increment_blog_daily_count(redis_client)
+            daily_count += 1
+            if category == "market":
+                market_daily_count += 1
+
+        posts = posts[:BLOG_TOTAL_LIMIT]
 
         _store_cached_posts(redis_client, posts)
     finally:
