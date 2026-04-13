@@ -1,6 +1,14 @@
 import type { Address } from '../types/passport';
-import type { LookupResult, BalanceResponse, GasResponse, ProductsResponse, ErrorResponse } from '../types/passport';
-import { apiGet } from '@/lib/api/http';
+import type {
+  LookupResult,
+  BalanceResponse,
+  GasResponse,
+  ProductsResponse,
+  ErrorResponse,
+  PassportIdentityCheckpoint,
+  PassportLinkInitResponse,
+} from '../types/passport';
+import { apiGet, apiPost } from '@/lib/api/http';
 
 /**
  * Cliente para API do SNE Scroll Passport
@@ -315,4 +323,24 @@ export async function getPassportOverview(address?: string | null): Promise<{
 }> {
   const query = address ? `?address=${encodeURIComponent(address)}` : '';
   return apiGet(`/api/passport/overview${query}`);
+}
+
+export async function getPassportIdentity(): Promise<PassportIdentityCheckpoint> {
+  return apiGet('/api/passport/me');
+}
+
+export async function initPassportWalletLink(candidateAddress: string): Promise<PassportLinkInitResponse> {
+  return apiPost('/api/passport/link/init', { candidateAddress });
+}
+
+export async function confirmPassportWalletLink(
+  requestId: string,
+  currentWalletSignature: string,
+  candidateWalletSignature: string
+): Promise<PassportIdentityCheckpoint> {
+  return apiPost('/api/passport/link/confirm', {
+    requestId,
+    currentWalletSignature,
+    candidateWalletSignature,
+  });
 }

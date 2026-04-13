@@ -49,6 +49,14 @@ def create_app():
         logger.warning(f"Database initialization failed: {e}")
         logger.warning("Continuing without database - some features may not work")
 
+    # Best-effort schema bootstrap for environments without migrations.
+    try:
+        with app.app_context():
+            from .models import init_db_auto
+            init_db_auto()
+    except Exception as e:
+        logger.warning(f"Database schema bootstrap skipped: {e}")
+
     socketio.init_app(app)
 
     # Load configuration

@@ -14,6 +14,7 @@ import logging
 
 from app.utils.redis_safe import SafeRedis
 from app.security.siwe_verify import verify_siwe, parse_siwe_message
+from app.passport_identity_service import get_or_create_identity_for_address
 
 logger = logging.getLogger(__name__)
 from app.models import db, get_user_tier, set_user_tier, save_analysis, get_user_analyses_count
@@ -124,6 +125,7 @@ def require_auth(f):
             # Set user context
             g.user = {
                 'address': payload['address'],
+                'identity_id': payload.get('identity_id'),
                 'tier': payload['tier'],
                 'exp': payload['exp']
             }
@@ -278,15 +280,23 @@ def siwe_login():
             if not check_tier_limits(address, tier, 'request'):
                 return jsonify({'error': 'Rate limit exceeded for your tier'}), 429
 
+            identity = get_or_create_identity_for_address(address)
+
             # Gerar JWT token
             exp = datetime.utcnow() + timedelta(hours=24)  # 24 horas
             token_data = {
                 'address': address,
+                'identity_id': identity.id,
                 'tier': tier,
                 'exp': exp.timestamp()
             }
 
             token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+            # Compatibilidade com endpoints legados baseados em session.
+            session['siwe_address'] = address
+            session['tier'] = tier
+            session['identity_id'] = identity.id
 
             # Cache tier por 1 hora
             cache_key = f'user:tier:{address}'
@@ -295,6 +305,7 @@ def siwe_login():
             return jsonify({
                 'token': token,
                 'address': address,
+                'identityId': identity.id,
                 'tier': tier,
                 'exp': exp.timestamp()
             }), 200
@@ -318,6 +329,7 @@ def verify_token():
         return jsonify({
             'valid': True,
             'address': user['address'],
+            'identityId': user.get('identity_id'),
             'tier': user['tier'],
             'cached': True  # Indicador que dados podem vir do cache
         }), 200
@@ -338,6 +350,9 @@ def logout():
         if user:
             cache_key = f'user:tier:{user["address"]}'
             redis_client.delete(cache_key)
+        session.pop('siwe_address', None)
+        session.pop('tier', None)
+        session.pop('identity_id', None)
 
         return jsonify({'success': True}), 200
 
@@ -365,6 +380,7 @@ def get_session():
                 if exp > datetime.utcnow():
                     return jsonify({
                         'user': payload['address'],
+                        'identityId': payload.get('identity_id'),
                         'tier': payload['tier'],
                         'exp': payload['exp']
                     }), 200
@@ -387,6 +403,7 @@ def get_entitlements():
         # Tentar obter do JWT se houver Authorization header
         auth_header = request.headers.get('Authorization', '')
         user_address = None
+        identity_id = None
         user_tier = 'free'
 
         if auth_header.startswith('Bearer '):
@@ -396,6 +413,7 @@ def get_entitlements():
                 exp = datetime.fromtimestamp(payload['exp'])
                 if exp > datetime.utcnow():
                     user_address = payload['address']
+                    identity_id = payload.get('identity_id')
                     user_tier = payload['tier']
             except:
                 pass
@@ -448,6 +466,7 @@ def get_entitlements():
 
         return jsonify({
             'user': user_address,
+            'identityId': identity_id,
             'tier': user_tier,
             'features': tier_features.get(user_tier, tier_features['free']),
             'limits': tier_limits.get(user_tier, tier_limits['free']),

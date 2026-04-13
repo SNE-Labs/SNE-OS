@@ -1,5 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
-import { lookupAddress, getBalance, getGasPrice, getProducts, checkLicense, getPassportOverview } from '../services/passport-api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  lookupAddress,
+  getBalance,
+  getGasPrice,
+  getProducts,
+  checkLicense,
+  getPassportOverview,
+  getPassportIdentity,
+  initPassportWalletLink,
+  confirmPassportWalletLink,
+} from '../services/passport-api';
 import { useAccount, useBalance as useWagmiBalance } from 'wagmi';
 import type { Address } from '../types/passport';
 
@@ -30,6 +40,45 @@ export function usePassportOverview(address: string | null) {
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
+  });
+}
+
+export function usePassportIdentity() {
+  return useQuery({
+    queryKey: ['passport', 'identity'],
+    queryFn: () => getPassportIdentity(),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
+export function useInitPassportWalletLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (candidateAddress: string) => initPassportWalletLink(candidateAddress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['passport', 'identity'] });
+    },
+  });
+}
+
+export function useConfirmPassportWalletLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      currentWalletSignature,
+      candidateWalletSignature,
+    }: {
+      requestId: string;
+      currentWalletSignature: string;
+      candidateWalletSignature: string;
+    }) => confirmPassportWalletLink(requestId, currentWalletSignature, candidateWalletSignature),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['passport', 'identity'] });
+      queryClient.invalidateQueries({ queryKey: ['passport', 'overview'] });
+    },
   });
 }
 
@@ -120,4 +169,3 @@ export function useCheckLicense(nodeId: string | null) {
     gcTime: 5 * 60 * 1000,
   });
 }
-

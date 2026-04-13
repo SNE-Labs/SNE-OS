@@ -120,6 +120,59 @@ export type ProductsResponse = {
   products: Product[];
 };
 
+export type PassportIdentityWallet = {
+  id: number;
+  address: Address;
+  chain_family: string;
+  wallet_type: string;
+  label: string;
+  status: 'active' | 'pending' | 'revoked';
+  is_primary: boolean;
+  added_at: string | null;
+  last_login_at: string | null;
+};
+
+export type PassportIdentityEvent = {
+  id: number;
+  type: string;
+  actor_address?: Address | null;
+  target_address?: Address | null;
+  payload: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type PassportIdentityCheckpoint = {
+  connected: boolean;
+  address: Address;
+  identity_id: string;
+  identity: {
+    id: string;
+    anchor_address: Address;
+    status: string;
+    created_at: string | null;
+    updated_at: string | null;
+  };
+  primary_wallet: PassportIdentityWallet | null;
+  wallets: PassportIdentityWallet[];
+  events: PassportIdentityEvent[];
+  stats: {
+    wallets_total: number;
+    active_wallets: number;
+    pending_wallets: number;
+    revoked_wallets: number;
+  };
+};
+
+export type PassportLinkInitResponse = {
+  request_id: string;
+  identity_id: string;
+  candidate_address: Address;
+  requested_by_address: Address;
+  expires_at: string;
+  current_wallet_message: string;
+  candidate_wallet_message: string;
+};
+
 export type ErrorResponse = {
   error: string;
   code: 'INVALID_PARAMETER' | 'ADDRESS_NOT_FOUND' | 'RATE_LIMIT' | 'RPC_ERROR' | 'CONTRACT_ERROR' | 'INTERNAL_ERROR';

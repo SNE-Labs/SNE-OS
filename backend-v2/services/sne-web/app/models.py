@@ -4,6 +4,7 @@ Baseado no schema existente do PostgreSQL
 """
 
 from datetime import datetime
+import uuid
 from sqlalchemy.dialects.postgresql import JSONB
 
 from .extensions import db
@@ -112,6 +113,63 @@ class Analysis(db.Model):
     tier = db.Column(db.String(20), default='free')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class PassportIdentity(db.Model):
+    """Identidade raiz do Passport dentro do OS."""
+    __tablename__ = 'passport_identities'
+
+    id = db.Column(db.String(64), primary_key=True, default=lambda: f"pid_{uuid.uuid4().hex}")
+    anchor_address = db.Column(db.String(42), nullable=False, unique=True, index=True)
+    primary_wallet_id = db.Column(db.Integer, db.ForeignKey('passport_identity_wallets.id'))
+    status = db.Column(db.String(20), default='active', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PassportIdentityWallet(db.Model):
+    """Carteiras vinculadas a uma identidade Passport."""
+    __tablename__ = 'passport_identity_wallets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    identity_id = db.Column(db.String(64), db.ForeignKey('passport_identities.id'), nullable=False, index=True)
+    address = db.Column(db.String(42), nullable=False, unique=True, index=True)
+    chain_family = db.Column(db.String(20), default='evm', nullable=False)
+    wallet_type = db.Column(db.String(20), default='wallet', nullable=False)
+    label = db.Column(db.String(120))
+    status = db.Column(db.String(20), default='active', nullable=False)
+    is_primary = db.Column(db.Boolean, default=False, nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PassportIdentityEvent(db.Model):
+    """Trilha de auditoria da identidade Passport."""
+    __tablename__ = 'passport_identity_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    identity_id = db.Column(db.String(64), db.ForeignKey('passport_identities.id'), nullable=False, index=True)
+    event_type = db.Column(db.String(50), nullable=False)
+    actor_address = db.Column(db.String(42))
+    target_address = db.Column(db.String(42))
+    event_payload = db.Column("payload", JSONB, default=dict)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class PassportIdentityLinkRequest(db.Model):
+    """Fluxo pendente para vincular uma nova carteira ao Passport."""
+    __tablename__ = 'passport_identity_link_requests'
+
+    id = db.Column(db.String(64), primary_key=True, default=lambda: f"plink_{uuid.uuid4().hex}")
+    identity_id = db.Column(db.String(64), db.ForeignKey('passport_identities.id'), nullable=False, index=True)
+    requested_by_address = db.Column(db.String(42), nullable=False, index=True)
+    candidate_address = db.Column(db.String(42), nullable=False, index=True)
+    nonce = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(20), default='pending', nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class UserTier(db.Model):
     """Tabela para armazenar tiers dos usuários"""
     __tablename__ = 'user_tiers'
@@ -149,10 +207,13 @@ def init_db_auto():
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
 
-        existing_tables = inspector.get_table_names()
-        print(f"📊 Existing tables: {existing_tables}")
+        existing_tables = set(inspector.get_table_names())
+        required_tables = set(db.metadata.tables.keys())
+        missing_tables = sorted(required_tables - existing_tables)
 
-        if not existing_tables or len(existing_tables) < 5:
+        print(f"📊 Existing tables: {sorted(existing_tables)}")
+        if missing_tables:
+            print(f"🧩 Missing tables detected: {missing_tables}")
             print("🚀 Creating database tables automatically...")
             success = init_db()
             if success:
