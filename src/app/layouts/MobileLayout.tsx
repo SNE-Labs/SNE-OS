@@ -1,17 +1,15 @@
-import { Suspense, lazy, useState, useEffect, useRef } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Shield, Key, KeyRound, FileText } from 'lucide-react';
+import { Activity, House, Key, KeyRound, LockKeyhole, Shield } from 'lucide-react';
 
-// Lazy load mobile pages
-const MobileHome = lazy(() => import('../pages/mobile/Home').then(m => ({ default: m.MobileHome })));
-const MobileRadar = lazy(() => import('../pages/mobile/Radar').then(m => ({ default: m.MobileRadar })));
-const MobileVault = lazy(() => import('../pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
-const MobilePass = lazy(() => import('../pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
-const MobileKeys = lazy(() => import('../pages/mobile/Keys').then(m => ({ default: m.MobileKeys })));
-// const MobileStatus = lazy(() => import('../pages/mobile/Status').then(m => ({ default: m.MobileStatus }))); // desativado temporariamente
-const MobileDocs = lazy(() => import('../pages/mobile/Docs').then(m => ({ default: m.MobileDocs })));
+const MobileHome = lazy(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
+const MobileRadar = lazy(() => import('../pages/mobile/Radar').then((m) => ({ default: m.MobileRadar })));
+const MobileVault = lazy(() => import('../pages/mobile/Vault').then((m) => ({ default: m.MobileVault })));
+const MobilePass = lazy(() => import('../pages/mobile/Pass').then((m) => ({ default: m.MobilePass })));
+const MobileKeys = lazy(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
+const MobileSecrets = lazy(() => import('../pages/mobile/Secrets').then((m) => ({ default: m.MobileSecrets })));
+const MobileDocs = lazy(() => import('../pages/mobile/Docs').then((m) => ({ default: m.MobileDocs })));
 
-// Loading component for mobile
 function MobileSkeleton() {
   return (
     <div className="flex-1 flex items-center justify-center">
@@ -20,7 +18,6 @@ function MobileSkeleton() {
   );
 }
 
-// Basic mobile styles
 const mobileStyles = `
   .mobile-layout {
     display: flex;
@@ -31,14 +28,14 @@ const mobileStyles = `
 
   .mobile-content-area {
     flex: 1;
-    overflow-y: auto;
-    padding: 16px;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .mobile-tab-bar {
     display: flex;
     height: 83px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(20px);
     border-top: 0.5px solid rgba(0, 0, 0, 0.1);
     z-index: 1000;
@@ -64,11 +61,50 @@ const mobileStyles = `
   }
 `;
 
-// Inject styles
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && !document.querySelector('style[data-mobile-layout="true"]')) {
   const styleSheet = document.createElement('style');
+  styleSheet.dataset.mobileLayout = 'true';
   styleSheet.textContent = mobileStyles;
   document.head.appendChild(styleSheet);
+}
+
+const TAB_ROUTES = {
+  home: '/home',
+  radar: '/radar',
+  vault: '/vault',
+  pass: '/pass',
+  secrets: '/secrets',
+  keys: '/keys',
+} as const;
+
+const tabs = [
+  { id: 'home', label: 'Home', icon: House },
+  { id: 'radar', label: 'Radar', icon: Activity },
+  { id: 'vault', label: 'Vault', icon: Shield },
+  { id: 'pass', label: 'Pass', icon: Key },
+  { id: 'secrets', label: 'Secrets', icon: LockKeyhole },
+  { id: 'keys', label: 'Keys', icon: KeyRound },
+] as const;
+
+function resolveTabFromPath(pathname: string): keyof typeof TAB_ROUTES {
+  if (pathname === '/' || pathname.startsWith('/home')) return 'home';
+  if (pathname.startsWith('/radar')) return 'radar';
+  if (pathname.startsWith('/vault')) return 'vault';
+  if (pathname.startsWith('/pass')) return 'pass';
+  if (pathname.startsWith('/secrets')) return 'secrets';
+  if (pathname.startsWith('/keys')) return 'keys';
+  return 'home';
+}
+
+function resolveComponent(pathname: string) {
+  if (pathname === '/' || pathname.startsWith('/home')) return MobileHome;
+  if (pathname.startsWith('/radar')) return MobileRadar;
+  if (pathname.startsWith('/vault')) return MobileVault;
+  if (pathname.startsWith('/pass')) return MobilePass;
+  if (pathname.startsWith('/secrets')) return MobileSecrets;
+  if (pathname.startsWith('/keys')) return MobileKeys;
+  if (pathname.startsWith('/docs')) return MobileDocs;
+  return MobileHome;
 }
 
 export function MobileLayout() {
@@ -76,125 +112,57 @@ export function MobileLayout() {
   const navigate = useNavigate();
   const isInternalNavigation = useRef(false);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    // Determinar tab ativa baseada na rota atual
-    const path = location.pathname;
-    if (path.includes('/radar')) return 'radar';
-    if (path.includes('/vault')) return 'vault';
-    if (path.includes('/pass')) return 'pass';
-    if (path.includes('/keys')) return 'keys';
-    // if (path.includes('/status')) return 'status'; // desativado temporariamente
-    if (path.includes('/docs')) return 'docs';
-    return 'radar'; // default
-  });
+  const [activeTab, setActiveTab] = useState<keyof typeof TAB_ROUTES>(() => resolveTabFromPath(location.pathname));
 
-  const tabs = [
-    { id: 'radar', label: 'Radar', icon: 'Activity' as const },
-    { id: 'vault', label: 'Vault', icon: 'Shield' as const },
-    { id: 'pass', label: 'Pass', icon: 'Key' as const },
-    { id: 'keys', label: 'Keys', icon: 'KeyRound' as const },
-    // { id: 'status', label: 'Status', icon: 'BarChart3' as const }, // desativado temporariamente
-    { id: 'docs', label: 'Docs', icon: 'FileText' as const },
-  ];
-
-  // Função para mudar tab e atualizar URL
-  const handleTabChange = (tabId: string) => {
-    if (tabId === activeTab) return; // Evitar mudanças desnecessárias
+  const handleTabChange = (tabId: keyof typeof TAB_ROUTES) => {
+    if (tabId === activeTab && location.pathname === TAB_ROUTES[tabId]) return;
 
     isInternalNavigation.current = true;
     setActiveTab(tabId);
 
-    // Atualizar URL apenas quando necessário
-    const tabRoutes = {
-      radar: '/radar',
-      vault: '/vault',
-      pass: '/pass',
-      keys: '/keys',
-      // status: '/status', // desativado temporariamente
-      docs: '/docs'
-    };
-
-    const newRoute = tabRoutes[tabId as keyof typeof tabRoutes] || '/radar';
-    if (location.pathname !== newRoute) {
-      navigate(newRoute, { replace: true });
+    const nextRoute = TAB_ROUTES[tabId];
+    if (location.pathname !== nextRoute) {
+      navigate(nextRoute, { replace: true });
     }
 
-    // Reset flag after navigation
-    setTimeout(() => {
+    window.setTimeout(() => {
       isInternalNavigation.current = false;
     }, 100);
   };
 
-  // Sincronizar tab com rota atual (apenas navegação externa)
   useEffect(() => {
-    // Só sincronizar se não foi navegação interna
     if (isInternalNavigation.current) return;
-
-    const path = location.pathname;
-    let newTab = 'radar';
-
-    if (path === '/radar') newTab = 'radar';
-    else if (path === '/vault') newTab = 'vault';
-    else if (path === '/pass') newTab = 'pass';
-    else if (path === '/keys') newTab = 'keys';
-    // else if (path === '/status') newTab = 'status'; // desativado temporariamente
-    else if (path === '/docs') newTab = 'docs';
-
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
+    const nextTab = resolveTabFromPath(location.pathname);
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
     }
-  }, [location.pathname]); // Só depende de location.pathname
+  }, [activeTab, location.pathname]);
 
-  // Get current component based on active tab
-  const tabComponents = {
-    radar: MobileRadar,
-    vault: MobileVault,
-    pass: MobilePass,
-    keys: MobileKeys,
-    // status: MobileStatus, // desativado temporariamente
-    docs: MobileDocs
-  };
-
-  const CurrentComponent = tabComponents[activeTab as keyof typeof tabComponents] || MobileRadar;
+  const CurrentComponent = resolveComponent(location.pathname);
 
   return (
     <div className="mobile-layout">
-      {/* Main Content Area */}
       <div className="mobile-content-area">
         <Suspense fallback={<MobileSkeleton />}>
           <CurrentComponent />
         </Suspense>
       </div>
 
-      {/* Simple Tab Bar */}
       <div className="mobile-tab-bar">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`mobile-tab-item ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => handleTabChange(tab.id)}
-          >
-            {tab.icon === 'Activity' && <Activity size={20} />}
-            {tab.icon === 'Shield' && <Shield size={20} />}
-            {tab.icon === 'Key' && <Key size={20} />}
-            {tab.icon === 'KeyRound' && <KeyRound size={20} />}
-            {tab.icon === 'FileText' && <FileText size={20} />}
-            {/* tab.icon === 'BarChart3' desativado com Status */}
-            <span>{tab.label}</span>
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`mobile-tab-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => handleTabChange(tab.id)}
+            >
+              <Icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
-
-// Map routes to components
-const routeComponents = {
-  '/': MobileRadar,
-  '/radar': MobileRadar,
-  '/vault': MobileVault,
-  '/pass': MobilePass,
-  '/keys': MobileKeys,
-  // '/status': MobileStatus, // desativado temporariamente
-  '/docs': MobileDocs,
-};

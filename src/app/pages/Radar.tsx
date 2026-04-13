@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { ArrowUpRight, Lock, RefreshCw, Waves } from 'lucide-react';
 
+import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { useRadarOverview } from '../../hooks/useRadarData';
+import { resolveModuleState } from '../../lib/moduleState';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
@@ -15,6 +17,14 @@ export function Radar() {
 
   const overviewQuery = useRadarOverview(activeSymbol, '24H');
   const overview = overviewQuery.data;
+  const moduleState = resolveModuleState({
+    isConnected: true,
+    allowDisconnectedRead: true,
+    isLoading: overviewQuery.isLoading,
+    isError: overviewQuery.isError,
+    data: overview,
+    isEmpty: (data) => !data.featured && data.universe.length === 0,
+  });
   const movers = overview?.universe ?? [];
   const featured = overview?.featured ?? null;
 
@@ -147,7 +157,29 @@ export function Radar() {
                 </button>
               </div>
 
-              {featured ? (
+              {moduleState === 'loading' ? (
+                <ModuleStateCard
+                  tone="loading"
+                  title="Carregando Radar"
+                  description="Buscando mercado, universo curado e sinal do ativo selecionado."
+                />
+              ) : moduleState === 'error' ? (
+                <ModuleStateCard
+                  tone="error"
+                  title="Falha ao carregar Radar"
+                  description="Os dados de mercado não responderam como esperado."
+                  actionLabel="Atualizar"
+                  onAction={handleRefresh}
+                />
+              ) : moduleState === 'empty' ? (
+                <ModuleStateCard
+                  tone="empty"
+                  title="Sem mercado disponível"
+                  description="O universo do Radar está vazio agora. Tente novamente em instantes."
+                  actionLabel="Atualizar"
+                  onAction={handleRefresh}
+                />
+              ) : featured ? (
                 <div
                   className="rounded-xl p-5"
                   style={{
@@ -213,6 +245,14 @@ export function Radar() {
                 <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
                   Sinal
                 </div>
+                {moduleState !== 'ready' ? (
+                  <ModuleStateCard
+                    tone={moduleState === 'error' ? 'error' : moduleState === 'loading' ? 'loading' : 'empty'}
+                    title="Sinal indisponível"
+                    description="O sinal direcional depende do snapshot atual do ativo selecionado."
+                    compact
+                  />
+                ) : (
                 <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{activeSymbol}</div>
@@ -239,6 +279,7 @@ export function Radar() {
                     </div>
                   </div>
                 </div>
+                )}
               </div>
 
               <div

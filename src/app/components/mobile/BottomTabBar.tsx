@@ -1,8 +1,8 @@
 import React from 'react';
 import { cn } from '../ui/utils';
-import { Radar, Lock, CreditCard, KeyRound, Activity, BookOpen } from 'lucide-react';
+import { Radar, Lock, CreditCard, KeyRound, Activity, BookOpen, LockKeyhole } from 'lucide-react';
 
-export type TabId = 'radar' | 'vault' | 'pass' | 'keys' | 'status' | 'docs';
+export type TabId = 'radar' | 'vault' | 'pass' | 'secrets' | 'keys' | 'status' | 'docs';
 
 export interface BottomTabBarProps {
   activeTab: TabId;
@@ -20,6 +20,7 @@ const tabs: Array<{
   { id: 'radar', label: 'Radar', icon: Radar },
   { id: 'vault', label: 'Vault', icon: Lock },
   { id: 'pass', label: 'Pass', icon: CreditCard },
+  { id: 'secrets', label: 'Secrets', icon: LockKeyhole },
   { id: 'keys', label: 'Keys', icon: KeyRound },
   { id: 'status', label: 'Status', icon: Activity },
   { id: 'docs', label: 'Docs', icon: BookOpen },

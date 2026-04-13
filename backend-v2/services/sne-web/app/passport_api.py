@@ -44,7 +44,8 @@ def overview():
 
     try:
         address = request.args.get("address") or session.get("siwe_address")
-        return jsonify(build_passport_overview(address)), 200
+        network = request.args.get("network")
+        return jsonify(build_passport_overview(address, network)), 200
     except Exception as e:
         logger.error(f"Passport overview error: {e}")
         return jsonify({
@@ -53,9 +54,14 @@ def overview():
             "profile": None,
             "surface": {
                 "address": None,
+                "network": "--",
                 "capital": "--",
                 "gas": "--",
             },
+            "network_meta": None,
+            "primary_account": None,
+            "linked_accounts": [],
+            "network_scope": [],
             "inventory": [],
         }), 200
 

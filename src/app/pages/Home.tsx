@@ -15,6 +15,7 @@ import {
   Waves,
   Zap,
 } from 'lucide-react';
+import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { apiGet } from '@/lib/api/http';
@@ -197,11 +198,12 @@ export function Home() {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
-          <div className="text-center py-12">
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-300 rounded w-48 mx-auto mb-4"></div>
-              <div className="h-8 bg-gray-300 rounded w-64 mx-auto"></div>
-            </div>
+          <div className="mx-auto max-w-[1480px] py-6">
+            <ModuleStateCard
+              tone="loading"
+              title="Carregando o SNE OS"
+              description="Montando home, market pulse, intel e estado do hub."
+            />
           </div>
         </div>
       </div>
@@ -212,14 +214,14 @@ export function Home() {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
-          <div className="text-center py-12">
-            <div style={{ color: 'var(--warn-amber)' }}>
-              <AlertTriangle size={48} className="mx-auto mb-4" />
-              <p>Falha ao carregar dados do SNE OS</p>
-              <p className="text-sm mt-2" style={{ color: 'var(--text-3)' }}>
-                Por favor, tente novamente em instantes.
-              </p>
-            </div>
+          <div className="mx-auto max-w-[1480px] py-6">
+            <ModuleStateCard
+              tone="error"
+              title="Falha ao carregar o SNE OS"
+              description="A home não conseguiu montar dashboard, market pulse e intel agora."
+              actionLabel="Tentar novamente"
+              onAction={() => window.location.reload()}
+            />
           </div>
         </div>
       </div>

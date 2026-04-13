@@ -2,15 +2,23 @@ import { useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, KeyRound, Shield, Wallet, Waves, Zap } from 'lucide-react';
 
+import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useVaultOverview } from '../../hooks/useVaultData';
+import { resolveModuleState } from '../../lib/moduleState';
 import { formatAddress } from '@/utils/format';
 
 export function Vault() {
   const { address, isConnected } = useAccount();
   const overviewQuery = useVaultOverview(isConnected && address ? address : null);
   const overview = overviewQuery.data;
+  const moduleState = resolveModuleState({
+    isConnected,
+    isLoading: overviewQuery.isLoading,
+    isError: overviewQuery.isError,
+    data: overview,
+  });
 
   const vaultStatus = overview?.status ?? { label: 'offline', tone: 'pending' as const };
 
@@ -127,29 +135,51 @@ export function Vault() {
                 Superfície de Capital
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {capitalCards.map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <div
-                      key={card.label}
-                      className="rounded-xl p-4 min-w-0"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                    >
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div className="text-[11px] uppercase" style={{ color: 'var(--text-3)' }}>{card.label}</div>
-                        <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              {moduleState === 'disconnected' ? (
+                <ModuleStateCard
+                  tone="disconnected"
+                  title="Conecte uma carteira"
+                  description="O Vault precisa de uma carteira conectada para resolver capital, gas e postura por network."
+                />
+              ) : moduleState === 'loading' ? (
+                <ModuleStateCard
+                  tone="loading"
+                  title="Carregando capital"
+                  description="Lendo saldo, atividade e superfície de custódia da conta conectada."
+                />
+              ) : moduleState === 'error' ? (
+                <ModuleStateCard
+                  tone="error"
+                  title="Falha ao carregar o Vault"
+                  description="O estado do capital não pôde ser resolvido agora."
+                  actionLabel="Tentar novamente"
+                  onAction={() => overviewQuery.refetch()}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {capitalCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <div
+                        key={card.label}
+                        className="rounded-xl p-4 min-w-0"
+                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="text-[11px] uppercase" style={{ color: 'var(--text-3)' }}>{card.label}</div>
+                          <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                        </div>
+                        <div className="text-xl font-semibold mb-2 break-words" style={{ color: 'var(--text-1)' }}>
+                          {card.value}
+                        </div>
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          {card.hint}
+                        </div>
                       </div>
-                      <div className="text-xl font-semibold mb-2 break-words" style={{ color: 'var(--text-1)' }}>
-                        {card.value}
-                      </div>
-                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                        {card.hint}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-5">

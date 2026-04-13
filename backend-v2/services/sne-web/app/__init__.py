@@ -75,7 +75,9 @@ def create_app():
     from .vault_api import vault_bp
     from .passport_api import passport_bp
     from .keys_api import keys_bp
+    from .networks_api import networks_bp
     from .radar_api import radar_bp
+    from .secrets_api import secrets_bp
     from .status_api import status_bp, dashboard_bp as status_dashboard_bp
     from .intel_api import intel_bp
     from .home_api import home_bp
@@ -91,7 +93,9 @@ def create_app():
     app.register_blueprint(vault_bp, url_prefix="/api/vault")
     app.register_blueprint(passport_bp, url_prefix="/api/passport")
     app.register_blueprint(keys_bp, url_prefix="/api/keys")
+    app.register_blueprint(networks_bp, url_prefix="/api/networks")
     app.register_blueprint(radar_bp, url_prefix="/api/radar")
+    app.register_blueprint(secrets_bp, url_prefix="/api/secrets")
     app.register_blueprint(status_bp, url_prefix="/api/status")
     app.register_blueprint(intel_bp, url_prefix="/api/intel")
     app.register_blueprint(home_bp, url_prefix="/api")

@@ -3,9 +3,11 @@ import { useAccount } from 'wagmi';
 import { BadgeCheck, Search, Shield, Wallet, ArrowUpRight, AlertCircle, KeyRound, Box, Activity } from 'lucide-react';
 import { isAddress } from 'viem';
 
+import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { usePassportOverview } from '../../hooks/usePassportData';
+import { resolveModuleState } from '../../lib/moduleState';
 import { formatAddress } from '@/utils/format';
 
 type PassportTab = 'identity' | 'lookup' | 'watch';
@@ -19,6 +21,12 @@ export function Pass() {
 
   const overviewQuery = usePassportOverview(isConnected && address ? address : null);
   const publicOverview = usePassportOverview(lookupTarget);
+  const identityModuleState = resolveModuleState({
+    isConnected,
+    isLoading: overviewQuery.isLoading,
+    isError: overviewQuery.isError,
+    data: overviewQuery.data,
+  });
 
   const connectedProfile = overviewQuery.data?.profile;
   const publicProfile = publicOverview.data?.profile;
@@ -220,14 +228,26 @@ export function Pass() {
                     Asserções de Identidade
                   </div>
 
-                  {!isConnected ? (
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Conecte uma carteira para carregar suas asserções de identidade.
-                    </div>
-                  ) : overviewQuery.isLoading ? (
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Lendo estado on-chain da conta...
-                    </div>
+                  {identityModuleState === 'disconnected' ? (
+                    <ModuleStateCard
+                      tone="disconnected"
+                      title="Conecte uma carteira"
+                      description="O Passport precisa de uma carteira conectada para resolver identidade, linked accounts e assertions."
+                    />
+                  ) : identityModuleState === 'loading' ? (
+                    <ModuleStateCard
+                      tone="loading"
+                      title="Lendo identidade"
+                      description="Resolvendo conta principal, assertions e superfície pública da identidade."
+                    />
+                  ) : identityModuleState === 'error' ? (
+                    <ModuleStateCard
+                      tone="error"
+                      title="Falha ao carregar Passport"
+                      description="A identidade conectada não pôde ser resolvida agora."
+                      actionLabel="Tentar novamente"
+                      onAction={() => overviewQuery.refetch()}
+                    />
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(connectedProfile?.assertions ?? []).map((assertion) => (

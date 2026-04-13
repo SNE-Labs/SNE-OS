@@ -44,10 +44,11 @@ def overview():
 
     try:
         address = request.args.get("address") or session.get("siwe_address")
-        return jsonify(build_vault_overview(address)), 200
+        network = request.args.get("network")
+        return jsonify(build_vault_overview(address, network)), 200
     except Exception as e:
         logger.error(f"Vault overview error: {e}")
-        return jsonify(build_vault_overview(None)), 200
+        return jsonify(build_vault_overview(None, request.args.get("network"))), 200
 
 # Public products (no wallet required)
 @vault_bp.get("/products")

@@ -1,15 +1,23 @@
 import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, KeyRound, Shield, Wallet } from 'lucide-react';
 
+import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useKeysOverview } from '../../hooks/useKeysData';
+import { resolveModuleState } from '../../lib/moduleState';
 import { formatAddress } from '@/utils/format';
 
 export function Keys() {
   const { address, isConnected } = useAccount();
   const overviewQuery = useKeysOverview(isConnected && address ? address : null);
   const overview = overviewQuery.data;
+  const moduleState = resolveModuleState({
+    isConnected,
+    isLoading: overviewQuery.isLoading,
+    isError: overviewQuery.isError,
+    data: overview,
+  });
 
   const status = overview?.status ?? { label: 'offline', tone: 'pending' as const };
   const signals = overview?.signals ?? [];
@@ -110,37 +118,59 @@ export function Keys() {
                 Grants e Credenciais
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Licenças / Grants</div>
+              {moduleState === 'disconnected' ? (
+                <ModuleStateCard
+                  tone="disconnected"
+                  title="Conecte uma carteira"
+                  description="Keys precisa de uma sessão conectada para resolver grants, bindings e devices."
+                />
+              ) : moduleState === 'loading' ? (
+                <ModuleStateCard
+                  tone="loading"
+                  title="Carregando camada de acesso"
+                  description="Lendo grants, bindings e dispositivos confiáveis da conta."
+                />
+              ) : moduleState === 'error' ? (
+                <ModuleStateCard
+                  tone="error"
+                  title="Falha ao carregar Keys"
+                  description="A superfície de acesso não pôde ser resolvida agora."
+                  actionLabel="Tentar novamente"
+                  onAction={() => overviewQuery.refetch()}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Licenças / Grants</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {overview?.grants.length ? `${overview.grants.length} grant(s) carregados.` : 'Nenhum grant ativo carregado para esta conta.'}
+                    </div>
                   </div>
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    {overview?.grants.length ? `${overview.grants.length} grant(s) carregados.` : 'Nenhum grant ativo carregado para esta conta.'}
-                  </div>
-                </div>
 
-                <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <KeyRound className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Bindings</div>
+                  <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <KeyRound className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Bindings</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {overview?.bindings.length ? `${overview.bindings.length} binding(s) carregados.` : 'Nenhuma credencial portátil vinculada ainda.'}
+                    </div>
                   </div>
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    {overview?.bindings.length ? `${overview.bindings.length} binding(s) carregados.` : 'Nenhuma credencial portátil vinculada ainda.'}
-                  </div>
-                </div>
 
-                <div className="rounded-xl p-4 min-w-0 md:col-span-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Box className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Devices</div>
-                  </div>
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    {overview?.devices.length ? `${overview.devices.length} dispositivo(s) confiável(is) carregado(s).` : 'Nenhum dispositivo confiável registrado para esta conta.'}
+                  <div className="rounded-xl p-4 min-w-0 md:col-span-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Box className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Devices</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {overview?.devices.length ? `${overview.devices.length} dispositivo(s) confiável(is) carregado(s).` : 'Nenhum dispositivo confiável registrado para esta conta.'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="space-y-5">

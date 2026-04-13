@@ -4,23 +4,20 @@ Builds identity overview payloads from public on-chain state.
 """
 
 from datetime import datetime
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from web3 import Web3
-
-
-SCROLL_RPC_URL = os.getenv("SCROLL_RPC_URL", "https://rpc.scroll.io")
-
-
-def _get_web3() -> Web3:
-    return Web3(Web3.HTTPProvider(SCROLL_RPC_URL))
+from .networks import (
+    get_evm_web3,
+    get_public_network_metadata,
+    list_enabled_network_keys,
+)
 
 
-def resolve_identity(address: str) -> Dict[str, Any]:
-    w3 = _get_web3()
-    if not w3.is_connected():
-        raise RuntimeError("Scroll RPC unavailable")
+def resolve_identity(address: str, network_key: Optional[str] = None) -> Dict[str, Any]:
+    network = get_public_network_metadata(network_key or "scroll")
+    w3 = get_evm_web3(network["key"])
+    if not w3 or not w3.is_connected():
+        raise RuntimeError(f"{network['label']} RPC unavailable")
 
     balance_wei = w3.eth.get_balance(address)
     tx_count = w3.eth.get_transaction_count(address)
@@ -77,15 +74,73 @@ def resolve_identity(address: str) -> Dict[str, Any]:
         "boxes": [],
         "identity": identity,
         "assertions": assertions,
+        "network": network,
         "pou": {"nodesPublic": 0},
         "metadata": {
             "cached": False,
-            "source": "rpc",
+            "source": f"{network['key']}-rpc",
         },
     }
 
 
-def build_passport_overview(address: Optional[str]) -> Dict[str, Any]:
+def build_account_snapshot(address: str, network_key: str, primary_network_key: Optional[str]) -> Dict[str, Any]:
+    network = get_public_network_metadata(network_key)
+    snapshot: Dict[str, Any] = {
+        "network": network,
+        "address": address,
+        "primary": network_key == (primary_network_key or "scroll"),
+        "status": "unavailable",
+        "account_type": None,
+        "tx_count": None,
+        "balance": None,
+        "has_activity": False,
+        "source": f"{network_key}-rpc",
+    }
+
+    w3 = get_evm_web3(network_key)
+    if not w3 or not w3.is_connected():
+        return snapshot
+
+    balance_wei = w3.eth.get_balance(address)
+    tx_count = w3.eth.get_transaction_count(address)
+    code = w3.eth.get_code(address)
+    balance_native = float(w3.from_wei(balance_wei, "ether"))
+    has_code = bool(code and code != b"" and code.hex() != "0x")
+    has_activity = tx_count > 0 or balance_native > 0
+
+    snapshot.update({
+        "status": "active" if has_activity else "idle",
+        "account_type": "contract" if has_code else "wallet",
+        "tx_count": tx_count,
+        "balance": f"{balance_native:.6f} {network['native_asset']}",
+        "has_activity": has_activity,
+    })
+    return snapshot
+
+
+def build_linked_accounts(address: str, primary_network_key: Optional[str]) -> List[Dict[str, Any]]:
+    return [
+        build_account_snapshot(address, network_key, primary_network_key)
+        for network_key in list_enabled_network_keys(family="evm", readable_only=True)
+    ]
+
+
+def build_network_scope() -> List[Dict[str, Any]]:
+    scope: List[Dict[str, Any]] = []
+    for network_key in list_enabled_network_keys():
+        network = get_public_network_metadata(network_key)
+        scope.append({
+            "network": network,
+            "link_strategy": "same-address"
+            if network["family"] == "evm"
+            else "external-binding-required",
+        })
+    return scope
+
+
+def build_passport_overview(address: Optional[str], network_key: Optional[str] = None) -> Dict[str, Any]:
+    network = get_public_network_metadata(network_key or "scroll")
+
     if not address:
         return {
             "connected": False,
@@ -93,14 +148,21 @@ def build_passport_overview(address: Optional[str]) -> Dict[str, Any]:
             "profile": None,
             "surface": {
                 "address": None,
-                "capital": "--",
+                "network": network["label"],
+                "capital": f"-- {network['native_asset']}",
                 "gas": "--",
             },
+            "network_meta": network,
+            "primary_account": None,
+            "linked_accounts": [],
+            "network_scope": build_network_scope(),
             "inventory": [],
         }
 
-    profile = resolve_identity(address)
+    profile = resolve_identity(address, network["key"])
     identity = profile["identity"]
+    linked_accounts = build_linked_accounts(address, network["key"])
+    active_accounts = sum(1 for account in linked_accounts if account["status"] == "active")
 
     if profile["licenses"]:
         status = {"label": "verified", "tone": "success"}
@@ -114,6 +176,7 @@ def build_passport_overview(address: Optional[str]) -> Dict[str, Any]:
         {"label": "Licenças", "value": str(len(profile["licenses"]))},
         {"label": "Chaves", "value": str(len(profile["keys"]))},
         {"label": "Caixas", "value": str(len(profile["boxes"]))},
+        {"label": "Networks", "value": str(active_accounts)},
     ]
 
     return {
@@ -122,8 +185,13 @@ def build_passport_overview(address: Optional[str]) -> Dict[str, Any]:
         "profile": profile,
         "surface": {
             "address": address,
-            "capital": f"{identity['balanceEth']} ETH",
+            "network": network["label"],
+            "capital": f"{identity['balanceEth']} {network['native_asset']}",
             "gas": "--",
         },
+        "network_meta": network,
+        "primary_account": next((account for account in linked_accounts if account["primary"]), None),
+        "linked_accounts": linked_accounts,
+        "network_scope": build_network_scope(),
         "inventory": inventory,
     }

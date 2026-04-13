@@ -4,18 +4,9 @@ Builds capital and protection view models from wallet state.
 """
 
 from datetime import datetime
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from web3 import Web3
-
-
-SCROLL_RPC_URL = os.getenv("SCROLL_RPC_URL", "https://rpc.scroll.io")
-SCROLL_CHAIN_ID = int(os.getenv("SCROLL_CHAIN_ID", "534352"))
-
-
-def _get_web3() -> Web3:
-    return Web3(Web3.HTTPProvider(SCROLL_RPC_URL))
+from .networks import get_evm_web3, get_public_network_metadata, list_enabled_network_keys
 
 
 def _format_gwei(value_wei: int) -> str:
@@ -27,16 +18,88 @@ def _format_gwei(value_wei: int) -> str:
     return f"{gwei:.2f} gwei"
 
 
-def build_vault_overview(address: Optional[str]) -> Dict[str, Any]:
+def _empty_network_entry(network_key: str, address: str) -> Dict[str, Any]:
+    network = get_public_network_metadata(network_key)
+    return {
+        "network": network,
+        "address": address,
+        "status": "unavailable",
+        "balance_native": None,
+        "balance_formatted": None,
+        "gas": None,
+        "tx_count": None,
+        "account_type": None,
+        "has_activity": False,
+        "source": f"{network_key}-rpc",
+    }
+
+
+def build_network_position(address: str, network_key: str) -> Dict[str, Any]:
+    position = _empty_network_entry(network_key, address)
+    network = position["network"]
+    w3 = get_evm_web3(network_key)
+    if not w3 or not w3.is_connected():
+        return position
+
+    balance_wei = w3.eth.get_balance(address)
+    balance_native = float(w3.from_wei(balance_wei, "ether"))
+    tx_count = w3.eth.get_transaction_count(address)
+    code = w3.eth.get_code(address)
+    gas_price_wei = int(w3.eth.gas_price)
+    account_type = "contract" if code and code != b"" and code.hex() != "0x" else "wallet"
+    has_activity = tx_count > 0 or balance_native > 0
+
+    position.update({
+        "status": "active" if has_activity else "idle",
+        "balance_native": balance_native,
+        "balance_formatted": f"{balance_native:.6f} {network['native_asset']}",
+        "gas": _format_gwei(gas_price_wei),
+        "tx_count": tx_count,
+        "account_type": account_type,
+        "has_activity": has_activity,
+    })
+    return position
+
+
+def build_network_positions(address: str) -> List[Dict[str, Any]]:
+    return [
+        build_network_position(address, network_key)
+        for network_key in list_enabled_network_keys(family="evm", readable_only=True)
+    ]
+
+
+def build_aggregate(position: Optional[Dict[str, Any]], positions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    active_networks = [item for item in positions if item["status"] == "active"]
+    total_visible_positions = sum(1 for item in positions if item["status"] != "unavailable")
+
+    return {
+        "active_networks": len(active_networks),
+        "visible_networks": total_visible_positions,
+        "primary_network": position["network"] if position else None,
+        "total_value_display": position["balance_formatted"] if position and position.get("balance_formatted") else "--",
+    }
+
+
+def build_vault_overview(address: Optional[str], network_key: Optional[str] = None) -> Dict[str, Any]:
+    network = get_public_network_metadata(network_key or "scroll")
+
     if not address:
         return {
             "connected": False,
             "status": {"label": "offline", "tone": "pending"},
             "surface": {
                 "address": None,
-                "network": str(SCROLL_CHAIN_ID),
-                "source": "rpc",
+                "network": network["label"],
+                "source": "registry",
             },
+            "network_meta": network,
+            "aggregate": {
+                "active_networks": 0,
+                "visible_networks": 0,
+                "primary_network": network,
+                "total_value_display": "--",
+            },
+            "by_network": [],
             "signals": [
                 {"title": "Estado do capital", "value": "--", "detail": "Conecte uma carteira para carregar o capital"},
                 {"title": "Superfície de acesso", "value": "0 chaves", "detail": "Nenhuma chave vinculada ainda"},
@@ -56,16 +119,24 @@ def build_vault_overview(address: Optional[str]) -> Dict[str, Any]:
             "last_updated": datetime.utcnow().isoformat(),
         }
 
-    w3 = _get_web3()
-    if not w3.is_connected():
+    w3 = get_evm_web3(network["key"])
+    if not w3 or not w3.is_connected():
         return {
             "connected": True,
             "status": {"label": "degraded", "tone": "warning"},
             "surface": {
                 "address": address,
-                "network": str(SCROLL_CHAIN_ID),
+                "network": network["label"],
                 "source": "rpc",
             },
+            "network_meta": network,
+            "aggregate": {
+                "active_networks": 0,
+                "visible_networks": 0,
+                "primary_network": network,
+                "total_value_display": "--",
+            },
+            "by_network": build_network_positions(address),
             "signals": [
                 {"title": "Estado do capital", "value": "--", "detail": "RPC indisponível no momento"},
                 {"title": "Superfície de acesso", "value": "0 chaves", "detail": "Nenhuma chave vinculada ainda"},
@@ -85,35 +156,37 @@ def build_vault_overview(address: Optional[str]) -> Dict[str, Any]:
             "last_updated": datetime.utcnow().isoformat(),
         }
 
-    balance_wei = w3.eth.get_balance(address)
-    balance_eth = float(w3.from_wei(balance_wei, "ether"))
-    tx_count = w3.eth.get_transaction_count(address)
-    code = w3.eth.get_code(address)
-    gas_price_wei = int(w3.eth.gas_price)
-    account_type = "contract" if code and code != b"" and code.hex() != "0x" else "wallet"
-    has_activity = tx_count > 0 or balance_eth > 0
+    primary_position = build_network_position(address, network["key"])
+    positions = build_network_positions(address)
+    balance_eth = primary_position["balance_native"] or 0
+    tx_count = primary_position["tx_count"] or 0
+    account_type = primary_position["account_type"] or "wallet"
+    has_activity = bool(primary_position["has_activity"])
 
     status = {"label": "capital online", "tone": "active"} if has_activity else {"label": "idle", "tone": "warning"}
 
-    capital = f"{balance_eth:.6f} ETH"
-    gas = _format_gwei(gas_price_wei)
+    capital = primary_position["balance_formatted"] or f"0.000000 {network['native_asset']}"
+    gas = primary_position["gas"] or "--"
 
     return {
         "connected": True,
         "status": status,
         "surface": {
             "address": address,
-            "network": str(SCROLL_CHAIN_ID),
+            "network": network["label"],
             "source": "rpc",
         },
+        "network_meta": network,
+        "aggregate": build_aggregate(primary_position, positions),
+        "by_network": positions,
         "signals": [
             {"title": "Estado do capital", "value": capital, "detail": "Saldo ao vivo da carteira"},
-            {"title": "Superfície de acesso", "value": "0 chaves", "detail": "Nenhuma chave vinculada ainda"},
+            {"title": "Redes ativas", "value": str(sum(1 for item in positions if item["status"] == "active")), "detail": "Networks com atividade ou saldo visível"},
             {"title": "Camada de proteção", "value": "0 dispositivos", "detail": "Nenhum dispositivo registrado"},
         ],
         "capital_cards": [
-            {"label": "Saldo", "value": capital, "hint": f"{balance_eth:.6f} ETH", "icon": "wallet"},
-            {"label": "Gas", "value": gas, "hint": "Scroll RPC", "icon": "zap"},
+            {"label": "Saldo", "value": capital, "hint": f"{balance_eth:.6f} {network['native_asset']}", "icon": "wallet"},
+            {"label": "Gas", "value": gas, "hint": f"{network['label']} RPC", "icon": "zap"},
             {"label": "Conta", "value": account_type, "hint": f"{tx_count} tx" if has_activity else "Sem atividade visível", "icon": "shield"},
             {"label": "Proteção", "value": "sem dispositivos", "hint": "Nenhum dispositivo confiável", "icon": "box"},
         ],

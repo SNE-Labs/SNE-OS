@@ -21,6 +21,7 @@ const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.
 const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
 const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 const DesktopKeys = lazy(() => import('./pages/Keys').then(m => ({ default: m.Keys })));
+const DesktopSecrets = lazy(() => import('./pages/Secrets').then(m => ({ default: m.Secrets })));
 
 // Desktop Auth Page (lazy loaded, fullscreen outside main layout)
 const AuthDesktop = lazy(() => import('./pages/AuthDesktop').then(m => ({ default: m.AuthDesktop })));
@@ -70,6 +71,7 @@ function AppContent() {
                   <Route path="/pass" element={<DesktopPass />} />
                   <Route path="/vault" element={<DesktopVault />} />
                   <Route path="/keys" element={<DesktopKeys />} />
+                  <Route path="/secrets" element={<DesktopSecrets />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/status" element={<Status />} />
                   <Route path="/docs" element={<Docs />} />
