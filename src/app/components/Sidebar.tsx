@@ -1,12 +1,7 @@
 import { NavLink } from 'react-router-dom';
 
 import { navigationItems } from '../navigation';
-import { useAuth } from '@/lib/auth/AuthProvider';
-import { formatAddress } from '@/utils/format';
-
 export function Sidebar() {
-  const { isAuthenticated, address, tier } = useAuth();
-
   return (
     <aside
       className="w-[300px] flex-shrink-0 flex flex-col border-r"
@@ -60,29 +55,6 @@ export function Sidebar() {
           ))}
         </div>
       </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t" style={{ borderColor: 'var(--stroke-1)' }}>
-        <div className="space-y-2">
-          <div
-            className="px-3 py-2 rounded-lg"
-            style={{ backgroundColor: 'var(--bg-2)' }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs" style={{ color: 'var(--text-3)' }}>CARTEIRA</span>
-              <span
-                className="text-xs font-semibold px-2 py-0.5 rounded"
-                style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
-              >
-                {tier === 'free' ? 'GRATUITO' : tier === 'pro' ? 'PRO' : tier?.toUpperCase()}
-              </span>
-            </div>
-            <p className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>
-              {isAuthenticated && address ? formatAddress(address) : 'Sem carteira conectada'}
-            </p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }
