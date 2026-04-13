@@ -93,6 +93,30 @@ def _get_intel_payload() -> dict:
         }
 
 
+def _safe_passport_overview(address: str | None, network_key: str | None) -> dict:
+    try:
+        return build_passport_overview(address, network_key)
+    except Exception as exc:
+        logger.warning(f"Home passport overview failed: {exc}")
+        return build_passport_overview(None, network_key)
+
+
+def _safe_vault_overview(address: str | None, network_key: str | None) -> dict:
+    try:
+        return build_vault_overview(address, network_key)
+    except Exception as exc:
+        logger.warning(f"Home vault overview failed: {exc}")
+        return build_vault_overview(None, network_key)
+
+
+def _safe_secrets_overview(address: str | None, authenticated: bool) -> dict:
+    try:
+        return build_secrets_overview(address, authenticated)
+    except Exception as exc:
+        logger.warning(f"Home secrets overview failed: {exc}")
+        return build_secrets_overview(None, False)
+
+
 @home_bp.get("/home")
 def home():
     network_key = request.args.get("network")
@@ -101,9 +125,9 @@ def home():
     market = _get_market_payload()
     intel = _get_intel_payload()
     wallet = get_wallet_state(session_data["address"], network_key)
-    passport_overview = build_passport_overview(session_data["address"], network_key)
-    vault_overview = build_vault_overview(session_data["address"], network_key)
-    secrets_overview = build_secrets_overview(session_data["address"], session_data["authenticated"])
+    passport_overview = _safe_passport_overview(session_data["address"], network_key)
+    vault_overview = _safe_vault_overview(session_data["address"], network_key)
+    secrets_overview = _safe_secrets_overview(session_data["address"], session_data["authenticated"])
     identity = build_identity_snapshot(passport_overview)
     capital = build_capital_snapshot(vault_overview)
     secrets = build_secrets_snapshot(secrets_overview)

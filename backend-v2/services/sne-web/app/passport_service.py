@@ -4,6 +4,7 @@ Builds identity overview payloads from public on-chain state.
 """
 
 from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional
 
 from .networks import (
@@ -12,6 +13,8 @@ from .networks import (
     list_enabled_network_keys,
     normalize_evm_address,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_identity(address: str, network_key: Optional[str] = None) -> Dict[str, Any]:
@@ -104,20 +107,24 @@ def build_account_snapshot(address: str, network_key: str, primary_network_key: 
     if not w3 or not w3.is_connected():
         return snapshot
 
-    balance_wei = w3.eth.get_balance(checksum_address)
-    tx_count = w3.eth.get_transaction_count(checksum_address)
-    code = w3.eth.get_code(checksum_address)
-    balance_native = float(w3.from_wei(balance_wei, "ether"))
-    has_code = bool(code and code != b"" and code.hex() != "0x")
-    has_activity = tx_count > 0 or balance_native > 0
+    try:
+        balance_wei = w3.eth.get_balance(checksum_address)
+        tx_count = w3.eth.get_transaction_count(checksum_address)
+        code = w3.eth.get_code(checksum_address)
+        balance_native = float(w3.from_wei(balance_wei, "ether"))
+        has_code = bool(code and code != b"" and code.hex() != "0x")
+        has_activity = tx_count > 0 or balance_native > 0
 
-    snapshot.update({
-        "status": "active" if has_activity else "idle",
-        "account_type": "contract" if has_code else "wallet",
-        "tx_count": tx_count,
-        "balance": f"{balance_native:.6f} {network['native_asset']}",
-        "has_activity": has_activity,
-    })
+        snapshot.update({
+            "status": "active" if has_activity else "idle",
+            "account_type": "contract" if has_code else "wallet",
+            "tx_count": tx_count,
+            "balance": f"{balance_native:.6f} {network['native_asset']}",
+            "has_activity": has_activity,
+        })
+    except Exception as exc:
+        logger.warning("Passport account snapshot failed for %s on %s: %s", address, network_key, exc)
+        snapshot["status"] = "degraded"
     return snapshot
 
 
@@ -162,12 +169,41 @@ def build_passport_overview(address: Optional[str], network_key: Optional[str] =
             "inventory": [],
         }
 
-    profile = resolve_identity(address, network["key"])
-    identity = profile["identity"]
+    try:
+        profile = resolve_identity(address, network["key"])
+        identity = profile["identity"]
+    except Exception as exc:
+        logger.warning("Passport identity resolution failed for %s on %s: %s", address, network["key"], exc)
+        profile = {
+            "licenses": [],
+            "keys": [],
+            "boxes": [],
+            "identity": {
+                "address": address,
+                "accountType": None,
+                "txCount": 0,
+                "balanceEth": "--",
+                "checkedAt": datetime.utcnow().isoformat(),
+                "hasActivity": False,
+                "hasCode": False,
+            },
+            "assertions": [],
+            "network": network,
+            "pou": {"nodesPublic": 0},
+            "metadata": {
+                "cached": False,
+                "source": f"{network['key']}-rpc",
+                "degraded": True,
+            },
+        }
+        identity = profile["identity"]
+
     linked_accounts = build_linked_accounts(address, network["key"])
     active_accounts = sum(1 for account in linked_accounts if account["status"] == "active")
 
-    if profile["licenses"]:
+    if profile["metadata"].get("degraded"):
+        status = {"label": "degraded", "tone": "warning"}
+    elif profile["licenses"]:
         status = {"label": "verified", "tone": "success"}
     elif identity["hasActivity"]:
         status = {"label": "active", "tone": "active"}

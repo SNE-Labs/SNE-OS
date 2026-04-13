@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import logging
 import os
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from .passport_service import build_linked_accounts, build_network_scope
 from .utils.redis_safe import SafeRedis
+
+logger = logging.getLogger(__name__)
 
 
 SECRETS_STORAGE_TTL_SECONDS = int(os.getenv("SECRETS_STORAGE_TTL_SECONDS", str(60 * 60 * 24 * 365)))
@@ -338,8 +341,13 @@ def build_secrets_overview(address: Optional[str], authenticated: bool) -> Dict[
             "last_updated": datetime.utcnow().isoformat(),
         }
 
-    linked_accounts = build_linked_accounts(address, "scroll")
-    status = {"label": "session", "tone": "active"} if authenticated else {"label": "readonly", "tone": "warning"}
+    try:
+        linked_accounts = build_linked_accounts(address, "scroll")
+        status = {"label": "session", "tone": "active"} if authenticated else {"label": "readonly", "tone": "warning"}
+    except Exception as exc:
+        logger.warning("Secrets linked accounts failed for %s: %s", address, exc)
+        linked_accounts = []
+        status = {"label": "degraded", "tone": "warning"} if authenticated else {"label": "readonly", "tone": "warning"}
     items_payload = list_secret_items(address) if storage_surface["configured"] else {"items": [], "count": 0}
     items = items_payload["items"]
 
