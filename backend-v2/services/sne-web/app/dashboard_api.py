@@ -11,6 +11,7 @@ import json as json_lib
 from .auth_siwe import require_auth, check_tier_limits
 from .motor import analisar_par
 from app.utils.redis_safe import SafeRedis
+from .collector_client import get_live_market_snapshot
 
 dashboard_bp = Blueprint('dashboard', __name__)
 logger = logging.getLogger(__name__)
@@ -59,27 +60,11 @@ def dashboard_summary():
 def generate_dashboard_summary(tier: str) -> dict:
     """Gera dados do dashboard baseado no tier"""
 
-    # Top movers simulados (em produção, viria de API externa)
-    top_movers = [
-        {
-            'symbol': 'BTCUSDT',
-            'price': 43250.50,
-            'change24h': 5.23,
-            'volume': '2.5B'
-        },
-        {
-            'symbol': 'ETHUSDT',
-            'price': 2280.75,
-            'change24h': -2.14,
-            'volume': '1.8B'
-        },
-        {
-            'symbol': 'SOLUSDT',
-            'price': 98.32,
-            'change24h': 12.45,
-            'volume': '850M'
-        }
-    ]
+    try:
+        top_movers = get_live_market_snapshot(limit=5)
+    except Exception as exc:
+        logger.warning(f"Live market snapshot unavailable: {exc}")
+        top_movers = []
 
     # Limitar dados baseado no tier
     if tier == 'free':
@@ -97,10 +82,10 @@ def generate_dashboard_summary(tier: str) -> dict:
         'timestamp': datetime.utcnow().isoformat(),
         'tier': tier,
         'market_summary': {
-            'btc_dominance': 48.2,
-            'market_cap': '1.8T',
-            'volume_24h': '95B',
-            'fear_greed_index': 62,
+            'btc_dominance': None,
+            'market_cap': None,
+            'volume_24h': None,
+            'fear_greed_index': None,
             'btc_signal': btc_signal
         },
         'top_movers': top_movers,
@@ -227,4 +212,3 @@ def radar_signals():
     except Exception as e:
         logger.error(f"Radar signals failed: {str(e)}")
         return jsonify({'signals': []}), 200
-

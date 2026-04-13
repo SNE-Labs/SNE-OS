@@ -7,6 +7,7 @@ from functools import wraps
 import logging
 import time
 from datetime import datetime
+from .collector_client import get_live_market_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -45,32 +46,13 @@ def market_summary():
     GET /api/radar/market-summary
     """
     try:
-        # Dados básicos de mercado (públicos)
+        top_movers = get_live_market_snapshot(limit=5)
         market_data = {
-            'btc_dominance': 48.2,
-            'market_cap': '1.8T',
-            'volume_24h': '95B',
-            'fear_greed_index': 62,
-            'top_movers': [
-                {
-                    'symbol': 'BTCUSDT',
-                    'price': 43250.50,
-                    'change24h': 0.0523,
-                    'volume': '2.5B'
-                },
-                {
-                    'symbol': 'ETHUSDT',
-                    'price': 2280.75,
-                    'change24h': -0.0214,
-                    'volume': '1.8B'
-                },
-                {
-                    'symbol': 'SOLUSDT',
-                    'price': 98.32,
-                    'change24h': 0.1245,
-                    'volume': '850M'
-                }
-            ],
+            'btc_dominance': None,
+            'market_cap': None,
+            'volume_24h': None,
+            'fear_greed_index': None,
+            'top_movers': top_movers,
             'timestamp': datetime.utcnow().isoformat()
         }
         
@@ -97,22 +79,34 @@ def signals_post():
         body = request.get_json(silent=True) or {}
         symbol = body.get('symbol', 'BTCUSDT').replace('/', '')
         timeframe = body.get('timeframe', '4H')
-        
-        # Sinais mock para preview (em produção, viria do motor SNE)
+
+        tickers = get_live_market_snapshot(limit=20)
+        ticker = next((item for item in tickers if item["symbol"] == symbol), None)
+
+        if not ticker:
+            return jsonify({'signals': []}), 200
+
+        change_pct = ticker["change24h"] * 100
+        abs_change = abs(change_pct)
+        signal = 'BUY' if change_pct >= 2 else 'SELL' if change_pct <= -2 else 'HOLD'
+        strength = 'Strong' if abs_change >= 5 else 'Moderate' if abs_change >= 2 else 'Weak'
+        score = min(int(abs_change * 12), 95)
+
         signals_data = {
             'signals': [
                 {
                     'symbol': symbol,
-                    'signal': 'HOLD',
-                    'strength': 'Moderate',
+                    'signal': signal,
+                    'strength': strength,
                     'timeframe': timeframe,
-                    'updated': 'now',
-                    'change': '+2.5%',
-                    'score': 65
+                    'updated': datetime.utcnow().isoformat(),
+                    'change': f'{change_pct:+.2f}%',
+                    'score': score,
+                    'price': ticker["price"],
                 }
             ]
         }
-        
+
         return jsonify(signals_data), 200
         
     except Exception as e:
@@ -170,31 +164,23 @@ def signals_get():
         if cached_data:
             return ok(json.loads(cached_data))
 
-        # Dados mock representativos
+        top_movers = get_live_market_snapshot(limit=max(limit, 2))
         signals_data = {
             "preview": True,
             "market": market,
             "limit": limit,
             "items": [
                 {
-                    "symbol": "BTCUSDT",
-                    "signal": "BUY",
-                    "strength": "Strong",
-                    "timeframe": "4H",
-                    "price": 45000,
-                    "change": "+2.5%",
-                    "timestamp": datetime.utcnow().isoformat()
-                },
-                {
-                    "symbol": "ETHUSDT",
-                    "signal": "SELL",
-                    "strength": "Moderate",
-                    "timeframe": "1H",
-                    "price": 2800,
-                    "change": "-1.2%",
+                    "symbol": item["symbol"],
+                    "signal": "BUY" if item["change24h"] >= 0 else "SELL",
+                    "strength": "Strong" if abs(item["change24h"]) >= 0.05 else "Moderate",
+                    "timeframe": "24H",
+                    "price": item["price"],
+                    "change": f"{item['change24h'] * 100:+.2f}%",
                     "timestamp": datetime.utcnow().isoformat()
                 }
-            ][:limit],
+                for item in top_movers[:limit]
+            ],
             "lastUpdated": str(int(time.time()))
         }
 

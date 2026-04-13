@@ -1,403 +1,323 @@
-import { useCallback, useEffect, useState } from 'react';
-import { MetricCard } from '../components/sne/MetricCard';
+import { useMemo } from 'react';
+import { useAccount, useChainId } from 'wagmi';
+import { ArrowUpRight, Box, KeyRound, Shield, Wallet, Waves, Zap } from 'lucide-react';
+
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
-import { useLookupAddress, useCheckLicense } from '../../hooks/usePassportData';
-import { PRODUCTS } from '../../data/products';
-import { useAccount } from 'wagmi';
-import { Shield, AlertCircle, Search } from 'lucide-react';
-import { ProductCard } from '../components/passport/ProductCard';
-import { CheckoutModal } from '../components/passport/CheckoutModal';
-import type { Product } from '../../types/passport';
-
-type License = {
-  id: string;
-  nodeId?: string;
-  name?: string;
-  status: 'active' | 'revoked' | 'unknown';
-  power?: string;
-  lastChecked?: string | null;
-};
-
-type KeyRecord = {
-  id: string;
-  type: 'physical' | 'virtual';
-  boundTo?: string | null;
-  status: 'bound' | 'unbound';
-};
-
-type BoxRecord = {
-  id: string;
-  tier: 'tier1' | 'tier2' | 'tier3';
-  provisioned: boolean;
-  lastSeen?: string | null;
-};
-
-type LookupResult = {
-  licenses: License[];
-  keys: KeyRecord[];
-  boxes: BoxRecord[];
-  pou?: { nodesPublic: number };
-};
-
-const LOCAL_KEY = 'sne_dashboard_public_v1';
-
-function loadLocalPublic(): LookupResult | null {
-  try {
-    const raw = localStorage.getItem(LOCAL_KEY);
-    return raw ? (JSON.parse(raw) as LookupResult) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveLocalPublic(s: Partial<LookupResult>) {
-  try {
-    const cur = loadLocalPublic() ?? { licenses: [], keys: [], boxes: [], pou: { nodesPublic: 0 } };
-    const merged = { ...cur, ...s };
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(merged));
-  } catch (e) {
-    // ignore
-  }
-}
+import { useConnectedBalance, useGasPrice, useLookupAddress } from '../../hooks/usePassportData';
+import { formatAddress } from '@/utils/format';
 
 export function Vault() {
-  // Wallet state
-  const { address: connectedAddress, isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
 
-  // query state
-  const [queryAddr, setQueryAddr] = useState<string>('');
-  const [manualLookup, setManualLookup] = useState<string | null>(null);
+  const balanceQuery = useConnectedBalance();
+  const gasQuery = useGasPrice();
+  const lookupQuery = useLookupAddress(isConnected && address ? address : null);
 
-  // checkout state
-  const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const profile = lookupQuery.data;
 
-  // Auto-preenchimento quando wallet conectada
-  useEffect(() => {
-    if (isConnected && connectedAddress && !queryAddr) {
-      setQueryAddr(connectedAddress);
-    }
-  }, [isConnected, connectedAddress, queryAddr]);
+  const vaultStatus = useMemo(() => {
+    if (!isConnected) return { label: 'offline', tone: 'pending' as const };
+    if (lookupQuery.isLoading || balanceQuery.isLoading) return { label: 'syncing', tone: 'pending' as const };
+    if (profile?.identity?.hasActivity) return { label: 'capital online', tone: 'active' as const };
+    return { label: 'idle', tone: 'warning' as const };
+  }, [balanceQuery.isLoading, isConnected, lookupQuery.isLoading, profile?.identity?.hasActivity]);
 
-  // Hooks do Passport
-  const lookupQuery = useLookupAddress(manualLookup);
-
-  // Produtos definidos localmente (não dependem de API)
-  const products = PRODUCTS;
-
-  // Estado derivado dos hooks
-  const lookup = lookupQuery.data || null;
-  const loading = lookupQuery.isLoading;
-  const err = lookupQuery.error ? String(lookupQuery.error) : null;
-
-  // a small local audit log - read-only for consumer UI
-  const [logs, setLogs] = useState<{ ts: string; msg: string }[]>(() => {
-    const raw = loadLocalPublic();
-    return raw ? [{ ts: new Date().toISOString(), msg: 'Cached public state loaded' }] : [];
-  });
-
-  const appendLog = useCallback((msg: string) => {
-    const entry = { ts: new Date().toISOString(), msg };
-    setLogs((l) => {
-      const next = [entry, ...l].slice(0, 200);
-      return next;
-    });
-  }, []);
-
-  // perform a public lookup usando hook do Passport
-  const performLookup = useCallback(
-    (addr: string) => {
-      const trimmed = addr.trim();
-      if (!trimmed) return;
-
-      setManualLookup(trimmed);
-      appendLog(`Lookup started for ${trimmed}`);
-
-      // Salvar no localStorage quando dados chegarem
-      if (lookupQuery.data) {
-        saveLocalPublic(lookupQuery.data);
-        appendLog(`Lookup succeeded for ${trimmed}`);
-      }
-    },
-    [appendLog, lookupQuery.data]
+  const capitalCards = useMemo(
+    () => [
+      {
+        label: 'Saldo',
+        value: balanceQuery.data?.eth?.formatted ?? '--',
+        hint: profile?.identity?.balanceEth ? `${profile.identity.balanceEth} ETH` : 'Sem capital carregado',
+        icon: Wallet,
+      },
+      {
+        label: 'Gas',
+        value: gasQuery.data?.gasPriceFormatted ?? '--',
+        hint: 'Scroll RPC',
+        icon: Zap,
+      },
+      {
+        label: 'Conta',
+        value: profile?.identity?.accountType ?? '--',
+        hint: profile?.identity?.hasActivity ? `${profile.identity.txCount} tx` : 'Sem atividade visível',
+        icon: Shield,
+      },
+      {
+        label: 'Proteção',
+        value: (profile?.boxes.length ?? 0) > 0 ? 'dispositivos detectados' : 'sem dispositivos',
+        hint: (profile?.keys.length ?? 0) > 0 ? `${profile?.keys.length ?? 0} chaves vinculadas` : 'Nenhum dispositivo confiável',
+        icon: Box,
+      },
+    ],
+    [balanceQuery.data?.eth?.formatted, gasQuery.data?.gasPriceFormatted, profile]
   );
 
-  // Salvar lookup no localStorage quando dados mudarem
-  useEffect(() => {
-    if (lookupQuery.data && manualLookup) {
-      saveLocalPublic(lookupQuery.data);
-    }
-  }, [lookupQuery.data, manualLookup]);
-
-  // Componente para verificar licença on-chain usando hook
-  function LicenseCheckButton({ nodeId, licenseId: _licenseId }: { nodeId: string; licenseId: string }) {
-    const [isChecking, setIsChecking] = useState(false);
-    const checkQuery = useCheckLicense(isChecking ? nodeId : null);
-
-    useEffect(() => {
-      if (checkQuery.data && isChecking) {
-        const access = checkQuery.data.access;
-        alert(`checkAccess: ${access ? 'OK' : 'NÃO'}`);
-        appendLog(`checkAccess(${nodeId}) => ${String(access)}`);
-        setIsChecking(false);
-      } else if (checkQuery.error && isChecking) {
-        const msg = String(checkQuery.error);
-        alert(`Erro: ${msg}`);
-        appendLog(`checkAccess failed for ${nodeId}: ${msg}`);
-        setIsChecking(false);
-      }
-    }, [checkQuery.data, checkQuery.error, isChecking, nodeId]);
-
-    return (
-      <button
-        onClick={() => {
-          setIsChecking(true);
-          appendLog(`checkAccess requested for ${nodeId}`);
-        }}
-        disabled={isChecking || checkQuery.isLoading}
-        className="px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90 focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          backgroundColor: isChecking || checkQuery.isLoading ? 'var(--sne-surface-elevated)' : 'var(--sne-accent)',
-          color: isChecking || checkQuery.isLoading ? 'var(--sne-text-secondary)' : '#0B0B0B'
-        }}
-        aria-label={`Verificar acesso on-chain para ${nodeId}`}
-      >
-        {isChecking || checkQuery.isLoading ? 'Verificando…' : 'Verificar on-chain'}
-      </button>
-    );
-  }
-
-  // small helpers for metrics
-  const licensesCount = lookup?.licenses?.length ?? 0;
-  const keysCount = lookup?.keys?.length ?? 0;
-  const boxesCount = lookup?.boxes?.length ?? 0;
+  const vaultSignals = useMemo(
+    () => [
+      {
+        title: 'Estado do capital',
+        value: balanceQuery.data?.eth?.formatted ?? '--',
+        detail: isConnected ? 'Saldo ao vivo da carteira' : 'Conecte uma carteira para carregar o capital',
+      },
+      {
+        title: 'Superfície de acesso',
+        value: `${profile?.keys.length ?? 0} chaves`,
+        detail: (profile?.keys.length ?? 0) > 0 ? 'Acesso portátil detectado' : 'Nenhuma chave vinculada ainda',
+      },
+      {
+        title: 'Camada de proteção',
+        value: `${profile?.boxes.length ?? 0} dispositivos`,
+        detail: (profile?.boxes.length ?? 0) > 0 ? 'Hardware confiável presente' : 'Nenhum dispositivo registrado',
+      },
+    ],
+    [balanceQuery.data?.eth?.formatted, isConnected, profile?.boxes.length, profile?.keys.length]
+  );
 
   return (
-    <div className="min-h-screen py-8 px-6 lg:px-24">
-      <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="mb-6 flex items-start gap-4">
-          <div>
-            <h1 style={{ color: 'var(--sne-text-primary)' }}>SNE Vault Dashboard</h1>
-            <div style={{ color: 'var(--sne-text-secondary)' }}>Compre produtos e valide licenças publicamente.</div>
-          </div>
-          <div style={{ marginLeft: 'auto' }} className="flex items-center gap-3">
-            <WalletConnect />
-            <StatusBadge status="active">Validador Público</StatusBadge>
-          </div>
-        </div>
+    <div className="flex flex-1">
+      <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
+        <div className="mx-auto max-w-[1480px] space-y-5">
+          <section
+            className="rounded-xl p-5"
+            style={{
+              background: 'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03))',
+              backgroundColor: 'var(--bg-2)',
+              borderWidth: '1px',
+              borderColor: 'var(--stroke-1)',
+              boxShadow: 'var(--shadow-1)',
+            }}
+          >
+            <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <StatusBadge status={vaultStatus.tone}>{vaultStatus.label}</StatusBadge>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>Cofre</div>
+                </div>
 
-        {/* Lookup / Search - Validador Público */}
-        <div
-          className="mb-6 rounded-xl border p-6"
-          style={{
-            backgroundColor: 'var(--bg-2)',
-            borderColor: 'var(--stroke-1)',
-            boxShadow: 'var(--shadow-1)',
-          }}
-        >
-          <div className="flex items-center gap-3 mb-4">
+                <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                  Seu capital, em um só lugar.
+                </h1>
+                <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
+                  O Vault exibe saldo ao vivo, contexto de gas, atividade da conta e registros de proteção de hardware a partir da carteira conectada.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+                  {vaultSignals.map((signal) => (
+                    <div
+                      key={signal.title}
+                      className="rounded-lg px-4 py-3"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>
+                        {signal.title}
+                      </div>
+                      <div className="font-semibold mb-1 break-words" style={{ color: 'var(--text-1)' }}>
+                        {signal.value}
+                      </div>
+                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                        {signal.detail}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className="rounded-xl p-4 min-w-0"
+                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}
+                  >
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
+                      {isConnected && address ? formatAddress(address) : 'Conecte sua carteira'}
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {isConnected ? 'Saldo e postura da conta carregados ao vivo.' : 'Conecte uma carteira para carregar seu capital.'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <WalletConnect />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Rede</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{chainId ?? '--'}</div>
+                    </div>
+                    <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{profile?.metadata?.source ?? 'wagmi/rpc'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-5">
             <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: 'var(--bg-3)' }}
+              className="rounded-xl p-5"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
             >
-              <Search className="w-5 h-5" style={{ color: 'var(--accent-orange)' }} />
+              <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                Superfície de Capital
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {capitalCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div
+                      key={card.label}
+                      className="rounded-xl p-4 min-w-0"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="text-[11px] uppercase" style={{ color: 'var(--text-3)' }}>{card.label}</div>
+                        <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      </div>
+                      <div className="text-xl font-semibold mb-2 break-words" style={{ color: 'var(--text-1)' }}>
+                        {card.value}
+                      </div>
+                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                        {card.hint}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Validador de Licenças On-Chain</h3>
-              <p className="text-sm" style={{ color: 'var(--text-3)' }}>
-                Digite um endereço Ethereum/Scroll para verificar licenças SNE reais na blockchain.
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                ⚠️ Sistema em desenvolvimento: atualmente não há contratos SNE implantados.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex gap-2 items-center">
-            <input
-              value={queryAddr}
-              onChange={(e) => setQueryAddr(e.target.value)}
-              placeholder="Ex: 0xAbc... ou nome.eth"
-              className="input px-3 py-2 rounded w-full"
-              aria-label="Endereco ou ENS"
-            />
-            <button
-              onClick={() => performLookup(queryAddr.trim())}
-              disabled={!queryAddr.trim() || loading}
-              className="px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90 focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: loading ? 'var(--sne-surface-elevated)' : 'var(--sne-accent)',
-                color: loading ? 'var(--sne-text-secondary)' : '#0B0B0B'
-              }}
-              aria-label="Verificar endereço na blockchain"
-            >
-              {loading ? 'Verificando…' : 'Verificar'}
-            </button>
+            <div className="space-y-5">
+              <div
+                className="rounded-xl p-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+              >
+                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                  Postura da Conta
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tipo</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {profile?.identity?.accountType ?? '--'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Transações</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {profile?.identity?.txCount ?? '--'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Chaves</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {profile?.keys.length ?? 0}
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Dispositivos</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                      {profile?.boxes.length ?? 0}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-            <button
-              onClick={() => {
-                setQueryAddr('');
-                setManualLookup(null);
-                appendLog('Lookup cleared by user');
-              }}
-              className="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              style={{
-                backgroundColor: 'transparent',
-                color: 'var(--sne-text-secondary)',
-                border: '1px solid var(--border)'
-              }}
-              aria-label="Limpar campo de busca e resultados"
-            >
-              Limpar
-            </button>
-          </div>
-
-          {err && (
-            <div className="flex items-center gap-2 mt-2" style={{ color: 'var(--sne-critical)' }}>
-              <AlertCircle className="w-4 h-4" />
-              <span>Erro: {err}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Top metrics - Simplificado: só quando há lookup */}
-        {lookup && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <MetricCard label="Licenças Encontradas" value={licensesCount} icon={<Shield className="w-5 h-5" />} />
-            <MetricCard label="SNE Keys" value={keysCount} icon={<Shield className="w-5 h-5" />} />
-            <MetricCard label="SNE Boxes" value={boxesCount} icon={<Shield className="w-5 h-5" />} />
-          </div>
-        )}
-
-        {/* Licenses (full width now that heatmap removed) */}
-        <div
-          className="rounded-xl border p-6 mb-8"
-          style={{
-            backgroundColor: 'var(--bg-2)',
-            borderColor: 'var(--stroke-1)',
-            boxShadow: 'var(--shadow-1)',
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Licenças públicas</h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-3)' }}>
-            Licenças atreladas ao endereço/ENS inserido. Clique em "Verificar on-chain" para confirmar via Scroll L2 (requer backend).
-          </p>
-
-          {!lookup ? (
-            <div style={{ color: 'var(--sne-text-secondary)' }}>Insira um endereço e clique em Verificar para ver licenças públicas.</div>
-          ) : lookup.licenses.length === 0 ? (
-            <div style={{ color: 'var(--sne-text-secondary)' }}>Nenhuma licença pública encontrada para este endereço.</div>
-          ) : (
-            <div className="space-y-3">
-              {lookup.licenses.map((lic) => (
-                <div
-                  key={lic.id}
-                  className="p-4 rounded-lg border flex items-center justify-between transition-all hover:shadow-md"
-                  style={{
-                    backgroundColor: 'var(--bg-3)',
-                    borderColor: 'var(--stroke-1)',
-                    boxShadow: 'var(--shadow-0)',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, color: 'var(--sne-text-primary)' }}>{lic.name ?? lic.id}</div>
-                    <div style={{ color: 'var(--sne-text-secondary)', fontSize: '0.9rem' }}>
-                      Node: <code style={{ fontFamily: 'var(--font-family-mono)' }}>{lic.nodeId ?? '—'}</code> · Status: {lic.status}
+              <div
+                className="rounded-xl p-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+              >
+                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                  Camada de Proteção
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Estado atual</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      Visibilidade de capital ativa. Rotas de staking e provisionamento de hardware ainda não estão disponíveis para esta conta.
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <LicenseCheckButton
-                      nodeId={lic.nodeId ?? lic.id}
-                      licenseId={lic.id}
-                    />
-
-                    <a
-                      href={`/licenses/${encodeURIComponent(lic.id)}`}
-                      className="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 inline-flex items-center gap-2"
-                      style={{
-                        backgroundColor: 'transparent',
-                        color: 'var(--sne-text-secondary)',
-                        border: '1px solid var(--border)',
-                        textDecoration: 'none'
-                      }}
-                      aria-label={`Ver detalhes da licença ${lic.name || lic.id}`}
-                    >
-                      Detalhes
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4.5 2L7.5 6L4.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </a>
+                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <KeyRound className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Fronteira</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      Chaves e Dispositivos são primitivos de proteção. Gerenciamento de grants fica em Chaves; execução fica no Radar.
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
-        </div>
+          </section>
 
-        {/* Products - Seção Principal de Compras */}
-        <div
-          className="rounded-xl border p-6 mb-8"
-          style={{
-            backgroundColor: 'var(--bg-2)',
-            borderColor: 'var(--stroke-1)',
-            boxShadow: 'var(--shadow-1)',
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Comprar Produtos</h3>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-3)' }}>
-            Adquira SNE Box, SNE Keys e Licenças. Conecte sua wallet para realizar a compra.
-          </p>
-            {products.length > 0 ? (
-              <div className="space-y-4">
-                {products.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onPurchase={(product) => {
-                      if (!isConnected) {
-                        alert('Por favor, conecte sua wallet para realizar a compra.');
-                        return;
-                      }
-                      setCheckoutProduct(product);
-                      setCheckoutOpen(true);
-                    }}
-                  />
-                ))}
+          <section
+            className="rounded-xl p-5"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                  Prontidão para Execução
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-3)' }}>
+                  O Vault permanece em modo leitura até que ações de capital sejam configuradas.
+                </div>
               </div>
-            ) : (
-              <div style={{ color: 'var(--sne-text-secondary)' }}>Nenhum produto disponível no momento.</div>
-            )}
-          </div>
+              <button
+                onClick={() => window.location.assign('/radar')}
+                className="text-sm font-medium inline-flex items-center gap-2"
+                style={{ color: 'var(--accent-orange)' }}
+              >
+                Radar
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
 
-        {/* Audit / Activity (local-only) */}
-        <div
-          className="rounded-xl border p-6"
-          style={{
-            backgroundColor: 'var(--bg-2)',
-            borderColor: 'var(--stroke-1)',
-            boxShadow: 'var(--shadow-1)',
-          }}
-        >
-          <h4 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Histórico (local)</h4>
-          <p className="text-sm mb-4" style={{ color: 'var(--text-3)' }}>Entradas locais de auditoria (buscas / verificações) — armazenado no seu navegador.</p>
-          <div className="space-y-2 max-h-48 overflow-auto">
-            {logs.map((l, idx) => (
-              <div key={idx} style={{ color: 'var(--sne-text-secondary)', fontSize: '0.9rem' }}>
-                <strong style={{ color: 'var(--sne-text-primary)' }}>{new Date(l.ts).toLocaleString()}</strong> — {l.msg}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Custódia</div>
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  Não custodial. O capital permanece na carteira conectada.
+                </div>
               </div>
-            ))}
-          </div>
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Waves className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Staking</div>
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  Nenhuma rota de staking disponível para esta conta.
+                </div>
+              </div>
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Box className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Provisionamento</div>
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  Provisionamento de hardware requer um dispositivo SNE Vault vinculado.
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-
-        {/* Checkout Modal */}
-        <CheckoutModal
-          product={checkoutProduct}
-          open={checkoutOpen}
-          onOpenChange={setCheckoutOpen}
-        />
       </div>
     </div>
   );

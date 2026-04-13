@@ -102,8 +102,6 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
         secure: false,
-        // Remove /api prefix when proxying
-        rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }

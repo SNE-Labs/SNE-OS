@@ -98,16 +98,47 @@ export async function lookupAddress(address: string): Promise<LookupResult> {
 
     const txCountHex = await rpcCall('eth_getTransactionCount', [address, 'latest']);
     const txCount = parseInt(txCountHex, 16);
+    const code = await rpcCall('eth_getCode', [address, 'latest']);
 
-    // Check if address has any ERC-721 tokens (NFTs that could represent licenses)
-    // This is a simplified check - in production would check specific SNE contract addresses
-    const hasNFTs = txCount > 0; // Simplified - addresses with tx might have NFTs
+    const hasCode = code !== '0x';
+    const hasActivity = txCount > 0 || balanceWei > 0n;
 
     // For now, return empty arrays since we don't have real SNE contracts deployed
     // This represents the actual state: no SNE licenses/keys/boxes exist yet
     const licenses = [];
     const keys = [];
     const boxes = [];
+
+    const assertions = [
+      {
+        id: 'wallet-address',
+        label: 'Address resolved',
+        status: 'present' as const,
+        source: 'rpc' as const,
+        value: address,
+      },
+      {
+        id: 'onchain-activity',
+        label: 'On-chain activity',
+        status: hasActivity ? ('present' as const) : ('missing' as const),
+        source: 'derived' as const,
+        value: `${txCount} tx`,
+      },
+      {
+        id: 'account-type',
+        label: 'Account type',
+        status: 'present' as const,
+        source: 'rpc' as const,
+        value: hasCode ? 'contract' : 'wallet',
+      },
+      {
+        id: 'sne-licenses',
+        label: 'SNE identity assertions',
+        status: licenses.length > 0 ? ('present' as const) : ('missing' as const),
+        source: 'on-chain' as const,
+        value: `${licenses.length}`,
+      },
+    ];
 
     // Future: Check specific SNE contract addresses for real licenses
     // const sneLicenseContract = '0x...'; // SNE License NFT contract
@@ -118,8 +149,22 @@ export async function lookupAddress(address: string): Promise<LookupResult> {
       licenses,
       keys,
       boxes,
+      identity: {
+        address: address as Address,
+        accountType: hasCode ? 'contract' : 'wallet',
+        txCount,
+        balanceEth: balanceEth.toFixed(6),
+        checkedAt: new Date().toISOString(),
+        hasActivity,
+        hasCode,
+      },
+      assertions,
       pou: {
         nodesPublic: 0 // No real POU system yet
+      },
+      metadata: {
+        cached: false,
+        source: 'rpc',
       }
     };
 

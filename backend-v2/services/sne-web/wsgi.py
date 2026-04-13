@@ -1,8 +1,12 @@
 """
 WSGI entry point for Gunicorn
 """
-import eventlet
-eventlet.monkey_patch()
+try:
+    import eventlet
+    eventlet.monkey_patch()
+except ImportError:
+    # Local/dev environments may run without eventlet using threading mode.
+    eventlet = None
 
 from app import create_app
 

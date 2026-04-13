@@ -8,7 +8,7 @@ const MobileRadar = lazy(() => import('../pages/mobile/Radar').then(m => ({ defa
 const MobileVault = lazy(() => import('../pages/mobile/Vault').then(m => ({ default: m.MobileVault })));
 const MobilePass = lazy(() => import('../pages/mobile/Pass').then(m => ({ default: m.MobilePass })));
 const MobilePricing = lazy(() => import('../pages/mobile/Pricing').then(m => ({ default: m.MobilePricing })));
-const MobileStatus = lazy(() => import('../pages/mobile/Status').then(m => ({ default: m.MobileStatus })));
+// const MobileStatus = lazy(() => import('../pages/mobile/Status').then(m => ({ default: m.MobileStatus }))); // desativado temporariamente
 const MobileDocs = lazy(() => import('../pages/mobile/Docs').then(m => ({ default: m.MobileDocs })));
 
 // Loading component for mobile
@@ -83,7 +83,7 @@ export function MobileLayout() {
     if (path.includes('/vault')) return 'vault';
     if (path.includes('/pass')) return 'pass';
     if (path.includes('/pricing')) return 'pricing';
-    if (path.includes('/status')) return 'status';
+    // if (path.includes('/status')) return 'status'; // desativado temporariamente
     if (path.includes('/docs')) return 'docs';
     return 'radar'; // default
   });
@@ -93,7 +93,7 @@ export function MobileLayout() {
     { id: 'vault', label: 'Vault', icon: 'Shield' as const },
     { id: 'pass', label: 'Pass', icon: 'Key' as const },
     { id: 'pricing', label: 'Pricing', icon: 'DollarSign' as const },
-    { id: 'status', label: 'Status', icon: 'BarChart3' as const },
+    // { id: 'status', label: 'Status', icon: 'BarChart3' as const }, // desativado temporariamente
     { id: 'docs', label: 'Docs', icon: 'FileText' as const },
   ];
 
@@ -110,7 +110,7 @@ export function MobileLayout() {
       vault: '/vault',
       pass: '/pass',
       pricing: '/pricing',
-      status: '/status',
+      // status: '/status', // desativado temporariamente
       docs: '/docs'
     };
 
@@ -137,7 +137,7 @@ export function MobileLayout() {
     else if (path === '/vault') newTab = 'vault';
     else if (path === '/pass') newTab = 'pass';
     else if (path === '/pricing') newTab = 'pricing';
-    else if (path === '/status') newTab = 'status';
+    // else if (path === '/status') newTab = 'status'; // desativado temporariamente
     else if (path === '/docs') newTab = 'docs';
 
     if (newTab !== activeTab) {
@@ -151,7 +151,7 @@ export function MobileLayout() {
     vault: MobileVault,
     pass: MobilePass,
     pricing: MobilePricing,
-    status: MobileStatus,
+    // status: MobileStatus, // desativado temporariamente
     docs: MobileDocs
   };
 
@@ -177,7 +177,7 @@ export function MobileLayout() {
             {tab.icon === 'Activity' && <Activity size={20} />}
             {tab.icon === 'Shield' && <Shield size={20} />}
             {tab.icon === 'Key' && <Key size={20} />}
-            {tab.icon === 'BarChart3' && <BarChart3 size={20} />}
+            {/* tab.icon === 'BarChart3' desativado com Status */}
             <span>{tab.label}</span>
           </button>
         ))}
@@ -188,11 +188,11 @@ export function MobileLayout() {
 
 // Map routes to components
 const routeComponents = {
-  '/': MobileRadar, // Default to radar
+  '/': MobileRadar,
   '/radar': MobileRadar,
   '/vault': MobileVault,
   '/pass': MobilePass,
   '/pricing': MobilePricing,
-  '/status': MobileStatus,
+  // '/status': MobileStatus, // desativado temporariamente
   '/docs': MobileDocs,
 };

@@ -1,395 +1,346 @@
-import { TrendingUp, TrendingDown, Eye, Lock, RefreshCw, X, BarChart3, DollarSign, Activity, Clock } from 'lucide-react';
-import { useState } from 'react';
-import { RightPanel } from '../components/RightPanel';
+import { useMemo, useState } from 'react';
+import { useAccount } from 'wagmi';
+import { ArrowUpRight, Lock, RefreshCw, Waves } from 'lucide-react';
+
+import { StatusBadge } from '../components/sne/StatusBadge';
 import { useMarketSummary, useSignals } from '../../hooks/useRadarData';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
 
-interface RadarProps {
-  isWalletConnected: boolean;
-}
+const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
-export function Radar({ isWalletConnected }: RadarProps) {
-  const [showAssetDetails, setShowAssetDetails] = useState(false);
-
-  // Dados reais das APIs
-  const { data: marketData, isLoading: marketLoading, refetch: refetchMarket } = useMarketSummary();
-  const { data: signalsData, isLoading: signalsLoading, refetch: refetchSignals } = useSignals('BTC/USD', '4H', isWalletConnected);
+export function Radar() {
+  const { isConnected } = useAccount();
   const { entitlements } = useEntitlements();
-
-  // Verificar se usuário tem acesso (baseado em entitlements)
   const hasAccess = entitlements?.features?.includes('radar.access') || false;
 
-  // Dados da watchlist (fallback para dados mock se API falhar)
-  const watchlist = signalsData?.signals || [
-    { symbol: 'BTC/USD', signal: 'Loading...', strength: 'Weak' as const, timeframe: '4H', updated: 'now', change: '--' },
-    { symbol: 'ETH/USD', signal: 'Loading...', strength: 'Weak' as const, timeframe: '1H', updated: 'now', change: '--' },
-  ];
+  const [activeSymbol, setActiveSymbol] = useState('ETHUSDT');
 
-  // Função para refresh dos dados
+  const marketQuery = useMarketSummary();
+  const signalsQuery = useSignals(activeSymbol, '24H', true);
+
+  const movers = marketQuery.status === 'success' ? (marketQuery.data?.top_movers ?? []) : [];
+  const featured = useMemo(
+    () => movers.find((item) => item.symbol === activeSymbol) ?? movers[0],
+    [activeSymbol, movers]
+  );
+
+  const formattedPrice = (value: number) => {
+    if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  };
+
+  const compact = (value: number) =>
+    new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value);
+
+  const signal = signalsQuery.data?.signals?.[0];
+
+  const executionState = useMemo(() => {
+    if (!isConnected) return { label: 'offline', tone: 'pending' as const };
+    if (!hasAccess) return { label: 'leitura', tone: 'warning' as const };
+    return { label: 'aguardando', tone: 'active' as const };
+  }, [hasAccess, isConnected]);
+
   const handleRefresh = () => {
-    refetchMarket();
-    if (hasAccess) {
-      refetchSignals();
-    }
+    marketQuery.refetch();
+    signalsQuery.refetch();
+  };
+
+  const translateStrength = (value: string | undefined) => {
+    if (!value) return '--';
+    const map: Record<string, string> = {
+      Strong: 'Forte',
+      Moderate: 'Moderado',
+      Weak: 'Fraco',
+      'Very Strong': 'Muito forte',
+      'Very Weak': 'Muito fraco',
+      Neutral: 'Neutro',
+    };
+    return map[value] ?? value;
   };
 
   return (
     <div className="flex flex-1">
-      {/* Main Content */}
-      <div className="flex-1 px-8 py-6 overflow-y-auto">
-        {/* Preview Mode Banner */}
-        {!hasAccess && (
-          <div
-            className="mb-6 p-4 rounded-lg flex items-center justify-between"
-            style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--warn-amber)' }}
+      <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
+        <div className="mx-auto max-w-[1480px] space-y-5">
+          <section
+            className="rounded-xl p-5"
+            style={{
+              background: 'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03))',
+              backgroundColor: 'var(--bg-2)',
+              borderWidth: '1px',
+              borderColor: 'var(--stroke-1)',
+              boxShadow: 'var(--shadow-1)',
+            }}
           >
-            <div className="flex items-center gap-3">
-              <Lock size={20} style={{ color: 'var(--warn-amber)' }} />
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                  {entitlements?.tier === 'free' ? 'Free Tier - Limited Access' : 'Access Required'}
+            <div className="grid grid-cols-1 xl:grid-cols-[0.72fr_0.28fr] gap-5">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <StatusBadge status={executionState.tone}>{executionState.label}</StatusBadge>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>Radar</div>
+                </div>
+
+                <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                  Mercados líquidos. Sinais em tempo real.
+                </h1>
+                <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
+                  Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.
                 </p>
-                <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                  {isWalletConnected
-                    ? 'Upgrade to Pro for full market analysis'
-                    : 'Connect wallet to access market data'
-                  }
-                </p>
-              </div>
-            </div>
-            <button
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
-            >
-              {isWalletConnected ? 'Upgrade to Pro' : 'Connect Wallet'}
-            </button>
-          </div>
-        )}
 
-        {/* Kicker + Title + Refresh */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>
-              Market
-            </p>
-            <button
-              onClick={handleRefresh}
-              disabled={marketLoading || signalsLoading}
-              className="flex items-center gap-2 px-3 py-1 rounded text-xs transition-colors hover:bg-[var(--bg-3)] disabled:opacity-50"
-              style={{ color: 'var(--accent-orange)' }}
-            >
-              <RefreshCw size={12} className={marketLoading || signalsLoading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
-          </div>
-          <h1 className="text-4xl font-semibold" style={{ color: 'var(--text-1)' }}>
-            Trending
-          </h1>
-        </div>
-
-        {/* Hero Card - BTC Overview */}
-        <div
-          className="rounded-xl p-6 mb-6"
-          style={{
-            backgroundColor: 'var(--bg-2)',
-            borderWidth: '1px',
-            borderColor: 'var(--stroke-1)',
-            boxShadow: 'var(--shadow-1)',
-          }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
-                BTC/USD Overview
-              </h2>
-              <p className="text-xs" style={{ color: 'var(--text-3)' }}>Real-time market intelligence</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAssetDetails(true)}
-                className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
-                style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-                <Eye size={16} className="inline mr-2" />
-                View
-              </button>
-              <button
-                onClick={() => {
-                  if (hasAccess) {
-                    alert('Trading interface coming soon! This feature will be available in the next update.');
-                  } else {
-                    alert('Upgrade to Pro tier to access trading features.');
-                  }
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-opacity ${
-                  hasAccess ? 'hover:opacity-80 cursor-pointer' : 'opacity-50 cursor-not-allowed'
-                }`}
-                disabled={!hasAccess}
-                style={{ backgroundColor: 'var(--bg-3)', color: hasAccess ? 'var(--text-1)' : 'var(--text-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-                <Lock size={16} className="inline mr-2" />
-                Trade
-              </button>
-            </div>
-          </div>
-
-          {/* Mini Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div
-              className="p-4 rounded-lg"
-              style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <span className="text-xs uppercase block mb-1" style={{ color: 'var(--text-3)' }}>BTC Dominance</span>
-              <p className="text-xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                {marketData?.btc_dominance ? `${marketData.btc_dominance.toFixed(1)}` : '--'}<span className="text-sm" style={{ color: 'var(--text-3)' }}>%</span>
-              </p>
-            </div>
-            <div
-              className="p-4 rounded-lg"
-              style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <span className="text-xs uppercase block mb-1" style={{ color: 'var(--text-3)' }}>Market Cap</span>
-              <p className="text-xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                {marketData?.market_cap ? marketData.market_cap : '--'}
-              </p>
-            </div>
-            <div
-              className="p-4 rounded-lg"
-              style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <span className="text-xs uppercase block mb-1" style={{ color: 'var(--text-3)' }}>24h Volume</span>
-              <p className="text-xl font-semibold font-mono" style={{ color: 'var(--text-1)' }}>
-                {marketData?.volume_24h ? marketData.volume_24h : '--'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Watchlist / Signals */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-2)' }}>
-              Watchlist / Signals {signalsLoading && <span className="text-xs text-[var(--text-3)]">(loading...)</span>}
-            </h3>
-            <button
-              disabled={!hasAccess}
-              className="text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: hasAccess ? 'var(--accent-orange)' : 'var(--text-3)' }}
-              onClick={() => alert('Watchlist management coming soon!')}
-            >
-              {hasAccess ? 'Add Symbol' : 'Upgrade Required'}
-            </button>
-          </div>
-
-          <div
-            className="rounded-lg overflow-hidden"
-            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-          >
-            {/* Table Header */}
-            <div
-              className="grid grid-cols-6 gap-4 px-4 py-3 border-b"
-              style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
-            >
-              <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Symbol</span>
-              <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Signal</span>
-              <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Strength</span>
-              <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Timeframe</span>
-              <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text-3)' }}>Updated</span>
-              <span className="text-xs font-semibold uppercase text-right" style={{ color: 'var(--text-3)' }}>Change</span>
-            </div>
-
-            {/* Table Rows */}
-            {watchlist.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-6 gap-4 px-4 py-3 border-b hover:bg-[var(--bg-3)] transition-colors cursor-pointer"
-                style={{ borderColor: 'var(--stroke-1)' }}
-              >
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{item.symbol}</span>
-                <span className="text-sm" style={{ color: 'var(--text-2)' }}>{item.signal}</span>
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
                   <div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor:
-                        item.strength === 'Strong'
-                          ? 'var(--ok-green)'
-                          : item.strength === 'Moderate'
-                          ? 'var(--warn-amber)'
-                          : 'var(--text-3)',
-                    }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--text-2)' }}>{item.strength}</span>
-                </div>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-3)' }}>{item.timeframe}</span>
-                <span className="text-sm font-mono" style={{ color: 'var(--text-3)' }}>{item.updated}</span>
-                <div className="text-right">
-                  <span
-                    className="text-sm font-mono font-semibold flex items-center justify-end gap-1"
-                    style={{ color: item.change.startsWith('+') ? 'var(--ok-green)' : 'var(--danger-red)' }}
+                    className="rounded-lg px-4 py-3"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                   >
-                    {item.change.startsWith('+') ? (
-                      <TrendingUp size={14} />
-                    ) : (
-                      <TrendingDown size={14} />
-                    )}
-                    {item.change}
-                  </span>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Pares ativos</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{movers.length || 0} ao vivo</div>
+                  </div>
+                  <div
+                    className="rounded-lg px-4 py-3"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Par em foco</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{featured?.symbol ?? activeSymbol}</div>
+                  </div>
+                  <div
+                    className="rounded-lg px-4 py-3"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Sinal</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{signal?.signal ?? '--'}</div>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div
+                className="rounded-xl p-4 min-w-0"
+                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Dados de mercado</div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {marketQuery.isLoading ? 'Carregando...' : 'Ao vivo.'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="px-3 py-2 rounded-lg inline-flex items-center gap-2 text-sm font-medium"
+                    style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${marketQuery.isFetching || signalsQuery.isFetching ? 'animate-spin' : ''}`} />
+                    Atualizar
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Acesso</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{hasAccess ? 'completo' : 'prévia'}</div>
+                  </div>
+                  <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Execução</div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>bloqueada</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
+            <div
+              className="rounded-xl p-5"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>Par em destaque</div>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>O par mais ativo agora.</div>
+                </div>
+                <button
+                  onClick={() => featured && setActiveSymbol(featured.symbol)}
+                  className="text-sm font-medium inline-flex items-center gap-2"
+                  style={{ color: 'var(--accent-orange)' }}
+                >
+                  Selecionar
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {featured ? (
+                <div
+                  className="rounded-xl p-5"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,140,66,0.10), rgba(255,255,255,0.02))',
+                    backgroundColor: 'var(--bg-3)',
+                    borderWidth: '1px',
+                    borderColor: 'var(--stroke-1)',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4 mb-6">
+                    <div className="min-w-0">
+                      <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                        Destaque
+                      </div>
+                      <div className="text-2xl font-semibold truncate" style={{ color: 'var(--text-1)' }}>
+                        {featured.symbol}
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-full px-3 py-1 text-sm font-semibold"
+                      style={{
+                        color: featured.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)',
+                        backgroundColor: featured.change24h >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+                      }}
+                    >
+                      {featured.change24h >= 0 ? '+' : ''}{(featured.change24h * 100).toFixed(1)}%
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Preço</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                        ${formattedPrice(featured.price)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Volume</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                        ${compact(Number(featured.volume))}
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                      <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Sinal</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                        {signal?.signal ?? 'Sem sinal'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  O Radar não tem dados de mercado ao vivo agora.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div
+                className="rounded-xl p-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+              >
+                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                  Sinal
+                </div>
+                <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{activeSymbol}</div>
+                    <StatusBadge status={signal?.signal === 'BUY' ? 'success' : signal?.signal === 'SELL' ? 'warning' : 'pending'}>
+                      {signal?.signal ?? 'HOLD'}
+                    </StatusBadge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div style={{ color: 'var(--text-3)' }}>Força</div>
+                      <div style={{ color: 'var(--text-1)' }}>{translateStrength(signal?.strength)}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--text-3)' }}>Variação</div>
+                      <div style={{ color: 'var(--text-1)' }}>{signal?.change ?? '--'}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--text-3)' }}>Pontuação</div>
+                      <div style={{ color: 'var(--text-1)' }}>{signal?.score ?? '--'}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--text-3)' }}>Janela</div>
+                      <div style={{ color: 'var(--text-1)' }}>{signal?.timeframe ?? '--'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="rounded-xl p-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+              >
+                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                  Execução
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Execução bloqueada</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      O Radar é somente leitura. Swap e roteamento entram após o contexto de protocolo estar definido.
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Waves className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Próxima etapa</div>
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      A próxima camada é contexto DeFi real — não um botão de compra genérico.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            className="rounded-xl p-5"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+          >
+            <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+              Universo Radar
+            </div>
+
+            {movers.length === 0 ? (
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                Nenhum mercado ao vivo disponível agora.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {movers.map((mover) => (
+                  <button
+                    key={mover.symbol}
+                    onClick={() => setActiveSymbol(mover.symbol)}
+                    className="rounded-lg p-4 text-left min-w-0 transition-all"
+                    style={{
+                      backgroundColor: activeSymbol === mover.symbol ? 'rgba(255,140,66,0.08)' : 'var(--bg-3)',
+                      borderWidth: '1px',
+                      borderColor: activeSymbol === mover.symbol ? 'var(--accent-orange)' : 'var(--stroke-1)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="font-semibold truncate" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)' }}
+                      >
+                        {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span style={{ color: 'var(--text-2)' }}>${formattedPrice(mover.price)}</span>
+                      <span style={{ color: 'var(--text-3)' }}>Vol. ${compact(Number(mover.volume))}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
         </div>
       </div>
-
-      {/* Right Panel */}
-      <RightPanel
-        tags={[
-          { label: 'Timeframe', value: '4H' },
-          { label: 'Market', value: 'Crypto' },
-          { label: 'BTC Dominance', value: marketData?.btc_dominance ? `${marketData.btc_dominance.toFixed(1)}%` : 'Loading...' },
-          { label: 'Fear & Greed', value: marketData?.fear_greed_index ? `${marketData.fear_greed_index}/100` : 'Loading...' },
-        ]}
-        alerts={
-          hasAccess && marketData?.top_movers?.length ?
-            marketData.top_movers.slice(0, 2).map(mover => ({
-              message: `${mover.symbol}: ${mover.change24h >= 0 ? '+' : ''}${(mover.change24h * 100).toFixed(1)}%`,
-              type: (mover.change24h >= 0 ? 'success' : 'warning') as 'success' | 'warning',
-              time: 'Live'
-            }))
-            :
-            [
-              { message: 'Connect wallet for live signals', type: 'info' as const, time: 'Now' }
-            ]
-        }
-        actions={[
-          { label: 'Refresh Data', icon: 'RefreshCw' },
-          { label: 'Upgrade to Pro', icon: 'ArrowUp' },
-          { label: 'View Docs', icon: 'FileText' },
-        ]}
-      />
-
-      {/* Asset Details Modal */}
-      {showAssetDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black bg-opacity-50"
-            onClick={() => setShowAssetDetails(false)}
-          />
-
-          {/* Modal */}
-          <div
-            className="relative w-full max-w-2xl mx-4 rounded-lg"
-            style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent-orange)' }}>
-                  <DollarSign size={20} style={{ color: '#FFFFFF' }} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>BTC/USD Details</h2>
-                  <p className="text-sm" style={{ color: 'var(--text-3)' }}>Bitcoin vs US Dollar</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAssetDetails(false)}
-                className="p-2 rounded-lg hover:bg-[var(--bg-2)] transition-colors"
-              >
-                <X size={20} style={{ color: 'var(--text-2)' }} />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="p-4 rounded-lg text-center" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <DollarSign size={20} className="mx-auto mb-2" style={{ color: 'var(--accent-orange)' }} />
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Price</p>
-                  <p className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
-                    ${marketData?.price || '43,250'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg text-center" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <TrendingUp size={20} className="mx-auto mb-2" style={{ color: 'var(--ok-green)' }} />
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>24h Change</p>
-                  <p className="text-lg font-semibold" style={{ color: 'var(--ok-green)' }}>
-                    +{marketData?.change24h || '2.4'}%
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg text-center" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <BarChart3 size={20} className="mx-auto mb-2" style={{ color: 'var(--text-2)' }} />
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Volume</p>
-                  <p className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
-                    ${marketData?.volume || '28.5B'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg text-center" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <Activity size={20} className="mx-auto mb-2" style={{ color: 'var(--text-2)' }} />
-                  <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>Signal</p>
-                  <p className="text-lg font-semibold" style={{ color: watchlist[0]?.signal === 'BUY' ? 'var(--ok-green)' : watchlist[0]?.signal === 'SELL' ? 'var(--danger-red)' : 'var(--text-2)' }}>
-                    {watchlist[0]?.signal || 'HOLD'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Additional Info */}
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <h3 className="font-medium mb-2" style={{ color: 'var(--text-1)' }}>Market Information</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span style={{ color: 'var(--text-3)' }}>Market Cap:</span>
-                      <span style={{ color: 'var(--text-1)' }} className="ml-2 font-medium">$850B</span>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--text-3)' }}>24h High:</span>
-                      <span style={{ color: 'var(--text-1)' }} className="ml-2 font-medium">${marketData?.high24h || '44,200'}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--text-3)' }}>24h Low:</span>
-                      <span style={{ color: 'var(--text-1)' }} className="ml-2 font-medium">${marketData?.low24h || '42,100'}</span>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--text-3)' }}>Last Update:</span>
-                      <span style={{ color: 'var(--text-1)' }} className="ml-2 font-medium">
-                        <Clock size={12} className="inline mr-1" />
-                        {new Date().toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <h3 className="font-medium mb-2" style={{ color: 'var(--text-1)' }}>Trading Signal Details</h3>
-                  <div className="text-sm">
-                    <p style={{ color: 'var(--text-2)' }}>
-                      Current signal strength: <span className="font-medium" style={{ color: 'var(--text-1)' }}>
-                        {watchlist[0]?.strength || 'Medium'}
-                      </span>
-                    </p>
-                    <p style={{ color: 'var(--text-2)' }}>
-                      Timeframe: <span className="font-medium" style={{ color: 'var(--text-1)' }}>
-                        {watchlist[0]?.timeframe || '4H'}
-                      </span>
-                    </p>
-                    <p style={{ color: 'var(--text-3)' }} className="mt-2">
-                      {hasAccess ? 'Real-time analysis available' : 'Connect wallet for live signals'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

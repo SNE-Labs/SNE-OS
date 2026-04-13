@@ -3,10 +3,17 @@ Status API for SNE OS Home Dashboard
 Provides real-time system metrics, status, and activity data
 """
 import time
-import random
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Blueprint, jsonify, session
+from sqlalchemy import text
+
+from .collector_client import COLLECTOR_URL, get_binance_data
+from .extensions import db
+from .utils.redis_safe import SafeRedis
+
+logger = logging.getLogger(__name__)
 
 # Local HTTP helpers to avoid import issues
 def ok(data=None, **meta):
@@ -69,107 +76,108 @@ def get_session():
             "authenticated": False
         })
 
-# Simulated system state (in production, this would come from monitoring systems)
 SYSTEM_START_TIME = time.time()
-LAST_PROOF_TIME = time.time() - random.randint(60, 600)  # 1-10 minutes ago
 
 def get_uptime_percentage():
-    """Calculate uptime percentage (simplified)"""
-    # In production, this would track actual downtime
-    return 99.9
+    """Uptime histórico não está instrumentado neste serviço."""
+    return None
 
 def get_current_latency():
-    """Get current system latency (simplified)"""
-    # In production, this would measure actual response times
-    return random.randint(15, 45)
+    """Latência sintética removida até existir instrumentação real."""
+    return None
 
-def get_system_status():
-    """Get overall system status"""
-    # Simulate occasional issues
-    if random.random() < 0.05:  # 5% chance of issues
+def check_database_status():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return "online"
+    except Exception as exc:
+        logger.warning(f"Database health check failed: {exc}")
+        return "offline"
+
+def check_cache_status():
+    try:
+        redis_client = SafeRedis()
+        if not redis_client.available:
+            return "disabled"
+        return "online" if redis_client.ping() else "offline"
+    except Exception as exc:
+        logger.warning(f"Cache health check failed: {exc}")
+        return "offline"
+
+def check_collector_status():
+    if not COLLECTOR_URL:
+        return "disabled"
+    try:
+        get_binance_data("time")
+        return "online"
+    except Exception as exc:
+        logger.warning(f"Collector health check failed: {exc}")
+        return "offline"
+
+def get_system_status(components):
+    """Get overall system status from real component states."""
+    statuses = {component["status"] for component in components}
+    if "offline" in statuses:
         return "Partial Outage"
-    return "All Systems Operational"
+    if "degraded" in statuses:
+        return "Degraded"
+    return "Operational"
 
 def get_components_status():
-    """Get status of all system components"""
+    """Get status of system components from real dependencies."""
     components = [
         {"name": "API", "status": "online", "last_check": datetime.now().isoformat()},
-        {"name": "Indexer", "status": "online", "last_check": datetime.now().isoformat()},
-        {"name": "Relayer", "status": "degraded" if random.random() < 0.1 else "online", "last_check": datetime.now().isoformat()},
-        {"name": "Database", "status": "online", "last_check": datetime.now().isoformat()},
-        {"name": "Cache", "status": "online", "last_check": datetime.now().isoformat()},
+        {"name": "Database", "status": check_database_status(), "last_check": datetime.now().isoformat()},
+        {"name": "Cache", "status": check_cache_status(), "last_check": datetime.now().isoformat()},
+        {"name": "Collector", "status": check_collector_status(), "last_check": datetime.now().isoformat()},
     ]
     return components
 
 def get_recent_activity():
-    """Get recent system activities"""
+    """Get recent activities from real process/dependency state."""
+    now = datetime.now()
+    components = get_components_status()
     activities = [
         {
-            "event": "Proof Published",
-            "component": "Vault",
-            "time": f"{random.randint(1, 5)}m ago",
+            "event": "Service Boot",
+            "component": "API",
+            "time": f"{int((time.time() - SYSTEM_START_TIME) / 60)}m ago",
             "status": "Online",
-            "timestamp": (datetime.now() - timedelta(minutes=random.randint(1, 5))).isoformat()
-        },
-        {
-            "event": "Data Sync",
-            "component": "Indexer",
-            "time": f"{random.randint(5, 15)}m ago",
-            "status": "Online",
-            "timestamp": (datetime.now() - timedelta(minutes=random.randint(5, 15))).isoformat()
-        },
-        {
-            "event": "API Request",
-            "component": "API Gateway",
-            "time": f"{random.randint(10, 30)}m ago",
-            "status": "Online",
-            "timestamp": (datetime.now() - timedelta(minutes=random.randint(10, 30))).isoformat()
-        },
-        {
-            "event": "Relay Update",
-            "component": "Relayer",
-            "time": f"{random.randint(20, 45)}m ago",
-            "status": "Degraded" if random.random() < 0.3 else "Online",
-            "timestamp": (datetime.now() - timedelta(minutes=random.randint(20, 45))).isoformat()
-        },
-        {
-            "event": "Node Heartbeat",
-            "component": "Edge Node",
-            "time": f"{random.randint(30, 60)}m ago",
-            "status": "Online",
-            "timestamp": (datetime.now() - timedelta(minutes=random.randint(30, 60))).isoformat()
+            "timestamp": datetime.fromtimestamp(SYSTEM_START_TIME).isoformat()
         }
     ]
 
-    # Sort by timestamp (most recent first)
+    for component in components:
+        if component["name"] == "API":
+            continue
+        if component["status"] in {"offline", "degraded"}:
+            activities.append({
+                "event": "Dependency Check",
+                "component": component["name"],
+                "time": "now",
+                "status": component["status"].title(),
+                "timestamp": now.isoformat()
+            })
+
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
     return activities
 
 def get_active_alerts():
-    """Get active system alerts"""
+    """Get active alerts from real component state."""
     alerts = []
-
-    # Simulate occasional alerts
-    if random.random() < 0.3:  # 30% chance of having alerts
-        alert_types = [
-            {"message": "Relayer experiencing delays", "type": "warning", "time": f"{random.randint(10, 45)}m ago"},
-            {"message": "High memory usage detected", "type": "warning", "time": f"{random.randint(5, 30)}m ago"},
-            {"message": "Node sync completed", "type": "success", "time": f"{random.randint(30, 120)}m ago"},
-            {"message": "Backup completed successfully", "type": "success", "time": f"{random.randint(60, 240)}m ago"},
-        ]
-
-        # Return 1-2 random alerts
-        num_alerts = random.randint(1, 2)
-        selected_alerts = random.sample(alert_types, num_alerts)
-        alerts = selected_alerts
-
+    for component in get_components_status():
+        if component["status"] == "offline":
+            alerts.append({"message": f"{component['name']} is offline", "type": "error", "time": "now"})
+        elif component["status"] == "degraded":
+            alerts.append({"message": f"{component['name']} is degraded", "type": "warning", "time": "now"})
     return alerts
 
 @status_bp.get("/status")
 def system_status():
     """Get overall system status"""
+    components = get_components_status()
     return ok({
-        "overall_status": get_system_status(),
+        "overall_status": get_system_status(components),
         "uptime_percentage": get_uptime_percentage(),
         "last_updated": datetime.now().isoformat()
     })
@@ -180,9 +188,9 @@ def system_metrics():
     return ok({
         "latency_ms": get_current_latency(),
         "uptime_percentage": get_uptime_percentage(),
-        "last_proof_minutes": int((time.time() - LAST_PROOF_TIME) / 60),
-        "active_connections": random.randint(50, 200),
-        "requests_per_minute": random.randint(100, 500),
+        "last_proof_minutes": None,
+        "active_connections": None,
+        "requests_per_minute": None,
         "last_updated": datetime.now().isoformat()
     })
 
@@ -215,17 +223,18 @@ def active_alerts():
 def get_dashboard_payload():
     """Get dashboard payload data"""
     try:
+        components = get_components_status()
         return {
             "status": {
-                "overall_status": get_system_status(),
+                "overall_status": get_system_status(components),
                 "uptime_percentage": get_uptime_percentage()
             },
             "metrics": {
                 "latency_ms": get_current_latency(),
                 "uptime_percentage": get_uptime_percentage(),
-                "last_proof_minutes": int((time.time() - LAST_PROOF_TIME) / 60)
+                "last_proof_minutes": None
             },
-            "components": get_components_status(),
+            "components": components,
             "activities": get_recent_activity(),
             "alerts": get_active_alerts(),
             "last_updated": datetime.now().isoformat()
@@ -235,16 +244,16 @@ def get_dashboard_payload():
         logger.error(f"Dashboard error: {e}")
         return {
             "status": {
-                "overall_status": "All Systems Operational",
-                "uptime_percentage": 99.9
+                "overall_status": "Unknown",
+                "uptime_percentage": None
             },
             "metrics": {
-                "latency_ms": 25,
-                "uptime_percentage": 99.9,
-                "last_proof_minutes": 2
+                "latency_ms": None,
+                "uptime_percentage": None,
+                "last_proof_minutes": None
             },
-            "components": [{"name": "API", "status": "online"}],
-            "activities": [{"event": "System Check", "component": "API", "time": "now", "status": "Online"}],
+            "components": [],
+            "activities": [],
             "alerts": [],
             "last_updated": datetime.now().isoformat()
         }

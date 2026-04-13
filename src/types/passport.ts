@@ -33,10 +33,30 @@ export type BoxRecord = {
   tokenId?: string;
 };
 
+export type PassportAssertion = {
+  id: string;
+  label: string;
+  status: 'present' | 'missing' | 'inactive';
+  source: 'rpc' | 'on-chain' | 'derived';
+  value?: string;
+};
+
+export type PassportIdentity = {
+  address: Address;
+  accountType: 'wallet' | 'contract';
+  txCount: number;
+  balanceEth: string;
+  checkedAt: string;
+  hasActivity: boolean;
+  hasCode: boolean;
+};
+
 export type LookupResult = {
   licenses: License[];
   keys: KeyRecord[];
   boxes: BoxRecord[];
+  identity?: PassportIdentity;
+  assertions?: PassportAssertion[];
   pou?: { nodesPublic: number };
   metadata?: {
     cached: boolean;
@@ -106,5 +126,3 @@ export type ErrorResponse = {
   message?: string;
   retryAfter?: number;
 };
-
-

@@ -76,6 +76,7 @@ def create_app():
     from .passport_api import passport_bp
     from .radar_api import radar_bp
     from .status_api import status_bp, dashboard_bp as status_dashboard_bp
+    from .intel_api import intel_bp
 
     # Existing blueprints
     app.register_blueprint(auth_siwe.auth_bp)
@@ -89,6 +90,7 @@ def create_app():
     app.register_blueprint(passport_bp, url_prefix="/api/passport")
     app.register_blueprint(radar_bp, url_prefix="/api/radar")
     app.register_blueprint(status_bp, url_prefix="/api/status")
+    app.register_blueprint(intel_bp, url_prefix="/api/intel")
 
     # Register global routes INSIDE create_app()
     @app.route('/', methods=['GET'])

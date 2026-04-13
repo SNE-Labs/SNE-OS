@@ -3,6 +3,8 @@ Configuration for SNE Web API
 """
 import os
 
+IS_DEV = os.getenv("FLASK_ENV", "development") != "production"
+
 class Config:
     """Application configuration"""
 
@@ -20,12 +22,12 @@ class Config:
 
     # Session configuration
     SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sne_session")
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = not IS_DEV
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Enable cross-subdomain cookie sharing for SNE OS
-    SESSION_COOKIE_DOMAIN = ".snelabs.space"
+    SESSION_COOKIE_DOMAIN = None if IS_DEV else ".snelabs.space"
 
     # Redis
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -43,11 +45,18 @@ class Config:
         "https://vault.snelabs.space"
     ]
 
+    if IS_DEV:
+        CORS_ORIGINS.extend([
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
+        ])
+
     # API Limits
     MAX_REQUESTS_PER_MINUTE = 1000
     MAX_ANALYSES_PER_DAY = 50
 
     MAX_REQUESTS_PER_MINUTE = 1000
     MAX_ANALYSES_PER_DAY = 50
-
 

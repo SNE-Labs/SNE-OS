@@ -1,14 +1,14 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Activity, Shield, Lock, DollarSign, AlertCircle, FileText, Search } from 'lucide-react';
+import { Home, Activity, Shield, Lock, DollarSign, FileText, Search } from 'lucide-react';
 
 const menuItems = [
-  { path: '/home', label: 'Home', icon: Home },
+  { path: '/home', label: 'Início', icon: Home },
   { path: '/radar', label: 'Radar', icon: Activity },
-  { path: '/pass', label: 'Pass', icon: Shield },
+  { path: '/pass', label: 'Passport', icon: Shield },
   { path: '/vault', label: 'Vault', icon: Lock },
-  { path: '/pricing', label: 'Pricing', icon: DollarSign },
-  { path: '/status', label: 'Status', icon: AlertCircle },
-  { path: '/docs', label: 'Docs', icon: FileText },
+  { path: '/pricing', label: 'Planos', icon: DollarSign },
+  // { path: '/status', label: 'Status', icon: AlertCircle }, // desativado temporariamente
+  { path: '/docs', label: 'Documentação', icon: FileText },
 ];
 
 export function Sidebar() {
@@ -36,7 +36,7 @@ export function Sidebar() {
           <Search size={16} style={{ color: 'var(--text-3)' }} />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Buscar..."
             className="bg-transparent outline-none flex-1 text-sm"
             style={{ color: 'var(--text-2)' }}
           />
@@ -90,20 +90,20 @@ export function Sidebar() {
             style={{ backgroundColor: 'var(--bg-2)' }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs" style={{ color: 'var(--text-3)' }}>WALLET</span>
+              <span className="text-xs" style={{ color: 'var(--text-3)' }}>CARTEIRA</span>
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded"
                 style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
               >
-                FREE
+                GRATUITO
               </span>
             </div>
             <p className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>
-              Not connected
+              Sem carteira conectada
             </p>
           </div>
           <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-3)' }}>
-            <span>Network</span>
+            <span>Rede</span>
             <span style={{ color: 'var(--text-2)' }}>Scroll L2</span>
           </div>
         </div>

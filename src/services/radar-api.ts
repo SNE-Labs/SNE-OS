@@ -2,14 +2,14 @@ import { apiGet, apiPost, apiDelete } from '../lib/api/http';
 
 export interface MarketSummary {
   btc_dominance?: number;
-  market_cap?: string;
-  volume_24h?: string;
+  market_cap?: string | number | null;
+  volume_24h?: string | number | null;
   fear_greed_index?: number;
   top_movers?: Array<{
     symbol: string;
     price: number;
     change24h: number;
-    volume: string;
+    volume: string | number;
   }>;
 }
 
@@ -81,5 +81,4 @@ export const radarApi = {
   getSystemStatus: () =>
     apiGet('/api/status/dashboard'),
 };
-
 

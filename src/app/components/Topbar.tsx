@@ -15,8 +15,8 @@ export function Topbar() {
     try {
       await connect();
     } catch (error: any) {
-      console.error("Wallet connection failed:", error);
-      setConnectError(error.message || "Failed to connect wallet");
+      console.error('Conexão com carteira falhou:', error);
+      setConnectError(error.message || 'Falha ao conectar a carteira.');
     } finally {
       setIsConnecting(false);
     }
@@ -41,7 +41,7 @@ export function Topbar() {
           className="px-3 py-1.5 rounded-lg text-xs font-semibold uppercase"
           style={{ backgroundColor: 'var(--stroke-2)', color: 'var(--text-2)' }}
         >
-          {tier} TIER
+          {tier === 'free' ? 'GRATUITO' : tier === 'pro' ? 'PRO' : tier?.toUpperCase()}
         </div>
 
         {/* Network Indicator */}
@@ -70,7 +70,7 @@ export function Topbar() {
                 color: '#FFFFFF',
               }}
             >
-              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              {isConnecting ? 'Conectando...' : 'Conectar Carteira'}
             </button>
             {connectError && (
               <p className="text-xs mt-1 max-w-xs text-right" style={{ color: 'var(--danger-red)' }}>
@@ -105,7 +105,7 @@ export function Topbar() {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--stroke-1)' }}>
-              <h3 className="font-semibold" style={{ color: 'var(--text-1)' }}>Notifications</h3>
+              <h3 className="font-semibold" style={{ color: 'var(--text-1)' }}>Notificações</h3>
               <button
                 onClick={() => setShowNotifications(false)}
                 className="p-1 rounded-lg hover:bg-[var(--bg-2)] transition-colors"
@@ -117,19 +117,15 @@ export function Topbar() {
             {/* Content */}
             <div className="p-4">
               <div className="space-y-3">
-                {/* Sample notifications - in a real app, these would come from an API */}
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
                   <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                    <div className="w-2 h-2 rounded-full mt-2" style={{ backgroundColor: 'var(--accent-orange)' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Welcome to SNE OS
+                        Bem-vindo ao SNE OS
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                        Get started with our platform features
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                        2 hours ago
+                        Conecte sua carteira para acessar todas as funcionalidades.
                       </p>
                     </div>
                   </div>
@@ -137,33 +133,13 @@ export function Topbar() {
 
                 <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
                   <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
+                    <div className="w-2 h-2 rounded-full mt-2" style={{ backgroundColor: 'var(--ok-green)' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        System Status Update
+                        Rede Scroll L2
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                        All services are running normally
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                        5 hours ago
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-2)' }}>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Maintenance Scheduled
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                        Brief maintenance window tomorrow
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>
-                        1 day ago
+                        Todos os serviços operando normalmente.
                       </p>
                     </div>
                   </div>
@@ -172,7 +148,7 @@ export function Topbar() {
 
               <div className="mt-4 pt-3 border-t text-center" style={{ borderColor: 'var(--stroke-1)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-                  No new notifications
+                  Nenhuma nova notificação
                 </p>
               </div>
             </div>

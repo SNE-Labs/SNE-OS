@@ -18,17 +18,17 @@ export function BottomBar() {
 
         {/* Wallet Status */}
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Wallet:</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Carteira:</span>
           <span className="text-xs font-mono" style={{ color: isConnected ? 'var(--ok-green)' : 'var(--text-3)' }}>
-            {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
+            {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Desconectada'}
           </span>
         </div>
 
         {/* Mode Toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Mode:</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Modo:</span>
           <span className="text-xs font-semibold" style={{ color: 'var(--warn-amber)' }}>
-            Preview (read-only)
+            Prévia (somente leitura)
           </span>
         </div>
 
@@ -42,7 +42,7 @@ export function BottomBar() {
       {/* Command Palette Hint */}
       <div className="flex items-center gap-2">
         <Command size={12} style={{ color: 'var(--text-3)' }} />
-        <span className="text-xs" style={{ color: 'var(--text-3)' }}>Press ⌘K for command palette</span>
+        <span className="text-xs" style={{ color: 'var(--text-3)' }}>⌘K para paleta de comandos</span>
       </div>
     </footer>
   );

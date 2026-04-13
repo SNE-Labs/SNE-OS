@@ -41,28 +41,27 @@ export function RightPanel({ tags = [], alerts = [], actions = [], onAction }: R
       return;
     }
 
-    // Default actions
+    // Ações padrão
     switch (action.label) {
+      case 'Documentação':
       case 'Open Docs':
-        navigate('/docs');
-        break;
-      case 'Upgrade':
-        navigate('/pricing');
-        break;
-      case 'Report Issue':
-        window.open('https://github.com/SNE-Labs/SNE-OS/issues', '_blank');
-        break;
-      case 'Refresh Data':
-        window.location.reload();
-        break;
-      case 'Upgrade to Pro':
-        navigate('/pricing');
-        break;
       case 'View Docs':
         navigate('/docs');
         break;
+      case 'Upgrade':
+      case 'Upgrade to Pro':
+        navigate('/pricing');
+        break;
+      case 'Reportar problema':
+      case 'Report Issue':
+        window.open('https://github.com/SNE-Labs/SNE-OS/issues', '_blank');
+        break;
+      case 'Atualizar dados':
+      case 'Refresh Data':
+        window.location.reload();
+        break;
       default:
-        console.log(`Action clicked: ${action.label}`);
+        console.log(`Ação: ${action.label}`);
     }
   };
   return (
@@ -74,7 +73,7 @@ export function RightPanel({ tags = [], alerts = [], actions = [], onAction }: R
       {tags.length > 0 && (
         <div className="mb-6">
           <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-3)' }}>
-            Tags
+            Marcadores
           </h4>
           <div className="space-y-2">
             {tags.map((tag, index) => (
@@ -95,7 +94,7 @@ export function RightPanel({ tags = [], alerts = [], actions = [], onAction }: R
       {alerts.length > 0 && (
         <div className="mb-6">
           <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-3)' }}>
-            Alerts
+            Alertas
           </h4>
           <div className="space-y-2">
             {alerts.map((alert, index) => (
@@ -124,7 +123,7 @@ export function RightPanel({ tags = [], alerts = [], actions = [], onAction }: R
       {actions.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-3)' }}>
-            Quick Actions
+            Ações rápidas
           </h4>
           <div className="space-y-2">
             {actions.map((action, index) => {
