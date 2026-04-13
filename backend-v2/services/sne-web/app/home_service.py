@@ -6,7 +6,7 @@ Builds the aggregated home view model from session, market, intel and system sta
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .networks import get_default_network_metadata, get_evm_web3, get_public_network_metadata, list_networks, normalize_evm_address
+from .networks import get_default_network_metadata, get_public_network_metadata, list_networks, normalize_evm_address, with_evm_provider
 
 
 def get_wallet_state(address: Optional[str], network_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -17,22 +17,14 @@ def get_wallet_state(address: Optional[str], network_key: Optional[str] = None) 
     network = get_public_network_metadata(network_key or "scroll")
 
     try:
-        w3 = get_evm_web3(network["key"])
-        if not w3 or not w3.is_connected():
-            return {
-                "address": address,
-                "status": "degraded",
-                "network": network,
-                "balance_eth": None,
-                "tx_count": None,
-                "account_type": None,
-                "last_updated": datetime.utcnow().isoformat(),
-            }
+        def _load_wallet(w3):
+            balance_wei = w3.eth.get_balance(checksum_address)
+            tx_count = w3.eth.get_transaction_count(checksum_address)
+            code = w3.eth.get_code(checksum_address)
+            balance_eth = float(w3.from_wei(balance_wei, "ether"))
+            return balance_wei, tx_count, code, balance_eth
 
-        balance_wei = w3.eth.get_balance(checksum_address)
-        tx_count = w3.eth.get_transaction_count(checksum_address)
-        code = w3.eth.get_code(checksum_address)
-        balance_eth = float(w3.from_wei(balance_wei, "ether"))
+        _, tx_count, code, balance_eth = with_evm_provider(network["key"], _load_wallet)
 
         return {
             "address": address,

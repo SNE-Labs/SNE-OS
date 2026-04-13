@@ -7,7 +7,7 @@ from datetime import datetime
 import logging
 from typing import Any, Dict, List, Optional
 
-from .networks import get_evm_web3, get_public_network_metadata, list_enabled_network_keys, normalize_evm_address
+from .networks import get_public_network_metadata, list_enabled_network_keys, normalize_evm_address, with_evm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +41,16 @@ def build_network_position(address: str, network_key: str) -> Dict[str, Any]:
     checksum_address = normalize_evm_address(address)
     position = _empty_network_entry(network_key, address)
     network = position["network"]
-    w3 = get_evm_web3(network_key)
-    if not w3 or not w3.is_connected():
-        return position
-
     try:
-        balance_wei = w3.eth.get_balance(checksum_address)
-        balance_native = float(w3.from_wei(balance_wei, "ether"))
-        tx_count = w3.eth.get_transaction_count(checksum_address)
-        code = w3.eth.get_code(checksum_address)
-        gas_price_wei = int(w3.eth.gas_price)
+        def _load_position(w3):
+            balance_wei = w3.eth.get_balance(checksum_address)
+            balance_native = float(w3.from_wei(balance_wei, "ether"))
+            tx_count = w3.eth.get_transaction_count(checksum_address)
+            code = w3.eth.get_code(checksum_address)
+            gas_price_wei = int(w3.eth.gas_price)
+            return balance_wei, balance_native, tx_count, code, gas_price_wei
+
+        _, balance_native, tx_count, code, gas_price_wei = with_evm_provider(network_key, _load_position)
         account_type = "contract" if code and code != b"" and code.hex() != "0x" else "wallet"
         has_activity = tx_count > 0 or balance_native > 0
 
@@ -117,43 +117,6 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
             "posture": [],
             "protection": {
                 "state": "Visibilidade de capital indisponível até a conexão de uma carteira.",
-                "boundary": "Chaves e Dispositivos continuam sendo a fronteira de proteção do Vault.",
-            },
-            "readiness": {
-                "custody": "Não custodial. O capital permanece na carteira conectada.",
-                "staking": "Nenhuma rota de staking disponível para esta conta.",
-                "provisioning": "Provisionamento de hardware requer um dispositivo SNE Vault vinculado.",
-            },
-            "last_updated": datetime.utcnow().isoformat(),
-        }
-
-    w3 = get_evm_web3(network["key"])
-    if not w3 or not w3.is_connected():
-        return {
-            "connected": True,
-            "status": {"label": "degraded", "tone": "warning"},
-            "surface": {
-                "address": address,
-                "network": network["label"],
-                "source": "rpc",
-            },
-            "network_meta": network,
-            "aggregate": {
-                "active_networks": 0,
-                "visible_networks": 0,
-                "primary_network": network,
-                "total_value_display": "--",
-            },
-            "by_network": build_network_positions(address),
-            "signals": [
-                {"title": "Estado do capital", "value": "--", "detail": "RPC indisponível no momento"},
-                {"title": "Superfície de acesso", "value": "0 chaves", "detail": "Nenhuma chave vinculada ainda"},
-                {"title": "Camada de proteção", "value": "0 dispositivos", "detail": "Nenhum dispositivo registrado"},
-            ],
-            "capital_cards": [],
-            "posture": [],
-            "protection": {
-                "state": "RPC indisponível para leitura de capital.",
                 "boundary": "Chaves e Dispositivos continuam sendo a fronteira de proteção do Vault.",
             },
             "readiness": {

@@ -48,6 +48,16 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `DATABASE_URL`: PostgreSQL connection string
 - `SECRET_KEY`: Flask secret key
 - `PORT`: Server port (default: 8080)
+- `ETHEREUM_RPC_URLS`: comma-separated fallback RPC list for Ethereum
+- `POLYGON_RPC_URLS`: comma-separated fallback RPC list for Polygon
+- `SCROLL_RPC_URLS`: comma-separated fallback RPC list for Scroll
+
+Example:
+```bash
+export ETHEREUM_RPC_URLS=https://ethereum-rpc.publicnode.com,https://rpc.ankr.com/eth,https://cloudflare-eth.com
+export POLYGON_RPC_URLS=https://polygon-bor-rpc.publicnode.com,https://1rpc.io/matic,https://polygon-rpc.com
+export SCROLL_RPC_URLS=https://rpc.scroll.io,https://scroll-mainnet.public.blastapi.io
+```
 
 ## Endpoints
 
@@ -60,6 +70,5 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `connect` - Client connects
 - `disconnect` - Client disconnects
 - `status` - Server status updates
-
 
 

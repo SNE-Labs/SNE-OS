@@ -8,10 +8,10 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .networks import (
-    get_evm_web3,
     get_public_network_metadata,
     list_enabled_network_keys,
     normalize_evm_address,
+    with_evm_provider,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,14 +20,14 @@ logger = logging.getLogger(__name__)
 def resolve_identity(address: str, network_key: Optional[str] = None) -> Dict[str, Any]:
     checksum_address = normalize_evm_address(address)
     network = get_public_network_metadata(network_key or "scroll")
-    w3 = get_evm_web3(network["key"])
-    if not w3 or not w3.is_connected():
-        raise RuntimeError(f"{network['label']} RPC unavailable")
+    def _load_identity(w3):
+        balance_wei = w3.eth.get_balance(checksum_address)
+        tx_count = w3.eth.get_transaction_count(checksum_address)
+        code = w3.eth.get_code(checksum_address)
+        balance_eth = float(w3.from_wei(balance_wei, "ether"))
+        return balance_wei, tx_count, code, balance_eth
 
-    balance_wei = w3.eth.get_balance(checksum_address)
-    tx_count = w3.eth.get_transaction_count(checksum_address)
-    code = w3.eth.get_code(checksum_address)
-    balance_eth = float(w3.from_wei(balance_wei, "ether"))
+    _, tx_count, code, balance_eth = with_evm_provider(network["key"], _load_identity)
 
     has_code = bool(code and code != b"" and code.hex() != "0x")
     has_activity = tx_count > 0 or balance_eth > 0
@@ -103,15 +103,15 @@ def build_account_snapshot(address: str, network_key: str, primary_network_key: 
         "source": f"{network_key}-rpc",
     }
 
-    w3 = get_evm_web3(network_key)
-    if not w3 or not w3.is_connected():
-        return snapshot
-
     try:
-        balance_wei = w3.eth.get_balance(checksum_address)
-        tx_count = w3.eth.get_transaction_count(checksum_address)
-        code = w3.eth.get_code(checksum_address)
-        balance_native = float(w3.from_wei(balance_wei, "ether"))
+        def _load_snapshot(w3):
+            balance_wei = w3.eth.get_balance(checksum_address)
+            tx_count = w3.eth.get_transaction_count(checksum_address)
+            code = w3.eth.get_code(checksum_address)
+            balance_native = float(w3.from_wei(balance_wei, "ether"))
+            return balance_wei, tx_count, code, balance_native
+
+        _, tx_count, code, balance_native = with_evm_provider(network_key, _load_snapshot)
         has_code = bool(code and code != b"" and code.hex() != "0x")
         has_activity = tx_count > 0 or balance_native > 0
 
