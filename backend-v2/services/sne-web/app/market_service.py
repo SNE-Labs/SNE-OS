@@ -54,6 +54,17 @@ def _normalize_string_list(value: Any) -> List[str]:
     return []
 
 
+def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "response_format": {"type": "json_object"},
+    }
+    if not model.startswith("gpt-5"):
+        payload["temperature"] = 0.3
+    return payload
+
+
 def _market_regime(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not entries:
         return {"label": "sem dados", "tone": "pending", "avg_change_24h": 0.0}
@@ -168,10 +179,9 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "model": model,
-                "temperature": 0.3,
-                "messages": [
+            json=_openai_chat_payload(
+                model,
+                [
                     {
                         "role": "system",
                         "content": (
@@ -185,7 +195,7 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
                         "content": json.dumps(market_payload, ensure_ascii=False),
                     },
                 ],
-            },
+            ),
             timeout=20,
         )
         response.raise_for_status()

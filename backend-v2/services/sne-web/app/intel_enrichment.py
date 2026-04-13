@@ -240,6 +240,17 @@ def _normalize_post_kind(value: Any) -> str:
     return normalized if normalized in {"briefing", "dossier"} else "dossier"
 
 
+def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "response_format": {"type": "json_object"},
+    }
+    if not model.startswith("gpt-5"):
+        payload["temperature"] = 0.4
+    return payload
+
+
 def _fallback_post(item: Dict[str, Any], slug: str, editorial_kind: str) -> Dict[str, Any]:
     title = item.get("title_pt") or item.get("title") or item.get("title_original") or item.get("id") or slug
     excerpt = item.get("summary_pt") or item.get("summary") or item.get("why_it_matters") or ""
@@ -422,10 +433,9 @@ class IntelEnricher:
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": self.model,
-                    "temperature": 0.4,
-                    "messages": [
+                json=_openai_chat_payload(
+                    self.model,
+                    [
                         {
                             "role": "system",
                             "content": (
@@ -439,7 +449,7 @@ class IntelEnricher:
                             "content": json.dumps(prompt, ensure_ascii=False),
                         },
                     ],
-                },
+                ),
                 timeout=25,
             )
             response.raise_for_status()
