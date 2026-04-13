@@ -19,7 +19,7 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = "v3"
+CACHE_VERSION = "v4"
 
 TOPIC_RULES = {
     "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed"],
@@ -311,11 +311,19 @@ class IntelEnricher:
             raw_item.get("source_tier", "community"),
         )
         return {
+            "id": raw_item["id"],
             "title": title_original,
             "title_original": title_original,
             "title_pt": title_original,
             "summary": "",
             "summary_pt": "",
+            "url": raw_item["url"],
+            "source": raw_item.get("source", "Unknown"),
+            "source_tier": raw_item.get("source_tier", "community"),
+            "author": raw_item.get("author", ""),
+            "created_at": raw_item.get("created_at", _iso_now()),
+            "points": raw_item.get("points", 0),
+            "comments": raw_item.get("comments", 0),
             "language": "en",
             "translated": False,
             "module": module,
@@ -331,12 +339,13 @@ class IntelEnricher:
         }
 
     def _llm_post(self, item: Dict[str, Any]) -> Dict[str, Any] | None:
+        item_id = item.get("id") or _slugify(item.get("title_pt") or item.get("title") or "intel-item")
         if self.provider == "heuristic":
-            logger.info("Intel LLM post skipped for %s: provider set to heuristic", item["id"])
+            logger.info("Intel LLM post skipped for %s: provider set to heuristic", item_id)
             return None
 
         if not self.api_key:
-            logger.warning("Intel LLM post skipped for %s: OPENAI_API_KEY missing", item["id"])
+            logger.warning("Intel LLM post skipped for %s: OPENAI_API_KEY missing", item_id)
             return None
 
         prompt = {
@@ -377,24 +386,24 @@ class IntelEnricher:
             content = data["choices"][0]["message"]["content"]
             parsed = _extract_json(content)
             if not isinstance(parsed, dict):
-                logger.warning("Intel LLM post returned non-JSON payload for %s", item["id"])
+                logger.warning("Intel LLM post returned non-JSON payload for %s", item_id)
                 return None
 
-            slug = _slugify(parsed.get("title") or item["title_pt"])
-            logger.info("Intel LLM post generation succeeded for %s", item["id"])
+            slug = _slugify(parsed.get("title") or item.get("title_pt") or item.get("title") or item_id)
+            logger.info("Intel LLM post generation succeeded for %s", item_id)
             return {
                 "id": f"post:{slug}",
                 "slug": slug,
-                "title": parsed.get("title") or item["title_pt"],
-                "subtitle": parsed.get("subtitle") or item["why_it_matters"],
-                "excerpt": parsed.get("excerpt") or item["summary_pt"],
+                "title": parsed.get("title") or item.get("title_pt") or item.get("title") or item_id,
+                "subtitle": parsed.get("subtitle") or item.get("why_it_matters", ""),
+                "excerpt": parsed.get("excerpt") or item.get("summary_pt", ""),
                 "body_markdown": parsed.get("body_markdown") or "",
-                "tldr": parsed.get("tldr") or [item["summary_pt"], item["why_it_matters"]],
+                "tldr": parsed.get("tldr") or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
                 "topics": item.get("topics", []),
                 "chains": item.get("chains", []),
                 "protocols": item.get("protocols", []),
                 "assets": item.get("assets", []),
-                "sources": [{"name": item["source"], "url": item["url"]}],
+                "sources": [{"name": item.get("source", "Unknown"), "url": item.get("url", "")}],
                 "status": "draft",
                 "generated_at": _iso_now(),
                 "reading_time_minutes": max(1, len((parsed.get("body_markdown") or "").split()) // 180),

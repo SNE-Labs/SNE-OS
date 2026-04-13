@@ -139,6 +139,36 @@ export function MobileHome() {
     window.location.assign(url);
   };
 
+  const renderIntelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) => {
+    if (!item.url) {
+      return <div className="text-[var(--text-1)] mb-2">{intelTitle(item)}</div>;
+    }
+
+    const href = normalizeIntelRoute(item.url);
+    const isInternal = href.startsWith('/blog/');
+
+    return (
+      <a
+        href={href}
+        onClick={(event) => {
+          if (isInternal) {
+            event.preventDefault();
+            navigate(href);
+            return;
+          }
+          event.preventDefault();
+          openIntelItem(item.url);
+        }}
+        target={isInternal ? undefined : '_blank'}
+        rel={isInternal ? undefined : 'noopener noreferrer'}
+        className="mb-2 inline-flex items-start gap-2 text-[var(--text-1)] underline decoration-transparent hover:decoration-current"
+      >
+        <span>{intelTitle(item)}</span>
+        <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0" />
+      </a>
+    );
+  };
+
   return (
     <MobilePageShell
       title="SNE OS"
@@ -298,9 +328,8 @@ export function MobileHome() {
             ) : (
               <div className="space-y-3">
                 {intelItems.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => openIntelItem(item.url)}
                     className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-3 mb-1">
@@ -309,12 +338,12 @@ export function MobileHome() {
                         {item.impact?.label ? `impacto ${item.impact.label}` : item.module}
                       </Badge>
                     </div>
-                    <div className="text-[var(--text-1)] mb-2">{intelTitle(item)}</div>
+                    {renderIntelTitle(item)}
                     <div className="text-sm text-[var(--text-2)] mb-2">{intelSummary(item)}</div>
                     <div className="text-xs text-[var(--text-3)]">
                       {item.chains?.[0] || item.topics?.[0] || item.module}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

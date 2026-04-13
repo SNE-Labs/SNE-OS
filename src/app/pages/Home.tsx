@@ -150,6 +150,40 @@ export function Home() {
   const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Intel item';
   const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
   const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
+  const renderIntelTitle = (item: IntelItem, className: string) => {
+    if (!item.url) {
+      return (
+        <div className={className} style={{ color: 'var(--text-1)' }}>
+          {intelTitle(item)}
+        </div>
+      );
+    }
+
+    const href = normalizeIntelRoute(item.url);
+    const isInternal = href.startsWith('/blog/');
+
+    return (
+      <a
+        href={href}
+        onClick={(event) => {
+          if (isInternal) {
+            event.preventDefault();
+            navigate(href);
+            return;
+          }
+          event.preventDefault();
+          openIntelItem(item.url);
+        }}
+        target={isInternal ? undefined : '_blank'}
+        rel={isInternal ? undefined : 'noopener noreferrer'}
+        className={`${className} inline-flex items-start gap-2 underline decoration-transparent transition-colors hover:decoration-current`}
+        style={{ color: 'var(--text-1)' }}
+      >
+        <span>{intelTitle(item)}</span>
+        <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0" />
+      </a>
+    );
+  };
 
   const formatCompactNumber = (value: number) =>
     new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
@@ -255,8 +289,7 @@ export function Home() {
               ) : (
                 <div className="space-y-3">
                   {/* Featured */}
-                  <button
-                    onClick={() => openIntelItem(featuredIntel.url)}
+                  <div
                     className="w-full rounded-xl p-5 text-left"
                     style={{
                       background: 'linear-gradient(135deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02))',
@@ -274,9 +307,7 @@ export function Home() {
                         </StatusBadge>
                       )}
                     </div>
-                    <div className="text-lg font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
-                      {intelTitle(featuredIntel)}
-                    </div>
+                    {renderIntelTitle(featuredIntel, 'text-lg font-semibold mb-2 text-balance')}
                     <div className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
                       {intelSummary(featuredIntel)}
                     </div>
@@ -294,14 +325,13 @@ export function Home() {
                       <span>@{featuredIntel.author}</span>
                       <span>{intelMeta(featuredIntel)}</span>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Secondary grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {secondaryIntel.map((item) => (
-                      <button
+                      <div
                         key={item.id}
-                        onClick={() => openIntelItem(item.url)}
                         className="w-full rounded-lg p-4 text-left"
                         style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                       >
@@ -311,13 +341,11 @@ export function Home() {
                           </div>
                           <div className="text-xs" style={{ color: 'var(--text-3)' }}>{item.points} pts</div>
                         </div>
-                        <div className="font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--text-1)' }}>
-                          {intelTitle(item)}
-                        </div>
+                        {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
                         <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
                           {intelSummary(item)}
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>

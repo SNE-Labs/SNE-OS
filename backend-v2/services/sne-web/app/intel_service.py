@@ -293,30 +293,35 @@ def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
 
 def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
     redis_client = SafeRedis()
-    existing = _load_cached_posts(redis_client)
-    if len(existing) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+    try:
+        existing = _load_cached_posts(redis_client)
+        if len(existing) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+            return
+
+        briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
+        enricher = IntelEnricher()
+        posts = list(existing)
+        existing_slugs = {post["slug"] for post in posts}
+
+        for item in briefing["items"]:
+            if len(posts) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+                break
+            try:
+                post = enricher.build_post(item)
+            except Exception as exc:
+                logger.warning("Intel enterprise post build failed for %s: %s", item.get("id", item.get("title", "unknown")), exc)
+                continue
+            if post["status"] != "draft":
+                continue
+            if post["slug"] in existing_slugs:
+                continue
+            posts.append(post)
+            existing_slugs.add(post["slug"])
+            _increment_blog_daily_count(redis_client)
+
+        _store_cached_posts(redis_client, posts)
+    finally:
         redis_client.delete(POST_REFRESH_LOCK_KEY)
-        return
-
-    briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
-    enricher = IntelEnricher()
-    posts = list(existing)
-    existing_slugs = {post["slug"] for post in posts}
-
-    for item in briefing["items"]:
-        if len(posts) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
-            break
-        post = enricher.build_post(item)
-        if post["status"] != "draft":
-            continue
-        if post["slug"] in existing_slugs:
-            continue
-        posts.append(post)
-        existing_slugs.add(post["slug"])
-        _increment_blog_daily_count(redis_client)
-
-    _store_cached_posts(redis_client, posts)
-    redis_client.delete(POST_REFRESH_LOCK_KEY)
 
 
 def _trigger_enterprise_post_refresh() -> None:
