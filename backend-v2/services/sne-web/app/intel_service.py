@@ -457,6 +457,15 @@ def _blog_daily_count(redis_client: SafeRedis) -> int:
         return 0
 
 
+def _blog_daily_post_count(posts: List[Dict[str, Any]]) -> int:
+    today = _utc_day_key()
+    return sum(
+        1
+        for post in posts
+        if str(post.get("generated_at", "")).startswith(today)
+    )
+
+
 def _blog_daily_market_count(posts: List[Dict[str, Any]]) -> int:
     today = _utc_day_key()
     return sum(
@@ -477,13 +486,17 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
     redis_client = SafeRedis()
     try:
         existing = _load_cached_posts(redis_client)
-        if _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
-            return
 
         enricher = IntelEnricher()
         posts = list(existing)[:BLOG_TOTAL_LIMIT]
         existing_slugs = {post["slug"] for post in posts}
-        daily_count = _blog_daily_count(redis_client)
+        daily_count = _blog_daily_post_count(posts)
+        counter_count = _blog_daily_count(redis_client)
+        if counter_count > daily_count:
+            # Recover from stale counters when the cache has fewer posts than expected.
+            daily_count = min(counter_count, BLOG_DAILY_LIMIT) if len(posts) >= counter_count else daily_count
+        if daily_count >= BLOG_DAILY_LIMIT:
+            return
         market_daily_count = _blog_daily_market_count(posts)
 
         candidates: List[tuple[Dict[str, Any], str]] = []
@@ -569,7 +582,7 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)
-    if len(posts) < min(limit, BLOG_DAILY_LIMIT):
+    if len(posts) < min(limit, BLOG_TOTAL_LIMIT):
         _trigger_enterprise_post_refresh()
     return posts[:limit]
 
