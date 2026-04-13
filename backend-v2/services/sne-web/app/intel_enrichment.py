@@ -22,11 +22,14 @@ logger = logging.getLogger(__name__)
 CACHE_VERSION = "v4"
 
 TOPIC_RULES = {
-    "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed"],
-    "identidade": ["identity", "wallet", "authentication", "auth", "passport", "kyc", "credential"],
-    "defi": ["defi", "liquidity", "trading", "swap", "market", "exchange", "yield", "stablecoin"],
-    "infra": ["rollup", "bridge", "api", "developer", "cloud", "protocol", "network", "rpc"],
-    "ia": ["ai", "llm", "model", "agent", "openai"],
+    "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed", "seguranca", "segurança"],
+    "identidade": ["identity", "wallet", "authentication", "auth", "passport", "kyc", "credential", "identidade", "credencial"],
+    "defi": ["defi", "liquidity", "trading", "swap", "market", "exchange", "yield", "stablecoin", "mercado"],
+    "infra": ["rollup", "bridge", "api", "developer", "cloud", "protocol", "network", "rpc", "infraestrutura"],
+    "ia": ["ai", "llm", "model", "agent", "openai", "inteligencia artificial"],
+    "tech": ["technology", "tech", "software", "hardware", "chip", "chips", "device", "developer tool", "platform", "tecnologia"],
+    "economia": ["economy", "economic", "economics", "macro", "inflation", "rates", "fed", "treasury", "yield", "gdp", "jobs", "economia", "juros", "inflação", "inflacao", "macroeconomia"],
+    "geopolitica": ["geopolitics", "geopolitical", "war", "sanction", "sanctions", "china", "russia", "europe", "us policy", "trade policy", "geopolitica", "geopolítica", "guerra", "sancoes", "sanções"],
 }
 
 CHAIN_RULES = {
@@ -232,6 +235,11 @@ def _normalize_tldr(value: Any) -> List[str]:
     return []
 
 
+def _normalize_post_kind(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in {"briefing", "dossier"} else "dossier"
+
+
 class IntelEnricher:
     def __init__(self):
         self.provider = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic").strip().lower()
@@ -276,6 +284,7 @@ class IntelEnricher:
 
         post = self._llm_post(item)
         if not post:
+            editorial_kind = _normalize_post_kind(item.get("editorial_kind"))
             return {
                 "id": f"post:{slug}",
                 "slug": slug,
@@ -292,6 +301,7 @@ class IntelEnricher:
                 "status": "generation_failed",
                 "generated_at": _iso_now(),
                 "reading_time_minutes": 0,
+                "editorial_kind": editorial_kind,
             }
 
         try:
@@ -357,12 +367,27 @@ class IntelEnricher:
             logger.warning("Intel LLM post skipped for %s: OPENAI_API_KEY missing", item_id)
             return None
 
+        editorial_kind = _normalize_post_kind(item.get("editorial_kind"))
+        if editorial_kind == "briefing":
+            instruction = (
+                "Escreva um briefing em pt-BR para a Intelligence Layer do SNE OS. "
+                "Formato enxuto, claro e orientado a operação. "
+                "Responda em JSON com title, subtitle, excerpt, body_markdown e tldr. "
+                "body_markdown deve ter entre 220 e 420 palavras, com seções curtas e foco em contexto imediato. "
+                "Quando fizer sentido, enquadre a leitura em temas como tech, economia e geopolítica."
+            )
+        else:
+            instruction = (
+                "Escreva um dossie em pt-BR para a Intelligence Layer do SNE OS. "
+                "A leitura deve ter profundidade editorial, contexto de mercado/produto e implicações operacionais. "
+                "Responda em JSON com title, subtitle, excerpt, body_markdown e tldr. "
+                "body_markdown deve ter entre 700 e 1100 palavras, com seções em markdown, analise propria e fechamento editorial. "
+                "Quando fizer sentido, enquadre a leitura em temas como tech, economia e geopolítica."
+            )
+
         prompt = {
             "item": item,
-            "instruction": (
-                "Escreva um post curto em pt-BR para blog de intel cripto. "
-                "Responda em JSON com title, subtitle, excerpt, body_markdown, tldr."
-            ),
+            "instruction": instruction,
         }
         try:
             response = requests.post(
@@ -378,8 +403,9 @@ class IntelEnricher:
                         {
                             "role": "system",
                             "content": (
-                                "Voce e um editor de mercado cripto multichain. "
-                                "Produza JSON valido em pt-BR."
+                                "Voce e o editor-chefe da Intelligence Layer do SNE OS. "
+                                "Produza JSON valido em pt-BR, sem markdown fora do campo body_markdown. "
+                                "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
                             ),
                         },
                         {
@@ -415,7 +441,8 @@ class IntelEnricher:
                 "sources": [{"name": item.get("source", "Unknown"), "url": item.get("url", "")}],
                 "status": "draft",
                 "generated_at": _iso_now(),
-                "reading_time_minutes": max(1, len((parsed.get("body_markdown") or "").split()) // 180),
+                "reading_time_minutes": max(1, round(len((parsed.get("body_markdown") or "").split()) / 180)),
+                "editorial_kind": editorial_kind,
             }
         except Exception as exc:
             logger.warning(f"Intel LLM post generation failed: {exc}")

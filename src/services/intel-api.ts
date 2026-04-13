@@ -16,6 +16,8 @@ export type IntelPost = {
   status: 'draft' | 'generation_failed';
   generated_at: string;
   reading_time_minutes: number;
+  editorial_kind: 'briefing' | 'dossier';
+  category?: string;
 };
 
 type IntelPostsResponse = {
@@ -37,6 +39,8 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 function normalizePost(post: IntelPost): IntelPost {
+  const category = post.category || 'news';
+  const editorialKind = post.editorial_kind || (category === 'market' ? 'briefing' : 'dossier');
   return {
     ...post,
     tldr: normalizeStringArray(post.tldr),
@@ -44,12 +48,14 @@ function normalizePost(post: IntelPost): IntelPost {
     chains: normalizeStringArray(post.chains),
     protocols: normalizeStringArray(post.protocols),
     assets: normalizeStringArray(post.assets),
+    category,
+    editorial_kind: editorialKind,
   };
 }
 
 export const intelApi = {
   getPosts: async (): Promise<IntelPostsResponse> => {
-    const response = await apiGet<IntelPostsResponse>('/api/intel/posts');
+    const response = await apiGet<IntelPostsResponse>('/api/intel/posts?limit=36');
     return {
       ...response,
       items: (response.items ?? []).map(normalizePost),
@@ -59,7 +65,7 @@ export const intelApi = {
 };
 
 export function normalizeIntelRoute(url: string) {
-  if (url.startsWith('/blog/')) return url;
-  if (url.startsWith('/intel/')) return url.replace('/intel/', '/blog/');
+  if (url.startsWith('/intel/')) return url;
+  if (url.startsWith('/blog/')) return url.replace('/blog/', '/intel/');
   return url;
 }

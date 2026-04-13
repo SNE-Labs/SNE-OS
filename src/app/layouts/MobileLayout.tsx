@@ -106,6 +106,8 @@ function resolveComponent(pathname: string) {
   if (pathname.startsWith('/secrets')) return MobileSecrets;
   if (pathname.startsWith('/keys')) return MobileKeys;
   if (pathname.startsWith('/docs')) return MobileDocs;
+  if (pathname.startsWith('/intel/')) return MobileBlogPost;
+  if (pathname.startsWith('/intel')) return MobileBlog;
   if (pathname.startsWith('/blog/')) return MobileBlogPost;
   if (pathname.startsWith('/blog')) return MobileBlog;
   return MobileHome;

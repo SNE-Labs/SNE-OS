@@ -64,6 +64,38 @@ DEFAULT_SOURCES: List[IntelSource] = [
         source_tier="protocol",
         tags=("ethereum", "infra", "rollup"),
     ),
+    IntelSource(
+        key="techcrunch",
+        name="TechCrunch",
+        url="https://techcrunch.com/feed/",
+        format="rss",
+        source_tier="media",
+        tags=("tech", "ai", "startup"),
+    ),
+    IntelSource(
+        key="openai_news",
+        name="OpenAI News",
+        url="https://openai.com/news/rss.xml",
+        format="rss",
+        source_tier="media",
+        tags=("tech", "ia", "models"),
+    ),
+    IntelSource(
+        key="reuters_business",
+        name="Reuters Business",
+        url="https://feeds.reuters.com/reuters/businessNews",
+        format="rss",
+        source_tier="media",
+        tags=("economia", "macro", "rates"),
+    ),
+    IntelSource(
+        key="reuters_world",
+        name="Reuters World",
+        url="https://feeds.reuters.com/Reuters/worldNews",
+        format="rss",
+        source_tier="media",
+        tags=("geopolitica", "world", "policy"),
+    ),
 ]
 
 

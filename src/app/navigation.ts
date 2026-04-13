@@ -19,7 +19,7 @@ export const navigationItems: NavigationItem[] = [
   { path: '/vault', label: 'Vault', icon: Lock },
   { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
   { path: '/keys', label: 'Keys', icon: KeyRound },
-  { path: '/blog', label: 'Blog', icon: Newspaper },
+  { path: '/intel', label: 'Intelligence', icon: Newspaper },
   { path: '/pricing', label: 'Planos', icon: DollarSign },
   { path: '/docs', label: 'Documentação', icon: FileText },
 ];
@@ -74,11 +74,11 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     },
   },
   {
-    match: (pathname) => pathname.startsWith('/blog'),
+    match: (pathname) => pathname.startsWith('/intel') || pathname.startsWith('/blog'),
     meta: {
-      title: 'Blog',
-      context: 'Editorial',
-      descriptor: 'Resenhas, briefings e narrativas produzidas a partir do Intel.',
+      title: 'Intelligence Layer',
+      context: 'Intel editorial',
+      descriptor: 'Dossiês, briefings e narrativas produzidas a partir do motor de Intel.',
     },
   },
   {

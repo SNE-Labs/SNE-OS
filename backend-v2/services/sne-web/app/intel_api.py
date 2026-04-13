@@ -5,7 +5,7 @@ Intel API for SNE OS Home and editorial surfaces.
 from datetime import datetime, timezone
 import logging
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from .intel_service import (
     build_intel_briefing,
@@ -45,7 +45,8 @@ def intel_briefing():
 @intel_bp.get("/posts")
 def intel_posts():
     try:
-        posts = fetch_intel_posts(limit=8)
+        limit = request.args.get("limit", default=24, type=int) or 24
+        posts = fetch_intel_posts(limit=max(1, min(limit, 48)))
         return jsonify({
             "items": posts,
             "last_updated": _iso_now(),
@@ -68,4 +69,3 @@ def intel_post_detail(slug: str):
     except Exception as exc:
         logger.warning(f"Intel post detail failed for {slug}: {exc}")
         return jsonify({"error": "Intel post unavailable"}), 503
-

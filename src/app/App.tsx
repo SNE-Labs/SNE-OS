@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http, injected } from 'wagmi';
 import { scroll } from 'viem/chains';
@@ -69,8 +69,10 @@ function AppContent() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/blog/:slug" element={<BlogPost />} />
+                  <Route path="/intel" element={<Blog />} />
+                  <Route path="/intel/:slug" element={<BlogPost />} />
+                  <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                  <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
                   <Route path="/radar" element={<DesktopRadar />} />
                   <Route path="/pass" element={<DesktopPass />} />
                   <Route path="/vault" element={<DesktopVault />} />
@@ -90,6 +92,11 @@ function AppContent() {
       <BottomBar />
     </div>
   );
+}
+
+function LegacyBlogRedirect() {
+  const { slug = '' } = useParams();
+  return <Navigate to={`/intel/${slug}`} replace />;
 }
 
 // Skeleton para desktop

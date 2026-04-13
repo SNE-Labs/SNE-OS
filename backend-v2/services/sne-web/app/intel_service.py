@@ -59,13 +59,48 @@ CRYPTO_RELEVANCE_TOKENS = {
     "airdrop",
 }
 
-GENERALIST_SOURCES = {"hn_front_page"}
-COMMUNITY_SOURCE_CAP = 1
+BROADER_RELEVANCE_TOKENS = {
+    "ai",
+    "llm",
+    "model",
+    "models",
+    "technology",
+    "tech",
+    "software",
+    "hardware",
+    "chip",
+    "chips",
+    "semiconductor",
+    "economy",
+    "economic",
+    "economics",
+    "macro",
+    "inflation",
+    "rates",
+    "fed",
+    "treasury",
+    "yield",
+    "liquidity",
+    "policy",
+    "regulation",
+    "geopolitics",
+    "geopolitical",
+    "war",
+    "sanction",
+    "sanctions",
+    "trade",
+    "china",
+    "russia",
+    "europe",
+}
+
+GENERALIST_SOURCES = {"hn_front_page", "techcrunch", "openai_news", "reuters_business", "reuters_world"}
+COMMUNITY_SOURCE_CAP = 2
 BLOG_SOURCE_NAME = "SNE Enterprise Blog"
-BLOG_DAILY_LIMIT = 5
-BLOG_SURFACE_LIMIT = 2
-BLOG_MARKET_DAILY_LIMIT = 3
-BLOG_TOTAL_LIMIT = 24
+BLOG_DAILY_LIMIT = 14
+BLOG_SURFACE_LIMIT = 3
+BLOG_MARKET_DAILY_LIMIT = 6
+BLOG_TOTAL_LIMIT = 48
 POST_CACHE_KEY = "intel:enterprise:posts"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 
@@ -102,6 +137,16 @@ def _relevance_hits(entry: Dict[str, Any]) -> set[str]:
     return _tokenize(text).intersection(CRYPTO_RELEVANCE_TOKENS)
 
 
+def _broader_relevance_hits(entry: Dict[str, Any]) -> set[str]:
+    text = " ".join([
+        entry.get("title", ""),
+        entry.get("url", ""),
+        " ".join(entry.get("tags", [])),
+        entry.get("source", ""),
+    ])
+    return _tokenize(text).intersection(BROADER_RELEVANCE_TOKENS)
+
+
 def _recency_score(created_at: str) -> int:
     try:
         timestamp = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
@@ -128,7 +173,8 @@ def _source_weight(source_tier: str) -> int:
 
 def _curation_score(entry: Dict[str, Any]) -> int:
     relevance_hits = _relevance_hits(entry)
-    keyword_bonus = len(relevance_hits) * 8
+    broader_hits = _broader_relevance_hits(entry)
+    keyword_bonus = (len(relevance_hits) * 8) + (len(broader_hits) * 5)
     source_penalty = -18 if entry.get("source_key") in GENERALIST_SOURCES else 0
     return (
         _source_weight(entry.get("source_tier", "community"))
@@ -141,13 +187,16 @@ def _curation_score(entry: Dict[str, Any]) -> int:
 
 
 def _is_relevant_entry(entry: Dict[str, Any]) -> bool:
-    if entry.get("source_tier") in {"protocol", "media"}:
+    if entry.get("source_tier") in {"protocol"}:
         return True
 
     relevance_hits = _relevance_hits(entry)
+    broader_hits = _broader_relevance_hits(entry)
+    if entry.get("source_tier") == "media" and entry.get("source_key") not in GENERALIST_SOURCES:
+        return True
     if entry.get("source_key") in GENERALIST_SOURCES:
-        return len(relevance_hits) >= 2
-    return bool(relevance_hits)
+        return bool(relevance_hits) or len(broader_hits) >= 2
+    return bool(relevance_hits) or bool(broader_hits)
 
 
 def _dedupe(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -257,6 +306,8 @@ def _shape_blog_item(post: Dict[str, Any]) -> Dict[str, Any]:
         "why_it_matters": post.get("subtitle", ""),
         "watch_items": [],
         "surface": ["Home", "Intel"],
+        "editorial_kind": post.get("editorial_kind", "dossier"),
+        "category": post.get("category", "news"),
     }
 
 
@@ -270,6 +321,8 @@ def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
         normalized["tldr"] = [cleaned] if cleaned else []
     else:
         normalized["tldr"] = []
+    normalized["editorial_kind"] = str(normalized.get("editorial_kind") or ("briefing" if normalized.get("category") == "market" else "dossier"))
+    normalized["category"] = str(normalized.get("category") or "news")
     return normalized
 
 
@@ -363,6 +416,8 @@ def _market_blog_candidates(limit: int = BLOG_MARKET_DAILY_LIMIT) -> List[Dict[s
                 "why_it_matters": why,
                 "watch_items": watch_items,
                 "surface": ["Home", "Radar", "Intel"],
+                "editorial_kind": "briefing",
+                "category": "market",
             })
 
             if len(candidates) >= limit:
@@ -438,6 +493,9 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
 
         briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
         for item in briefing["items"]:
+            item = dict(item)
+            item.setdefault("editorial_kind", "dossier")
+            item.setdefault("category", "news")
             candidates.append((item, "news"))
 
         for item, category in candidates:
@@ -453,6 +511,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             if post["slug"] in existing_slugs:
                 continue
             post["category"] = category
+            post["editorial_kind"] = item.get("editorial_kind") or ("briefing" if category == "market" else "dossier")
             posts.insert(0, post)
             existing_slugs.add(post["slug"])
             _increment_blog_daily_count(redis_client)

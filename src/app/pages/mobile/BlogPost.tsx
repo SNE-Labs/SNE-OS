@@ -19,10 +19,10 @@ export function MobileBlogPost() {
 
   return (
     <MobilePageShell
-      title="Resenha"
-      subtitle="SNE Enterprise Blog"
+      title="Dossiê"
+      subtitle="Intelligence Layer"
       action={
-        <button onClick={() => navigate('/blog')} className="text-[var(--text-2)]">
+        <button onClick={() => navigate('/intel')} className="text-[var(--text-2)]">
           <ArrowLeft className="w-5 h-5" />
         </button>
       }
@@ -30,17 +30,18 @@ export function MobileBlogPost() {
     >
       {postQuery.isError ? (
         <ErrorState
-          title="Resenha indisponível"
-          description="O post completo não carregou agora."
+          title="Dossiê indisponível"
+          description="A leitura completa não carregou agora."
           onRetry={() => postQuery.refetch()}
         />
       ) : !post ? (
-        <EmptyState title="Carregando resenha" description="Buscando o editorial completo do Intel." />
+        <EmptyState title="Carregando dossiê" description="Buscando a leitura completa da intelligence layer." />
       ) : (
         <>
           <SurfaceCard variant="elevated">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <Badge variant="orange" size="sm">SNE Enterprise Blog</Badge>
+              <Badge variant="orange" size="sm">Intelligence Layer</Badge>
+              <Badge variant="info" size="sm">{post.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</Badge>
               <Badge variant={post.status === 'draft' ? 'success' : 'warning'} size="sm">{post.status}</Badge>
             </div>
             <div className="text-[var(--text-1)] mb-2">{post.title}</div>
