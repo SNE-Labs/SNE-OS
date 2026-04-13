@@ -80,10 +80,10 @@ def _openai_responses_payload(model: str, instructions: str, user_input: str) ->
                 "type": "json_object",
             }
         },
-        "max_output_tokens": 900,
+        "max_output_tokens": 3000,
     }
     if model.startswith("gpt-5"):
-        payload["reasoning"] = {"effort": "low"}
+        payload["reasoning"] = {"effort": "minimal"}
     return payload
 
 
@@ -237,6 +237,14 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
         response.raise_for_status()
         data = response.json()
         content = _extract_response_text(data)
+        if not content:
+            logger.warning(
+                "Market editorial returned empty output: status=%s incomplete_details=%s usage=%s",
+                data.get("status"),
+                data.get("incomplete_details"),
+                data.get("usage"),
+            )
+            return None
         parsed = _extract_json(content)
         if not isinstance(parsed, dict):
             logger.warning("Market editorial returned non-JSON payload")

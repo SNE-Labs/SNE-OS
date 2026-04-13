@@ -269,7 +269,7 @@ def _openai_responses_payload(model: str, instructions: str, user_input: str, ma
         "max_output_tokens": max_output_tokens,
     }
     if model.startswith("gpt-5"):
-        payload["reasoning"] = {"effort": "low"}
+        payload["reasoning"] = {"effort": "minimal"}
     return payload
 
 
@@ -445,6 +445,7 @@ class IntelEnricher:
             "instruction": instruction,
         }
         try:
+            max_output_tokens = 8000 if editorial_kind == "dossier" else 3000
             response = requests.post(
                 f"{self.base_url}/responses",
                 headers={
@@ -459,13 +460,23 @@ class IntelEnricher:
                         "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
                     ),
                     json.dumps(prompt, ensure_ascii=False),
-                    1800 if editorial_kind == "dossier" else 900,
+                    max_output_tokens,
                 ),
                 timeout=25,
             )
             response.raise_for_status()
             data = response.json()
             content = _extract_response_text(data)
+            if not content:
+                logger.warning(
+                    "Intel LLM post returned empty output for %s: status=%s incomplete_details=%s usage=%s max_output_tokens=%s",
+                    item_id,
+                    data.get("status"),
+                    data.get("incomplete_details"),
+                    data.get("usage"),
+                    max_output_tokens,
+                )
+                return None
             parsed = _extract_json(content)
             if not isinstance(parsed, dict):
                 logger.warning("Intel LLM post returned non-JSON payload for %s", item_id)
