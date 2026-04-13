@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity, ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { useRadarOverview } from '../../hooks/useRadarData';
 import { resolveModuleState } from '../../lib/moduleState';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
@@ -84,9 +86,16 @@ function signalAccent(signal?: string) {
 }
 
 export function Radar() {
+  const navigate = useNavigate();
+  const { symbol: routeSymbol } = useParams();
   const { entitlements } = useEntitlements();
   const hasAccess = entitlements?.features?.includes('radar.access') || false;
-  const [activeSymbol, setActiveSymbol] = useState('ETHUSDT');
+  const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
+  const [activeSymbol, setActiveSymbol] = useState(normalizedRouteSymbol);
+
+  useEffect(() => {
+    setActiveSymbol(normalizedRouteSymbol);
+  }, [normalizedRouteSymbol]);
 
   const overviewQuery = useRadarOverview(activeSymbol, '24H');
   const overview = overviewQuery.data;
@@ -121,6 +130,27 @@ export function Radar() {
   const handleRefresh = () => {
     overviewQuery.refetch();
   };
+
+  const radarTitleSymbol = (selectedMarket?.symbol ?? activeSymbol).toUpperCase();
+  const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
+  const radarDescription = selectedMarket
+    ? `Radar do SNE OS para ${radarTitleSymbol}: preço ${formatPrice(selectedMarket.price)}, variação ${(selectedMarket.change24h * 100).toFixed(2)}% e leitura tática de liquidez.`
+    : `Radar do SNE OS para ${radarTitleSymbol}: leitura tática de liquidez, momentum e regime de mercado.`;
+
+  useSeoMeta({
+    title: `${radarTitleSymbol} Radar | SNE OS`,
+    description: radarDescription,
+    canonicalPath: radarCanonicalPath,
+    type: 'website',
+    keywords: ['crypto radar', 'market intelligence', radarTitleSymbol, `${radarTitleSymbol} price`, 'liquidity', 'momentum'],
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'Dataset',
+      name: `${radarTitleSymbol} Radar | SNE OS`,
+      description: radarDescription,
+      url: `https://snelabs.space${radarCanonicalPath}`,
+    },
+  });
 
   return (
     <div className="flex flex-1">
@@ -246,7 +276,10 @@ export function Radar() {
                       return (
                         <button
                           key={item.symbol}
-                          onClick={() => setActiveSymbol(item.symbol)}
+                          onClick={() => {
+                            setActiveSymbol(item.symbol);
+                            navigate(`/radar/${item.symbol.toLowerCase()}`);
+                          }}
                           className="rounded-2xl p-4 text-left transition-all"
                           style={{
                             backgroundColor: active ? 'rgba(255,140,66,0.10)' : 'rgba(255,255,255,0.03)',
@@ -520,7 +553,10 @@ export function Radar() {
                     return (
                       <button
                         key={mover.symbol}
-                        onClick={() => setActiveSymbol(mover.symbol)}
+                        onClick={() => {
+                          setActiveSymbol(mover.symbol);
+                          navigate(`/radar/${mover.symbol.toLowerCase()}`);
+                        }}
                         className="w-full rounded-[22px] p-4 text-left transition-all"
                         style={{
                           backgroundColor: active ? 'rgba(255,140,66,0.09)' : 'var(--bg-3)',

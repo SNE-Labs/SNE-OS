@@ -89,6 +89,7 @@ def create_app():
     from .status_api import status_bp, dashboard_bp as status_dashboard_bp
     from .intel_api import intel_bp
     from .home_api import home_bp
+    from .seo_api import seo_bp
 
     # Existing blueprints
     app.register_blueprint(auth_siwe.auth_bp)
@@ -106,6 +107,7 @@ def create_app():
     app.register_blueprint(secrets_bp, url_prefix="/api/secrets")
     app.register_blueprint(status_bp, url_prefix="/api/status")
     app.register_blueprint(intel_bp, url_prefix="/api/intel")
+    app.register_blueprint(seo_bp, url_prefix="/api/seo")
     app.register_blueprint(home_bp, url_prefix="/api")
 
     # Register global routes INSIDE create_app()

@@ -80,6 +80,7 @@ function AppContent() {
                   <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
                   <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
                   <Route path="/radar" element={<DesktopRadar />} />
+                  <Route path="/radar/:symbol" element={<DesktopRadar />} />
                   <Route path="/pass" element={<DesktopPass />} />
                   <Route path="/vault" element={<DesktopVault />} />
                   <Route path="/keys" element={<DesktopKeys />} />
