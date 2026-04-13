@@ -19,7 +19,7 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = "v4"
+CACHE_VERSION = "v5"
 
 TOPIC_RULES = {
     "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed", "seguranca", "segurança"],
@@ -240,6 +240,49 @@ def _normalize_post_kind(value: Any) -> str:
     return normalized if normalized in {"briefing", "dossier"} else "dossier"
 
 
+def _fallback_post(item: Dict[str, Any], slug: str, editorial_kind: str) -> Dict[str, Any]:
+    title = item.get("title_pt") or item.get("title") or item.get("title_original") or item.get("id") or slug
+    excerpt = item.get("summary_pt") or item.get("summary") or item.get("why_it_matters") or ""
+    subtitle = item.get("why_it_matters") or excerpt or "Leitura editorial sintetizada a partir do contexto disponível."
+    source_name = item.get("source", "Unknown")
+    source_url = item.get("url", "")
+    watch_items = item.get("watch_items", [])[:3]
+
+    paragraphs = [
+        excerpt or f"O item monitorado pelo SNE OS aponta para um novo desenvolvimento em {source_name}.",
+        subtitle,
+    ]
+    if watch_items:
+        paragraphs.append(
+            "Pontos de observação imediata: "
+            + ", ".join(watch_items)
+            + "."
+        )
+    paragraphs.append(
+        f"Fonte monitorada: [{source_name}]({source_url}). O texto acima é um fallback editorial quando a geração aprofundada não está disponível."
+    )
+
+    body_markdown = "\n\n".join(paragraphs)
+    return {
+        "id": f"post:{slug}",
+        "slug": slug,
+        "title": title,
+        "subtitle": subtitle,
+        "excerpt": excerpt,
+        "body_markdown": body_markdown,
+        "tldr": _normalize_tldr(item.get("summary_pt")) or _normalize_tldr(item.get("summary")) or _normalize_tldr(item.get("why_it_matters")),
+        "topics": item.get("topics", []),
+        "chains": item.get("chains", []),
+        "protocols": item.get("protocols", []),
+        "assets": item.get("assets", []),
+        "sources": [{"name": source_name, "url": source_url}],
+        "status": "draft",
+        "generated_at": _iso_now(),
+        "reading_time_minutes": max(1, round(len(body_markdown.split()) / 180)),
+        "editorial_kind": editorial_kind,
+    }
+
+
 class IntelEnricher:
     def __init__(self):
         self.provider = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic").strip().lower()
@@ -285,24 +328,7 @@ class IntelEnricher:
         post = self._llm_post(item)
         if not post:
             editorial_kind = _normalize_post_kind(item.get("editorial_kind"))
-            return {
-                "id": f"post:{slug}",
-                "slug": slug,
-                "title": item["title_original"],
-                "subtitle": "Editorial indisponível no momento.",
-                "excerpt": "",
-                "body_markdown": "",
-                "tldr": [],
-                "topics": item.get("topics", []),
-                "chains": item.get("chains", []),
-                "protocols": item.get("protocols", []),
-                "assets": item.get("assets", []),
-                "sources": [{"name": item["source"], "url": item["url"]}],
-                "status": "generation_failed",
-                "generated_at": _iso_now(),
-                "reading_time_minutes": 0,
-                "editorial_kind": editorial_kind,
-            }
+            post = _fallback_post(item, slug, editorial_kind)
 
         try:
             self.redis.setex(cache_key, 1800, json.dumps(post))
