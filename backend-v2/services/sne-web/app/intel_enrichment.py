@@ -223,6 +223,15 @@ def _extract_json(text: str) -> Dict[str, Any] | None:
         return None
 
 
+def _normalize_tldr(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return [cleaned] if cleaned else []
+    return []
+
+
 class IntelEnricher:
     def __init__(self):
         self.provider = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic").strip().lower()
@@ -398,7 +407,7 @@ class IntelEnricher:
                 "subtitle": parsed.get("subtitle") or item.get("why_it_matters", ""),
                 "excerpt": parsed.get("excerpt") or item.get("summary_pt", ""),
                 "body_markdown": parsed.get("body_markdown") or "",
-                "tldr": parsed.get("tldr") or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
+                "tldr": _normalize_tldr(parsed.get("tldr")) or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
                 "topics": item.get("topics", []),
                 "chains": item.get("chains", []),
                 "protocols": item.get("protocols", []),

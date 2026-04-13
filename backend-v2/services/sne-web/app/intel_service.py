@@ -257,13 +257,29 @@ def _shape_blog_item(post: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(post)
+    tldr = normalized.get("tldr")
+    if isinstance(tldr, list):
+        normalized["tldr"] = [str(item).strip() for item in tldr if str(item).strip()]
+    elif isinstance(tldr, str):
+        cleaned = tldr.strip()
+        normalized["tldr"] = [cleaned] if cleaned else []
+    else:
+        normalized["tldr"] = []
+    return normalized
+
+
 def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
     cached = redis_client.get(POST_CACHE_KEY)
     if not cached:
         return []
     try:
         import json
-        return json.loads(cached)
+        posts = json.loads(cached)
+        if not isinstance(posts, list):
+            return []
+        return [_normalize_post(post) for post in posts if isinstance(post, dict)]
     except Exception:
         return []
 
@@ -271,7 +287,7 @@ def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
     try:
         import json
-        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps(posts))
+        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps([_normalize_post(post) for post in posts]))
     except Exception:
         pass
 

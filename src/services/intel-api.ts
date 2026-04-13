@@ -23,9 +23,39 @@ type IntelPostsResponse = {
   last_updated: string;
 };
 
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => `${item}`.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    const cleaned = value.trim();
+    return cleaned ? [cleaned] : [];
+  }
+  return [];
+}
+
+function normalizePost(post: IntelPost): IntelPost {
+  return {
+    ...post,
+    tldr: normalizeStringArray(post.tldr),
+    topics: normalizeStringArray(post.topics),
+    chains: normalizeStringArray(post.chains),
+    protocols: normalizeStringArray(post.protocols),
+    assets: normalizeStringArray(post.assets),
+  };
+}
+
 export const intelApi = {
-  getPosts: (): Promise<IntelPostsResponse> => apiGet('/api/intel/posts'),
-  getPost: (slug: string): Promise<IntelPost> => apiGet(`/api/intel/posts/${encodeURIComponent(slug)}`),
+  getPosts: async (): Promise<IntelPostsResponse> => {
+    const response = await apiGet<IntelPostsResponse>('/api/intel/posts');
+    return {
+      ...response,
+      items: (response.items ?? []).map(normalizePost),
+    };
+  },
+  getPost: async (slug: string): Promise<IntelPost> => normalizePost(await apiGet<IntelPost>(`/api/intel/posts/${encodeURIComponent(slug)}`)),
 };
 
 export function normalizeIntelRoute(url: string) {
