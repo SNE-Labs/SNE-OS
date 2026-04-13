@@ -149,7 +149,7 @@ export function Home() {
 
   const openIntelItem = (url: string) => {
     const normalized = normalizeIntelRoute(url);
-    if (normalized.startsWith('/blog/')) {
+    if (normalized.startsWith('/intel/')) {
       navigate(normalized);
       return;
     }
@@ -181,7 +181,7 @@ export function Home() {
     }
 
     const href = normalizeIntelRoute(item.url);
-    const isInternal = href.startsWith('/blog/');
+    const isInternal = href.startsWith('/intel/');
 
     return (
       <a

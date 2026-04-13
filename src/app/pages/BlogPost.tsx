@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
 function formatRelativeTimestamp(value?: string | null): string {
@@ -29,6 +30,39 @@ export function BlogPost() {
   });
 
   const post = postQuery.data;
+
+  useSeoMeta({
+    title: post ? `${post.title} | Intelligence Layer | SNE OS` : 'Intelligence Layer | SNE OS',
+    description: post?.excerpt || post?.subtitle || 'Dossiê editorial da Intelligence Layer do SNE OS.',
+    canonicalPath: slug ? `/intel/${slug}` : '/intel',
+    type: 'article',
+    keywords: [
+      'crypto intelligence',
+      'web3 intelligence',
+      ...(post?.topics ?? []),
+      ...(post?.chains ?? []),
+      ...(post?.assets ?? []),
+    ],
+    structuredData: post
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.title,
+          description: post.excerpt || post.subtitle,
+          datePublished: post.generated_at,
+          dateModified: post.generated_at,
+          author: {
+            '@type': 'Organization',
+            name: 'SNE Labs',
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'SNE Labs',
+          },
+          mainEntityOfPage: `https://snelabs.space/intel/${slug}`,
+        }
+      : null,
+  });
 
   if (postQuery.isLoading) {
     return (
@@ -99,10 +133,19 @@ export function BlogPost() {
           </div>
           <div className="flex flex-wrap gap-2">
             {post.chains.map((chain) => (
-              <StatusBadge key={chain} status="active">{chain}</StatusBadge>
+              <button key={chain} onClick={() => navigate(`/intel/chain/${chain}`)}>
+                <StatusBadge status="active">{chain}</StatusBadge>
+              </button>
             ))}
             {post.topics.map((topic) => (
-              <StatusBadge key={topic} status="pending">{topic}</StatusBadge>
+              <button key={topic} onClick={() => navigate(`/intel/topic/${topic}`)}>
+                <StatusBadge status="pending">{topic}</StatusBadge>
+              </button>
+            ))}
+            {post.assets.map((asset) => (
+              <button key={asset} onClick={() => navigate(`/intel/asset/${asset}`)}>
+                <StatusBadge status="success">{asset}</StatusBadge>
+              </button>
             ))}
           </div>
         </header>

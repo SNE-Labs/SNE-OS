@@ -575,7 +575,7 @@ def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
 
 
 def fetch_intel_post(slug: str) -> Dict[str, Any] | None:
-    posts = fetch_intel_posts(limit=10)
+    posts = fetch_intel_posts(limit=BLOG_TOTAL_LIMIT)
     for post in posts:
         if post["slug"] == slug:
             return post

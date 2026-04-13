@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, Brain, Clock3, Layers3 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
 function formatRelativeTimestamp(value?: string | null): string {
@@ -21,10 +22,11 @@ function formatRelativeTimestamp(value?: string | null): string {
 
 export function Blog() {
   const navigate = useNavigate();
+  const { topic, chain, asset } = useParams();
   const [activeKind, setActiveKind] = useState<'all' | 'dossier' | 'briefing'>('all');
-  const [topicFilter, setTopicFilter] = useState('all');
-  const [chainFilter, setChainFilter] = useState('all');
-  const [assetFilter, setAssetFilter] = useState('all');
+  const [topicFilter, setTopicFilter] = useState(topic ?? 'all');
+  const [chainFilter, setChainFilter] = useState(chain ?? 'all');
+  const [assetFilter, setAssetFilter] = useState(asset ?? 'all');
   const postsQuery = useQuery({
     queryKey: ['intel-posts'],
     queryFn: intelApi.getPosts,
@@ -64,6 +66,46 @@ export function Blog() {
 
   const featured = filteredPosts[0];
   const secondary = filteredPosts.slice(1);
+  const taxonomyLabel = topic ?? chain ?? asset ?? null;
+  const taxonomyKind = topic ? 'tema' : chain ? 'chain' : asset ? 'asset' : null;
+  const canonicalPath = topic
+    ? `/intel/topic/${topic}`
+    : chain
+      ? `/intel/chain/${chain}`
+      : asset
+        ? `/intel/asset/${asset}`
+        : '/intel';
+
+  useEffect(() => {
+    setTopicFilter(topic ?? 'all');
+  }, [topic]);
+  useEffect(() => {
+    setChainFilter(chain ?? 'all');
+  }, [chain]);
+  useEffect(() => {
+    setAssetFilter(asset ?? 'all');
+  }, [asset]);
+
+  useSeoMeta({
+    title: taxonomyLabel
+      ? `Intelligence Layer: ${taxonomyLabel} | SNE OS`
+      : 'Intelligence Layer | SNE OS',
+    description: taxonomyLabel
+      ? `Leituras editoriais do SNE OS para ${taxonomyKind} ${taxonomyLabel}: dossiês, briefings e contexto operacional multichain.`
+      : 'Intelligence Layer do SNE OS com dossiês, briefings e contexto operacional sobre mercado, tech, economia, geopolítica e cripto.',
+    canonicalPath,
+    type: 'website',
+    keywords: ['crypto intelligence', 'web3 intelligence', 'defi', 'tech', 'economia', 'geopolitica', topicLabelSafe(topic), topicLabelSafe(chain), topicLabelSafe(asset)].filter(Boolean) as string[],
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: taxonomyLabel ? `Intelligence Layer: ${taxonomyLabel}` : 'Intelligence Layer',
+      description: taxonomyLabel
+        ? `Página índice da Intelligence Layer para ${taxonomyKind} ${taxonomyLabel}.`
+        : 'Página índice da Intelligence Layer do SNE OS.',
+      url: `https://snelabs.space${canonicalPath}`,
+    },
+  });
 
   if (postsQuery.isLoading) {
     return (
@@ -194,6 +236,11 @@ export function Blog() {
               ))}
             </select>
           </div>
+          {taxonomyLabel && (
+            <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              Índice público ativo para {taxonomyKind} <strong style={{ color: 'var(--text-1)' }}>{taxonomyLabel}</strong>. Esta página pode servir como entrada indexável da Intelligence Layer.
+            </div>
+          )}
         </section>
 
         {!featured ? (
@@ -225,7 +272,9 @@ export function Blog() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(featured.assets.length > 0 ? featured.assets : featured.chains.length > 0 ? featured.chains : featured.topics).slice(0, 4).map((tag) => (
-                    <StatusBadge key={tag} status="success">{tag}</StatusBadge>
+                    <button key={tag} onClick={(event) => { event.stopPropagation(); navigate(featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`); }}>
+                      <StatusBadge status="success">{tag}</StatusBadge>
+                    </button>
                   ))}
                 </div>
               </button>
@@ -287,7 +336,9 @@ export function Blog() {
                   <div className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
                   <div className="flex flex-wrap gap-2">
                     {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                      <StatusBadge key={tag} status="success">{tag}</StatusBadge>
+                      <button key={tag} onClick={(event) => { event.stopPropagation(); navigate(post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`); }}>
+                        <StatusBadge status="success">{tag}</StatusBadge>
+                      </button>
                     ))}
                   </div>
                 </button>
@@ -299,4 +350,8 @@ export function Blog() {
       </div>
     </div>
   );
+}
+
+function topicLabelSafe(value?: string) {
+  return value?.trim() || '';
 }

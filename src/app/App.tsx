@@ -70,8 +70,14 @@ function AppContent() {
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/intel" element={<Blog />} />
+                  <Route path="/intel/topic/:topic" element={<Blog />} />
+                  <Route path="/intel/chain/:chain" element={<Blog />} />
+                  <Route path="/intel/asset/:asset" element={<Blog />} />
                   <Route path="/intel/:slug" element={<BlogPost />} />
                   <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                  <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
+                  <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
+                  <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
                   <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
                   <Route path="/radar" element={<DesktopRadar />} />
                   <Route path="/pass" element={<DesktopPass />} />
@@ -95,8 +101,11 @@ function AppContent() {
 }
 
 function LegacyBlogRedirect() {
-  const { slug = '' } = useParams();
-  return <Navigate to={`/intel/${slug}`} replace />;
+  const params = useParams();
+  if (params.topic) return <Navigate to={`/intel/topic/${params.topic}`} replace />;
+  if (params.chain) return <Navigate to={`/intel/chain/${params.chain}`} replace />;
+  if (params.asset) return <Navigate to={`/intel/asset/${params.asset}`} replace />;
+  return <Navigate to={`/intel/${params.slug ?? ''}`} replace />;
 }
 
 // Skeleton para desktop

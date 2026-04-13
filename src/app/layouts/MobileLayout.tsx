@@ -106,8 +106,14 @@ function resolveComponent(pathname: string) {
   if (pathname.startsWith('/secrets')) return MobileSecrets;
   if (pathname.startsWith('/keys')) return MobileKeys;
   if (pathname.startsWith('/docs')) return MobileDocs;
+  if (pathname.startsWith('/intel/topic/')) return MobileBlog;
+  if (pathname.startsWith('/intel/chain/')) return MobileBlog;
+  if (pathname.startsWith('/intel/asset/')) return MobileBlog;
   if (pathname.startsWith('/intel/')) return MobileBlogPost;
   if (pathname.startsWith('/intel')) return MobileBlog;
+  if (pathname.startsWith('/blog/topic/')) return MobileBlog;
+  if (pathname.startsWith('/blog/chain/')) return MobileBlog;
+  if (pathname.startsWith('/blog/asset/')) return MobileBlog;
   if (pathname.startsWith('/blog/')) return MobileBlogPost;
   if (pathname.startsWith('/blog')) return MobileBlog;
   return MobileHome;
