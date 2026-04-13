@@ -360,7 +360,7 @@ export function Radar() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                <div className="mt-5 space-y-4">
                   <div
                     className="rounded-[24px] p-4"
                     style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
@@ -416,7 +416,7 @@ export function Radar() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                       <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                         <div className="mb-3 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                           Momentum
