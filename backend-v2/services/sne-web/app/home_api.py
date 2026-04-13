@@ -7,6 +7,9 @@ from datetime import datetime
 import logging
 
 from flask import Blueprint, jsonify, request, session
+import jwt
+
+from .auth_siwe import JWT_ALGORITHM, JWT_SECRET
 
 from .collector_client import get_live_market_snapshot
 from .home_service import (
@@ -29,6 +32,37 @@ from .vault_service import build_vault_overview
 logger = logging.getLogger(__name__)
 
 home_bp = Blueprint("home", __name__)
+
+
+def _resolve_auth_context() -> dict:
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "", 1).strip()
+        if token:
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                exp = payload.get("exp")
+                if exp and datetime.fromtimestamp(exp) > datetime.utcnow():
+                    address = payload.get("address")
+                    if address:
+                        return {
+                            "authenticated": True,
+                            "address": address.lower(),
+                            "source": "jwt",
+                        }
+            except jwt.ExpiredSignatureError:
+                logger.info("Home auth context received expired JWT")
+            except jwt.InvalidTokenError:
+                logger.info("Home auth context received invalid JWT")
+            except Exception as exc:
+                logger.warning(f"Home auth context failed to decode JWT: {exc}")
+
+    session_address = session.get("siwe_address")
+    return {
+        "authenticated": bool(session_address),
+        "address": session_address,
+        "source": "session" if session_address else "anonymous",
+    }
 
 
 def _get_market_payload() -> dict:
@@ -62,10 +96,7 @@ def _get_intel_payload() -> dict:
 @home_bp.get("/home")
 def home():
     network_key = request.args.get("network")
-    session_data = {
-        "authenticated": bool(session.get("siwe_address")),
-        "address": session.get("siwe_address"),
-    }
+    session_data = _resolve_auth_context()
     dashboard = get_dashboard_payload()
     market = _get_market_payload()
     intel = _get_intel_payload()
