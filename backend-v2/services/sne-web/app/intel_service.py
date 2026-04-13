@@ -8,11 +8,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import logging
 import re
+import threading
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 from .intel_enrichment import IntelEnricher
 from .intel_sources import fetch_multi_source_entries
+from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +60,19 @@ CRYPTO_RELEVANCE_TOKENS = {
 
 GENERALIST_SOURCES = {"hn_front_page"}
 COMMUNITY_SOURCE_CAP = 1
+BLOG_SOURCE_NAME = "SNE Enterprise Blog"
+BLOG_DAILY_LIMIT = 5
+BLOG_SURFACE_LIMIT = 2
+POST_CACHE_KEY = "intel:enterprise:posts"
+POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _utc_day_key() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def _normalize_title(title: str) -> str:
@@ -216,11 +227,124 @@ def _clusters(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return clusters[:4]
 
 
-def build_intel_briefing(limit: int = 6, limit_per_source: int = 4) -> Dict[str, Any]:
+def _shape_blog_item(post: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": f"blog:{post['slug']}",
+        "title": post["title"],
+        "title_original": post["title"],
+        "title_pt": post["title"],
+        "summary": post.get("excerpt", ""),
+        "summary_pt": post.get("excerpt", ""),
+        "url": f"/intel/{post['slug']}",
+        "source": BLOG_SOURCE_NAME,
+        "source_tier": "editorial",
+        "points": 0,
+        "comments": 0,
+        "author": "SNE Enterprise",
+        "created_at": post.get("generated_at", _iso_now()),
+        "language": "pt-BR",
+        "translated": True,
+        "module": "Intel",
+        "agent_note": "Resenha editorial gerada pelo pipeline SNE.",
+        "impact": {"label": "editorial", "score": 0, "direction": "neutra"},
+        "topics": post.get("topics", []),
+        "chains": post.get("chains", []),
+        "protocols": post.get("protocols", []),
+        "assets": post.get("assets", []),
+        "why_it_matters": post.get("subtitle", ""),
+        "watch_items": [],
+        "surface": ["Home", "Intel"],
+    }
+
+
+def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
+    cached = redis_client.get(POST_CACHE_KEY)
+    if not cached:
+        return []
+    try:
+        import json
+        return json.loads(cached)
+    except Exception:
+        return []
+
+
+def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
+    try:
+        import json
+        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps(posts))
+    except Exception:
+        pass
+
+
+def _blog_daily_count(redis_client: SafeRedis) -> int:
+    count = redis_client.get(f"intel:enterprise:count:{_utc_day_key()}")
+    try:
+        return int(count or 0)
+    except Exception:
+        return 0
+
+
+def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
+    key = f"intel:enterprise:count:{_utc_day_key()}"
+    count = redis_client.incr(key)
+    redis_client.expire(key, 172800)
+    return count
+
+
+def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
+    redis_client = SafeRedis()
+    existing = _load_cached_posts(redis_client)
+    if len(existing) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+        redis_client.delete(POST_REFRESH_LOCK_KEY)
+        return
+
+    briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
+    enricher = IntelEnricher()
+    posts = list(existing)
+    existing_slugs = {post["slug"] for post in posts}
+
+    for item in briefing["items"]:
+        if len(posts) >= limit or _blog_daily_count(redis_client) >= BLOG_DAILY_LIMIT:
+            break
+        post = enricher.build_post(item)
+        if post["status"] != "draft":
+            continue
+        if post["slug"] in existing_slugs:
+            continue
+        posts.append(post)
+        existing_slugs.add(post["slug"])
+        _increment_blog_daily_count(redis_client)
+
+    _store_cached_posts(redis_client, posts)
+    redis_client.delete(POST_REFRESH_LOCK_KEY)
+
+
+def _trigger_enterprise_post_refresh() -> None:
+    redis_client = SafeRedis()
+    if redis_client.get(POST_REFRESH_LOCK_KEY):
+        return
+    if not redis_client.setex(POST_REFRESH_LOCK_KEY, 120, "1"):
+        return
+
+    worker = threading.Thread(target=_refresh_enterprise_posts, kwargs={"limit": BLOG_DAILY_LIMIT}, daemon=True)
+    worker.start()
+
+
+def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog: bool = True) -> Dict[str, Any]:
     raw_entries = fetch_multi_source_entries(limit_per_source=limit_per_source)
     curated_entries = _curate(raw_entries, limit=max(limit, 8))
     enricher = IntelEnricher()
-    items = [enricher.enrich_item(entry) for entry in curated_entries[:limit]]
+    raw_items = [enricher.enrich_item(entry) for entry in curated_entries[:limit]]
+    items = list(raw_items)
+
+    if include_blog:
+        redis_client = SafeRedis()
+        blog_posts = _load_cached_posts(redis_client)
+        blog_items = [_shape_blog_item(post) for post in blog_posts[:BLOG_SURFACE_LIMIT]]
+        if len(blog_posts) < BLOG_DAILY_LIMIT:
+            _trigger_enterprise_post_refresh()
+        items = (blog_items + raw_items)[:limit]
+
     return {
         "locale": "pt-BR",
         "lead": items[0] if items else None,
@@ -236,9 +360,11 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 
 
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
-    briefing = build_intel_briefing(limit=limit)
-    enricher = IntelEnricher()
-    return [enricher.build_post(item) for item in briefing["items"]]
+    redis_client = SafeRedis()
+    posts = _load_cached_posts(redis_client)
+    if len(posts) < min(limit, BLOG_DAILY_LIMIT):
+        _trigger_enterprise_post_refresh()
+    return posts[:limit]
 
 
 def fetch_intel_post(slug: str) -> Dict[str, Any] | None:

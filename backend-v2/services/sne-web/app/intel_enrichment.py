@@ -19,41 +19,7 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = "v2"
-
-TRANSLATION_GLOSSARY = [
-    ("zero knowledge", "conhecimento zero"),
-    ("smart contract", "contrato inteligente"),
-    ("layer 2", "camada 2"),
-    ("open source", "código aberto"),
-    ("data breach", "vazamento de dados"),
-    ("supply chain", "cadeia de suprimentos"),
-    ("stablecoins", "stablecoins"),
-    ("stablecoin", "stablecoin"),
-    ("wallets", "carteiras"),
-    ("wallet", "carteira"),
-    ("privacy", "privacidade"),
-    ("private", "privado"),
-    ("security", "segurança"),
-    ("identity", "identidade"),
-    ("markets", "mercados"),
-    ("market", "mercado"),
-    ("trading", "trading"),
-    ("exchange", "exchange"),
-    ("bridges", "bridges"),
-    ("bridge", "bridge"),
-    ("tokens", "tokens"),
-    ("token", "token"),
-    ("liquidity", "liquidez"),
-    ("payments", "pagamentos"),
-    ("payment", "pagamento"),
-    ("rollup", "rollup"),
-    ("proof", "prova"),
-    ("developers", "desenvolvedores"),
-    ("developer", "desenvolvedor"),
-    ("apis", "APIs"),
-    ("api", "API"),
-]
+CACHE_VERSION = "v3"
 
 TOPIC_RULES = {
     "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed"],
@@ -119,13 +85,6 @@ def _agent_note(module: str) -> str:
     if module == "Keys":
         return "Leitura útil para APIs, credenciais e superfícies de acesso."
     return "Contexto geral do ecossistema para acompanhamento."
-
-
-def _translate_title_pt(title: str) -> str:
-    translated = title
-    for source, target in TRANSLATION_GLOSSARY:
-        translated = re.sub(rf"\b{re.escape(source)}\b", target, translated, flags=re.IGNORECASE)
-    return translated
 
 
 def _normalized_text(text: str) -> str:
@@ -288,9 +247,7 @@ class IntelEnricher:
             except Exception:
                 pass
 
-        enriched = self._heuristic_enrichment(raw_item)
-        llm_enriched = self._llm_enrichment(raw_item, enriched)
-        item = self._merge_enrichment(raw_item, enriched, llm_enriched)
+        item = self._heuristic_enrichment(raw_item)
 
         try:
             self.redis.setex(cache_key, 900, json.dumps(item))
@@ -308,11 +265,25 @@ class IntelEnricher:
             except Exception:
                 pass
 
-        llm_post = self._llm_post(item)
-        if llm_post:
-            post = llm_post
-        else:
-            post = self._heuristic_post(item)
+        post = self._llm_post(item)
+        if not post:
+            return {
+                "id": f"post:{slug}",
+                "slug": slug,
+                "title": item["title_original"],
+                "subtitle": "Editorial indisponível no momento.",
+                "excerpt": "",
+                "body_markdown": "",
+                "tldr": [],
+                "topics": item.get("topics", []),
+                "chains": item.get("chains", []),
+                "protocols": item.get("protocols", []),
+                "assets": item.get("assets", []),
+                "sources": [{"name": item["source"], "url": item["url"]}],
+                "status": "generation_failed",
+                "generated_at": _iso_now(),
+                "reading_time_minutes": 0,
+            }
 
         try:
             self.redis.setex(cache_key, 1800, json.dumps(post))
@@ -332,8 +303,6 @@ class IntelEnricher:
         chains = _extract_matches(text, CHAIN_RULES)
         protocols = _extract_matches(text, PROTOCOL_RULES)
         assets = _extract_matches(text, ASSET_RULES)
-        title_pt = _translate_title_pt(title_original)
-        summary_pt = _summary_pt(module, title_original, topics, chains)
         impact = _impact_score(
             raw_item.get("points", 0),
             raw_item.get("comments", 0),
@@ -342,167 +311,23 @@ class IntelEnricher:
             raw_item.get("source_tier", "community"),
         )
         return {
-            "title": title_pt or title_original,
+            "title": title_original,
             "title_original": title_original,
-            "title_pt": title_pt or title_original,
-            "summary": summary_pt,
-            "summary_pt": summary_pt,
+            "title_pt": title_original,
+            "summary": "",
+            "summary_pt": "",
             "language": "en",
-            "translated": bool(title_pt and title_pt != title_original),
+            "translated": False,
             "module": module,
-            "agent_note": _agent_note(module),
+            "agent_note": "Fonte original sem resumo editorial.",
             "impact": impact,
             "topics": topics,
             "chains": chains,
             "protocols": protocols,
             "assets": assets,
-            "why_it_matters": _why_it_matters(module, topics, chains),
+            "why_it_matters": "",
             "watch_items": _watch_items(topics, chains, module),
             "surface": _surface(module),
-        }
-
-    def _llm_enrichment(self, raw_item: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any] | None:
-        if self.provider == "heuristic":
-            logger.info("Intel LLM enrichment skipped for %s: provider set to heuristic", raw_item["id"])
-            return None
-
-        if not self.api_key:
-            logger.warning("Intel LLM enrichment skipped for %s: OPENAI_API_KEY missing", raw_item["id"])
-            return None
-
-        prompt = {
-            "title_original": raw_item["title"],
-            "url": raw_item["url"],
-            "source": raw_item["source"],
-            "fallback": fallback,
-            "instruction": (
-                "Responda em JSON com os campos title_pt, summary_pt, why_it_matters, "
-                "topics, chains, protocols, assets, impact_label, watch_items. "
-                "Tudo em pt-BR e sem texto fora do JSON."
-            ),
-        }
-        try:
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "temperature": 0.2,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "Voce e um editor de intel cripto multichain. "
-                                "Produza JSON valido, conciso e factual em pt-BR."
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": json.dumps(prompt, ensure_ascii=False),
-                        },
-                    ],
-                },
-                timeout=20,
-            )
-            response.raise_for_status()
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            parsed = _extract_json(content)
-            if isinstance(parsed, dict):
-                logger.info("Intel LLM enrichment succeeded for %s from %s", raw_item["id"], raw_item["source"])
-                return parsed
-            logger.warning("Intel LLM enrichment returned non-JSON payload for %s", raw_item["id"])
-            return None
-        except Exception as exc:
-            logger.warning(f"Intel LLM enrichment failed: {exc}")
-            return None
-
-    def _merge_enrichment(
-        self,
-        raw_item: Dict[str, Any],
-        heuristic: Dict[str, Any],
-        llm_data: Dict[str, Any] | None,
-    ) -> Dict[str, Any]:
-        impact = heuristic["impact"]
-        if llm_data and llm_data.get("impact_label"):
-            impact = {
-                **impact,
-                "label": llm_data["impact_label"],
-            }
-
-        return {
-            "id": raw_item["id"],
-            "title": (llm_data or {}).get("title_pt") or heuristic["title"],
-            "title_original": heuristic["title_original"],
-            "title_pt": (llm_data or {}).get("title_pt") or heuristic["title_pt"],
-            "summary": (llm_data or {}).get("summary_pt") or heuristic["summary"],
-            "summary_pt": (llm_data or {}).get("summary_pt") or heuristic["summary_pt"],
-            "url": raw_item["url"],
-            "source": raw_item["source"],
-            "source_tier": raw_item.get("source_tier", "community"),
-            "points": raw_item.get("points", 0),
-            "comments": raw_item.get("comments", 0),
-            "author": raw_item.get("author", "unknown"),
-            "created_at": raw_item.get("created_at", _iso_now()),
-            "language": heuristic["language"],
-            "translated": heuristic["translated"],
-            "module": heuristic["module"],
-            "agent_note": heuristic["agent_note"],
-            "impact": impact,
-            "topics": (llm_data or {}).get("topics") or heuristic["topics"],
-            "chains": (llm_data or {}).get("chains") or heuristic["chains"],
-            "protocols": (llm_data or {}).get("protocols") or heuristic["protocols"],
-            "assets": (llm_data or {}).get("assets") or heuristic["assets"],
-            "why_it_matters": (llm_data or {}).get("why_it_matters") or heuristic["why_it_matters"],
-            "watch_items": (llm_data or {}).get("watch_items") or heuristic["watch_items"],
-            "surface": heuristic["surface"],
-        }
-
-    def _heuristic_post(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        slug = _slugify(item.get("title_pt") or item["id"])
-        body = "\n".join([
-            f"# {item['title_pt']}",
-            "",
-            f"**Resumo:** {item['summary_pt']}",
-            "",
-            "## Por que importa",
-            item["why_it_matters"],
-            "",
-            "## O que monitorar",
-            *(f"- {line}" for line in item.get("watch_items", [])),
-            "",
-            "## Superfícies afetadas",
-            ", ".join(item.get("surface", [])) or "Home",
-            "",
-            "## Fonte",
-            f"- [{item['source']}]({item['url']})",
-        ])
-
-        return {
-            "id": f"post:{slug}",
-            "slug": slug,
-            "title": item["title_pt"],
-            "subtitle": item["why_it_matters"],
-            "excerpt": item["summary_pt"],
-            "body_markdown": body,
-            "tldr": [
-                item["summary_pt"],
-                item["why_it_matters"],
-                *(item.get("watch_items", [])[:1]),
-            ],
-            "topics": item.get("topics", []),
-            "chains": item.get("chains", []),
-            "protocols": item.get("protocols", []),
-            "assets": item.get("assets", []),
-            "sources": [
-                {"name": item["source"], "url": item["url"]},
-            ],
-            "status": "draft",
-            "generated_at": _iso_now(),
-            "reading_time_minutes": max(1, len(body.split()) // 180),
         }
 
     def _llm_post(self, item: Dict[str, Any]) -> Dict[str, Any] | None:
