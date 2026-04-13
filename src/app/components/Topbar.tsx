@@ -47,7 +47,7 @@ export function Topbar() {
         {/* Network Indicator */}
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--ok-green)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Scroll L2</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Rede</span>
         </div>
 
         {/* Notifications */}
@@ -136,7 +136,7 @@ export function Topbar() {
                     <div className="w-2 h-2 rounded-full mt-2" style={{ backgroundColor: 'var(--ok-green)' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Rede Scroll L2
+                        Rede
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-3)' }}>
                         Todos os serviços operando normalmente.

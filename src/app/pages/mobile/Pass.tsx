@@ -13,7 +13,7 @@ export function MobilePass() {
           <CreditCard className="w-12 h-12 text-[var(--accent-orange)] mx-auto mb-2" />
           <h3 className="text-[var(--text-1)] mb-1">Licenças On-chain</h3>
           <p className="text-sm text-[var(--text-2)]">
-            Sistema de licenças baseado em NFTs na Scroll L2 para acesso aos serviços SNE.
+            Sistema de identidade e licenças on-chain para acesso aos serviços SNE.
           </p>
         </div>
       </SurfaceCard>

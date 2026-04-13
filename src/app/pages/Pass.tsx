@@ -111,7 +111,7 @@ export function Pass() {
                   Sua identidade on-chain, resolvida.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
-                  O Passport lê sua conta conectada via Scroll RPC e expõe asserções de identidade, inventário de acesso e postura da conta — tudo a partir do estado público on-chain.
+                  O Passport lê sua conta conectada via RPC e expõe asserções de identidade, inventário de acesso e postura da conta — tudo a partir do estado público on-chain.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
@@ -352,7 +352,7 @@ export function Pass() {
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Estado atual</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      O Passport está ativo no Scroll. Contratos de licença SNE ainda não estão em produção, então o inventário pode aparecer vazio.
+                      O Passport está ativo. Contratos de licença SNE ainda não estão em produção, então o inventário pode aparecer vazio.
                     </div>
                   </div>
                 </div>
@@ -408,7 +408,7 @@ export function Pass() {
                 <div className="mt-5 rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                   <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que a consulta retorna</div>
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    O Passport lê o estado público da conta diretamente via Scroll RPC: saldo, contagem de transações, tipo de conta e o inventário SNE visível on-chain.
+                    O Passport lê o estado público da conta diretamente via RPC: saldo, contagem de transações, tipo de conta e o inventário SNE visível on-chain.
                   </div>
                 </div>
               </div>

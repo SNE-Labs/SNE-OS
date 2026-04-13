@@ -105,7 +105,7 @@ export function Sidebar() {
           </div>
           <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-3)' }}>
             <span>Rede</span>
-            <span style={{ color: 'var(--text-2)' }}>Scroll L2</span>
+            <span style={{ color: 'var(--text-2)' }}>Rede</span>
           </div>
         </div>
       </div>

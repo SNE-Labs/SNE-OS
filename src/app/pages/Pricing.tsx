@@ -171,7 +171,7 @@ export function Pricing() {
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Integração SNE Vault</h3>
             <div className="space-y-3 text-sm">
               <p style={{ color: 'var(--text-3)' }}>
-                O plano Pro desbloqueia integração direta com dispositivos SNE Vault e verificação de licenças on-chain via Scroll L2.
+                O plano Pro desbloqueia integração direta com dispositivos SNE Vault e verificação de licenças on-chain.
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">

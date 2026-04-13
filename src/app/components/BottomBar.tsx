@@ -12,8 +12,7 @@ export function BottomBar() {
         {/* Network Status */}
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--ok-green)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Scroll L2</span>
-          <span className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>Block 8,234,567</span>
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Rede</span>
         </div>
 
         {/* Wallet Status */}

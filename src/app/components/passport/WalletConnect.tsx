@@ -30,7 +30,7 @@ export function WalletConnect() {
               {formatAddress(address)}
             </span>
             <span style={{ color: 'var(--sne-text-secondary)', fontSize: '0.75rem' }}>
-              Scroll L2
+              Carteira conectada
             </span>
           </div>
         </div>
