@@ -1,13 +1,15 @@
-import { Activity, Command } from 'lucide-react';
+import { Command, ShieldCheck, Wallet } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useLocation } from 'react-router-dom';
 
 import { resolveRouteMeta } from '../navigation';
+import { formatAddress } from '@/utils/format';
 
 export function BottomBar() {
-  const { isConnected, address } = useAuth();
+  const { isAuthenticated, address } = useAuth();
   const location = useLocation();
   const routeMeta = resolveRouteMeta(location.pathname);
+
   return (
     <footer
       className="h-12 border-t flex items-center justify-between px-6"
@@ -19,30 +21,23 @@ export function BottomBar() {
           <span className="text-xs" style={{ color: 'var(--text-3)' }}>{routeMeta.context}</span>
         </div>
 
-        {/* Wallet Status */}
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Carteira:</span>
-          <span className="text-xs font-mono" style={{ color: isConnected ? 'var(--ok-green)' : 'var(--text-3)' }}>
-            {isConnected && address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Desconectada'}
+          <ShieldCheck size={12} style={{ color: 'var(--text-3)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Módulo:</span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-2)' }}>
+            {routeMeta.title}
           </span>
         </div>
 
-        {/* Mode Toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Modo:</span>
-          <span className="text-xs font-semibold" style={{ color: 'var(--warn-amber)' }}>
-            Prévia (somente leitura)
+          <Wallet size={12} style={{ color: 'var(--text-3)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-3)' }}>Sessão:</span>
+          <span className="text-xs font-mono" style={{ color: isAuthenticated && address ? 'var(--ok-green)' : 'var(--text-3)' }}>
+            {isAuthenticated && address ? formatAddress(address) : 'Sem carteira'}
           </span>
-        </div>
-
-        {/* Latency */}
-        <div className="flex items-center gap-2">
-          <Activity size={12} style={{ color: 'var(--text-3)' }} />
-          <span className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>23ms</span>
         </div>
       </div>
 
-      {/* Command Palette Hint */}
       <div className="flex items-center gap-2">
         <Command size={12} style={{ color: 'var(--text-3)' }} />
         <span className="text-xs" style={{ color: 'var(--text-3)' }}>⌘K para paleta de comandos</span>
