@@ -12,6 +12,8 @@ import { BottomBar } from './components/BottomBar';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
+import { Blog } from './pages/Blog';
+import { BlogPost } from './pages/BlogPost';
 import { Pricing } from './pages/Pricing';
 import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
@@ -67,6 +69,8 @@ function AppContent() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/:slug" element={<BlogPost />} />
                   <Route path="/radar" element={<DesktopRadar />} />
                   <Route path="/pass" element={<DesktopPass />} />
                   <Route path="/vault" element={<DesktopVault />} />

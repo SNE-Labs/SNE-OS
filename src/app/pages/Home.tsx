@@ -16,6 +16,7 @@ import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { apiGet } from '@/lib/api/http';
+import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
 
 type DashboardPayload = {
@@ -124,6 +125,15 @@ export function Home() {
   const brief = homeData?.brief;
   const briefSignals = homeData?.brief_signals ?? [];
   const data = homeData?.dashboard;
+
+  const openIntelItem = (url: string) => {
+    const normalized = normalizeIntelRoute(url);
+    if (normalized.startsWith('/blog/')) {
+      navigate(normalized);
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const formattedTime = useMemo(
     () =>
@@ -246,7 +256,7 @@ export function Home() {
                 <div className="space-y-3">
                   {/* Featured */}
                   <button
-                    onClick={() => window.open(featuredIntel.url, '_blank', 'noopener,noreferrer')}
+                    onClick={() => openIntelItem(featuredIntel.url)}
                     className="w-full rounded-xl p-5 text-left"
                     style={{
                       background: 'linear-gradient(135deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02))',
@@ -291,7 +301,7 @@ export function Home() {
                     {secondaryIntel.map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
+                        onClick={() => openIntelItem(item.url)}
                         className="w-full rounded-lg p-4 text-left"
                         style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                       >

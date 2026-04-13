@@ -5,6 +5,7 @@ import { ArrowUpRight, BadgeCheck, FileText, KeyRound, LockKeyhole, Shield, Wave
 
 import { Badge, EmptyState, ErrorState, LoadingSkeletonGroup, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { apiGet } from '@/lib/api/http';
+import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
 
 type HomeResponse = {
@@ -128,6 +129,15 @@ export function MobileHome() {
     ],
     [home]
   );
+
+  const openIntelItem = (url: string) => {
+    const normalized = normalizeIntelRoute(url);
+    if (normalized.startsWith('/blog/')) {
+      navigate(normalized);
+      return;
+    }
+    window.location.assign(url);
+  };
 
   return (
     <MobilePageShell
@@ -290,7 +300,7 @@ export function MobileHome() {
                 {intelItems.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => window.location.assign(item.url)}
+                    onClick={() => openIntelItem(item.url)}
                     className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-3 mb-1">

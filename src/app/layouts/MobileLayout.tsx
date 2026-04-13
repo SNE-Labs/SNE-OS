@@ -9,6 +9,8 @@ const MobilePass = lazy(() => import('../pages/mobile/Pass').then((m) => ({ defa
 const MobileKeys = lazy(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
 const MobileSecrets = lazy(() => import('../pages/mobile/Secrets').then((m) => ({ default: m.MobileSecrets })));
 const MobileDocs = lazy(() => import('../pages/mobile/Docs').then((m) => ({ default: m.MobileDocs })));
+const MobileBlog = lazy(() => import('../pages/mobile/Blog').then((m) => ({ default: m.MobileBlog })));
+const MobileBlogPost = lazy(() => import('../pages/mobile/BlogPost').then((m) => ({ default: m.MobileBlogPost })));
 
 function MobileSkeleton() {
   return (
@@ -104,6 +106,8 @@ function resolveComponent(pathname: string) {
   if (pathname.startsWith('/secrets')) return MobileSecrets;
   if (pathname.startsWith('/keys')) return MobileKeys;
   if (pathname.startsWith('/docs')) return MobileDocs;
+  if (pathname.startsWith('/blog/')) return MobileBlogPost;
+  if (pathname.startsWith('/blog')) return MobileBlog;
   return MobileHome;
 }
 

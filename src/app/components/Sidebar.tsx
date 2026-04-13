@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Activity, Shield, Lock, DollarSign, FileText, Search, KeyRound, LockKeyhole } from 'lucide-react';
+import { Home, Activity, Shield, Lock, DollarSign, FileText, Search, KeyRound, LockKeyhole, Newspaper } from 'lucide-react';
 
 const menuItems = [
   { path: '/home', label: 'Início', icon: Home },
@@ -8,6 +8,7 @@ const menuItems = [
   { path: '/vault', label: 'Vault', icon: Lock },
   { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
   { path: '/keys', label: 'Keys', icon: KeyRound },
+  { path: '/blog', label: 'Blog', icon: Newspaper },
   { path: '/pricing', label: 'Planos', icon: DollarSign },
   // { path: '/status', label: 'Status', icon: AlertCircle }, // desativado temporariamente
   { path: '/docs', label: 'Documentação', icon: FileText },
