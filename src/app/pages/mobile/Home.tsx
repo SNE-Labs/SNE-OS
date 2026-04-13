@@ -37,13 +37,27 @@ type HomeResponse = {
     items: Array<{
       id: string;
       title: string;
+      title_pt?: string;
+      title_original?: string;
+      summary?: string;
+      summary_pt?: string;
       url: string;
       source: string;
       module: string;
+      impact?: {
+        label: string;
+        score: number;
+      };
+      topics?: string[];
+      chains?: string[];
+      why_it_matters?: string;
     }>;
   };
   identity?: {
-    status?: string;
+    status?: {
+      label?: string;
+      tone?: 'active' | 'success' | 'warning' | 'pending';
+    };
     linked_accounts_count?: number;
     active_networks?: number;
   };
@@ -102,9 +116,13 @@ export function MobileHome() {
   const home = homeQuery.data;
   const movers = home?.market.top_movers?.slice(0, 3) ?? [];
   const intelItems = home?.intel.items?.slice(0, 2) ?? [];
+  const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
+    item.title_pt || item.title || item.title_original || 'Intel item';
+  const intelSummary = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
+    item.summary_pt || item.summary || item.why_it_matters || 'Briefing operacional disponível.';
   const metrics = useMemo(
     () => [
-      { label: 'Identity', value: home?.identity?.status ?? 'offline' },
+      { label: 'Identity', value: home?.identity?.status?.label ?? 'offline' },
       { label: 'Networks', value: `${home?.capital?.aggregate?.active_networks ?? home?.identity?.active_networks ?? 0}` },
       { label: 'Secrets', value: `${home?.secrets?.item_count ?? 0}` },
     ],
@@ -114,7 +132,7 @@ export function MobileHome() {
   return (
     <MobilePageShell
       title="SNE OS"
-      subtitle="Multi-chain identity, capital, secrets and intel."
+      subtitle="Identidade, capital, secrets e intel multichain."
       statusPill={{
         label: home?.brief.badge ?? 'loading',
         variant: toBadgeVariant(home?.brief.badge_status),
@@ -264,8 +282,8 @@ export function MobileHome() {
 
             {intelItems.length === 0 ? (
               <EmptyState
-                title="No briefing yet"
-                description="Intel will appear here as soon as the feed is available."
+                title="Sem briefing agora"
+                description="O Intel aparece aqui assim que o feed estiver disponível."
               />
             ) : (
               <div className="space-y-3">
@@ -277,10 +295,15 @@ export function MobileHome() {
                   >
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <div className="text-xs uppercase text-[var(--text-3)]">{item.source}</div>
-                      <Badge variant="neutral" size="sm">{item.module}</Badge>
+                      <Badge variant={item.impact?.label === 'alto' ? 'warning' : 'neutral'} size="sm">
+                        {item.impact?.label ? `impacto ${item.impact.label}` : item.module}
+                      </Badge>
                     </div>
-                    <div className="text-[var(--text-1)] mb-2">{item.title}</div>
-                    <div className="text-sm text-[var(--text-2)]">Open source briefing.</div>
+                    <div className="text-[var(--text-1)] mb-2">{intelTitle(item)}</div>
+                    <div className="text-sm text-[var(--text-2)] mb-2">{intelSummary(item)}</div>
+                    <div className="text-xs text-[var(--text-3)]">
+                      {item.chains?.[0] || item.topics?.[0] || item.module}
+                    </div>
                   </button>
                 ))}
               </div>

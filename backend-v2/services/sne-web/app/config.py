@@ -60,3 +60,7 @@ class Config:
     MAX_REQUESTS_PER_MINUTE = 1000
     MAX_ANALYSES_PER_DAY = 50
 
+    # Intel
+    INTEL_ENRICHMENT_PROVIDER = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic")
+    INTEL_ENRICHMENT_MODEL = os.getenv("INTEL_ENRICHMENT_MODEL", "gpt-4.1-mini")
+    OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")

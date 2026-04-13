@@ -30,14 +30,30 @@ type DashboardPayload = {
 type IntelItem = {
   id: string;
   title: string;
+  title_pt?: string;
+  title_original?: string;
+  summary?: string;
+  summary_pt?: string;
   url: string;
   source: string;
+  source_tier?: string;
   points: number;
   comments: number;
   author: string;
   created_at: string;
   module: string;
   agent_note: string;
+  impact?: {
+    label: string;
+    score: number;
+    direction: string;
+  };
+  topics?: string[];
+  chains?: string[];
+  protocols?: string[];
+  assets?: string[];
+  why_it_matters?: string;
+  watch_items?: string[];
 };
 
 type MarketMover = {
@@ -120,6 +136,10 @@ export function Home() {
       }).format(now),
     [now]
   );
+
+  const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Intel item';
+  const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
+  const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
 
   const formatCompactNumber = (value: number) =>
     new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
@@ -238,17 +258,31 @@ export function Home() {
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <StatusBadge status="active">{featuredIntel.source}</StatusBadge>
                       <StatusBadge status="pending">{featuredIntel.module}</StatusBadge>
+                      {featuredIntel.impact?.label && (
+                        <StatusBadge status={featuredIntel.impact.label === 'alto' ? 'warning' : 'active'}>
+                          impacto {featuredIntel.impact.label}
+                        </StatusBadge>
+                      )}
                     </div>
                     <div className="text-lg font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
-                      {featuredIntel.title}
+                      {intelTitle(featuredIntel)}
                     </div>
                     <div className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
-                      {featuredIntel.agent_note}
+                      {intelSummary(featuredIntel)}
+                    </div>
+                    {featuredIntel.title_original && featuredIntel.title_original !== intelTitle(featuredIntel) && (
+                      <div className="text-xs mb-3 line-clamp-1" style={{ color: 'var(--text-3)' }}>
+                        Original: {featuredIntel.title_original}
+                      </div>
+                    )}
+                    <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+                      {featuredIntel.why_it_matters || 'Sem nota editorial adicional.'}
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
                       <span>{featuredIntel.points} pts</span>
-                      <span>{featuredIntel.comments} comments</span>
+                      <span>{featuredIntel.comments} comentários</span>
                       <span>@{featuredIntel.author}</span>
+                      <span>{intelMeta(featuredIntel)}</span>
                     </div>
                   </button>
 
@@ -263,15 +297,15 @@ export function Home() {
                       >
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                            {item.module}
+                            {intelMeta(item)}
                           </div>
                           <div className="text-xs" style={{ color: 'var(--text-3)' }}>{item.points} pts</div>
                         </div>
                         <div className="font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--text-1)' }}>
-                          {item.title}
+                          {intelTitle(item)}
                         </div>
                         <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
-                          {item.agent_note}
+                          {intelSummary(item)}
                         </div>
                       </button>
                     ))}
