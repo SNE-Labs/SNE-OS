@@ -62,6 +62,16 @@ type MarketMover = {
   price: number;
   change24h: number;
   volume: string | number;
+  score?: number;
+};
+
+type MarketEditorial = {
+  status: 'pending' | 'ready' | 'failed';
+  headline: string;
+  summary_pt: string;
+  watch_items: string[];
+  highlights: Array<{ symbol: string; note: string }>;
+  generated_at: string | null;
 };
 
 type HomeResponse = {
@@ -87,7 +97,14 @@ type HomeResponse = {
     workspace: Array<{ label: string; value: string }>;
   };
   dashboard: DashboardPayload;
-  market: { top_movers: MarketMover[]; last_updated: string };
+  market: {
+    top_movers: MarketMover[];
+    top_losers: MarketMover[];
+    volume_leaders: MarketMover[];
+    regime: { label: string; tone: 'active' | 'success' | 'warning' | 'pending'; avg_change_24h: number };
+    editorial: MarketEditorial;
+    last_updated: string;
+  };
   intel: { items: IntelItem[]; last_updated: string };
   last_updated: string;
 };
@@ -117,6 +134,10 @@ export function Home() {
   }, []);
 
   const liveMovers = homeData?.market.top_movers ?? [];
+  const topLosers = homeData?.market.top_losers ?? [];
+  const volumeLeaders = homeData?.market.volume_leaders ?? [];
+  const marketEditorial = homeData?.market.editorial;
+  const marketRegime = homeData?.market.regime;
   const intelItems = homeData?.intel.items ?? [];
   const featuredIntel = intelItems[0];
   const secondaryIntel = intelItems.slice(1, 5);
@@ -374,6 +395,15 @@ export function Home() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={marketRegime?.tone ?? 'pending'}>
+                      {marketRegime?.label ?? 'sem dados'}
+                    </StatusBadge>
+                    {marketEditorial?.status === 'ready' && (
+                      <StatusBadge status="active">editorial IA</StatusBadge>
+                    )}
+                  </div>
+
                   {/* Featured mover */}
                   <div
                     className="rounded-xl p-4"
@@ -425,6 +455,48 @@ export function Home() {
                     </div>
                   </div>
 
+                  {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
+                    <div
+                      className="rounded-xl p-4 space-y-3"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                        Narrativa do Mercado
+                      </div>
+                      {marketEditorial.headline && (
+                        <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                          {marketEditorial.headline}
+                        </div>
+                      )}
+                      {marketEditorial.summary_pt && (
+                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                          {marketEditorial.summary_pt}
+                        </div>
+                      )}
+                      {marketEditorial.highlights.length > 0 && (
+                        <div className="grid grid-cols-1 gap-2">
+                          {marketEditorial.highlights.map((highlight) => (
+                            <div key={highlight.symbol} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
+                                {highlight.symbol}
+                              </div>
+                              <div className="text-xs" style={{ color: 'var(--text-2)' }}>
+                                {highlight.note}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {marketEditorial.watch_items.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {marketEditorial.watch_items.map((item) => (
+                            <StatusBadge key={item} status="pending">{item}</StatusBadge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Secondary movers */}
                   <div className="space-y-2">
                     {secondaryMovers.map((mover) => (
@@ -453,6 +525,58 @@ export function Home() {
                       </div>
                     ))}
                   </div>
+
+                  {topLosers.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                        Maiores Quedas
+                      </div>
+                      {topLosers.slice(0, 2).map((mover) => (
+                        <div
+                          key={mover.symbol}
+                          className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
+                          style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                            <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                              ${formatCompactNumber(Number(mover.volume))}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold" style={{ color: 'var(--error-red)' }}>
+                              {(mover.change24h * 100).toFixed(1)}%
+                            </div>
+                            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
+                              ${formatMarketPrice(mover.price)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {volumeLeaders.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                        Volume Dominante
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {volumeLeaders.slice(0, 3).map((item) => (
+                          <div
+                            key={item.symbol}
+                            className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
+                            style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                          >
+                            <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
+                            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
+                              Vol. ${formatCompactNumber(Number(item.volume))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

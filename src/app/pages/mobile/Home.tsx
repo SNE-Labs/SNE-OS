@@ -33,6 +33,31 @@ type HomeResponse = {
       change24h: number;
       volume: string | number;
     }>;
+    top_losers?: Array<{
+      symbol: string;
+      price: number;
+      change24h: number;
+      volume: string | number;
+    }>;
+    volume_leaders?: Array<{
+      symbol: string;
+      price: number;
+      change24h: number;
+      volume: string | number;
+    }>;
+    regime?: {
+      label: string;
+      tone: 'active' | 'success' | 'warning' | 'pending';
+      avg_change_24h: number;
+    };
+    editorial?: {
+      status: 'pending' | 'ready' | 'failed';
+      headline: string;
+      summary_pt: string;
+      watch_items: string[];
+      highlights: Array<{ symbol: string; note: string }>;
+      generated_at: string | null;
+    };
   };
   intel: {
     items: Array<{
@@ -116,6 +141,10 @@ export function MobileHome() {
 
   const home = homeQuery.data;
   const movers = home?.market.top_movers?.slice(0, 3) ?? [];
+  const losers = home?.market.top_losers?.slice(0, 2) ?? [];
+  const volumeLeaders = home?.market.volume_leaders?.slice(0, 2) ?? [];
+  const marketEditorial = home?.market.editorial;
+  const marketRegime = home?.market.regime;
   const intelItems = home?.intel.items?.slice(0, 2) ?? [];
   const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.title_pt || item.title || item.title_original || 'Intel item';
@@ -296,6 +325,11 @@ export function MobileHome() {
               />
             ) : (
               <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={toBadgeVariant(marketRegime?.tone)} size="sm">{marketRegime?.label ?? 'sem dados'}</Badge>
+                  {marketEditorial?.status === 'ready' && <Badge variant="orange" size="sm">IA</Badge>}
+                </div>
+
                 {movers.map((item) => (
                   <div key={item.symbol} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                     <div className="flex items-center justify-between gap-3 mb-2">
@@ -310,6 +344,48 @@ export function MobileHome() {
                     </div>
                   </div>
                 ))}
+
+                {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt) && (
+                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 space-y-2">
+                    {marketEditorial.headline && <div className="text-[var(--text-1)]">{marketEditorial.headline}</div>}
+                    {marketEditorial.summary_pt && <div className="text-sm text-[var(--text-2)]">{marketEditorial.summary_pt}</div>}
+                    {marketEditorial.watch_items?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {marketEditorial.watch_items.map((item) => (
+                          <Badge key={item} variant="neutral" size="sm">{item}</Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {losers.length > 0 && (
+                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                    <div className="text-xs uppercase text-[var(--text-3)] mb-2">Maiores Quedas</div>
+                    <div className="space-y-2">
+                      {losers.map((item) => (
+                        <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-[var(--text-1)]">{item.symbol}</span>
+                          <span className="text-[var(--danger)]">{(item.change24h * 100).toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {volumeLeaders.length > 0 && (
+                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                    <div className="text-xs uppercase text-[var(--text-3)] mb-2">Volume Dominante</div>
+                    <div className="space-y-2">
+                      {volumeLeaders.map((item) => (
+                        <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-[var(--text-1)]">{item.symbol}</span>
+                          <span className="text-[var(--text-2)]">${formatCompactNumber(Number(item.volume))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </SurfaceCard>

@@ -11,7 +11,6 @@ import jwt
 
 from .auth_siwe import JWT_ALGORITHM, JWT_SECRET
 
-from .collector_client import get_live_market_snapshot
 from .home_service import (
     build_capital_snapshot,
     build_brief,
@@ -24,6 +23,7 @@ from .home_service import (
     get_wallet_state,
 )
 from .intel_api import fetch_intel_items
+from .market_service import build_home_market_payload
 from .passport_service import build_passport_overview
 from .secrets_service import build_secrets_overview
 from .status_api import get_dashboard_payload
@@ -67,14 +67,22 @@ def _resolve_auth_context() -> dict:
 
 def _get_market_payload() -> dict:
     try:
-        return {
-            "top_movers": get_live_market_snapshot(limit=3),
-            "last_updated": datetime.utcnow().isoformat(),
-        }
+        return build_home_market_payload()
     except Exception as exc:
         logger.warning(f"Home market payload failed: {exc}")
         return {
             "top_movers": [],
+            "top_losers": [],
+            "volume_leaders": [],
+            "regime": {"label": "sem dados", "tone": "pending", "avg_change_24h": 0.0},
+            "editorial": {
+                "status": "failed",
+                "headline": "",
+                "summary_pt": "",
+                "watch_items": [],
+                "highlights": [],
+                "generated_at": None,
+            },
             "last_updated": datetime.utcnow().isoformat(),
         }
 
