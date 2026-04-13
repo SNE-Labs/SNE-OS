@@ -326,6 +326,19 @@ def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
+def _is_stale_fallback_post(post: Dict[str, Any]) -> bool:
+    subtitle = str(post.get("subtitle") or "").strip().lower()
+    body = str(post.get("body_markdown") or "").strip().lower()
+    excerpt = str(post.get("excerpt") or "").strip().lower()
+    markers = (
+        "leitura editorial sintetizada a partir do contexto disponível.",
+        "o texto acima é um fallback editorial quando a geração aprofundada não está disponível.",
+        "o item monitorado pelo sne os aponta para um novo desenvolvimento",
+    )
+    haystack = "\n".join([subtitle, body, excerpt])
+    return any(marker in haystack for marker in markers)
+
+
 def _post_sort_key(post: Dict[str, Any]) -> str:
     return str(post.get("generated_at") or post.get("created_at") or "")
 
@@ -435,7 +448,13 @@ def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
         posts = json.loads(cached)
         if not isinstance(posts, list):
             return []
-        return [_normalize_post(post) for post in posts if isinstance(post, dict)]
+        return [
+            normalized
+            for post in posts
+            if isinstance(post, dict)
+            for normalized in [_normalize_post(post)]
+            if not _is_stale_fallback_post(normalized)
+        ]
     except Exception:
         return []
 
