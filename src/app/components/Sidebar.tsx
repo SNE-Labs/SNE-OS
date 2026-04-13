@@ -1,14 +1,11 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { ArrowUpRight, Sparkles } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
-import { navigationItems, resolveRouteMeta } from '../navigation';
+import { navigationItems } from '../navigation';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { formatAddress } from '@/utils/format';
 
 export function Sidebar() {
-  const location = useLocation();
   const { isAuthenticated, address, tier } = useAuth();
-  const routeMeta = resolveRouteMeta(location.pathname);
 
   return (
     <aside
@@ -23,43 +20,6 @@ export function Sidebar() {
         <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--text-1)' }}>
           SNE OS
         </h1>
-      </div>
-
-      {/* Route Context */}
-      <div className="p-4">
-        <div
-          className="rounded-xl p-4"
-          style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-        >
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}
-            >
-              <Sparkles size={18} />
-            </div>
-            <div className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-3)' }}>
-              Contexto Atual
-            </div>
-          </div>
-
-          <div className="mb-2">
-            <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-              {routeMeta.title}
-            </div>
-            <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
-              {routeMeta.descriptor}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-3" style={{ borderTopWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-3)' }}>
-            <span>{isAuthenticated ? 'Sessão ativa' : 'Sem sessão'}</span>
-            <span className="inline-flex items-center gap-1" style={{ color: 'var(--text-2)' }}>
-              {routeMeta.context}
-              <ArrowUpRight size={12} />
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Navigation */}
@@ -120,10 +80,6 @@ export function Sidebar() {
             <p className="text-xs font-mono" style={{ color: 'var(--text-2)' }}>
               {isAuthenticated && address ? formatAddress(address) : 'Sem carteira conectada'}
             </p>
-          </div>
-          <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-3)' }}>
-            <span>Contexto</span>
-            <span style={{ color: 'var(--text-2)' }}>{routeMeta.context}</span>
           </div>
         </div>
       </div>
