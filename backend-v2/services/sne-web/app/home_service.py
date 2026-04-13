@@ -6,13 +6,14 @@ Builds the aggregated home view model from session, market, intel and system sta
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .networks import get_default_network_metadata, get_evm_web3, get_public_network_metadata, list_networks
+from .networks import get_default_network_metadata, get_evm_web3, get_public_network_metadata, list_networks, normalize_evm_address
 
 
 def get_wallet_state(address: Optional[str], network_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
     if not address:
         return None
 
+    checksum_address = normalize_evm_address(address)
     network = get_public_network_metadata(network_key or "scroll")
 
     try:
@@ -28,9 +29,9 @@ def get_wallet_state(address: Optional[str], network_key: Optional[str] = None) 
                 "last_updated": datetime.utcnow().isoformat(),
             }
 
-        balance_wei = w3.eth.get_balance(address)
-        tx_count = w3.eth.get_transaction_count(address)
-        code = w3.eth.get_code(address)
+        balance_wei = w3.eth.get_balance(checksum_address)
+        tx_count = w3.eth.get_transaction_count(checksum_address)
+        code = w3.eth.get_code(checksum_address)
         balance_eth = float(w3.from_wei(balance_wei, "ether"))
 
         return {

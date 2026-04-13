@@ -10,18 +10,20 @@ from .networks import (
     get_evm_web3,
     get_public_network_metadata,
     list_enabled_network_keys,
+    normalize_evm_address,
 )
 
 
 def resolve_identity(address: str, network_key: Optional[str] = None) -> Dict[str, Any]:
+    checksum_address = normalize_evm_address(address)
     network = get_public_network_metadata(network_key or "scroll")
     w3 = get_evm_web3(network["key"])
     if not w3 or not w3.is_connected():
         raise RuntimeError(f"{network['label']} RPC unavailable")
 
-    balance_wei = w3.eth.get_balance(address)
-    tx_count = w3.eth.get_transaction_count(address)
-    code = w3.eth.get_code(address)
+    balance_wei = w3.eth.get_balance(checksum_address)
+    tx_count = w3.eth.get_transaction_count(checksum_address)
+    code = w3.eth.get_code(checksum_address)
     balance_eth = float(w3.from_wei(balance_wei, "ether"))
 
     has_code = bool(code and code != b"" and code.hex() != "0x")
@@ -84,6 +86,7 @@ def resolve_identity(address: str, network_key: Optional[str] = None) -> Dict[st
 
 
 def build_account_snapshot(address: str, network_key: str, primary_network_key: Optional[str]) -> Dict[str, Any]:
+    checksum_address = normalize_evm_address(address)
     network = get_public_network_metadata(network_key)
     snapshot: Dict[str, Any] = {
         "network": network,
@@ -101,9 +104,9 @@ def build_account_snapshot(address: str, network_key: str, primary_network_key: 
     if not w3 or not w3.is_connected():
         return snapshot
 
-    balance_wei = w3.eth.get_balance(address)
-    tx_count = w3.eth.get_transaction_count(address)
-    code = w3.eth.get_code(address)
+    balance_wei = w3.eth.get_balance(checksum_address)
+    tx_count = w3.eth.get_transaction_count(checksum_address)
+    code = w3.eth.get_code(checksum_address)
     balance_native = float(w3.from_wei(balance_wei, "ether"))
     has_code = bool(code and code != b"" and code.hex() != "0x")
     has_activity = tx_count > 0 or balance_native > 0

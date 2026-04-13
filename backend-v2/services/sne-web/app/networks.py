@@ -143,3 +143,9 @@ def get_evm_web3(network_key: Optional[str]) -> Optional[Web3]:
     if config["family"] != "evm" or not config.get("rpc_url"):
         return None
     return Web3(Web3.HTTPProvider(config["rpc_url"]))
+
+
+def normalize_evm_address(address: Optional[str]) -> Optional[str]:
+    if not address:
+        return None
+    return Web3.to_checksum_address(address)

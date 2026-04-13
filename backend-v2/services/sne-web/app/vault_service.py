@@ -6,7 +6,7 @@ Builds capital and protection view models from wallet state.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .networks import get_evm_web3, get_public_network_metadata, list_enabled_network_keys
+from .networks import get_evm_web3, get_public_network_metadata, list_enabled_network_keys, normalize_evm_address
 
 
 def _format_gwei(value_wei: int) -> str:
@@ -35,16 +35,17 @@ def _empty_network_entry(network_key: str, address: str) -> Dict[str, Any]:
 
 
 def build_network_position(address: str, network_key: str) -> Dict[str, Any]:
+    checksum_address = normalize_evm_address(address)
     position = _empty_network_entry(network_key, address)
     network = position["network"]
     w3 = get_evm_web3(network_key)
     if not w3 or not w3.is_connected():
         return position
 
-    balance_wei = w3.eth.get_balance(address)
+    balance_wei = w3.eth.get_balance(checksum_address)
     balance_native = float(w3.from_wei(balance_wei, "ether"))
-    tx_count = w3.eth.get_transaction_count(address)
-    code = w3.eth.get_code(address)
+    tx_count = w3.eth.get_transaction_count(checksum_address)
+    code = w3.eth.get_code(checksum_address)
     gas_price_wei = int(w3.eth.gas_price)
     account_type = "contract" if code and code != b"" and code.hex() != "0x" else "wallet"
     has_activity = tx_count > 0 or balance_native > 0
