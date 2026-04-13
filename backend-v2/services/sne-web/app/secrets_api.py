@@ -2,9 +2,12 @@
 Secrets API - encrypted secrets control plane for SNE OS.
 """
 
+from datetime import datetime
 from flask import Blueprint, jsonify, request, session
 import logging
+import jwt
 
+from .auth_siwe import JWT_ALGORITHM, JWT_SECRET
 from .secrets_service import (
     build_secrets_overview,
     create_secret_item,
@@ -18,8 +21,40 @@ logger = logging.getLogger(__name__)
 secrets_bp = Blueprint("secrets", __name__)
 
 
-def _require_session_address():
-    address = session.get("siwe_address")
+def _resolve_auth_context() -> dict:
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "", 1).strip()
+        if token:
+            try:
+                payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+                exp = payload.get("exp")
+                if exp and datetime.fromtimestamp(exp) > datetime.utcnow():
+                    address = payload.get("address")
+                    if address:
+                        return {
+                            "authenticated": True,
+                            "address": address.lower(),
+                            "source": "jwt",
+                        }
+            except jwt.ExpiredSignatureError:
+                logger.info("Secrets auth context received expired JWT")
+            except jwt.InvalidTokenError:
+                logger.info("Secrets auth context received invalid JWT")
+            except Exception as exc:
+                logger.warning(f"Secrets auth context failed to decode JWT: {exc}")
+
+    session_address = session.get("siwe_address")
+    return {
+        "authenticated": bool(session_address),
+        "address": session_address,
+        "source": "session" if session_address else "anonymous",
+    }
+
+
+def _require_authenticated_address():
+    auth = _resolve_auth_context()
+    address = auth.get("address")
     if not address:
         return None, (jsonify({"error": {"code": "UNAUTHENTICATED", "message": "Connect wallet required"}}), 401)
     return address, None
@@ -32,8 +67,9 @@ def overview():
     GET /api/secrets/overview?address=0x...
     """
     try:
-        address = request.args.get("address") or session.get("siwe_address")
-        return jsonify(build_secrets_overview(address, bool(session.get("siwe_address")))), 200
+        auth = _resolve_auth_context()
+        address = request.args.get("address") or auth.get("address")
+        return jsonify(build_secrets_overview(address, bool(auth.get("authenticated")))), 200
     except Exception as exc:
         logger.error(f"Secrets overview error: {exc}")
         return jsonify(build_secrets_overview(None, False)), 200
@@ -41,7 +77,7 @@ def overview():
 
 @secrets_bp.get("/items")
 def items():
-    address, error = _require_session_address()
+    address, error = _require_authenticated_address()
     if error:
         return error
 
@@ -52,7 +88,7 @@ def items():
 
 @secrets_bp.get("/items/<item_id>")
 def item(item_id: str):
-    address, error = _require_session_address()
+    address, error = _require_authenticated_address()
     if error:
         return error
 
@@ -64,7 +100,7 @@ def item(item_id: str):
 
 @secrets_bp.post("/items")
 def create():
-    address, error = _require_session_address()
+    address, error = _require_authenticated_address()
     if error:
         return error
 
@@ -83,7 +119,7 @@ def create():
 
 @secrets_bp.delete("/items/<item_id>")
 def remove(item_id: str):
-    address, error = _require_session_address()
+    address, error = _require_authenticated_address()
     if error:
         return error
 
