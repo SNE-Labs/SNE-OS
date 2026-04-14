@@ -3,6 +3,7 @@ import { Brain } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { ChainBadge } from '../../components/ChainBadge';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
@@ -114,9 +115,14 @@ export function MobileBlog() {
                       key={tag}
                       to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
                       onClick={(event) => event.stopPropagation()}
-                      className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]"
                     >
-                      {tag}
+                      {post.chains.includes(tag) ? (
+                        <ChainBadge chain={tag} size="sm" />
+                      ) : (
+                        <span className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]">
+                          {tag}
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>

@@ -188,6 +188,13 @@ function compactPhrase(value?: string | null, maxWords: number = 4) {
   return words.length > maxWords ? `${words.slice(0, maxWords).join(' ')}…` : cleaned;
 }
 
+function stripHeadlinePrefix(value?: string | null) {
+  if (!value) return null;
+
+  const cleaned = value.replace(/^[^:]+:\s*/, '').trim();
+  return cleaned || value.trim();
+}
+
 function interleaveSignals(...groups: string[][]) {
   const maxLength = Math.max(0, ...groups.map((group) => group.length));
   const result: string[] = [];
@@ -263,6 +270,10 @@ function describeLiquidity(symbol: string, volumeLeaderSymbols: Set<string>, vol
   return 'liquidez estável';
 }
 
+function toNumericVolume(value: string | number) {
+  return typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.]/g, ''));
+}
+
 function describeRisk(change24h: number) {
   if (change24h <= -0.03) return 'pressão imediata';
   if (change24h < 0) return 'risco de retrocesso';
@@ -285,6 +296,16 @@ function formatRelativeTimestamp(value: string | null | undefined, now: Date) {
     day: 'numeric',
     month: 'short',
   }).format(date);
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
+function formatMarketPrice(value: number) {
+  if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 }
 
 function withAlpha(color: string, alpha: number) {
@@ -509,40 +530,46 @@ export function Home() {
   );
   const heroTape = activeHero?.tapeItems ?? [];
   const heroTapeLoop = [...heroTape, ...heroTape];
-  const heroFallbackMeta = activeHero ? intelMeta(activeHero.item) : null;
   const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
-  const heroScenario = activeHero?.relatedMover
-    ? `${activeHero.relatedMover.symbol} ${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
-    : compactPhrase(marketRegime?.label, 3) ?? 'contexto editorial';
-  const heroSupportMode = activeHero?.relatedMover ? 'mercado' : 'editorial';
-  const heroSupportAsset = activeHero?.relatedMover?.symbol ?? compactPhrase(heroFallbackMeta, 3) ?? 'intel';
-  const heroSupportDelta = activeHero?.relatedMover
-    ? `${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
-    : activeHero?.item.impact?.label ?? '--';
-  const heroSupportPulse = activeHero?.relatedMover
-    ? `${describeLiquidity(activeHero.relatedMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, activeHero.relatedMover.volume)} · ${describeRisk(activeHero.relatedMover.change24h)}`
-    : compactPhrase(marketEditorial?.headline, 5) ?? compactPhrase(activeHero?.implication, 5) ?? 'monitoramento ativo';
+  const heroContextMover = activeHero?.relatedMover ?? featuredMover ?? liveMovers[1] ?? null;
+  const heroThemeLabel =
+    activeHero?.item.topics?.[0] ??
+    activeHero?.item.chains?.[0] ??
+    activeHero?.item.assets?.[0] ??
+    activeHero?.section.title ??
+    'Intel';
+  const heroScenario = heroContextMover ? `$${formatMarketPrice(heroContextMover.price)}` : '--';
+  const heroSupportMode = heroContextMover ? 'mercado' : 'editorial';
+  const heroSupportAsset = heroContextMover?.symbol ?? (activeHero ? compactPhrase(intelMeta(activeHero.item), 3) : null) ?? 'intel';
+  const heroSupportDelta = heroContextMover
+    ? `${heroContextMover.change24h >= 0 ? '+' : ''}${(heroContextMover.change24h * 100).toFixed(1)}%`
+    : '--';
+  const heroSupportPulse = compactPhrase(stripHeadlinePrefix(marketEditorial?.headline), 4) ?? compactPhrase(activeHero?.item.watch_items?.[0], 4) ?? 'leitura ativa';
   const heroSupportChips = uniqueText([
-    activeHero?.item.impact?.label ? `impacto ${activeHero.item.impact.label}` : null,
     compactPhrase(activeHero?.item.watch_items?.[0], 3),
     compactPhrase(activeHero?.item.watch_items?.[1], 3),
-    activeHero?.relatedMover ? describeRisk(activeHero.relatedMover.change24h) : compactPhrase(marketRegime?.label, 3),
+    compactPhrase(stripHeadlinePrefix(marketEditorial?.headline), 3),
+    heroContextMover ? describeRisk(heroContextMover.change24h) : null,
   ]).slice(0, 4);
-  const heroValidationMetrics = activeHero?.relatedMover
+  const heroValidationMetrics = heroContextMover
     ? [
         { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
-        { label: 'Preço', value: `$${formatMarketPrice(activeHero.relatedMover.price)}`, tone: 'default' as const },
-        { label: '24H', value: heroSupportDelta, tone: activeHero.relatedMover.change24h >= 0 ? 'positive' as const : 'negative' as const },
         {
-          label: 'Liquidez',
-          value: describeLiquidity(activeHero.relatedMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, activeHero.relatedMover.volume),
+          label: 'Volume',
+          value: `$${formatCompactNumber(toNumericVolume(heroContextMover.volume))}`,
           tone: 'default' as const,
         },
+        {
+          label: '24H',
+          value: heroSupportDelta,
+          tone: heroContextMover.change24h >= 0 ? 'positive' as const : 'negative' as const,
+        },
+        { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ]
     : [
-        { label: 'Fonte', value: activeHero?.item.source ?? '--', tone: 'default' as const },
-        { label: 'Impacto', value: activeHero?.item.impact?.label ?? activeHero?.section.shortTitle ?? '--', tone: 'default' as const },
-        { label: 'Pulso', value: compactPhrase(marketRegime?.label, 2) ?? '--', tone: 'default' as const },
+        { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
+        { label: 'Volume', value: '--', tone: 'default' as const },
+        { label: '24H', value: '--', tone: 'default' as const },
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ];
   const renderIntelTitle = (item: IntelItem, className: string) => {
@@ -578,15 +605,6 @@ export function Home() {
         <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0" />
       </a>
     );
-  };
-
-  const formatCompactNumber = (value: number) =>
-    new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
-
-  const formatMarketPrice = (value: number) => {
-    if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-    return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
   };
 
   if (isLoading && !homeData) {
@@ -831,13 +849,13 @@ export function Home() {
 
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Modo Intel</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Tema</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                {activeHero.section.kicker}
+                                {heroThemeLabel}
                               </div>
                             </div>
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Cenário</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
                                 {heroScenario}
                               </div>

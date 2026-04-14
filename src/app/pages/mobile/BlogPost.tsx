@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, Layers3, Share2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { ChainBadge } from '../../components/ChainBadge';
 import { EditorialSnapshot } from '../../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../../components/blog/articleParser';
@@ -135,7 +136,7 @@ export function MobileBlogPost() {
             <div className="flex flex-wrap gap-2">
               {postChains.map((chain) => (
                 <Link key={chain} to={`/intel/chain/${chain}`}>
-                  <Badge variant="orange" size="sm">{chain}</Badge>
+                  <ChainBadge chain={chain} size="sm" />
                 </Link>
               ))}
               {postTopics.slice(0, 3).map((topic) => (

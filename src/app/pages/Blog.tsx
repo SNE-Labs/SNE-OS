@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
+import { ChainBadge } from '../components/ChainBadge';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
@@ -229,7 +230,7 @@ export function Blog() {
                       to={featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <StatusBadge status="success">{tag}</StatusBadge>
+                      {featured.chains.includes(tag) ? <ChainBadge chain={tag} size="sm" /> : <StatusBadge status="success">{tag}</StatusBadge>}
                     </Link>
                   ))}
                 </div>
@@ -298,7 +299,7 @@ export function Blog() {
                         to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <StatusBadge status="success">{tag}</StatusBadge>
+                        {post.chains.includes(tag) ? <ChainBadge chain={tag} size="sm" /> : <StatusBadge status="success">{tag}</StatusBadge>}
                       </Link>
                     ))}
                   </div>
@@ -319,6 +320,7 @@ function topicLabelSafe(value?: string) {
 
 function HubLinkGroup({ title, basePath, items }: { title: string; basePath: string; items: string[] }) {
   if (!items.length) return null;
+  const isChainHub = basePath.includes('/chain');
 
   return (
     <div className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
@@ -330,10 +332,17 @@ function HubLinkGroup({ title, basePath, items }: { title: string; basePath: str
           <Link
             key={item}
             to={`${basePath}/${item}`}
-            className="rounded-full px-3 py-2 text-xs"
-            style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
           >
-            {item}
+            {isChainHub ? (
+              <ChainBadge chain={item} size="sm" />
+            ) : (
+              <span
+                className="rounded-full px-3 py-2 text-xs"
+                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                {item}
+              </span>
+            )}
           </Link>
         ))}
       </div>

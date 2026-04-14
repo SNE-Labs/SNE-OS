@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
+import { ChainBadge } from '../components/ChainBadge';
 import { EditorialSnapshot } from '../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../components/blog/articleParser';
@@ -475,7 +476,7 @@ export function BlogPost() {
           <div className="flex flex-wrap gap-2">
             {post.chains.map((chain) => (
               <Link key={chain} to={`/intel/chain/${chain}`}>
-                <StatusBadge status="active">{chain}</StatusBadge>
+                <ChainBadge chain={chain} size="sm" />
               </Link>
             ))}
             {post.topics.map((topic) => (
