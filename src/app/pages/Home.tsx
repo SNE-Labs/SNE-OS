@@ -478,7 +478,7 @@ export function Home() {
                   )}
 
                   {nonMarketIntelSections.length > 0 && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <div className="space-y-3">
                       {nonMarketIntelSections.map((section) => {
                         const lead = section.items[0];
                         const rest = section.items.slice(1, 3);
@@ -494,54 +494,67 @@ export function Home() {
                               ...intelSectionTheme[section.key].panelStyle,
                             }}
                           >
-                            <div className="flex items-start justify-between gap-3 mb-4">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                                  style={intelSectionTheme[section.key].toneStyle}
-                                >
-                                  <SectionIcon className="h-4 w-4" />
-                                </div>
-                                <div>
-                                  <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                                    {section.kicker}
-                                  </div>
-                                  <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                    {section.title}
-                                  </div>
-                                </div>
-                              </div>
-                              <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
-                            </div>
-
-                            <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
-                              {section.description}
-                            </div>
-
-                            {lead && (
-                              <div className="mb-3">
-                                <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                  {intelMeta(lead)}
-                                </div>
-                                {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
-                                <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
-                                  {intelSummary(lead)}
-                                </div>
-                              </div>
-                            )}
-
-                            {rest.length > 0 && (
-                              <div className="space-y-2 border-t pt-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                {rest.map((item) => (
-                                  <div key={item.id}>
-                                    <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                      {intelMeta(item)}
+                            <div className="grid grid-cols-1 lg:grid-cols-[0.34fr_0.66fr] gap-4 lg:gap-6">
+                              <div className="lg:pr-2">
+                                <div className="flex items-start justify-between gap-3 mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                                      style={intelSectionTheme[section.key].toneStyle}
+                                    >
+                                      <SectionIcon className="h-4 w-4" />
                                     </div>
-                                    {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
+                                    <div>
+                                      <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                                        {section.kicker}
+                                      </div>
+                                      <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                        {section.title}
+                                      </div>
+                                    </div>
                                   </div>
-                                ))}
+                                  <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
+                                </div>
+
+                                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                                  {section.description}
+                                </div>
                               </div>
-                            )}
+
+                              <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-3">
+                                {lead && (
+                                  <div
+                                    className="rounded-xl border p-4"
+                                    style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderColor: 'rgba(255,255,255,0.08)' }}
+                                  >
+                                    <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                      {intelMeta(lead)}
+                                    </div>
+                                    {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
+                                    <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
+                                      {intelSummary(lead)}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {rest.length > 0 && (
+                                  <div className="space-y-2">
+                                    {rest.map((item) => (
+                                      <div
+                                        key={item.id}
+                                        className="rounded-xl border p-4"
+                                        style={{ backgroundColor: 'rgba(10,14,23,0.26)', borderColor: 'rgba(255,255,255,0.08)' }}
+                                      >
+                                        <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                          {intelMeta(item)}
+                                        </div>
+                                        {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
