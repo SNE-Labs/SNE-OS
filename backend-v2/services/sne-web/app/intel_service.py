@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import logging
+import os
 import re
 import threading
 from typing import Any, Dict, List
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from .intel_enrichment import IntelEnricher
 from .intel_sources import fetch_multi_source_entries
@@ -97,23 +99,46 @@ BROADER_RELEVANCE_TOKENS = {
 GENERALIST_SOURCES = {"hn_front_page", "techcrunch", "openai_news", "reuters_business", "reuters_world"}
 COMMUNITY_SOURCE_CAP = 2
 BLOG_SOURCE_NAME = "SNE Enterprise Blog"
-BLOG_DAILY_LIMIT = 14
+BLOG_DAILY_LIMIT = 100
+BLOG_MIN_DAILY_POSTS = 15
 BLOG_SURFACE_LIMIT = 6
 BLOG_MARKET_DAILY_LIMIT = 6
 BLOG_TOTAL_LIMIT = 48
+BLOG_REFRESH_INSERT_LIMIT = 1
 POST_CACHE_KEY = "intel:enterprise:posts"
 POST_CACHE_META_KEY = "intel:enterprise:posts:meta"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 POST_CACHE_TTL_SECONDS = 86400
-POST_REFRESH_INTERVAL = timedelta(minutes=10)
+POST_REFRESH_INTERVAL = timedelta(minutes=15)
+DEFAULT_INTEL_RESET_TZ = "America/Sao_Paulo"
 
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _utc_day_key() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def _intel_reset_timezone() -> ZoneInfo:
+    timezone_name = (os.getenv("INTEL_DAILY_RESET_TZ") or DEFAULT_INTEL_RESET_TZ).strip() or DEFAULT_INTEL_RESET_TZ
+    try:
+        return ZoneInfo(timezone_name)
+    except Exception:
+        logger.warning("Invalid INTEL_DAILY_RESET_TZ=%s. Falling back to UTC.", timezone_name)
+        return ZoneInfo("UTC")
+
+
+def _parse_generated_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _reset_day_key(value: datetime | None = None) -> str:
+    tz = _intel_reset_timezone()
+    current = value.astimezone(tz) if value else datetime.now(tz)
+    return current.strftime("%Y-%m-%d")
 
 
 def _normalize_title(title: str) -> str:
@@ -577,6 +602,10 @@ def _cached_posts_are_stale(redis_client: SafeRedis, posts: List[Dict[str, Any]]
     return datetime.now(timezone.utc) - last_updated_dt >= POST_REFRESH_INTERVAL
 
 
+def _needs_daily_backfill(posts: List[Dict[str, Any]]) -> bool:
+    return _blog_daily_post_count(posts) < BLOG_MIN_DAILY_POSTS
+
+
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
     try:
         import json
@@ -599,7 +628,7 @@ def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) ->
 
 
 def _blog_daily_count(redis_client: SafeRedis) -> int:
-    count = redis_client.get(f"intel:enterprise:count:{_utc_day_key()}")
+    count = redis_client.get(f"intel:enterprise:count:{_reset_day_key()}")
     try:
         return int(count or 0)
     except Exception:
@@ -607,25 +636,25 @@ def _blog_daily_count(redis_client: SafeRedis) -> int:
 
 
 def _blog_daily_post_count(posts: List[Dict[str, Any]]) -> int:
-    today = _utc_day_key()
+    today = _reset_day_key()
     return sum(
         1
         for post in posts
-        if str(post.get("generated_at", "")).startswith(today)
+        if _reset_day_key(_parse_generated_datetime(post.get("generated_at"))) == today
     )
 
 
 def _blog_daily_market_count(posts: List[Dict[str, Any]]) -> int:
-    today = _utc_day_key()
+    today = _reset_day_key()
     return sum(
         1
         for post in posts
-        if post.get("category") == "market" and str(post.get("generated_at", "")).startswith(today)
+        if post.get("category") == "market" and _reset_day_key(_parse_generated_datetime(post.get("generated_at"))) == today
     )
 
 
 def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
-    key = f"intel:enterprise:count:{_utc_day_key()}"
+    key = f"intel:enterprise:count:{_reset_day_key()}"
     count = redis_client.incr(key)
     redis_client.expire(key, 172800)
     return count
@@ -648,6 +677,8 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         if daily_count >= BLOG_DAILY_LIMIT and not cache_stale:
             return
         market_daily_count = _blog_daily_market_count(posts)
+        inserted_this_refresh = 0
+        refresh_insert_limit = max(1, min(limit, BLOG_REFRESH_INSERT_LIMIT))
 
         candidates: List[tuple[Dict[str, Any], str]] = []
         if market_daily_count < BLOG_MARKET_DAILY_LIMIT:
@@ -664,6 +695,8 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         for item, category in candidates:
             if daily_count >= BLOG_DAILY_LIMIT:
                 break
+            if inserted_this_refresh >= refresh_insert_limit:
+                break
             try:
                 post = enricher.build_post(item)
             except Exception as exc:
@@ -679,6 +712,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             existing_slugs.add(post["slug"])
             _increment_blog_daily_count(redis_client)
             daily_count += 1
+            inserted_this_refresh += 1
             if category == "market":
                 market_daily_count += 1
 
@@ -733,7 +767,11 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)
-    if len(posts) < min(limit, BLOG_TOTAL_LIMIT) or _cached_posts_are_stale(redis_client, posts):
+    if (
+        len(posts) < min(limit, BLOG_TOTAL_LIMIT)
+        or _cached_posts_are_stale(redis_client, posts)
+        or _needs_daily_backfill(posts)
+    ):
         _trigger_enterprise_post_refresh()
     return posts[:limit]
 
