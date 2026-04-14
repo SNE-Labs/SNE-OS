@@ -64,6 +64,11 @@ function connectorErrorMessage(method?: ConnectMethod) {
   return 'Nenhuma wallet do navegador foi encontrada. Instale MetaMask, Rabby, Brave Wallet ou use WalletConnect.';
 }
 
+function hasInjectedEthereumProvider() {
+  if (typeof window === 'undefined') return false;
+  return Boolean((window as Window & { ethereum?: unknown }).ethereum);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { address: walletAddress, isConnected: walletConnected } = useAccount();
@@ -75,11 +80,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tier, setTier] = useState<'free' | 'premium' | 'pro'>('free');
 
+  const injectedAvailable = hasInjectedEthereumProvider();
+  const walletConnectAvailable = useMemo(
+    () => connectors.some((connector) => connectorMethod(connector) === 'walletconnect'),
+    [connectors]
+  );
+
   const connectionOptions = useMemo<ConnectionOption[]>(
     () =>
       connectors
         .map((connector) => connectorMethod(connector))
         .filter((method): method is ConnectMethod => Boolean(method))
+        .filter((method) => {
+          if (method === 'injected') return injectedAvailable;
+          if (method === 'walletconnect') return walletConnectAvailable;
+          return false;
+        })
         .filter((method, index, items) => items.indexOf(method) === index)
         .map((method) =>
           method === 'walletconnect'
@@ -94,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 description: 'MetaMask, Rabby, Brave Wallet e wallets injetadas no navegador.',
               }
         ),
-    [connectors]
+    [connectors, injectedAvailable, walletConnectAvailable]
   );
 
   const displayAddress = walletAddress ?? sessionAddress;
@@ -172,6 +188,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function connect(method?: ConnectMethod) {
     try {
       const preferredMethod = method ?? 'injected';
+
+      if (preferredMethod === 'injected' && !injectedAvailable) {
+        throw new Error(connectorErrorMessage('injected'));
+      }
+
+      if (preferredMethod === 'walletconnect' && !walletConnectAvailable) {
+        throw new Error(connectorErrorMessage('walletconnect'));
+      }
+
       const connector =
         connectors.find((item) => connectorMethod(item) === preferredMethod) ??
         (method ? null : connectors.find((item) => connectorMethod(item) === 'walletconnect')) ??
