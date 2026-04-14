@@ -11,8 +11,10 @@ import {
   NetworkScroll,
   NetworkSolana,
   NetworkSui,
+  NetworkXrp,
 } from '@web3icons/react';
 import { Activity, Shield, Waves, Zap } from 'lucide-react';
+import { siChainlink, siDogecoin } from 'simple-icons';
 
 import type { CSSProperties } from 'react';
 import type { HomeIntelSectionKey } from '@/services/home-intel';
@@ -25,7 +27,16 @@ type IntelEntityIconProps = {
   iconClassName?: string;
 };
 
-const ENTITY_ICONS: Record<string, IconComponent> = {
+type SimpleSvgIcon = {
+  kind: 'simple';
+  path: string;
+  color: string;
+  viewBox?: string;
+};
+
+type EntityIcon = IconComponent | SimpleSvgIcon;
+
+const ENTITY_ICONS: Record<string, EntityIcon> = {
   arbitrum: NetworkArbitrumOne,
   arb: NetworkArbitrumOne,
   avalanche: NetworkAvalanche,
@@ -42,9 +53,31 @@ const ENTITY_ICONS: Record<string, IconComponent> = {
   polygon: NetworkPolygon,
   matic: NetworkPolygon,
   scroll: NetworkScroll,
+  chainlink: {
+    kind: 'simple',
+    path: siChainlink.path,
+    color: `#${siChainlink.hex}`,
+  },
+  link: {
+    kind: 'simple',
+    path: siChainlink.path,
+    color: `#${siChainlink.hex}`,
+  },
+  dogecoin: {
+    kind: 'simple',
+    path: siDogecoin.path,
+    color: `#${siDogecoin.hex}`,
+  },
+  doge: {
+    kind: 'simple',
+    path: siDogecoin.path,
+    color: `#${siDogecoin.hex}`,
+  },
   solana: NetworkSolana,
   sol: NetworkSolana,
   sui: NetworkSui,
+  xrp: NetworkXrp,
+  ripple: NetworkXrp,
 };
 
 const SECTION_FALLBACK_ICONS: Record<HomeIntelSectionKey, typeof Activity> = {
@@ -66,6 +99,21 @@ export function IntelEntityIcon({ symbol, sectionKey = 'market', className, styl
   const Icon = ENTITY_ICONS[normalizeKey(symbol)];
 
   if (Icon) {
+    if (typeof Icon === 'object' && 'kind' in Icon && Icon.kind === 'simple') {
+      return (
+        <div className={className} style={style}>
+          <svg
+            viewBox={Icon.viewBox ?? '0 0 24 24'}
+            aria-hidden="true"
+            className={iconClassName}
+            fill={Icon.color}
+          >
+            <path d={Icon.path} />
+          </svg>
+        </div>
+      );
+    }
+
     return (
       <div className={className} style={style}>
         <Icon size={20} variant="branded" className={iconClassName} />
