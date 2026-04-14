@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, Brain, ExternalLink, Layers3, Radar, Share2, Sparkles, TriangleAlert } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/sne/StatusBadge';
 import { EditorialSnapshot } from '../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../components/blog/articleParser';
+import { cn } from '../components/ui/utils';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi, intelOgImageUrl, intelShareUrl } from '@/services/intel-api';
 
@@ -23,9 +24,52 @@ function formatRelativeTimestamp(value?: string | null): string {
   return `${diffDays}d atrás`;
 }
 
+function toneStatus(tone: 'default' | 'context' | 'watch' | 'action' | 'risk') {
+  if (tone === 'action') return 'success';
+  if (tone === 'risk') return 'warning';
+  if (tone === 'watch') return 'active';
+  return 'pending';
+}
+
+function toneRailStyle(tone: 'default' | 'context' | 'watch' | 'action' | 'risk') {
+  if (tone === 'action') {
+    return {
+      background: 'linear-gradient(135deg, rgba(77,201,144,0.12), rgba(255,255,255,0.02))',
+      borderColor: 'rgba(77,201,144,0.20)',
+    };
+  }
+
+  if (tone === 'risk') {
+    return {
+      background: 'linear-gradient(135deg, rgba(224,92,67,0.12), rgba(255,255,255,0.02))',
+      borderColor: 'rgba(224,92,67,0.20)',
+    };
+  }
+
+  if (tone === 'watch') {
+    return {
+      background: 'linear-gradient(135deg, rgba(255,140,66,0.12), rgba(255,255,255,0.02))',
+      borderColor: 'rgba(255,140,66,0.22)',
+    };
+  }
+
+  if (tone === 'context') {
+    return {
+      background: 'linear-gradient(135deg, rgba(74,144,226,0.10), rgba(255,255,255,0.02))',
+      borderColor: 'rgba(74,144,226,0.18)',
+    };
+  }
+
+  return {
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
+    borderColor: 'rgba(255,255,255,0.10)',
+  };
+}
+
 export function BlogPost() {
   const navigate = useNavigate();
   const { slug = '' } = useParams();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const postQuery = useQuery({
     queryKey: ['intel-post', slug],
     queryFn: () => intelApi.getPost(slug),
@@ -39,28 +83,10 @@ export function BlogPost() {
 
   const post = postQuery.data;
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [readingProgress, setReadingProgress] = useState(0);
   const article = useMemo(() => parseArticleMarkdown(post?.body_markdown ?? ''), [post?.body_markdown]);
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 4) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
-  const sideCards = [
-    {
-      key: 'watch',
-      title: 'O que monitorar',
-      icon: Radar,
-      items: article.highlights.watch,
-    },
-    {
-      key: 'action',
-      title: 'Ação prática',
-      icon: Sparkles,
-      items: article.highlights.actions,
-    },
-    {
-      key: 'risk',
-      title: 'Risco principal',
-      icon: TriangleAlert,
-      items: article.highlights.risks,
-    },
-  ].filter((card) => card.items.length > 0);
   const relatedPosts = useMemo(() => {
     if (!post) return [];
     const terms = new Set([...(post.topics ?? []), ...(post.chains ?? []), ...(post.assets ?? [])].map((item) => item.toLowerCase()));
@@ -86,6 +112,108 @@ export function BlogPost() {
         href: `/radar/${asset.toLowerCase()}usdt`,
       }));
   }, [post?.assets]);
+  const activeSection = article.sections.find((section) => section.id === activeSectionId) ?? article.sections[0] ?? null;
+  const sectionSummaries = useMemo(() => {
+    const pickSignal = (section: (typeof article.sections)[number]) => {
+      for (const block of section.blocks) {
+        if (block.type === 'checklist' && block.items.length > 0) return block.items[0];
+        if (block.type === 'callout') {
+          if (block.text) return block.text;
+          if (block.items.length > 0) return block.items[0];
+        }
+        if (block.type === 'list' && block.items.length > 0) return block.items[0];
+        if (block.type === 'paragraph') return block.text;
+      }
+      return null;
+    };
+
+    return article.sections.map((section) => ({
+      id: section.id,
+      tone: section.tone,
+      signal: pickSignal(section),
+    }));
+  }, [article.sections]);
+  const currentHeading = article.headings.find((heading) => heading.id === activeSectionId) ?? article.headings[0] ?? null;
+  const currentSectionSummary = sectionSummaries.find((section) => section.id === currentHeading?.id) ?? null;
+  const currentSectionIndex = currentHeading ? Math.max(0, article.headings.findIndex((heading) => heading.id === currentHeading.id)) : 0;
+  const progressPercent = Math.round(readingProgress * 100);
+  const contextualRail = useMemo(() => {
+    const uniqueItems = (items: Array<string | null | undefined>, limit = 4) =>
+      [...new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item)))]
+        .slice(0, limit);
+
+    const sectionTitle = activeSection?.title ?? currentHeading?.title ?? 'Leitura atual';
+    const sectionTone = activeSection?.tone ?? currentHeading?.tone ?? 'default';
+    const summary = currentSectionSummary?.signal ?? post?.excerpt ?? post?.subtitle ?? 'Sem sinal contextual para esta seção.';
+    const sectionItems = activeSection
+      ? uniqueItems(
+          activeSection.blocks.flatMap((block) => {
+            if (block.type === 'list' || block.type === 'checklist') return block.items;
+            if (block.type === 'callout') return [block.text, ...block.items];
+            if (block.type === 'paragraph') return [block.text];
+            return [];
+          }),
+          6
+        )
+      : [];
+
+    const buildGroups = () => {
+      if (sectionTone === 'risk') {
+        return [
+          { label: 'Risco principal', items: uniqueItems(sectionItems.length ? sectionItems : article.highlights.risks, 3) },
+          { label: 'O que observar', items: uniqueItems([...article.highlights.watch, ...article.highlights.radarChecks], 3) },
+          { label: 'Implicação', items: uniqueItems(article.highlights.actions, 2) },
+        ].filter((group) => group.items.length > 0);
+      }
+
+      if (sectionTone === 'action') {
+        return [
+          { label: 'O que fazer agora', items: uniqueItems(sectionItems.length ? sectionItems : article.highlights.actions, 3) },
+          { label: 'Onde validar', items: uniqueItems([...article.highlights.radarChecks, ...article.highlights.watch], 3) },
+          { label: 'Links operacionais', items: uniqueItems(radarLinks.map((link) => link.label), 2) },
+        ].filter((group) => group.items.length > 0);
+      }
+
+      if (sectionTone === 'watch') {
+        return [
+          { label: 'Sinais em foco', items: uniqueItems(sectionItems.length ? sectionItems : article.highlights.watch, 3) },
+          { label: 'Valida no Radar', items: uniqueItems(article.highlights.radarChecks, 3) },
+          { label: 'Se confirmar', items: uniqueItems(article.highlights.actions, 2) },
+        ].filter((group) => group.items.length > 0);
+      }
+
+      if (sectionTone === 'context') {
+        return [
+          { label: 'O que importa', items: uniqueItems(sectionItems.length ? sectionItems : snapshotItems, 3) },
+          { label: 'Conecta com', items: uniqueItems([...(post?.topics ?? []), ...(post?.chains ?? []), ...(post?.assets ?? [])], 3) },
+          { label: 'Próxima leitura', items: uniqueItems([...article.highlights.watch, ...article.highlights.actions], 2) },
+        ].filter((group) => group.items.length > 0);
+      }
+
+      return [
+        { label: 'Foco da seção', items: uniqueItems(sectionItems.length ? sectionItems : snapshotItems, 3) },
+        { label: 'Observação', items: uniqueItems(article.highlights.watch, 2) },
+        { label: 'Execução', items: uniqueItems(article.highlights.actions, 2) },
+      ].filter((group) => group.items.length > 0);
+    };
+
+    return {
+      title:
+        sectionTone === 'risk'
+          ? 'Risco em foco'
+          : sectionTone === 'action'
+            ? 'Execução desta leitura'
+            : sectionTone === 'watch'
+              ? 'Monitoramento da seção'
+              : sectionTone === 'context'
+                ? 'Contexto desta seção'
+                : 'Foco da leitura',
+      summary,
+      sectionTitle,
+      sectionTone,
+      groups: buildGroups(),
+    };
+  }, [activeSection, article.highlights.actions, article.highlights.radarChecks, article.highlights.watch, article.highlights.risks, currentHeading, currentSectionSummary?.signal, post?.assets, post?.chains, post?.excerpt, post?.subtitle, post?.topics, radarLinks, snapshotItems]);
 
   useSeoMeta({
     title: post ? `${post.title} | Intel Brief | SNE OS` : 'Intel Brief | SNE OS',
@@ -121,16 +249,6 @@ export function BlogPost() {
       : null,
   });
 
-  if (postQuery.isLoading) {
-    return (
-      <div className="flex-1 px-8 py-6 overflow-y-auto">
-        <div className="mx-auto max-w-4xl py-6">
-          <ModuleStateCard tone="loading" title="Carregando dossiê" description="Buscando a leitura completa do Intel Brief." />
-        </div>
-      </div>
-    );
-  }
-
   const shareUrl = intelShareUrl(slug);
 
   async function handleShare() {
@@ -153,6 +271,107 @@ export function BlogPost() {
     }
   }
 
+  useEffect(() => {
+    setActiveSectionId(article.headings[0]?.id ?? null);
+    setReadingProgress(0);
+  }, [slug, article.headings]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const updateProgress = () => {
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      const nextProgress = maxScroll <= 0 ? 0 : Math.min(1, Math.max(0, container.scrollTop / maxScroll));
+      setReadingProgress(nextProgress);
+    };
+
+    updateProgress();
+    container.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener('resize', updateProgress);
+
+    return () => {
+      container.removeEventListener('scroll', updateProgress);
+      window.removeEventListener('resize', updateProgress);
+    };
+  }, [slug, article.headings.length]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || article.headings.length === 0) return;
+
+    const sections = article.headings
+      .map((heading) => document.getElementById(heading.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (sections.length === 0) return;
+
+    const visibleRatios = new Map<string, number>();
+    const pickActiveSection = () => {
+      if (visibleRatios.size > 0) {
+        const [nextActive] = [...visibleRatios.entries()].sort((left, right) => right[1] - left[1])[0];
+        setActiveSectionId(nextActive);
+        return;
+      }
+
+      const containerTop = container.getBoundingClientRect().top;
+      let candidate = sections[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      sections.forEach((section) => {
+        const distance = Math.abs(section.getBoundingClientRect().top - containerTop - 112);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          candidate = section;
+        }
+      });
+
+      setActiveSectionId(candidate.id);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            visibleRatios.set(entry.target.id, entry.intersectionRatio);
+          } else {
+            visibleRatios.delete(entry.target.id);
+          }
+        });
+
+        pickActiveSection();
+      },
+      {
+        root: container,
+        rootMargin: '-15% 0px -55% 0px',
+        threshold: [0, 0.15, 0.35, 0.6, 1],
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    pickActiveSection();
+
+    return () => observer.disconnect();
+  }, [slug, article.headings]);
+
+  function handleJumpToSection(sectionId: string) {
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.history.replaceState(null, '', `#${sectionId}`);
+  }
+
+  if (postQuery.isLoading) {
+    return (
+      <div className="flex-1 px-8 py-6 overflow-y-auto">
+        <div className="mx-auto max-w-4xl py-6">
+          <ModuleStateCard tone="loading" title="Carregando dossiê" description="Buscando a leitura completa do Intel Brief." />
+        </div>
+      </div>
+    );
+  }
+
   if (postQuery.isError || !post) {
     return (
       <div className="flex-1 px-8 py-6 overflow-y-auto">
@@ -163,15 +382,8 @@ export function BlogPost() {
     );
   }
 
-  const outlineToneStatus = (tone: (typeof article.headings)[number]['tone']) => {
-    if (tone === 'action') return 'success';
-    if (tone === 'risk') return 'warning';
-    if (tone === 'watch') return 'active';
-    return 'pending';
-  };
-
   return (
-    <div className="flex-1 px-8 py-6 overflow-y-auto">
+    <div ref={scrollContainerRef} className="flex-1 px-8 py-6 overflow-y-auto">
       <article className="mx-auto max-w-6xl space-y-6">
         <button onClick={() => navigate('/intel')} className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
           <ArrowLeft className="w-4 h-4" />
@@ -192,7 +404,7 @@ export function BlogPost() {
             <StatusBadge status="active">Intel Brief</StatusBadge>
             <StatusBadge status="success">{post.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</StatusBadge>
             <StatusBadge status="pending">{post.reading_time_minutes} min</StatusBadge>
-            <StatusBadge status={post.status === 'draft' ? 'success' : 'warning'}>{post.status}</StatusBadge>
+            {post.status !== 'draft' ? <StatusBadge status="warning">{post.status}</StatusBadge> : null}
           </div>
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}>
@@ -307,29 +519,42 @@ export function BlogPost() {
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 self-start">
-            <section
-              className="rounded-[24px] p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                Leitura guiada
-              </div>
-              <div className="space-y-3">
-                <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}>
-                  {post.excerpt || post.subtitle}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'var(--bg-3)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Leitura</div>
-                    <div style={{ color: 'var(--text-1)' }}>{post.reading_time_minutes} min</div>
+            {article.headings.length > 0 && (
+              <section
+                className="rounded-[24px] p-5 space-y-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    Leitura em curso
                   </div>
-                  <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'var(--bg-3)' }}>
-                    <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
-                    <div className="line-clamp-1" style={{ color: 'var(--text-1)' }}>{post.sources[0]?.name ?? 'Intel'}</div>
+                  {currentHeading ? <StatusBadge status={toneStatus(currentHeading.tone)}>{currentHeading.tone}</StatusBadge> : null}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between gap-3 text-[11px] uppercase" style={{ color: 'var(--text-3)' }}>
+                    <span>{progressPercent}% lido</span>
+                    <span>{Math.min(article.headings.length, currentSectionIndex + 1 || 1)}/{article.headings.length} seções</span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full" style={{ backgroundColor: 'var(--bg-3)' }}>
+                    <div
+                      className="h-full rounded-full transition-[width] duration-300"
+                      style={{ width: `${progressPercent}%`, backgroundColor: 'var(--accent-orange)' }}
+                    />
                   </div>
                 </div>
-              </div>
-            </section>
+                {currentHeading ? (
+                  <div className="rounded-2xl px-4 py-4 space-y-2" style={{ backgroundColor: 'var(--bg-3)' }}>
+                    <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                      Seção ativa
+                    </div>
+                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{currentHeading.title}</div>
+                    <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                      {currentSectionSummary?.signal ?? post.excerpt ?? post.subtitle}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            )}
 
             {article.headings.length > 0 && (
               <section
@@ -341,11 +566,17 @@ export function BlogPost() {
                 </div>
                 <div className="space-y-2">
                   {article.headings.map((heading, index) => (
-                    <a
+                    <button
                       key={heading.id}
-                      href={`#${heading.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm transition-colors"
-                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                      type="button"
+                      onClick={() => handleJumpToSection(heading.id)}
+                      className={cn('flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors')}
+                      style={{
+                        backgroundColor: activeSectionId === heading.id ? 'rgba(255,140,66,0.10)' : 'var(--bg-3)',
+                        color: activeSectionId === heading.id ? 'var(--text-1)' : 'var(--text-2)',
+                        borderWidth: '1px',
+                        borderColor: activeSectionId === heading.id ? 'rgba(255,140,66,0.18)' : 'transparent',
+                      }}
                     >
                       <div className="min-w-0">
                         <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>
@@ -353,8 +584,53 @@ export function BlogPost() {
                         </div>
                         <div className="line-clamp-2">{heading.title}</div>
                       </div>
-                      <StatusBadge status={outlineToneStatus(heading.tone)}>{heading.tone}</StatusBadge>
-                    </a>
+                      <StatusBadge status={toneStatus(heading.tone)}>{heading.tone}</StatusBadge>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {article.headings.length > 0 && (
+              <section
+                className="rounded-[24px] p-5 space-y-4"
+                style={{ ...toneRailStyle(contextualRail.sectionTone), backgroundColor: 'var(--bg-2)', borderWidth: '1px' }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    {contextualRail.title}
+                  </div>
+                  <StatusBadge status={toneStatus(contextualRail.sectionTone)}>{contextualRail.sectionTone}</StatusBadge>
+                </div>
+
+                <div className="rounded-2xl px-4 py-4 space-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                  <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    Bloco ativo
+                  </div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{contextualRail.sectionTitle}</div>
+                  <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                    {contextualRail.summary}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {contextualRail.groups.map((group) => (
+                    <div key={group.label} className="space-y-2">
+                      <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                        {group.label}
+                      </div>
+                      <div className="space-y-2">
+                        {group.items.map((item, index) => (
+                          <div
+                            key={`${group.label}-${index}`}
+                            className="rounded-xl px-3 py-3 text-sm leading-6"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
+                          >
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </section>
@@ -417,34 +693,29 @@ export function BlogPost() {
               </section>
             )}
 
-            {sideCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <section
-                  key={card.key}
-                  className="rounded-[24px] p-5"
-                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                    <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                      {card.title}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {card.items.map((item, index) => (
-                      <div
-                        key={`${card.key}-${index}`}
-                        className="rounded-xl px-3 py-3 text-sm"
-                        style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
-                      >
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            {relatedPosts.length > 0 && (
+              <section
+                className="rounded-[24px] p-5"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                  Related reads
+                </div>
+                <div className="space-y-3">
+                  {relatedPosts.slice(0, 3).map((related) => (
+                    <Link
+                      key={`rail-${related.slug}`}
+                      to={`/intel/${related.slug}`}
+                      className="block rounded-xl px-4 py-3"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-1)' }}>{related.title}</div>
+                      <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>{related.excerpt || related.subtitle}</div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section
               className="rounded-[24px] p-5"

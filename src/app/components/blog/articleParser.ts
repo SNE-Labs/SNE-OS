@@ -1,7 +1,10 @@
 export type ArticleBlock =
   | { type: 'paragraph'; text: string }
   | { type: 'list'; items: string[] }
-  | { type: 'hr' };
+  | { type: 'hr' }
+  | { type: 'subheading'; text: string }
+  | { type: 'callout'; label: string; tone: ArticleTone; text: string | null; items: string[] }
+  | { type: 'checklist'; label: string; items: string[] };
 
 export type ArticleTone = 'default' | 'context' | 'watch' | 'action' | 'risk';
 
@@ -20,7 +23,15 @@ export type ArticleDocument = {
     actions: string[];
     risks: string[];
     watch: string[];
+    radarChecks: string[];
   };
+};
+
+type SpecialBlockDefinition = {
+  label: string;
+  normalizedLabels: string[];
+  type: 'callout' | 'checklist';
+  tone: ArticleTone;
 };
 
 function slugify(value: string) {
@@ -39,15 +50,37 @@ function normalizeTitle(value: string) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function normalizeLabel(value: string) {
+  return normalizeTitle(value)
+    .replace(/\s+/g, ' ')
+    .replace(/\s*:\s*/g, ':')
+    .trim();
+}
+
 function detectTone(title: string | null): ArticleTone {
   const normalized = normalizeTitle(title ?? '');
   if (!normalized) return 'default';
-  if (/(risco|riscos|ameaca|ameaças|vulnerabilidade|pressao)/.test(normalized)) return 'risk';
-  if (/(acao|acoes|ações|proximos passos|implicacoes operacionais|implicacoes|recomendacoes|recomendacao|o que fazer)/.test(normalized)) return 'action';
-  if (/(acompanhar|monitorar|watch|vigilancia|vigilancia imediata|pontos de atencao|pontos de atenção)/.test(normalized)) return 'watch';
-  if (/(contexto|resumo|panorama|introducao|introdução|visao geral|visão geral)/.test(normalized)) return 'context';
+  if (/(risco|riscos|ameaca|vulnerabilidade|pressao)/.test(normalized)) return 'risk';
+  if (/(acao|acoes|proximos passos|implicacoes operacionais|implicacao para execucao|implicacoes|recomendacoes|recomendacao|o que fazer)/.test(normalized)) return 'action';
+  if (/(acompanhar|monitorar|watch|vigilancia|vigilancia imediata|pontos de atencao|o que observar agora|valida no radar)/.test(normalized)) return 'watch';
+  if (/(contexto|resumo|panorama|introducao|visao geral|leitura de mercado|o que importa)/.test(normalized)) return 'context';
   return 'default';
 }
+
+const specialBlockDefinitions: SpecialBlockDefinition[] = [
+  {
+    label: 'O que importa',
+    normalizedLabels: ['o que importa'],
+    type: 'callout',
+    tone: 'context',
+  },
+  {
+    label: 'Valida no Radar',
+    normalizedLabels: ['valida no radar', 'validacao no radar'],
+    type: 'checklist',
+    tone: 'watch',
+  },
+];
 
 function parseListItems(lines: string[]) {
   const bulletItems = lines
@@ -62,6 +95,36 @@ function parseListItems(lines: string[]) {
   return null;
 }
 
+function parseSpecialBlock(lines: string[]): ArticleBlock | null {
+  const firstLine = lines[0];
+  if (!firstLine) return null;
+
+  const normalizedFirstLine = normalizeLabel(firstLine);
+  const definition = specialBlockDefinitions.find((entry) =>
+    entry.normalizedLabels.some((label) => normalizedFirstLine === label || normalizedFirstLine.startsWith(`${label}:`))
+  );
+
+  if (!definition) return null;
+
+  const colonIndex = firstLine.indexOf(':');
+  const inlineRemainder = colonIndex >= 0 ? firstLine.slice(colonIndex + 1).trim() : '';
+  const contentLines = [...(inlineRemainder ? [inlineRemainder] : []), ...lines.slice(1).map((line) => line.trim()).filter(Boolean)];
+  const listItems = parseListItems(contentLines);
+
+  if (definition.type === 'checklist') {
+    const items = (listItems ?? contentLines).map((item) => item.trim()).filter(Boolean);
+    return items.length ? { type: 'checklist', label: definition.label, items } : null;
+  }
+
+  return {
+    type: 'callout',
+    label: definition.label,
+    tone: definition.tone,
+    text: listItems ? null : contentLines.join(' ').trim() || null,
+    items: listItems ?? [],
+  };
+}
+
 function parseBlock(rawBlock: string): ArticleBlock | null {
   const trimmed = rawBlock.trim();
   if (!trimmed) return null;
@@ -73,6 +136,18 @@ function parseBlock(rawBlock: string): ArticleBlock | null {
     .filter(Boolean);
 
   if (!lines.length) return null;
+
+  if (lines[0]?.startsWith('### ')) {
+    return {
+      type: 'subheading',
+      text: lines[0].replace(/^###\s+/, '').trim(),
+    };
+  }
+
+  const specialBlock = parseSpecialBlock(lines);
+  if (specialBlock) {
+    return specialBlock;
+  }
 
   const listItems = parseListItems(lines);
   if (listItems) {
@@ -90,6 +165,7 @@ function extractHighlightsFromSections(sections: ArticleSection[]) {
     actions: [] as string[],
     risks: [] as string[],
     watch: [] as string[],
+    radarChecks: [] as string[],
   };
 
   sections.forEach((section) => {
@@ -105,6 +181,11 @@ function extractHighlightsFromSections(sections: ArticleSection[]) {
     if (!bucket) return;
 
     section.blocks.forEach((block) => {
+      if (block.type === 'checklist' && normalizeLabel(block.label).includes('valida no radar')) {
+        result.radarChecks.push(...block.items);
+        return;
+      }
+
       if (block.type === 'list') {
         bucket.push(...block.items);
         return;
@@ -118,6 +199,7 @@ function extractHighlightsFromSections(sections: ArticleSection[]) {
   result.actions = result.actions.slice(0, 4);
   result.risks = result.risks.slice(0, 4);
   result.watch = result.watch.slice(0, 4);
+  result.radarChecks = result.radarChecks.slice(0, 4);
   return result;
 }
 
@@ -128,7 +210,7 @@ export function parseArticleMarkdown(markdown: string): ArticleDocument {
       intro: [],
       sections: [],
       headings: [],
-      highlights: { actions: [], risks: [], watch: [] },
+      highlights: { actions: [], risks: [], watch: [], radarChecks: [] },
     };
   }
 
@@ -158,6 +240,21 @@ export function parseArticleMarkdown(markdown: string): ArticleDocument {
       if (remainder) {
         const parsed = parseBlock(remainder);
         if (parsed) currentSection.blocks.push(parsed);
+      }
+      return;
+    }
+
+    if (headingLine.startsWith('### ')) {
+      const target = currentSection?.blocks ?? intro;
+      target.push({
+        type: 'subheading',
+        text: headingLine.replace(/^###\s+/, '').trim(),
+      });
+
+      const remainder = lines.slice(1).join('\n').trim();
+      if (remainder) {
+        const parsed = parseBlock(remainder);
+        if (parsed) target.push(parsed);
       }
       return;
     }

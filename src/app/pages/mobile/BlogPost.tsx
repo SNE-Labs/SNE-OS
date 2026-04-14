@@ -33,6 +33,7 @@ export function MobileBlogPost() {
   const postSources = post?.sources ?? [];
   const mobileInsightCards = [
     { key: 'watch', title: 'Monitorar', items: article.highlights.watch },
+    { key: 'radar', title: 'Radar', items: article.highlights.radarChecks },
     { key: 'action', title: 'Ação', items: article.highlights.actions },
     { key: 'risk', title: 'Risco', items: article.highlights.risks },
   ].filter((card) => card.items.length > 0);
@@ -127,7 +128,7 @@ export function MobileBlogPost() {
               <Badge variant="orange" size="sm">Intel Brief</Badge>
               <Badge variant="info" size="sm">{post.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</Badge>
               <Badge variant="neutral" size="sm">{post.reading_time_minutes} min</Badge>
-              <Badge variant={post.status === 'draft' ? 'success' : 'warning'} size="sm">{post.status}</Badge>
+              {post.status !== 'draft' ? <Badge variant="warning" size="sm">{post.status}</Badge> : null}
             </div>
             <div className="text-[var(--text-1)] mb-2">{post.title}</div>
             <div className="text-sm text-[var(--text-2)] mb-3">{post.subtitle}</div>
