@@ -34,6 +34,7 @@ export function BlogPost() {
   const post = postQuery.data;
   const article = useMemo(() => parseArticleMarkdown(post?.body_markdown ?? ''), [post?.body_markdown]);
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 4) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
+  const hasSingleSnapshot = snapshotItems.length === 1;
   const sideCards = [
     {
       key: 'watch',
@@ -184,11 +185,11 @@ export function BlogPost() {
                 <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
                   Snapshot editorial
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={hasSingleSnapshot ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
                   {snapshotItems.map((line, index) => (
                     <div
                       key={`${line}-${index}`}
-                      className="rounded-2xl px-4 py-4"
+                      className={hasSingleSnapshot ? 'rounded-2xl px-5 py-5' : 'rounded-2xl px-4 py-4'}
                       style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                     >
                       <div className="text-[11px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>
