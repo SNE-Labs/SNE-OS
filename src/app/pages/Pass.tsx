@@ -165,6 +165,9 @@ export function Pass() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Passport</div>
+                  {identityQuery.isFetching && identity ? (
+                    <StatusBadge status="pending">sincronizando</StatusBadge>
+                  ) : null}
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
@@ -287,13 +290,13 @@ export function Pass() {
                   />
                   <WalletConnect showConnectButton connectButtonLabel="Conectar wallet e assinar SIWE" fullWidth />
                 </div>
-              ) : identityQuery.isLoading ? (
+              ) : identityQuery.isLoading && !identity ? (
                 <ModuleStateCard
                   tone="loading"
                   title="Resolvendo identidade"
                   description="Carregando wallet primária, grafo de carteiras e trilha recente de eventos."
                 />
-              ) : identityQuery.isError || !identity ? (
+              ) : (identityQuery.isError || !identity) && !identity ? (
                 <ModuleStateCard
                   tone="error"
                   title="Falha ao carregar o Passport"
@@ -615,11 +618,11 @@ export function Pass() {
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                     Digite um endereço para abrir a leitura pública do Passport.
                   </div>
-                ) : publicOverviewQuery.isLoading ? (
+                ) : publicOverviewQuery.isLoading && !publicProfile ? (
                   <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                     Resolvendo endereço...
                   </div>
-                ) : publicOverviewQuery.isError || !publicProfile ? (
+                ) : (publicOverviewQuery.isError || !publicProfile) && !publicProfile ? (
                   <div className="text-sm" style={{ color: 'var(--danger-red)' }}>
                     Falha ao resolver esse endereço agora.
                   </div>

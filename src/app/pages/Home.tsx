@@ -16,6 +16,7 @@ import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { apiGet } from '@/lib/api/http';
+import { readPersistedSnapshot, writePersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
 import { formatAddress } from '@/utils/format';
@@ -120,13 +121,25 @@ const OS_NAV = [
   { label: 'Docs', path: '/docs', icon: FileText },
 ];
 
+const HOME_SNAPSHOT_KEY = 'sne:query:home';
+
 export function Home() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const persistedHome = readPersistedSnapshot<HomeResponse>(HOME_SNAPSHOT_KEY);
 
-  const { data: homeData, isLoading, error } = useQuery({
+  const { data: homeData, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['home'],
-    queryFn: () => apiGet<HomeResponse>('/api/home'),
+    queryFn: async () => {
+      const payload = await apiGet<HomeResponse>('/api/home');
+      writePersistedSnapshot(HOME_SNAPSHOT_KEY, payload);
+      return payload;
+    },
+    initialData: persistedHome?.data,
+    initialDataUpdatedAt: persistedHome?.savedAt,
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchInterval: 30000,
     retry: 3,
   });
@@ -293,7 +306,7 @@ export function Home() {
     [homeData?.system.workspace]
   );
 
-  if (isLoading) {
+  if (isLoading && !homeData) {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
@@ -309,7 +322,7 @@ export function Home() {
     );
   }
 
-  if (error || !data) {
+  if ((error || !data) && !homeData) {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
@@ -319,7 +332,7 @@ export function Home() {
               title="Base operacional indisponível"
               description="Intel, mercado e contexto não carregaram agora."
               actionLabel="Tentar novamente"
-              onAction={() => window.location.reload()}
+              onAction={() => refetch()}
             />
           </div>
         </div>
@@ -351,6 +364,9 @@ export function Home() {
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>
                     {formattedTime}
                   </div>
+                  {isFetching ? (
+                    <StatusBadge status="pending">sincronizando</StatusBadge>
+                  ) : null}
                   {homeData?.intel.last_updated ? (
                     <StatusBadge status="active">ao vivo</StatusBadge>
                   ) : null}

@@ -35,12 +35,12 @@ export function MobileVault() {
       subtitle="Self-custody, capital surface and network allocation."
       showContext
     >
-      {overviewQuery.isLoading ? (
+      {overviewQuery.isLoading && !overview ? (
         <div className="space-y-3">
           <SurfaceCard className="h-32 animate-pulse bg-[var(--bg-1)]" />
           <SurfaceCard className="h-48 animate-pulse bg-[var(--bg-1)]" />
         </div>
-      ) : overviewQuery.isError || !overview ? (
+      ) : (overviewQuery.isError || !overview) && !overview ? (
         <ErrorState
           title="Vault indisponível"
           description="A superfície de capital não carregou agora."
@@ -64,6 +64,12 @@ export function MobileVault() {
                 </p>
               </div>
             </div>
+
+            {overviewQuery.isFetching ? (
+              <div className="mb-4">
+                <Badge variant="neutral" size="sm">atualizando</Badge>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">

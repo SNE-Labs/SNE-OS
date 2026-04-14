@@ -5,6 +5,7 @@ import { Activity, ArrowUpRight, Shield, Waves, Wallet, Zap } from 'lucide-react
 
 import { Badge, EmptyState, ErrorState, LoadingSkeletonGroup, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { apiGet } from '@/lib/api/http';
+import { readPersistedSnapshot, writePersistedSnapshot } from '@/lib/querySnapshot';
 import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
@@ -104,6 +105,8 @@ type HomeResponse = {
   };
 };
 
+const HOME_SNAPSHOT_KEY = 'sne:query:home';
+
 function toBadgeVariant(
   tone?: 'active' | 'success' | 'warning' | 'pending'
 ): 'success' | 'warning' | 'neutral' | 'orange' {
@@ -157,9 +160,19 @@ function formatPrice(value: number) {
 
 export function MobileHome() {
   const navigate = useNavigate();
+  const persistedHome = readPersistedSnapshot<HomeResponse>(HOME_SNAPSHOT_KEY);
   const homeQuery = useQuery({
     queryKey: ['home', 'mobile'],
-    queryFn: () => apiGet<HomeResponse>('/api/home'),
+    queryFn: async () => {
+      const payload = await apiGet<HomeResponse>('/api/home');
+      writePersistedSnapshot(HOME_SNAPSHOT_KEY, payload);
+      return payload;
+    },
+    initialData: persistedHome?.data,
+    initialDataUpdatedAt: persistedHome?.savedAt,
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     retry: 2,
     refetchInterval: 30000,
   });
@@ -310,9 +323,9 @@ export function MobileHome() {
       subtitle="Inteligencia contextual, identidade e operacao multichain."
       showContext
     >
-      {homeQuery.isLoading ? (
+      {homeQuery.isLoading && !home ? (
         <LoadingSkeletonGroup count={4} />
-      ) : homeQuery.isError || !home ? (
+      ) : (homeQuery.isError || !home) && !home ? (
         <ErrorState
           title="Home indisponível"
           description="A superfície principal do OS não carregou agora."
@@ -326,9 +339,12 @@ export function MobileHome() {
                 <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Intel Brief</div>
                 <h2 className="text-[var(--text-1)]">Leitura prioritária da sessão</h2>
               </div>
-              <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
-                Brief
-              </MobileButton>
+              <div className="flex items-center gap-2">
+                {homeQuery.isFetching ? <Badge variant="neutral" size="sm">atualizando</Badge> : null}
+                <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
+                  Brief
+                </MobileButton>
+              </div>
             </div>
 
             {leadIntelSection && leadIntelItem ? (

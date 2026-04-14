@@ -112,12 +112,12 @@ export function MobileRadar() {
         </div>
       </SurfaceCard>
 
-      {overviewQuery.isLoading ? (
+      {overviewQuery.isLoading && !overview ? (
         <div className="space-y-3">
           <SurfaceCard className="h-32 animate-pulse bg-[var(--bg-1)]" />
           <SurfaceCard className="h-48 animate-pulse bg-[var(--bg-1)]" />
         </div>
-      ) : overviewQuery.isError || !overview ? (
+      ) : (overviewQuery.isError || !overview) && !overview ? (
         <ErrorState
           title="Radar indisponível"
           description="Os dados de mercado não carregaram agora."

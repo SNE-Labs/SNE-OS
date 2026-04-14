@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { readPersistedSnapshot, writePersistedSnapshot } from '../lib/querySnapshot';
 import {
   lookupAddress,
   getBalance,
@@ -33,24 +34,46 @@ export function useLookupAddress(address: string | null) {
 }
 
 export function usePassportOverview(address: string | null) {
+  const snapshotKey = `sne:query:passport:overview:${address ?? 'anonymous'}`;
+  const persistedSnapshot = readPersistedSnapshot(snapshotKey);
+
   return useQuery({
     queryKey: ['passport', 'overview', address],
-    queryFn: () => getPassportOverview(address),
+    queryFn: async () => {
+      const payload = await getPassportOverview(address);
+      writePersistedSnapshot(snapshotKey, payload);
+      return payload;
+    },
     enabled: address === null || address.length > 0,
+    initialData: persistedSnapshot?.data,
+    initialDataUpdatedAt: persistedSnapshot?.savedAt,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
+    refetchOnWindowFocus: false,
   });
 }
 
 export function usePassportIdentity(enabled = true) {
+  const snapshotKey = 'sne:query:passport:identity';
+  const persistedSnapshot = readPersistedSnapshot(snapshotKey);
+
   return useQuery({
     queryKey: ['passport', 'identity'],
-    queryFn: () => getPassportIdentity(),
+    queryFn: async () => {
+      const payload = await getPassportIdentity();
+      writePersistedSnapshot(snapshotKey, payload);
+      return payload;
+    },
     enabled,
+    initialData: persistedSnapshot?.data,
+    initialDataUpdatedAt: persistedSnapshot?.savedAt,
+    placeholderData: (previousData) => previousData,
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -14,8 +14,8 @@ export function Vault() {
   const overview = overviewQuery.data;
   const moduleState = resolveModuleState({
     isConnected,
-    isLoading: overviewQuery.isLoading,
-    isError: overviewQuery.isError,
+    isLoading: overviewQuery.isLoading && !overview,
+    isError: overviewQuery.isError && !overview,
     data: overview,
   });
   const capitalCards = useMemo(
@@ -53,6 +53,9 @@ export function Vault() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Cofre</div>
+                  {overviewQuery.isFetching && overview ? (
+                    <div className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>sincronizando</div>
+                  ) : null}
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>

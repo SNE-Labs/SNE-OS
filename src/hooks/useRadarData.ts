@@ -1,12 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { readPersistedSnapshot, writePersistedSnapshot } from '../lib/querySnapshot';
 import { radarApi } from '../services/radar-api';
 import type { MarketSummary, RadarOverview, Signal, WatchlistResponse } from '../services/radar-api';
 
 export function useRadarOverview(symbol: string, timeframe: string = '24H') {
+  const snapshotKey = `sne:query:radar:${symbol}:${timeframe}`;
+  const persistedSnapshot = readPersistedSnapshot<RadarOverview>(snapshotKey);
+
   return useQuery({
     queryKey: ['radar', 'overview', symbol, timeframe],
-    queryFn: () => radarApi.getOverview(symbol, timeframe),
+    queryFn: async () => {
+      const payload = await radarApi.getOverview(symbol, timeframe);
+      writePersistedSnapshot(snapshotKey, payload);
+      return payload;
+    },
     enabled: !!symbol && !!timeframe,
+    initialData: persistedSnapshot?.data,
+    initialDataUpdatedAt: persistedSnapshot?.savedAt,
+    placeholderData: (previousData) => previousData,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
@@ -104,4 +115,3 @@ export function useSystemStatus() {
     retry: 3,
   });
 }
-

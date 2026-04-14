@@ -99,12 +99,12 @@ export function MobilePass() {
             </div>
           </SurfaceCard>
         </>
-      ) : identityQuery.isLoading ? (
+      ) : identityQuery.isLoading && !identity ? (
         <div className="space-y-3">
           <SurfaceCard className="h-32 animate-pulse bg-[var(--bg-1)]" />
           <SurfaceCard className="h-44 animate-pulse bg-[var(--bg-1)]" />
         </div>
-      ) : identityQuery.isError || !identity ? (
+      ) : (identityQuery.isError || !identity) && !identity ? (
         <ErrorState
           title="Passport indisponível"
           description="A identidade autenticada não carregou agora."
@@ -128,6 +128,12 @@ export function MobilePass() {
                 </p>
               </div>
             </div>
+
+            {identityQuery.isFetching ? (
+              <div className="mb-4">
+                <Badge variant="neutral" size="sm">atualizando</Badge>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
@@ -233,9 +239,9 @@ export function MobilePass() {
                 <div className="text-sm text-[var(--text-2)]">
                   Digite um endereço para abrir o perfil público on-chain.
                 </div>
-              ) : publicOverviewQuery.isLoading ? (
+              ) : publicOverviewQuery.isLoading && !publicProfile ? (
                 <div className="text-sm text-[var(--text-2)]">Resolvendo endereço...</div>
-              ) : publicOverviewQuery.isError || !publicProfile ? (
+              ) : (publicOverviewQuery.isError || !publicProfile) && !publicProfile ? (
                 <div className="text-sm text-[var(--danger-red)]">Falha ao resolver o perfil público.</div>
               ) : (
                 <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
