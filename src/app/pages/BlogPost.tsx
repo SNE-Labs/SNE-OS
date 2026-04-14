@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUpRight, Brain, ExternalLink, Layers3, Radar, Share2, Sparkles, TriangleAlert } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, ArrowUpRight, Brain, ExternalLink, Layers3, Share2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
@@ -214,6 +215,35 @@ export function BlogPost() {
       groups: buildGroups(),
     };
   }, [activeSection, article.highlights.actions, article.highlights.radarChecks, article.highlights.watch, article.highlights.risks, currentHeading, currentSectionSummary?.signal, post?.assets, post?.chains, post?.excerpt, post?.subtitle, post?.topics, radarLinks, snapshotItems]);
+  const stageAction = useMemo(() => {
+    const firstSource = post?.sources?.[0];
+
+    if ((contextualRail.sectionTone === 'action' || contextualRail.sectionTone === 'watch') && radarLinks[0]) {
+      return {
+        kind: 'internal' as const,
+        href: radarLinks[0].href,
+        label: radarLinks[0].label,
+      };
+    }
+
+    if (contextualRail.sectionTone === 'context' && relatedPosts[0]) {
+      return {
+        kind: 'internal' as const,
+        href: `/intel/${relatedPosts[0].slug}`,
+        label: 'Continue a leitura',
+      };
+    }
+
+    if (firstSource) {
+      return {
+        kind: 'external' as const,
+        href: firstSource.url,
+        label: firstSource.name,
+      };
+    }
+
+    return null;
+  }, [contextualRail.sectionTone, post?.sources, radarLinks, relatedPosts]);
 
   useSeoMeta({
     title: post ? `${post.title} | Intel Brief | SNE OS` : 'Intel Brief | SNE OS',
@@ -461,7 +491,7 @@ export function BlogPost() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
           <div className="space-y-6">
             {snapshotItems.length > 0 && (
               <section
@@ -486,7 +516,7 @@ export function BlogPost() {
 
             {relatedPosts.length > 0 && (
               <section
-                className="rounded-[28px] p-6 space-y-4 xl:hidden"
+                className="rounded-[28px] p-6 space-y-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
                 <div>
@@ -516,9 +546,34 @@ export function BlogPost() {
                 </div>
               </section>
             )}
+
+            <section
+              className="rounded-[28px] p-6 space-y-4"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                <Layers3 className="w-3.5 h-3.5" />
+                Feeds de origem
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {post.sources.map((source) => (
+                  <a
+                    key={source.url}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between gap-3 rounded-2xl px-4 py-4"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <span style={{ color: 'var(--text-1)' }}>{source.name}</span>
+                    <ExternalLink className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                  </a>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <aside className="space-y-4 xl:sticky xl:top-6 self-start">
+          <aside className="hidden lg:block space-y-4 lg:sticky lg:top-6 self-start">
             {article.headings.length > 0 && (
               <section
                 className="rounded-[24px] p-5 space-y-4"
@@ -593,154 +648,104 @@ export function BlogPost() {
 
             {article.headings.length > 0 && (
               <section
-                className="rounded-[24px] p-5 space-y-4"
+                className="rounded-[24px] p-5"
                 style={{ ...toneRailStyle(contextualRail.sectionTone), backgroundColor: 'var(--bg-2)', borderWidth: '1px' }}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                    {contextualRail.title}
-                  </div>
-                  <StatusBadge status={toneStatus(contextualRail.sectionTone)}>{contextualRail.sectionTone}</StatusBadge>
-                </div>
-
-                <div className="rounded-2xl px-4 py-4 space-y-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                  <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                    Bloco ativo
-                  </div>
-                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{contextualRail.sectionTitle}</div>
-                  <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    {contextualRail.summary}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {contextualRail.groups.map((group) => (
-                    <div key={group.label} className="space-y-2">
-                      <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                        {group.label}
-                      </div>
-                      <div className="space-y-2">
-                        {group.items.map((item, index) => (
-                          <div
-                            key={`${group.label}-${index}`}
-                            className="rounded-xl px-3 py-3 text-sm leading-6"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
-                          >
-                            {item}
+                <div
+                  className="relative min-h-[420px] overflow-hidden rounded-[20px] border"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={currentHeading?.id ?? contextualRail.sectionTitle}
+                      initial={{ opacity: 0, y: 26, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -26, scale: 0.985 }}
+                      transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute inset-0 px-4 py-4"
+                    >
+                      <div className="flex h-full flex-col justify-between gap-5">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                              {contextualRail.title}
+                            </div>
+                            <StatusBadge status={toneStatus(contextualRail.sectionTone)}>{contextualRail.sectionTone}</StatusBadge>
                           </div>
-                        ))}
+
+                          <div className="space-y-2">
+                            <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                              Card ativo
+                            </div>
+                            <div className="text-xl font-semibold leading-7" style={{ color: 'var(--text-1)' }}>
+                              {contextualRail.sectionTitle}
+                            </div>
+                            <div className="text-sm leading-7" style={{ color: 'var(--text-2)' }}>
+                              {contextualRail.summary}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            {contextualRail.groups.slice(0, 2).map((group) => (
+                              <div key={group.label} className="space-y-2">
+                                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                                  {group.label}
+                                </div>
+                                <div className="space-y-2">
+                                  {group.items.slice(0, 3).map((item, index) => (
+                                    <div
+                                      key={`${group.label}-${index}`}
+                                      className="rounded-xl px-3 py-3 text-sm leading-6"
+                                      style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
+                                    >
+                                      {item}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {stageAction ? (
+                          stageAction.kind === 'internal' ? (
+                            <Link
+                              to={stageAction.href}
+                              className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+                              style={{
+                                backgroundColor: 'rgba(255,140,66,0.10)',
+                                color: 'var(--text-1)',
+                                borderWidth: '1px',
+                                borderColor: 'rgba(255,140,66,0.20)',
+                              }}
+                            >
+                              <span>{stageAction.label}</span>
+                              <ArrowUpRight className="w-4 h-4" />
+                            </Link>
+                          ) : (
+                            <a
+                              href={stageAction.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"
+                              style={{
+                                backgroundColor: 'rgba(255,255,255,0.04)',
+                                color: 'var(--text-1)',
+                                borderWidth: '1px',
+                                borderColor: 'rgba(255,255,255,0.10)',
+                              }}
+                            >
+                              <span>{stageAction.label}</span>
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )
+                        ) : null}
                       </div>
-                    </div>
-                  ))}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </section>
             )}
-
-            {((post.chains.length > 0 || post.topics.length > 0 || post.assets.length > 0) || radarLinks.length > 0) && (
-              <section
-                className="rounded-[24px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-                <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                  Explorar contexto
-                </div>
-                <div className="space-y-3">
-                  {post.topics.slice(0, 4).map((topic) => (
-                    <Link
-                      key={`topic-${topic}`}
-                      to={`/intel/topic/${topic}`}
-                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
-                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
-                    >
-                      <span>Tema: {topic}</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
-                  ))}
-                  {post.chains.slice(0, 4).map((chain) => (
-                    <Link
-                      key={`chain-${chain}`}
-                      to={`/intel/chain/${chain}`}
-                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
-                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
-                    >
-                      <span>Chain: {chain}</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
-                  ))}
-                  {post.assets.slice(0, 4).map((asset) => (
-                    <Link
-                      key={`asset-${asset}`}
-                      to={`/intel/asset/${asset}`}
-                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
-                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
-                    >
-                      <span>Asset: {asset}</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
-                  ))}
-                  {radarLinks.map((entry) => (
-                    <Link
-                      key={entry.href}
-                      to={entry.href}
-                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
-                      style={{ backgroundColor: 'rgba(255,140,66,0.08)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}
-                    >
-                      <span>{entry.label}</span>
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {relatedPosts.length > 0 && (
-              <section
-                className="hidden rounded-[24px] p-5 xl:block"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-                <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                  Related reads
-                </div>
-                <div className="space-y-3">
-                  {relatedPosts.slice(0, 3).map((related) => (
-                    <Link
-                      key={`rail-${related.slug}`}
-                      to={`/intel/${related.slug}`}
-                      className="block rounded-xl px-4 py-3"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                    >
-                      <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-1)' }}>{related.title}</div>
-                      <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>{related.excerpt || related.subtitle}</div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section
-              className="rounded-[24px] p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
-                <Layers3 className="w-3.5 h-3.5" />
-                Feeds de origem
-              </div>
-              <div className="space-y-3">
-                {post.sources.map((source) => (
-                  <a
-                    key={source.url}
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    <span style={{ color: 'var(--text-1)' }}>{source.name}</span>
-                    <ExternalLink className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
-                  </a>
-                ))}
-              </div>
-            </section>
           </aside>
         </div>
       </article>
