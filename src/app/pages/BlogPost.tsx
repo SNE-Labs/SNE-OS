@@ -1,10 +1,12 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Brain, ExternalLink, Layers3 } from 'lucide-react';
+import { ArrowLeft, Brain, ExternalLink, Layers3, Radar, Sparkles, TriangleAlert } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
+import { parseArticleMarkdown } from '../components/blog/articleParser';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
@@ -30,6 +32,28 @@ export function BlogPost() {
   });
 
   const post = postQuery.data;
+  const article = useMemo(() => parseArticleMarkdown(post?.body_markdown ?? ''), [post?.body_markdown]);
+  const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 4) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
+  const sideCards = [
+    {
+      key: 'watch',
+      title: 'O que monitorar',
+      icon: Radar,
+      items: article.highlights.watch,
+    },
+    {
+      key: 'action',
+      title: 'Ação prática',
+      icon: Sparkles,
+      items: article.highlights.actions,
+    },
+    {
+      key: 'risk',
+      title: 'Risco principal',
+      icon: TriangleAlert,
+      items: article.highlights.risks,
+    },
+  ].filter((card) => card.items.length > 0);
 
   useSeoMeta({
     title: post ? `${post.title} | Intelligence Layer | SNE OS` : 'Intelligence Layer | SNE OS',
@@ -150,48 +174,122 @@ export function BlogPost() {
           </div>
         </header>
 
-        <section
-          className="rounded-[28px] p-6 space-y-6"
-          style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-        >
-          {post.tldr.length > 0 && (
-            <div className="space-y-3">
-              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>TL;DR</div>
-              <ul className="space-y-2 list-disc pl-5" style={{ color: 'var(--text-2)' }}>
-                {post.tldr.map((line, index) => (
-                  <li key={index}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <MarkdownArticle markdown={post.body_markdown} className="space-y-6" />
-        </section>
-
-        <section
-          className="rounded-[28px] p-6"
-          style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-        >
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
-            <Layers3 className="w-3.5 h-3.5" />
-            Origin feeds
-          </div>
-          <div className="space-y-3">
-            {post.sources.map((source) => (
-              <a
-                key={source.url}
-                href={source.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
-                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6">
+          <div className="space-y-6">
+            {snapshotItems.length > 0 && (
+              <section
+                className="rounded-[28px] p-6 space-y-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
-                <span style={{ color: 'var(--text-1)' }}>{source.name}</span>
-                <ExternalLink className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
-              </a>
-            ))}
+                <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  Snapshot editorial
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {snapshotItems.map((line, index) => (
+                    <div
+                      key={`${line}-${index}`}
+                      className="rounded-2xl px-4 py-4"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="text-[11px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>
+                        Sinal {index + 1}
+                      </div>
+                      <div className="leading-7" style={{ color: 'var(--text-2)' }}>
+                        {line}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section
+              className="rounded-[28px] p-6"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
+              <MarkdownArticle markdown={post.body_markdown} className="space-y-6" variant="desktop" />
+            </section>
           </div>
-        </section>
+
+          <aside className="space-y-4 xl:sticky xl:top-6 self-start">
+            {article.headings.length > 0 && (
+              <section
+                className="rounded-[24px] p-5"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                  Navegação da peça
+                </div>
+                <div className="space-y-2">
+                  {article.headings.map((heading) => (
+                    <a
+                      key={heading.id}
+                      href={`#${heading.id}`}
+                      className="block rounded-xl px-3 py-2 text-sm transition-colors"
+                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                    >
+                      {heading.title}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {sideCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <section
+                  key={card.key}
+                  className="rounded-[24px] p-5"
+                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                    <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                      {card.title}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {card.items.map((item, index) => (
+                      <div
+                        key={`${card.key}-${index}`}
+                        className="rounded-xl px-3 py-3 text-sm"
+                        style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+
+            <section
+              className="rounded-[24px] p-5"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
+                <Layers3 className="w-3.5 h-3.5" />
+                Origin feeds
+              </div>
+              <div className="space-y-3">
+                {post.sources.map((source) => (
+                  <a
+                    key={source.url}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <span style={{ color: 'var(--text-1)' }}>{source.name}</span>
+                    <ExternalLink className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                  </a>
+                ))}
+              </div>
+            </section>
+          </aside>
+        </div>
       </article>
     </div>
   );
