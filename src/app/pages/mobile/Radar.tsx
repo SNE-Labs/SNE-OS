@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
-import { Badge, EmptyState, ErrorState, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { useRadarOverview } from '../../../hooks/useRadarData';
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
