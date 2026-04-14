@@ -56,6 +56,7 @@ export function MobileRadar() {
   const regime = overview?.market_regime;
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
+  const marketState = overview?.market_state;
 
   return (
     <MobilePageShell
@@ -96,7 +97,7 @@ export function MobileRadar() {
           {RADAR_SYMBOLS.map((symbol) => (
             <button
               key={symbol}
-              onClick={() => setActiveSymbol(symbol)}
+              onClick={() => navigate(`/radar/${symbol}`)}
               className="flex-shrink-0 rounded-full px-3 py-2 border text-sm"
               style={{
                 backgroundColor: activeSymbol === symbol ? 'var(--accent-orange)' : 'var(--bg-2)',
@@ -272,7 +273,7 @@ export function MobileRadar() {
                 {movers.map((item) => (
                   <button
                     key={item.symbol}
-                    onClick={() => setActiveSymbol(item.symbol)}
+                    onClick={() => navigate(`/radar/${item.symbol}`)}
                     className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
@@ -305,11 +306,11 @@ export function MobileRadar() {
             <div className="space-y-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                 <div className="text-[var(--text-1)] mb-1">Acesso</div>
-                <div className="text-sm text-[var(--text-2)]">{overview.market_state.access}</div>
+                <div className="text-sm text-[var(--text-2)]">{marketState?.access ?? 'prévia operacional'}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                 <div className="text-[var(--text-1)] mb-1">Execução</div>
-                <div className="text-sm text-[var(--text-2)]">{overview.market_state.execution}</div>
+                <div className="text-sm text-[var(--text-2)]">{marketState?.execution ?? 'bloqueada'}</div>
               </div>
               <div className="rounded-xl border border-[rgba(255,140,66,0.16)] bg-[rgba(255,140,66,0.08)] p-3">
                 <div className="text-[var(--text-1)] mb-1">Próxima camada</div>

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Activity, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
 
 const MobileHome = lazy(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
@@ -247,26 +247,12 @@ function resolvePrimaryTab(pathname: string): PrimaryTabId {
   return 'home';
 }
 
-function resolveComponent(pathname: string) {
-  if (pathname === '/' || pathname.startsWith('/home')) return MobileHome;
-  if (pathname.startsWith('/radar')) return MobileRadar;
-  if (pathname.startsWith('/vault')) return MobileVault;
-  if (pathname.startsWith('/pass')) return MobilePass;
-  if (pathname.startsWith('/secrets')) return MobileSecrets;
-  if (pathname.startsWith('/keys')) return MobileKeys;
-  if (pathname.startsWith('/docs')) return MobileDocs;
-  if (pathname.startsWith('/status')) return MobileStatus;
-  if (pathname.startsWith('/intel/topic/')) return MobileBlog;
-  if (pathname.startsWith('/intel/chain/')) return MobileBlog;
-  if (pathname.startsWith('/intel/asset/')) return MobileBlog;
-  if (pathname.startsWith('/intel/')) return MobileBlogPost;
-  if (pathname.startsWith('/intel')) return MobileBlog;
-  if (pathname.startsWith('/blog/topic/')) return MobileBlog;
-  if (pathname.startsWith('/blog/chain/')) return MobileBlog;
-  if (pathname.startsWith('/blog/asset/')) return MobileBlog;
-  if (pathname.startsWith('/blog/')) return MobileBlogPost;
-  if (pathname.startsWith('/blog')) return MobileBlog;
-  return MobileHome;
+function MobileLegacyBlogRedirect() {
+  const params = useParams();
+  if (params.topic) return <Navigate to={`/intel/topic/${params.topic}`} replace />;
+  if (params.chain) return <Navigate to={`/intel/chain/${params.chain}`} replace />;
+  if (params.asset) return <Navigate to={`/intel/asset/${params.asset}`} replace />;
+  return <Navigate to={`/intel/${params.slug ?? ''}`} replace />;
 }
 
 export function MobileLayout() {
@@ -280,7 +266,6 @@ export function MobileLayout() {
     setMoreOpen(false);
   }, [location.pathname]);
 
-  const CurrentComponent = resolveComponent(location.pathname);
   const activeTitle = useMemo(
     () => primaryTabs.find((tab) => tab.id === activeTab)?.label ?? 'Home',
     [activeTab]
@@ -301,7 +286,29 @@ export function MobileLayout() {
     <div className="mobile-layout">
       <div className="mobile-content-area">
         <Suspense fallback={<MobileSkeleton />}>
-          <CurrentComponent />
+          <Routes>
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/home" element={<MobileHome />} />
+            <Route path="/radar" element={<MobileRadar />} />
+            <Route path="/radar/:symbol" element={<MobileRadar />} />
+            <Route path="/intel" element={<MobileBlog />} />
+            <Route path="/intel/topic/:topic" element={<MobileBlog />} />
+            <Route path="/intel/chain/:chain" element={<MobileBlog />} />
+            <Route path="/intel/asset/:asset" element={<MobileBlog />} />
+            <Route path="/intel/:slug" element={<MobileBlogPost />} />
+            <Route path="/blog" element={<Navigate to="/intel" replace />} />
+            <Route path="/blog/topic/:topic" element={<MobileLegacyBlogRedirect />} />
+            <Route path="/blog/chain/:chain" element={<MobileLegacyBlogRedirect />} />
+            <Route path="/blog/asset/:asset" element={<MobileLegacyBlogRedirect />} />
+            <Route path="/blog/:slug" element={<MobileLegacyBlogRedirect />} />
+            <Route path="/vault" element={<MobileVault />} />
+            <Route path="/pass" element={<MobilePass />} />
+            <Route path="/keys" element={<MobileKeys />} />
+            <Route path="/secrets" element={<MobileSecrets />} />
+            <Route path="/docs" element={<MobileDocs />} />
+            <Route path="/status" element={<MobileStatus />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
         </Suspense>
       </div>
 
