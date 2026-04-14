@@ -12,6 +12,7 @@ import {
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
+import { useRadarOverview } from '../../hooks/useRadarData';
 import { apiGet } from '@/lib/api/http';
 import { readPersistedSnapshot, writePersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
@@ -277,6 +278,40 @@ function toNumericVolume(value: string | number) {
   return typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.]/g, ''));
 }
 
+function toRadarSymbol(value?: string | null) {
+  if (!value) return '';
+
+  const normalized = normalizeEntityKey(value);
+  const aliasMap: Record<string, string> = {
+    arbitrum: 'ARBUSDT',
+    arb: 'ARBUSDT',
+    avalanche: 'AVAXUSDT',
+    avax: 'AVAXUSDT',
+    base: 'ETHUSDT',
+    bnb: 'BNBUSDT',
+    bsc: 'BNBUSDT',
+    bitcoin: 'BTCUSDT',
+    btc: 'BTCUSDT',
+    ethereum: 'ETHUSDT',
+    eth: 'ETHUSDT',
+    optimism: 'OPUSDT',
+    op: 'OPUSDT',
+    polygon: 'MATICUSDT',
+    matic: 'MATICUSDT',
+    scroll: 'ETHUSDT',
+    solana: 'SOLUSDT',
+    sol: 'SOLUSDT',
+    sui: 'SUIUSDT',
+  };
+
+  if (aliasMap[normalized]) return aliasMap[normalized];
+
+  const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (upper.endsWith('USDT')) return upper;
+  if (/^[A-Z0-9]{2,10}$/.test(upper)) return `${upper}USDT`;
+  return '';
+}
+
 function describeRisk(change24h: number) {
   if (change24h <= -0.03) return 'pressão imediata';
   if (change24h < 0) return 'risco de retrocesso';
@@ -528,19 +563,34 @@ export function Home() {
   }, [intelSections, marketEditorial, marketLookup, marketRegime?.avg_change_24h, marketRegime?.label, topLosers, volumeLeaders]);
 
   const activeHero = heroCandidates.length > 0 ? heroCandidates[heroCycle % heroCandidates.length] : null;
+  const heroRadarSymbol = toRadarSymbol(activeHero?.relatedSymbol);
+  const heroRadarOverviewQuery = useRadarOverview(heroRadarSymbol, '24H');
+  const heroRadarOverview = heroRadarOverviewQuery.data;
+  const heroRadarMover = useMemo(() => {
+    if (!heroRadarOverview || !heroRadarSymbol) return null;
+
+    return (
+      heroRadarOverview.universe.find((item) => item.symbol.toUpperCase() === heroRadarSymbol) ??
+      heroRadarOverview.featured ??
+      null
+    );
+  }, [heroRadarOverview, heroRadarSymbol]);
   const activeHeroTheme = activeHero ? intelSectionTheme[activeHero.section.key] : null;
   const heroUpdatedAt = formatRelativeTimestamp(
-    activeHero?.item.created_at ?? homeData?.intel.last_updated ?? homeData?.last_updated,
+    heroRadarOverview?.last_updated || activeHero?.item.created_at || homeData?.intel.last_updated || homeData?.last_updated,
     now
   );
   const heroTape = activeHero?.tapeItems ?? [];
   const heroTapeLoop = [...heroTape, ...heroTape];
   const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
-  const isMarketBackedHero = activeHero?.assetConfidence === 'high' && Boolean(activeHero.relatedMover);
-  const heroContextMover = isMarketBackedHero ? activeHero?.relatedMover ?? null : null;
-  const heroSupportMover =
-    (activeHero?.relatedSymbol ? marketLookup.get(activeHero.relatedSymbol.toUpperCase()) : null) ??
-    heroContextMover;
+  const heroResolvedMover =
+    activeHero?.relatedMover ??
+    heroRadarMover ??
+    (heroRadarSymbol ? marketLookup.get(heroRadarSymbol) ?? null : null) ??
+    null;
+  const isMarketBackedHero = Boolean(heroResolvedMover);
+  const heroContextMover = isMarketBackedHero ? heroResolvedMover : null;
+  const heroSupportMover = heroContextMover;
   const heroThemeLabel = activeHero?.section.kicker ?? 'Intel';
   const heroTopMetricLabel = isMarketBackedHero ? 'Preço' : 'Sinal';
   const heroTopMetricValue = isMarketBackedHero && heroContextMover
@@ -801,9 +851,9 @@ export function Home() {
                           </div>
                         </div>
 
-                        {isMarketBackedHero && activeHero.relatedMover ? (
+                        {isMarketBackedHero && heroContextMover ? (
                           <div className="flex flex-wrap items-center gap-2 mb-4">
-                            <StatusBadge status="success">{activeHero.relatedMover.symbol}</StatusBadge>
+                            <StatusBadge status="success">{heroContextMover.symbol}</StatusBadge>
                           </div>
                         ) : null}
 

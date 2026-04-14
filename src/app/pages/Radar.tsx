@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
+import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { useRadarOverview } from '../../hooks/useRadarData';
 import { resolveModuleState } from '../../lib/moduleState';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
@@ -22,6 +23,10 @@ function compact(value: number) {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+function toEntitySymbol(symbol?: string | null) {
+  return (symbol ?? '').replace(/USDT$/i, '') || undefined;
 }
 
 function translateStrength(value: string | undefined) {
@@ -284,12 +289,20 @@ export function Radar() {
                           }}
                         >
                           <div className="mb-3 flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                {item.symbol}
-                              </div>
-                              <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                                sinal {microSignal.toLowerCase()}
+                            <div className="flex min-w-0 items-start gap-3">
+                              <IntelEntityIcon
+                                symbol={toEntitySymbol(item.symbol)}
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                                iconClassName="h-5 w-5"
+                              />
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                  {item.symbol}
+                                </div>
+                                <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                                  sinal {microSignal.toLowerCase()}
+                                </div>
                               </div>
                             </div>
                             <div
@@ -342,8 +355,16 @@ export function Radar() {
 
                 <div className="mb-5 rounded-[24px] p-4" style={{ ...signalAccent(signal?.signal), borderWidth: '1px' }}>
                   <div className="mb-2 text-xs uppercase tracking-[0.2em]">ativo selecionado</div>
-                  <div className="text-3xl font-semibold" style={{ color: 'inherit' }}>
-                    {selectedMarket?.symbol ?? activeSymbol}
+                  <div className="flex items-center gap-3">
+                    <IntelEntityIcon
+                      symbol={toEntitySymbol(selectedMarket?.symbol ?? activeSymbol)}
+                      className="flex h-12 w-12 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
+                      iconClassName="h-6 w-6"
+                    />
+                    <div className="text-3xl font-semibold" style={{ color: 'inherit' }}>
+                      {selectedMarket?.symbol ?? activeSymbol}
+                    </div>
                   </div>
                   <div className="mt-2 text-sm" style={{ color: 'inherit' }}>
                     {signal?.signal === 'BUY'
@@ -457,6 +478,12 @@ export function Radar() {
                                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(255,140,66,0.10)', color: 'var(--accent-orange)' }}>
                                   {index + 1}
                                 </div>
+                                <IntelEntityIcon
+                                  symbol={toEntitySymbol(item.symbol)}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                                  style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                                  iconClassName="h-4.5 w-4.5"
+                                />
                                 <div className="truncate text-sm" style={{ color: 'var(--text-1)' }}>
                                   {item.symbol}
                                 </div>
@@ -481,6 +508,12 @@ export function Radar() {
                                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}>
                                   {index + 1}
                                 </div>
+                                <IntelEntityIcon
+                                  symbol={toEntitySymbol(item.symbol)}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                                  style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                                  iconClassName="h-4.5 w-4.5"
+                                />
                                 <div className="truncate text-sm" style={{ color: 'var(--text-1)' }}>
                                   {item.symbol}
                                 </div>
@@ -573,6 +606,12 @@ export function Radar() {
 
                           <div className="min-w-0">
                             <div className="mb-1 flex items-center gap-2">
+                              <IntelEntityIcon
+                                symbol={toEntitySymbol(mover.symbol)}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                                iconClassName="h-5 w-5"
+                              />
                               <div className="truncate font-semibold" style={{ color: 'var(--text-1)' }}>
                                 {mover.symbol}
                               </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { useRadarOverview } from '../../../hooks/useRadarData';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
@@ -18,6 +19,10 @@ function compact(value: number) {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value);
+}
+
+function toEntitySymbol(symbol?: string | null) {
+  return (symbol ?? '').replace(/USDT$/i, '') || undefined;
 }
 
 function translateStrength(value?: string | null) {
@@ -127,7 +132,15 @@ export function MobileRadar() {
                 borderColor: activeSymbol === symbol ? 'var(--accent-orange)' : 'var(--stroke-1)',
               }}
             >
-              {symbol}
+              <span className="inline-flex items-center gap-2">
+                <IntelEntityIcon
+                  symbol={toEntitySymbol(symbol)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full"
+                  style={{ backgroundColor: activeSymbol === symbol ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)' }}
+                  iconClassName="h-3.5 w-3.5"
+                />
+                {symbol}
+              </span>
             </button>
           ))}
         </div>
@@ -155,9 +168,17 @@ export function MobileRadar() {
             {featured ? (
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-4">
                 <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <div className="text-[var(--text-1)] mb-1">{featured.symbol}</div>
-                    <div className="text-sm text-[var(--text-2)]">Ativo mais líquido dentro do universo Radar atual.</div>
+                  <div className="flex items-start gap-3">
+                    <IntelEntityIcon
+                      symbol={toEntitySymbol(featured.symbol)}
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                      iconClassName="h-5 w-5"
+                    />
+                    <div>
+                      <div className="text-[var(--text-1)] mb-1">{featured.symbol}</div>
+                      <div className="text-sm text-[var(--text-2)]">Ativo mais líquido dentro do universo Radar atual.</div>
+                    </div>
                   </div>
                   <div className={featured.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
                     {featured.change24h >= 0 ? '+' : ''}{(featured.change24h * 100).toFixed(1)}%
@@ -204,7 +225,15 @@ export function MobileRadar() {
               <div className="space-y-3">
                 <div className="rounded-xl border border-[var(--stroke-1)] bg-[rgba(255,140,66,0.08)] p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="text-[var(--text-1)]">{overview.signal.symbol}</div>
+                    <div className="flex items-center gap-2">
+                      <IntelEntityIcon
+                        symbol={toEntitySymbol(overview.signal.symbol)}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                        iconClassName="h-4 w-4"
+                      />
+                      <div className="text-[var(--text-1)]">{overview.signal.symbol}</div>
+                    </div>
                     <Sparkles className="w-4 h-4 text-[var(--accent-orange)]" />
                   </div>
                   <div className="text-sm text-[var(--text-2)]">
@@ -252,6 +281,12 @@ export function MobileRadar() {
                     <div key={`mobile-momentum-${item.symbol}`} className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-6 h-6 rounded-full bg-[rgba(255,140,66,0.10)] text-[var(--accent-orange)] text-xs flex items-center justify-center">{index + 1}</div>
+                        <IntelEntityIcon
+                          symbol={toEntitySymbol(item.symbol)}
+                          className="flex h-7 w-7 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                          iconClassName="h-4 w-4"
+                        />
                         <div className="truncate text-[var(--text-1)]">{item.symbol}</div>
                       </div>
                       <div className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
@@ -269,6 +304,12 @@ export function MobileRadar() {
                     <div key={`mobile-liquidity-${item.symbol}`} className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-6 h-6 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--text-2)] text-xs flex items-center justify-center">{index + 1}</div>
+                        <IntelEntityIcon
+                          symbol={toEntitySymbol(item.symbol)}
+                          className="flex h-7 w-7 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                          iconClassName="h-4 w-4"
+                        />
                         <div className="truncate text-[var(--text-1)]">{item.symbol}</div>
                       </div>
                       <div className="text-[var(--text-1)]">${compact(Number(item.volume))}</div>
@@ -300,6 +341,12 @@ export function MobileRadar() {
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
+                        <IntelEntityIcon
+                          symbol={toEntitySymbol(item.symbol)}
+                          className="flex h-8 w-8 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                          iconClassName="h-4 w-4"
+                        />
                         <div className="text-[var(--text-1)]">{item.symbol}</div>
                         {momentumRanking.findIndex((entry) => entry.symbol === item.symbol) >= 0 ? (
                           <Badge variant="neutral" size="sm">M#{momentumRanking.findIndex((entry) => entry.symbol === item.symbol) + 1}</Badge>
