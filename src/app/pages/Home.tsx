@@ -143,13 +143,18 @@ export function Home() {
   const marketRegime = homeData?.market.regime;
   const intelItems = homeData?.intel.items ?? [];
   const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
-  const marketIntelSection = intelSections.find((section) => section.key === 'market');
-  const nonMarketIntelSections = intelSections.filter((section) => section.key !== 'market');
+  const leadIntelSection = intelSections[0] ?? null;
+  const leadIntelItem = leadIntelSection?.items[0] ?? null;
+  const leadIntelTheme = leadIntelSection ? intelSectionTheme[leadIntelSection.key] : null;
+  const secondaryIntelSections = leadIntelSection
+    ? intelSections.filter((section) => section.key !== leadIntelSection.key)
+    : [];
   const featuredMover = liveMovers[0] ?? null;
   const secondaryMovers = liveMovers.slice(1, 4);
   const brief = homeData?.brief;
   const briefSignals = homeData?.brief_signals ?? [];
   const data = homeData?.dashboard;
+  const latestAlert = data?.alerts[0] ?? null;
 
   const openIntelItem = (url: string) => {
     const normalized = normalizeIntelRoute(url);
@@ -172,7 +177,7 @@ export function Home() {
     [now]
   );
 
-  const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Intel item';
+  const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Leitura Intel';
   const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
   const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
   const intelSectionTheme: Record<
@@ -326,262 +331,331 @@ export function Home() {
     <div className="flex flex-1">
       <div className="flex-1 px-6 py-4 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-4">
-
-          {/* ── Status bar ─────────────────────────────────────────── */}
-          <div
-            className="rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3"
-            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          {/* ── Intel Hero ─────────────────────────────────────────── */}
+          <section
+            className="rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
+            style={{
+              background: 'radial-gradient(circle at top left, rgba(255,140,66,0.18), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))',
+              backgroundColor: 'var(--bg-2)',
+              borderWidth: '1px',
+              borderColor: 'rgba(255,255,255,0.06)',
+              boxShadow: 'var(--shadow-2)',
+            }}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-3)' }}>{formattedTime}</span>
-              {homeData?.session.authenticated ? (
-                <span className="text-sm" style={{ color: 'var(--text-2)' }}>sessão conectada</span>
-              ) : null}
-              {liveMovers.length > 0 ? (
-                <span className="text-sm" style={{ color: 'var(--text-2)' }}>mercado sincronizado</span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-3">
-              {homeData?.session.address && (
-                <span className="text-sm font-mono" style={{ color: 'var(--text-2)' }}>
-                  {formatAddress(homeData.session.address)}
-                </span>
-              )}
-              <WalletConnect />
-            </div>
-          </div>
+            <div className="grid grid-cols-1 xl:grid-cols-[1.18fr_0.82fr] gap-6 xl:gap-7">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3 mb-5">
+                  <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
+                    Intel Brief
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>
+                    {formattedTime}
+                  </div>
+                  {homeData?.intel.last_updated ? (
+                    <StatusBadge status="active">ao vivo</StatusBadge>
+                  ) : null}
+                </div>
 
-          {/* ── Intel + Mercado (above the fold) ───────────────────── */}
-          <section className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.6fr] gap-4">
-
-            {/* Intel Feed */}
-            <div
-              className="rounded-xl p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>Intel</div>
-                <span className="text-xs" style={{ color: 'var(--text-3)' }}>
-                  {homeData?.intel.last_updated ? 'ao vivo' : ''}
-                </span>
-              </div>
-
-              {intelSections.length === 0 ? (
-                <div className="text-sm" style={{ color: 'var(--text-2)' }}>Nenhum feed disponível agora.</div>
-              ) : (
-                <div className="space-y-3">
-                  {marketIntelSection && marketIntelSection.items[0] && (
-                    <div
-                      className="rounded-xl border p-5"
-                      style={{
-                        backgroundColor: 'var(--bg-3)',
-                        borderWidth: '1px',
-                        ...intelSectionTheme.market.panelStyle,
-                      }}
-                    >
-                      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <div
-                              className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                              style={intelSectionTheme.market.toneStyle}
-                            >
-                              <Activity className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                                {marketIntelSection.kicker}
-                              </div>
-                              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                {marketIntelSection.title}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                            <StatusBadge status="warning">{marketIntelSection.items[0].source}</StatusBadge>
-                            <StatusBadge status="pending">{marketIntelSection.items[0].module}</StatusBadge>
-                            {marketIntelSection.items[0].impact?.label && (
-                              <StatusBadge status={marketIntelSection.items[0].impact?.label === 'alto' ? 'warning' : 'active'}>
-                                impacto {marketIntelSection.items[0].impact?.label}
-                              </StatusBadge>
-                            )}
-                          </div>
-
-                          {renderIntelTitle(marketIntelSection.items[0], 'text-lg font-semibold mb-2 text-balance')}
-                          <div className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
-                            {intelSummary(marketIntelSection.items[0])}
-                          </div>
-                          <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
-                            {marketIntelSection.items[0].why_it_matters || marketIntelSection.description}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
-                            <span>{marketIntelSection.items[0].points} pts</span>
-                            <span>{marketIntelSection.items[0].comments} comentários</span>
-                            <span>@{marketIntelSection.items[0].author}</span>
-                            <span>{intelMeta(marketIntelSection.items[0])}</span>
-                          </div>
+                {!leadIntelSection || !leadIntelItem || !leadIntelTheme ? (
+                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                    Nenhum feed de inteligência disponível agora.
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 mb-5">
+                      <div
+                        className="flex h-12 w-12 items-center justify-center rounded-[20px]"
+                        style={leadIntelTheme.toneStyle}
+                      >
+                        {(() => {
+                          const HeroIcon = intelSectionTheme[leadIntelSection.key].icon;
+                          return <HeroIcon className="h-5 w-5" />;
+                        })()}
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                          {leadIntelSection.kicker}
                         </div>
-
-                        <div className="space-y-3">
-                          <div
-                            className="rounded-xl border p-4"
-                            style={{ backgroundColor: 'rgba(10,14,23,0.48)', borderColor: 'rgba(255,255,255,0.08)' }}
-                          >
-                            <div className="text-xs uppercase tracking-[0.16em] mb-2" style={{ color: 'var(--text-3)' }}>
-                              Vigilância imediata
-                            </div>
-                            <div className="space-y-2">
-                              {(marketIntelSection.items[0].watch_items?.slice(0, 3) ?? []).map((watchItem) => (
-                                <div
-                                  key={watchItem}
-                                  className="rounded-lg px-3 py-2 text-sm"
-                                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
-                                >
-                                  {watchItem}
-                                </div>
-                              ))}
-                              {!marketIntelSection.items[0].watch_items?.length && (
-                                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                                  {marketIntelSection.description}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {marketIntelSection.items.slice(1, 3).map((item) => (
-                            <div
-                              key={item.id}
-                              className="rounded-xl border p-4"
-                              style={{ backgroundColor: 'rgba(10,14,23,0.42)', borderColor: 'rgba(255,255,255,0.08)' }}
-                            >
-                              <div className="flex items-center justify-between gap-3 mb-2">
-                                <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                                  {intelMeta(item)}
-                                </div>
-                                <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                                  {item.points} pts
-                                </div>
-                              </div>
-                              {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
-                              <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
-                                {intelSummary(item)}
-                              </div>
-                            </div>
-                          ))}
+                        <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {leadIntelSection.title}
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {nonMarketIntelSections.length > 0 && (
-                    <div className="space-y-3">
-                      {nonMarketIntelSections.map((section) => {
-                        const lead = section.items[0];
-                        const rest = section.items.slice(1, 3);
-                        const SectionIcon = intelSectionTheme[section.key].icon;
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <StatusBadge status={leadIntelTheme.badge}>{leadIntelItem.source}</StatusBadge>
+                      <StatusBadge status="pending">{leadIntelItem.module}</StatusBadge>
+                      {leadIntelItem.impact?.label && (
+                        <StatusBadge status={leadIntelItem.impact.label === 'alto' ? 'warning' : 'active'}>
+                          impacto {leadIntelItem.impact.label}
+                        </StatusBadge>
+                      )}
+                    </div>
 
-                        return (
-                          <div
-                            key={section.key}
-                            className="rounded-xl border p-4"
-                            style={{
-                              backgroundColor: 'var(--bg-3)',
-                              borderWidth: '1px',
-                              ...intelSectionTheme[section.key].panelStyle,
-                            }}
-                          >
-                            <div className="grid grid-cols-1 lg:grid-cols-[0.34fr_0.66fr] gap-4 lg:gap-6">
-                              <div className="lg:pr-2">
-                                <div className="flex items-start justify-between gap-3 mb-4">
-                                  <div className="flex items-center gap-3">
-                                    <div
-                                      className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                                      style={intelSectionTheme[section.key].toneStyle}
-                                    >
-                                      <SectionIcon className="h-4 w-4" />
-                                    </div>
-                                    <div>
-                                      <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                                        {section.kicker}
-                                      </div>
-                                      <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                        {section.title}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
-                                </div>
+                    {renderIntelTitle(leadIntelItem, 'text-3xl xl:text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-balance mb-4')}
 
-                                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                                  {section.description}
-                                </div>
-                              </div>
+                    <div className="max-w-3xl text-base xl:text-lg mb-4" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
+                      {intelSummary(leadIntelItem)}
+                    </div>
 
-                              <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-3">
-                                {lead && (
-                                  <div
-                                    className="rounded-xl border p-4"
-                                    style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderColor: 'rgba(255,255,255,0.08)' }}
-                                  >
-                                    <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                      {intelMeta(lead)}
-                                    </div>
-                                    {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
-                                    <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
-                                      {intelSummary(lead)}
-                                    </div>
-                                  </div>
-                                )}
+                    <div className="max-w-3xl text-sm mb-5" style={{ color: 'var(--text-3)' }}>
+                      {leadIntelItem.why_it_matters || leadIntelSection.description}
+                    </div>
 
-                                {rest.length > 0 && (
-                                  <div className="space-y-2">
-                                    {rest.map((item) => (
-                                      <div
-                                        key={item.id}
-                                        className="rounded-xl border p-4"
-                                        style={{ backgroundColor: 'rgba(10,14,23,0.26)', borderColor: 'rgba(255,255,255,0.08)' }}
-                                      >
-                                        <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                          {intelMeta(item)}
-                                        </div>
-                                        {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                      <span>{leadIntelItem.points} pts</span>
+                      <span>{leadIntelItem.comments} comentários</span>
+                      <span>@{leadIntelItem.author}</span>
+                      <span>{intelMeta(leadIntelItem)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div
+                  className="rounded-[24px] p-5"
+                  style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.05)' }}
+                >
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                      Vigilância imediata
+                    </div>
+                    <button
+                      onClick={() => navigate('/intel')}
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--accent-orange)' }}
+                    >
+                      Abrir Intel Brief ↗
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {(leadIntelItem?.watch_items?.slice(0, 3) ?? []).map((watchItem) => (
+                      <div
+                        key={watchItem}
+                        className="px-1 py-2.5 text-sm border-b last:border-b-0"
+                        style={{ borderColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}
+                      >
+                        {watchItem}
+                      </div>
+                    ))}
+                    {!leadIntelItem?.watch_items?.length && (
+                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                        {leadIntelSection?.description ?? 'Sem itens imediatos de monitoramento agora.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] px-5 py-3" style={{ backgroundColor: 'rgba(10,14,23,0.24)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.05)' }}>
+                  {(leadIntelSection?.items.slice(1, 4) ?? []).map((item) => (
+                    <div
+                      key={item.id}
+                      className="py-3 border-b last:border-b-0"
+                      style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          {intelMeta(item)}
+                        </div>
+                        <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                          {item.points} pts
+                        </div>
+                      </div>
+                      {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
+                      <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
+                        {intelSummary(item)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Brief — since last session ─────────────────────────── */}
+          {brief && (
+            <section
+              className="rounded-[24px] px-5 py-5"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
+                backgroundColor: 'var(--bg-2)',
+                borderWidth: '1px',
+                borderColor: 'var(--stroke-1)',
+              }}
+            >
+              <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-5">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                      Desde a última sessão
+                    </div>
+                    <StatusBadge status={brief.badge_status}>{brief.badge}</StatusBadge>
+                  </div>
+                  <div className="text-2xl font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
+                    {brief.headline}
+                  </div>
+                  <p className="text-sm xl:text-base" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {briefSignals.map((s) => (
+                    <div
+                      key={s.label}
+                      className="rounded-[18px] px-4 py-4"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                    >
+                      <div className="text-[10px] uppercase mb-1 tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>{s.label}</div>
+                      <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>{s.value}</div>
+                    </div>
+                  ))}
+                  {briefSignals.length === 0 && (
+                    <div className="col-span-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                      Sem sinais resumidos para esta sessão.
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            </section>
+          )}
 
-            {/* Mercado */}
-            <div
-              className="rounded-xl p-5"
+          {/* ── Intel Stream ──────────────────────────────────────── */}
+          {secondaryIntelSections.length > 0 && (
+            <section
+              className="rounded-[24px] p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>Mercado</div>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                    Fluxo Intel
+                  </div>
+                  <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
+                    Inteligência em monitoramento contínuo
+                  </div>
+                </div>
                 <button
-                  onClick={() => navigate('/radar')}
+                  onClick={() => navigate('/intel')}
                   className="text-sm font-medium"
                   style={{ color: 'var(--accent-orange)' }}
                 >
-                  Radar ↗
+                  Abrir Intel Brief ↗
                 </button>
               </div>
 
-              {!featuredMover ? (
-                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  Dados de mercado indisponíveis. Radar sincronizando.
+              <div className="space-y-3">
+                {secondaryIntelSections.map((section) => {
+                  const lead = section.items[0];
+                  const rest = section.items.slice(1, 3);
+                  const SectionIcon = intelSectionTheme[section.key].icon;
+
+                  return (
+                    <div
+                      key={section.key}
+                      className="rounded-[22px] p-4"
+                      style={{
+                        backgroundColor: 'var(--bg-3)',
+                        borderWidth: '1px',
+                        ...intelSectionTheme[section.key].panelStyle,
+                      }}
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-[0.32fr_0.68fr] gap-4 lg:gap-6">
+                        <div className="lg:pr-2">
+                          <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                                style={intelSectionTheme[section.key].toneStyle}
+                              >
+                                <SectionIcon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                                  {section.kicker}
+                                </div>
+                                <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                  {section.title}
+                                </div>
+                              </div>
+                            </div>
+                            <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
+                          </div>
+
+                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                            {section.description}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-3">
+                          {lead && (
+                            <div
+                              className="rounded-[20px] p-4"
+                              style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                            >
+                              <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                {intelMeta(lead)}
+                              </div>
+                              {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
+                              <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
+                                {intelSummary(lead)}
+                              </div>
+                            </div>
+                          )}
+
+                          {rest.length > 0 && (
+                            <div className="space-y-2">
+                              {rest.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="rounded-[18px] p-4"
+                                  style={{ backgroundColor: 'rgba(10,14,23,0.26)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                                >
+                                  <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                    {intelMeta(item)}
+                                  </div>
+                                  {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── Mercado — contexto, não protagonista ─────────────── */}
+          <section
+            className="rounded-[24px] p-5"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                  Pulso de mercado
                 </div>
-              ) : (
+                <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
+                  Contexto para validar a leitura
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/radar')}
+                className="text-sm font-medium"
+                style={{ color: 'var(--accent-orange)' }}
+              >
+                Abrir Radar ↗
+              </button>
+            </div>
+
+            {!featuredMover ? (
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                Dados de mercado indisponíveis. Radar sincronizando.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-[0.86fr_1.14fr] gap-4">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={marketRegime?.tone ?? 'pending'}>
@@ -592,51 +666,45 @@ export function Home() {
                     )}
                   </div>
 
-                  {/* Featured mover */}
                   <div
-                    className="rounded-xl p-4"
+                    className="rounded-[22px] p-5"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,140,66,0.09), transparent)',
+                      background: 'linear-gradient(135deg, rgba(255,140,66,0.08), transparent)',
                       backgroundColor: 'var(--bg-3)',
                       borderWidth: '1px',
-                      borderColor: 'var(--stroke-1)',
+                      borderColor: 'rgba(255,255,255,0.06)',
                     }}
                   >
-                    <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start justify-between gap-3 mb-5">
                       <div>
-                        <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text-3)' }}>
+                        <div className="text-[10px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
                           Destaque
                         </div>
-                        <div className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>
+                        <div className="text-3xl font-semibold" style={{ color: 'var(--text-1)' }}>
                           {featuredMover.symbol}
                         </div>
                       </div>
                       <div
                         className="rounded-full px-3 py-1 text-sm font-semibold"
                         style={{
-                          color: featuredMover.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)',
+                          color: featuredMover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)',
                           backgroundColor: featuredMover.change24h >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
                         }}
                       >
                         {featuredMover.change24h >= 0 ? '+' : ''}{(featuredMover.change24h * 100).toFixed(1)}%
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div
-                        className="rounded-lg px-3 py-2"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--text-3)' }}>Preço</div>
-                        <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                        <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
+                        <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
                           ${formatMarketPrice(featuredMover.price)}
                         </div>
                       </div>
-                      <div
-                        className="rounded-lg px-3 py-2"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="text-[10px] uppercase mb-0.5" style={{ color: 'var(--text-3)' }}>Volume</div>
-                        <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                      <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                        <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Volume</div>
+                        <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
                           ${formatCompactNumber(Number(featuredMover.volume))}
                         </div>
                       </div>
@@ -645,10 +713,10 @@ export function Home() {
 
                   {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
                     <div
-                      className="rounded-xl p-4 space-y-3"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                      className="rounded-[22px] p-4 space-y-3"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
                     >
-                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
                         Narrativa do Mercado
                       </div>
                       {marketEditorial.headline && (
@@ -661,102 +729,62 @@ export function Home() {
                           {marketEditorial.summary_pt}
                         </div>
                       )}
-                      {marketEditorial.highlights.length > 0 && (
-                        <div className="grid grid-cols-1 gap-2">
-                          {marketEditorial.highlights.map((highlight) => (
-                            <div key={highlight.symbol} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
-                                {highlight.symbol}
-                              </div>
-                              <div className="text-xs" style={{ color: 'var(--text-2)' }}>
-                                {highlight.note}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {marketEditorial.watch_items.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {marketEditorial.watch_items.map((item) => (
-                            <StatusBadge key={item} status="pending">{item}</StatusBadge>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
+                </div>
 
-                  {/* Secondary movers */}
-                  <div className="space-y-2">
-                    {secondaryMovers.map((mover) => (
-                      <div
-                        key={mover.symbol}
-                        className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                          <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                            Vol. ${formatCompactNumber(Number(mover.volume))}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div
-                            className="text-sm font-semibold"
-                            style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)' }}
-                          >
-                            {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
-                          </div>
-                          <div className="text-xs" style={{ color: 'var(--text-2)' }}>
-                            ${formatMarketPrice(mover.price)}
-                          </div>
-                        </div>
+                <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                        Momentum
                       </div>
-                    ))}
-                  </div>
-
-                  {topLosers.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
-                        Maiores Quedas
-                      </div>
-                      {topLosers.slice(0, 2).map((mover) => (
-                        <div
-                          key={mover.symbol}
-                          className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
-                          style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                        >
-                          <div className="min-w-0">
-                            <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                            <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                              ${formatCompactNumber(Number(mover.volume))}
+                      <div className="space-y-1">
+                        {secondaryMovers.map((mover) => (
+                          <div key={mover.symbol} className="flex items-center justify-between gap-3 py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                              <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                                ${formatMarketPrice(mover.price)}
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold" style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
+                              {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm font-semibold" style={{ color: 'var(--error-red)' }}>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                        Maiores quedas
+                      </div>
+                      <div className="space-y-1">
+                        {topLosers.slice(0, 3).map((mover) => (
+                          <div key={mover.symbol} className="flex items-center justify-between gap-3 py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                              <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                                ${formatMarketPrice(mover.price)}
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold" style={{ color: 'var(--danger-red)' }}>
                               {(mover.change24h * 100).toFixed(1)}%
                             </div>
-                            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
-                              ${formatMarketPrice(mover.price)}
-                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {volumeLeaders.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>
-                        Volume Dominante
+                        ))}
                       </div>
-                      <div className="grid grid-cols-1 gap-2">
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                        Volume dominante
+                      </div>
+                      <div className="space-y-1">
                         {volumeLeaders.slice(0, 3).map((item) => (
-                          <div
-                            key={item.symbol}
-                            className="rounded-lg px-4 py-3 flex items-center justify-between gap-3"
-                            style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                          >
-                            <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
+                          <div key={item.symbol} className="py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                            <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
                             <div className="text-xs" style={{ color: 'var(--text-2)' }}>
                               Vol. ${formatCompactNumber(Number(item.volume))}
                             </div>
@@ -764,85 +792,51 @@ export function Home() {
                         ))}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ── Brief — contexto do momento ────────────────────────── */}
-          {brief && (
-            <section
-              className="rounded-xl px-5 py-4"
-              style={{
-                background: 'radial-gradient(circle at top left, rgba(255,140,66,0.12), transparent 40%)',
-                backgroundColor: 'var(--bg-2)',
-                borderWidth: '1px',
-                borderColor: 'var(--stroke-1)',
-              }}
-            >
-              <div className="flex flex-col xl:flex-row xl:items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <StatusBadge status={brief.badge_status}>{brief.badge}</StatusBadge>
                   </div>
-                  <div className="text-xl font-semibold mb-1 text-balance" style={{ color: 'var(--text-1)' }}>
-                    {brief.headline}
-                  </div>
-                  <p className="text-sm" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
-                </div>
-                {briefSignals.length > 0 && (
-                  <div className="flex flex-wrap gap-3">
-                    {briefSignals.map((s) => (
-                      <div
-                        key={s.label}
-                        className="rounded-lg px-4 py-3 min-w-[120px]"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="text-[10px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>{s.label}</div>
-                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* ── Sistema + OS nav ───────────────────────────────────── */}
-          <section className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4">
-
-            {/* Sistema */}
-            {workspaceItems.length > 0 && (
-              <div
-                className="rounded-xl p-4"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>Sistema</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {workspaceItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={item.label}
-                        className="rounded-lg p-3"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[10px] uppercase" style={{ color: 'var(--text-3)' }}>{item.label}</span>
-                          <Icon className="w-3.5 h-3.5" style={{ color: 'var(--accent-orange)' }} />
-                        </div>
-                        <div className="text-sm font-semibold break-words" style={{ color: 'var(--text-1)' }}>{item.value}</div>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
             )}
+          </section>
 
-            {/* OS nav compacto */}
+          {/* ── Operational Ribbon ────────────────────────────────── */}
+          <section className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4">
             <div
-              className="rounded-xl p-4 self-start"
+              className="rounded-[22px] px-4 py-3"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[auto_auto_auto_1fr_auto] gap-3 items-center">
+                <div className="text-sm" style={{ color: 'var(--text-3)' }}>{formattedTime}</div>
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  {homeData?.session.authenticated ? 'sessão conectada' : 'sessão anônima'}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  {liveMovers.length > 0 ? 'mercado sincronizado' : 'mercado parcial'}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {workspaceItems.slice(0, 3).map((item) => (
+                    <StatusBadge key={item.label} status="pending">
+                      {item.label}: {item.value}
+                    </StatusBadge>
+                  ))}
+                  {latestAlert ? (
+                    <StatusBadge status={latestAlert.type === 'warning' ? 'warning' : latestAlert.type === 'error' ? 'pending' : 'active'}>
+                      alerta: {latestAlert.message}
+                    </StatusBadge>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-3 justify-start md:justify-end">
+                  {homeData?.session.address && (
+                    <span className="text-sm font-mono" style={{ color: 'var(--text-2)' }}>
+                      {formatAddress(homeData.session.address)}
+                    </span>
+                  )}
+                  <WalletConnect />
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="rounded-[22px] p-4 self-start"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
             >
               <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>OS</div>
@@ -853,8 +847,8 @@ export function Home() {
                     <button
                       key={item.path}
                       onClick={() => navigate(item.path)}
-                      className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                      className="flex items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 text-left"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
                     >
                       <div className="flex items-center gap-2.5">
                         <Icon className="w-3.5 h-3.5" style={{ color: 'var(--accent-orange)' }} />
@@ -866,7 +860,6 @@ export function Home() {
                 })}
               </div>
             </div>
-
           </section>
 
         </div>

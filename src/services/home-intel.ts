@@ -49,8 +49,8 @@ const TOPIC_MAP: Record<HomeIntelSectionKey, string[]> = {
 const SECTION_COPY: Record<HomeIntelSectionKey, Omit<HomeIntelSection, 'items'>> = {
   market: {
     key: 'market',
-    title: 'Market Pulse',
-    shortTitle: 'Market',
+    title: 'Pulso de mercado',
+    shortTitle: 'Mercado',
     kicker: 'Fluxo tático',
     description: 'Leituras de preço, liquidez e regime de risco com foco operacional.',
   },

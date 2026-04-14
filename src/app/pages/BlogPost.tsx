@@ -57,8 +57,8 @@ export function BlogPost() {
   ].filter((card) => card.items.length > 0);
 
   useSeoMeta({
-    title: post ? `${post.title} | Intelligence Layer | SNE OS` : 'Intelligence Layer | SNE OS',
-    description: post?.excerpt || post?.subtitle || 'Dossiê editorial da Intelligence Layer do SNE OS.',
+    title: post ? `${post.title} | Intel Brief | SNE OS` : 'Intel Brief | SNE OS',
+    description: post?.excerpt || post?.subtitle || 'Dossiê editorial do Intel Brief do SNE OS.',
     canonicalPath: slug ? `/intel/${slug}` : '/intel',
     type: 'article',
     keywords: [
@@ -93,7 +93,7 @@ export function BlogPost() {
     return (
       <div className="flex-1 px-8 py-6 overflow-y-auto">
         <div className="mx-auto max-w-4xl py-6">
-          <ModuleStateCard tone="loading" title="Carregando dossiê" description="Buscando a leitura completa da intelligence layer." />
+          <ModuleStateCard tone="loading" title="Carregando dossiê" description="Buscando a leitura completa do Intel Brief." />
         </div>
       </div>
     );
@@ -103,7 +103,7 @@ export function BlogPost() {
     return (
       <div className="flex-1 px-8 py-6 overflow-y-auto">
         <div className="mx-auto max-w-4xl py-6">
-          <ModuleStateCard tone="error" title="Dossiê indisponível" description="A leitura pedida não está acessível agora." actionLabel="Voltar à intelligence layer" onAction={() => navigate('/intel')} />
+          <ModuleStateCard tone="error" title="Dossiê indisponível" description="A leitura pedida não está acessível agora." actionLabel="Voltar ao Intel Brief" onAction={() => navigate('/intel')} />
         </div>
       </div>
     );
@@ -121,7 +121,7 @@ export function BlogPost() {
       <article className="mx-auto max-w-6xl space-y-6">
         <button onClick={() => navigate('/intel')} className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
           <ArrowLeft className="w-4 h-4" />
-          Voltar à intelligence layer
+          Voltar ao Intel Brief
         </button>
 
         <header
@@ -135,7 +135,7 @@ export function BlogPost() {
           }}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status="active">Intelligence Layer</StatusBadge>
+            <StatusBadge status="active">Intel Brief</StatusBadge>
             <StatusBadge status="success">{post.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</StatusBadge>
             <StatusBadge status="pending">{post.reading_time_minutes} min</StatusBadge>
             <StatusBadge status={post.status === 'draft' ? 'success' : 'warning'}>{post.status}</StatusBadge>
@@ -190,7 +190,7 @@ export function BlogPost() {
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
                 <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                  Snapshot editorial
+                  Resumo editorial
                 </div>
                 <EditorialSnapshot items={snapshotItems} variant="desktop" />
               </section>
@@ -295,7 +295,7 @@ export function BlogPost() {
             >
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
                 <Layers3 className="w-3.5 h-3.5" />
-                Origin feeds
+                Feeds de origem
               </div>
               <div className="space-y-3">
                 {post.sources.map((source) => (

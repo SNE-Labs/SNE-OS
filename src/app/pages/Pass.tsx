@@ -106,13 +106,13 @@ export function Pass() {
       return { label: 'offline', tone: 'pending' as const };
     }
     if (identityQuery.isLoading) {
-      return { label: 'syncing', tone: 'pending' as const };
+      return { label: 'sincronizando', tone: 'pending' as const };
     }
     if (identityQuery.isError) {
       return { label: 'degraded', tone: 'warning' as const };
     }
     if ((identity?.stats.wallets_total ?? 0) > 1) {
-      return { label: 'linked', tone: 'success' as const };
+      return { label: 'wallets vinculadas', tone: 'success' as const };
     }
     return { label: 'active', tone: 'active' as const };
   }, [identity?.stats.wallets_total, identityQuery.isError, identityQuery.isLoading, isAuthenticated]);
@@ -171,7 +171,7 @@ export function Pass() {
                   Identidade única do OS, resolvida por múltiplas wallets.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
-                  O Passport é o checkpoint de identidade Web3 do SNE OS. A primeira wallet autenticada vira a âncora da identidade; as próximas podem ser vinculadas ao mesmo grafo, sem perder o lookup público on-chain.
+                  O Passport é a camada de identidade, vínculo e lookup público do SNE OS. A primeira wallet autenticada vira a âncora da identidade; as próximas podem ser vinculadas ao mesmo grafo, sem perder a leitura pública on-chain.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
@@ -283,7 +283,7 @@ export function Pass() {
                   <ModuleStateCard
                     tone="disconnected"
                     title="Conecte a primeira wallet"
-                    description="O Passport cria uma identidade âncora a partir da sua primeira autenticação SIWE. Depois disso, outras wallets entram no mesmo identity graph."
+                    description="O Passport cria uma identidade âncora a partir da sua primeira autenticação SIWE. Depois disso, outras wallets entram no mesmo grafo de identidade."
                   />
                   <WalletConnect showConnectButton connectButtonLabel="Conectar wallet e assinar SIWE" fullWidth />
                 </div>
@@ -408,7 +408,7 @@ export function Pass() {
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                       <div>
                         <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                          Wallet Graph
+                          Grafo de carteiras
                         </div>
                         <div className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
                           Qualquer wallet ativa desta lista deve conseguir abrir a mesma identidade do OS.
@@ -432,7 +432,7 @@ export function Pass() {
                               {wallet.label}
                             </div>
                             <StatusBadge status={wallet.status === 'active' ? 'success' : wallet.status === 'revoked' ? 'warning' : 'pending'}>
-                              {wallet.is_primary ? 'primary' : wallet.status}
+                              {wallet.is_primary ? 'principal' : wallet.status}
                             </StatusBadge>
                           </div>
                           <div className="text-sm font-mono break-all mb-3" style={{ color: 'var(--text-2)' }}>
@@ -467,7 +467,7 @@ export function Pass() {
                       </div>
                       {connectedLinkedAccounts.length === 0 ? (
                         <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                          O Passport ainda não expôs linked accounts públicos para esta identidade.
+                          O Passport ainda não expôs wallets públicas vinculadas para esta identidade.
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -478,7 +478,7 @@ export function Pass() {
                                   {account.network}
                                 </div>
                                 <StatusBadge status={account.primary ? 'success' : account.status === 'active' ? 'active' : 'pending'}>
-                                  {account.primary ? 'primary' : account.status ?? 'linked'}
+                                  {account.primary ? 'principal' : account.status ?? 'vinculada'}
                                 </StatusBadge>
                               </div>
                               <div className="text-sm font-mono break-all" style={{ color: 'var(--text-2)' }}>
@@ -572,7 +572,7 @@ export function Pass() {
                   <div className="rounded-lg p-4" style={statCardStyle}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>O que esta leitura mostra</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Tipo de conta, atividade, saldo, assertions públicas e qualquer linked account exposta via Passport.
+                      Tipo de conta, atividade, saldo, assertions públicas e qualquer wallet vinculada exposta via Passport.
                     </div>
                   </div>
 
@@ -694,7 +694,7 @@ export function Pass() {
                                 <div className="flex items-center justify-between gap-3 mb-1">
                                   <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{account.network}</div>
                                   <StatusBadge status={account.primary ? 'success' : account.status === 'active' ? 'active' : 'pending'}>
-                                    {account.primary ? 'primary' : account.status ?? 'linked'}
+                                    {account.primary ? 'principal' : account.status ?? 'vinculada'}
                                   </StatusBadge>
                                 </div>
                                 <div className="text-sm font-mono break-all" style={{ color: 'var(--text-2)' }}>{account.address}</div>

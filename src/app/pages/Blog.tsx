@@ -88,21 +88,21 @@ export function Blog() {
 
   useSeoMeta({
     title: taxonomyLabel
-      ? `Intelligence Layer: ${taxonomyLabel} | SNE OS`
-      : 'Intelligence Layer | SNE OS',
+      ? `Intel Brief: ${taxonomyLabel} | SNE OS`
+      : 'Intel Brief | SNE OS',
     description: taxonomyLabel
       ? `Leituras editoriais do SNE OS para ${taxonomyKind} ${taxonomyLabel}: dossiês, briefings e contexto operacional multichain.`
-      : 'Intelligence Layer do SNE OS com dossiês, briefings e contexto operacional sobre mercado, tech, economia, geopolítica e cripto.',
+      : 'Intel Brief do SNE OS com dossiês, briefings e contexto operacional sobre mercado, tech, economia, geopolítica e cripto.',
     canonicalPath,
     type: 'website',
     keywords: ['crypto intelligence', 'web3 intelligence', 'defi', 'tech', 'economia', 'geopolitica', topicLabelSafe(topic), topicLabelSafe(chain), topicLabelSafe(asset)].filter(Boolean) as string[],
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: taxonomyLabel ? `Intelligence Layer: ${taxonomyLabel}` : 'Intelligence Layer',
+      name: taxonomyLabel ? `Intel Brief: ${taxonomyLabel}` : 'Intel Brief',
       description: taxonomyLabel
-        ? `Página índice da Intelligence Layer para ${taxonomyKind} ${taxonomyLabel}.`
-        : 'Página índice da Intelligence Layer do SNE OS.',
+        ? `Página índice do Intel Brief para ${taxonomyKind} ${taxonomyLabel}.`
+        : 'Página índice do Intel Brief do SNE OS.',
       url: `https://snelabs.space${canonicalPath}`,
     },
   });
@@ -111,7 +111,7 @@ export function Blog() {
     return (
       <div className="flex-1 px-8 py-6 overflow-y-auto">
         <div className="mx-auto max-w-6xl py-6">
-          <ModuleStateCard tone="loading" title="Carregando intelligence layer" description="Buscando dossiês e briefings gerados pelo Intel." />
+          <ModuleStateCard tone="loading" title="Carregando Intel Brief" description="Buscando dossiês e briefings gerados pelo Intel Brief." />
         </div>
       </div>
     );
@@ -121,7 +121,7 @@ export function Blog() {
     return (
       <div className="flex-1 px-8 py-6 overflow-y-auto">
         <div className="mx-auto max-w-6xl py-6">
-          <ModuleStateCard tone="error" title="Intelligence layer indisponível" description="Os dossiês do Intel não carregaram agora." />
+          <ModuleStateCard tone="error" title="Intel Brief indisponível" description="Os dossiês do Intel Brief não carregaram agora." />
         </div>
       </div>
     );
@@ -141,7 +141,7 @@ export function Blog() {
           }}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status="active">Intelligence Layer</StatusBadge>
+            <StatusBadge status="active">Intel Brief</StatusBadge>
             <StatusBadge status="pending">{posts.length} peças</StatusBadge>
             <StatusBadge status="success">{formatRelativeTimestamp(postsQuery.data?.last_updated)}</StatusBadge>
           </div>
@@ -151,9 +151,9 @@ export function Blog() {
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Editorial Intel</p>
-              <h1 className="text-4xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Intelligence Layer</h1>
+              <h1 className="text-4xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Intel Brief</h1>
               <p className="text-sm max-w-3xl" style={{ color: 'var(--text-2)' }}>
-                Camada editorial do OS para transformar sinais de mercado, notícias e movimento multichain em briefing, leitura operacional e dossiês persistentes.
+                Leituras editoriais do OS para transformar sinais de mercado, notícias e movimento multichain em briefing, leitura operacional e dossiês persistentes.
               </p>
             </div>
           </div>
@@ -191,7 +191,7 @@ export function Blog() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Segmentation</div>
+              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Segmentação</div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Fluxo editorial</div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -238,13 +238,13 @@ export function Blog() {
           </div>
           {taxonomyLabel && (
             <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              Índice público ativo para {taxonomyKind} <strong style={{ color: 'var(--text-1)' }}>{taxonomyLabel}</strong>. Esta página pode servir como entrada indexável da Intelligence Layer.
+              Índice público ativo para {taxonomyKind} <strong style={{ color: 'var(--text-1)' }}>{taxonomyLabel}</strong>. Esta página pode servir como entrada indexável do Intel Brief.
             </div>
           )}
         </section>
 
         {!featured ? (
-          <ModuleStateCard tone="loading" title="Nenhuma peça encontrada" description="Ajuste os filtros ou aguarde a próxima rodada editorial do Intel." />
+          <ModuleStateCard tone="loading" title="Nenhuma peça encontrada" description="Ajuste os filtros ou aguarde a próxima rodada editorial do Intel Brief." />
         ) : (
           <>
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
@@ -284,7 +284,7 @@ export function Blog() {
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
                 <div>
-                  <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Snapshot</div>
+                  <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Resumo</div>
                   <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Leitura imediata</div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -298,7 +298,7 @@ export function Blog() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>Key signals</div>
+                  <div className="text-[11px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>Sinais-chave</div>
                   <div className="space-y-2">
                     {(featured.tldr.length > 0 ? featured.tldr : [featured.excerpt || featured.subtitle]).slice(0, 3).map((line, index) => (
                       <div key={index} className="rounded-2xl px-3 py-3 text-sm" style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
@@ -313,7 +313,7 @@ export function Blog() {
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Flow</div>
+                  <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Fluxo</div>
                   <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>Peças recentes</div>
                 </div>
               </div>
@@ -327,7 +327,7 @@ export function Blog() {
                 >
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
-                      <StatusBadge status="active">{post.editorial_kind === 'briefing' ? 'Intel briefing' : 'Intel dossier'}</StatusBadge>
+                      <StatusBadge status="active">{post.editorial_kind === 'briefing' ? 'Intel Brief' : 'Intel Dossiê'}</StatusBadge>
                       <StatusBadge status="pending">{formatRelativeTimestamp(post.generated_at)}</StatusBadge>
                     </div>
                     <span className="text-xs" style={{ color: 'var(--text-3)' }}>{post.reading_time_minutes} min</span>
