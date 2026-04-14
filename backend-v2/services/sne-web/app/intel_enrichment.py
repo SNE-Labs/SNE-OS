@@ -19,7 +19,7 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
-CACHE_VERSION = "v6"
+CACHE_VERSION = "v7"
 
 TOPIC_RULES = {
     "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed", "seguranca", "segurança"],
@@ -240,6 +240,44 @@ def _normalize_post_kind(value: Any) -> str:
     return normalized if normalized in {"briefing", "dossier"} else "dossier"
 
 
+def _clean_body_markdown(value: Any) -> str:
+    body = str(value or "").strip()
+    if not body:
+        return ""
+
+    lines = body.splitlines()
+    cleaned: List[str] = []
+    skip_blank = False
+    banned_headings = {
+        "tl;dr",
+        "tldr",
+        "introducao",
+        "introdução",
+        "resumo executivo",
+        "fechamento editorial",
+        "conclusao",
+        "conclusão",
+        "consideracoes finais",
+        "considerações finais",
+    }
+
+    for line in lines:
+        stripped = line.strip()
+        normalized = stripped.lstrip("#").strip().lower()
+        if normalized in banned_headings:
+            skip_blank = True
+            continue
+        if skip_blank and not stripped:
+            skip_blank = False
+            continue
+        skip_blank = False
+        cleaned.append(line.rstrip())
+
+    body = "\n".join(cleaned).strip()
+    body = re.sub(r"\n{3,}", "\n\n", body)
+    return body
+
+
 def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "model": model,
@@ -428,16 +466,20 @@ class IntelEnricher:
                 "Escreva um briefing em pt-BR para a Intelligence Layer do SNE OS. "
                 "Formato enxuto, claro e orientado a operação. "
                 "Responda em JSON com title, subtitle, excerpt, body_markdown e tldr. "
-                "body_markdown deve ter entre 220 e 420 palavras, com seções curtas e foco em contexto imediato. "
-                "Quando fizer sentido, enquadre a leitura em temas como tech, economia e geopolítica."
+                "body_markdown deve ter entre 220 e 420 palavras, em texto editorial fluido, com no maximo 2 ou 3 intertitulos curtos apenas se realmente ajudarem. "
+                "Nao use headings genericos como TL;DR, Introducao, Conclusao ou Fechamento editorial. "
+                "Nao transforme a peca em checklist ou relatorio burocratico. "
+                "Quando fizer sentido, incorpore tech, economia e geopolítica dentro da narrativa, sem virar taxonomia."
             )
         else:
             instruction = (
                 "Escreva um dossie em pt-BR para a Intelligence Layer do SNE OS. "
                 "A leitura deve ter profundidade editorial, contexto de mercado/produto e implicações operacionais. "
                 "Responda em JSON com title, subtitle, excerpt, body_markdown e tldr. "
-                "body_markdown deve ter entre 700 e 1100 palavras, com seções em markdown, analise propria e fechamento editorial. "
-                "Quando fizer sentido, enquadre a leitura em temas como tech, economia e geopolítica."
+                "body_markdown deve ter entre 700 e 1100 palavras, com voz de materia analitica e no maximo 3 ou 4 intertitulos curtos quando agregarem leitura. "
+                "Nao use headings genericos como TL;DR, Introducao, Resumo executivo, Conclusao ou Fechamento editorial. "
+                "Nao escreva como template de consultoria, checklist ou relatorio. "
+                "A segmentacao por tema pertence a Home; no corpo da peca, conecte tech, economia e geopolítica de forma organica quando fizer sentido."
             )
 
         prompt = {
@@ -490,7 +532,7 @@ class IntelEnricher:
                 "title": parsed.get("title") or item.get("title_pt") or item.get("title") or item_id,
                 "subtitle": parsed.get("subtitle") or item.get("why_it_matters", ""),
                 "excerpt": parsed.get("excerpt") or item.get("summary_pt", ""),
-                "body_markdown": parsed.get("body_markdown") or "",
+                "body_markdown": _clean_body_markdown(parsed.get("body_markdown")),
                 "tldr": _normalize_tldr(parsed.get("tldr")) or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
                 "topics": item.get("topics", []),
                 "chains": item.get("chains", []),
