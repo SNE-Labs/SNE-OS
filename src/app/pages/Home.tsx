@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   ArrowUpRight,
-  FileText,
-  KeyRound,
   Shield,
   Waves,
   Zap,
@@ -111,9 +110,187 @@ type HomeResponse = {
 
 const HOME_SNAPSHOT_KEY = 'sne:query:home';
 
+type HeroCandidate = {
+  id: string;
+  item: IntelItem;
+  section: {
+    key: HomeIntelSectionKey;
+    title: string;
+    shortTitle: string;
+    kicker: string;
+    description: string;
+  };
+  relatedMover: MarketMover | null;
+  implication: string;
+  tapeItems: string[];
+  sparklinePoints: string;
+};
+
+const RELATED_SYMBOL_ALIASES: Record<string, string> = {
+  arb: 'ARB',
+  arbitrum: 'ARB',
+  avalanche: 'AVAX',
+  avax: 'AVAX',
+  base: 'ETH',
+  bitcoin: 'BTC',
+  btc: 'BTC',
+  bnb: 'BNB',
+  ether: 'ETH',
+  ethereum: 'ETH',
+  eth: 'ETH',
+  optimism: 'OP',
+  op: 'OP',
+  polygon: 'MATIC',
+  matic: 'MATIC',
+  sei: 'SEI',
+  sol: 'SOL',
+  solana: 'SOL',
+  sui: 'SUI',
+  xrp: 'XRP',
+};
+
+function normalizeEntityKey(value?: string | null) {
+  return (value ?? '')
+    .toLocaleLowerCase('pt-BR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+}
+
+function uniqueText(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+
+  return values.reduce<string[]>((acc, value) => {
+    const normalized = value?.replace(/\s+/g, ' ').trim();
+    if (!normalized) return acc;
+
+    const key = normalized.toLocaleLowerCase('pt-BR');
+    if (seen.has(key)) return acc;
+
+    seen.add(key);
+    acc.push(normalized);
+    return acc;
+  }, []);
+}
+
+function compactPhrase(value?: string | null, maxWords: number = 4) {
+  if (!value) return null;
+
+  const cleaned = value
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–—•]+|[\s\-–—•]+$/g, '')
+    .trim();
+
+  if (!cleaned) return null;
+
+  const words = cleaned.split(' ');
+  return words.length > maxWords ? `${words.slice(0, maxWords).join(' ')}…` : cleaned;
+}
+
+function interleaveSignals(...groups: string[][]) {
+  const maxLength = Math.max(0, ...groups.map((group) => group.length));
+  const result: string[] = [];
+
+  for (let index = 0; index < maxLength; index += 1) {
+    groups.forEach((group) => {
+      if (group[index]) {
+        result.push(group[index]);
+      }
+    });
+  }
+
+  return uniqueText(result);
+}
+
+function extractIntelSymbols(item: IntelItem) {
+  const symbols = new Set<string>();
+  const structuredSources = [...(item.assets ?? []), ...(item.protocols ?? []), ...(item.chains ?? [])];
+
+  structuredSources.forEach((entry) => {
+    const normalized = normalizeEntityKey(entry);
+    if (RELATED_SYMBOL_ALIASES[normalized]) {
+      symbols.add(RELATED_SYMBOL_ALIASES[normalized]);
+      return;
+    }
+
+    if (/^[A-Z0-9]{2,6}$/.test(entry.trim())) {
+      symbols.add(entry.trim().toUpperCase());
+    }
+  });
+
+  [item.title_pt, item.title, item.title_original, item.summary_pt, item.summary].forEach((text) => {
+    text
+      ?.split(/[^A-Za-z0-9]+/)
+      .filter(Boolean)
+      .forEach((token) => {
+        const normalized = normalizeEntityKey(token);
+        if (RELATED_SYMBOL_ALIASES[normalized]) {
+          symbols.add(RELATED_SYMBOL_ALIASES[normalized]);
+        }
+      });
+  });
+
+  return Array.from(symbols);
+}
+
+function buildHeroSparkline(seedValue: string, drift: number) {
+  let seed = 0;
+  for (let index = 0; index < seedValue.length; index += 1) {
+    seed = (seed * 31 + seedValue.charCodeAt(index)) % 2147483647;
+  }
+
+  let current = 74;
+  const points: string[] = [];
+
+  for (let index = 0; index < 18; index += 1) {
+    seed = (seed * 48271) % 2147483647;
+    const noise = ((seed / 2147483647) * 18 - 9) + drift * 28;
+    current = Math.max(22, Math.min(116, current + noise));
+    const x = (index / 17) * 100;
+    const y = 120 - current;
+    points.push(`${x},${y}`);
+  }
+
+  return points.join(' ');
+}
+
+function describeLiquidity(symbol: string, volumeLeaderSymbols: Set<string>, volume: string | number) {
+  const numericVolume = typeof volume === 'number' ? volume : Number(String(volume).replace(/[^0-9.]/g, ''));
+
+  if (volumeLeaderSymbols.has(symbol)) return 'liquidez forte';
+  if (Number.isFinite(numericVolume) && numericVolume > 1_000_000_000) return 'fluxo dominante';
+  return 'liquidez estável';
+}
+
+function describeRisk(change24h: number) {
+  if (change24h <= -0.03) return 'pressão imediata';
+  if (change24h < 0) return 'risco de retrocesso';
+  if (change24h >= 0.04) return 'continuidade em observação';
+  return 'janela de validação aberta';
+}
+
+function formatRelativeTimestamp(value: string | null | undefined, now: Date) {
+  if (!value) return 'agora';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'agora';
+
+  const diffSeconds = Math.max(0, Math.round((now.getTime() - date.getTime()) / 1000));
+  if (diffSeconds < 60) return 'agora';
+  if (diffSeconds < 3600) return `há ${Math.floor(diffSeconds / 60)}m`;
+  if (diffSeconds < 86400) return `há ${Math.floor(diffSeconds / 3600)}h`;
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
 export function Home() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const [heroCycle, setHeroCycle] = useState(0);
   const persistedHome = readPersistedSnapshot<HomeResponse>(HOME_SNAPSHOT_KEY);
 
   const { data: homeData, isLoading, isFetching, error, refetch } = useQuery({
@@ -133,8 +310,13 @@ export function Home() {
   });
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 30000);
-    return () => window.clearInterval(timer);
+    const clockTimer = window.setInterval(() => setNow(new Date()), 10000);
+    const heroTimer = window.setInterval(() => setHeroCycle((current) => current + 1), 16000);
+
+    return () => {
+      window.clearInterval(clockTimer);
+      window.clearInterval(heroTimer);
+    };
   }, []);
 
   const liveMovers = homeData?.market.top_movers ?? [];
@@ -181,6 +363,7 @@ export function Home() {
       badge: 'active' | 'success' | 'warning' | 'pending';
       panelStyle: CSSProperties;
       toneStyle: CSSProperties;
+      accentColor: string;
     }
   > = {
     market: {
@@ -194,6 +377,7 @@ export function Home() {
         backgroundColor: 'rgba(255,140,66,0.12)',
         color: 'var(--accent-orange)',
       },
+      accentColor: 'rgba(255,140,66,0.88)',
     },
     tech: {
       icon: Zap,
@@ -206,6 +390,7 @@ export function Home() {
         backgroundColor: 'rgba(74,144,226,0.12)',
         color: '#7cb4ff',
       },
+      accentColor: 'rgba(74,144,226,0.9)',
     },
     politica: {
       icon: Shield,
@@ -218,6 +403,7 @@ export function Home() {
         backgroundColor: 'rgba(201,173,93,0.12)',
         color: '#d9ba67',
       },
+      accentColor: 'rgba(201,173,93,0.88)',
     },
     cripto: {
       icon: Waves,
@@ -230,14 +416,85 @@ export function Home() {
         backgroundColor: 'rgba(77,201,144,0.12)',
         color: '#74dca8',
       },
+      accentColor: 'rgba(77,201,144,0.9)',
     },
   };
-  const leadIntelSection = intelSections[0] ?? null;
-  const leadIntelItem = leadIntelSection?.items[0] ?? null;
-  const leadIntelTheme = leadIntelSection ? intelSectionTheme[leadIntelSection.key] : null;
-  const secondaryIntelSections = leadIntelSection
-    ? intelSections.filter((section) => section.key !== leadIntelSection.key)
-    : [];
+  const intelStreamSections = intelSections;
+  const marketLookup = useMemo(() => {
+    const lookup = new Map<string, MarketMover>();
+
+    [...liveMovers, ...topLosers, ...volumeLeaders].forEach((item) => {
+      lookup.set(item.symbol.toUpperCase(), item);
+    });
+
+    return lookup;
+  }, [liveMovers, topLosers, volumeLeaders]);
+
+  const heroCandidates = useMemo(() => {
+    const candidates: HeroCandidate[] = [];
+    const maxDepth = Math.max(0, ...intelSections.map((section) => Math.min(section.items.length, 2)));
+    const volumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
+    const altPressure = topLosers.some((item) => item.change24h <= -0.04) ? 'pressão em alts' : 'rotação em observação';
+
+    for (let depth = 0; depth < maxDepth; depth += 1) {
+      intelSections.forEach((section) => {
+        const item = section.items[depth];
+        if (!item) return;
+
+        const relatedMover =
+          extractIntelSymbols(item)
+            .map((symbol) => marketLookup.get(symbol))
+            .find((mover): mover is MarketMover => Boolean(mover)) ?? null;
+        const implication = item.why_it_matters || section.description;
+
+        const thesisTape = uniqueText([
+          compactPhrase(section.kicker, 3),
+          compactPhrase(implication, 5),
+          item.impact?.label ? `impacto ${item.impact.label}` : null,
+          ...(item.watch_items?.slice(0, 2).map((watchItem) => compactPhrase(watchItem, 4)) ?? []),
+        ]).slice(0, 4);
+
+        const marketTape = relatedMover
+          ? uniqueText([
+              `${relatedMover.symbol} US$ ${formatMarketPrice(relatedMover.price)}`,
+              `${relatedMover.change24h >= 0 ? '+' : ''}${(relatedMover.change24h * 100).toFixed(1)}%`,
+              describeLiquidity(relatedMover.symbol.toUpperCase(), volumeLeaderSymbols, relatedMover.volume),
+              altPressure,
+            ]).slice(0, 4)
+          : uniqueText([
+              marketRegime?.label?.toLocaleLowerCase('pt-BR'),
+              compactPhrase(marketEditorial?.headline, 5),
+              compactPhrase(marketEditorial?.summary_pt, 5),
+            ]).slice(0, 3);
+
+        const riskTape = uniqueText([
+          relatedMover ? describeRisk(relatedMover.change24h) : 'vigilância imediata',
+          compactPhrase(item.watch_items?.[0], 4) ?? 'monitorar adoção',
+        ]).slice(0, 2);
+
+        candidates.push({
+          id: `${section.key}:${item.id}`,
+          item,
+          section,
+          relatedMover,
+          implication,
+          tapeItems: interleaveSignals(thesisTape, marketTape, riskTape),
+          sparklinePoints: buildHeroSparkline(`${section.key}:${item.id}`, relatedMover?.change24h ?? marketRegime?.avg_change_24h ?? 0),
+        });
+      });
+    }
+
+    return candidates;
+  }, [intelSections, marketEditorial, marketLookup, marketRegime?.avg_change_24h, marketRegime?.label, topLosers, volumeLeaders]);
+
+  const activeHero = heroCandidates.length > 0 ? heroCandidates[heroCycle % heroCandidates.length] : null;
+  const activeHeroTheme = activeHero ? intelSectionTheme[activeHero.section.key] : null;
+  const heroUpdatedAt = formatRelativeTimestamp(
+    activeHero?.item.created_at ?? homeData?.intel.last_updated ?? homeData?.last_updated,
+    now
+  );
+  const heroTape = activeHero?.tapeItems ?? [];
+  const heroTapeLoop = [...heroTape, ...heroTape];
   const renderIntelTitle = (item: IntelItem, className: string) => {
     if (!item.url) {
       return (
@@ -322,147 +579,289 @@ export function Home() {
         <div className="mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <section
-            className="rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
+            className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
             style={{
-              background: 'radial-gradient(circle at top left, rgba(255,140,66,0.18), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))',
+              background: `radial-gradient(circle at top left, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.22)'} 0%, transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))`,
               backgroundColor: 'var(--bg-2)',
               borderWidth: '1px',
               borderColor: 'rgba(255,255,255,0.06)',
               boxShadow: 'var(--shadow-2)',
             }}
           >
-            <div className="grid grid-cols-1 xl:grid-cols-[1.18fr_0.82fr] gap-6 xl:gap-7">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3 mb-5">
-                  <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
-                    Intel Brief
-                  </div>
-                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>
-                    {formattedTime}
-                  </div>
-                  {isFetching ? (
-                    <StatusBadge status="pending">sincronizando</StatusBadge>
-                  ) : null}
-                  {homeData?.intel.last_updated ? (
-                    <StatusBadge status="active">ao vivo</StatusBadge>
-                  ) : null}
-                </div>
-
-                {!leadIntelSection || !leadIntelItem || !leadIntelTheme ? (
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    Nenhum feed de inteligência disponível agora.
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 mb-5">
-                      <div
-                        className="flex h-12 w-12 items-center justify-center rounded-[20px]"
-                        style={leadIntelTheme.toneStyle}
-                      >
-                        {(() => {
-                          const HeroIcon = intelSectionTheme[leadIntelSection.key].icon;
-                          return <HeroIcon className="h-5 w-5" />;
-                        })()}
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                          {leadIntelSection.kicker}
-                        </div>
-                        <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {leadIntelSection.title}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
-                      <StatusBadge status={leadIntelTheme.badge}>{leadIntelItem.source}</StatusBadge>
-                      <StatusBadge status="pending">{leadIntelItem.module}</StatusBadge>
-                      {leadIntelItem.impact?.label && (
-                        <StatusBadge status={leadIntelItem.impact.label === 'alto' ? 'warning' : 'active'}>
-                          impacto {leadIntelItem.impact.label}
-                        </StatusBadge>
-                      )}
-                    </div>
-
-                    {renderIntelTitle(leadIntelItem, 'text-3xl xl:text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-balance mb-4')}
-
-                    <div className="max-w-3xl text-base xl:text-lg mb-4" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
-                      {intelSummary(leadIntelItem)}
-                    </div>
-
-                    <div className="max-w-3xl text-sm mb-5" style={{ color: 'var(--text-3)' }}>
-                      {leadIntelItem.why_it_matters || leadIntelSection.description}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      <span>{leadIntelItem.points} pts</span>
-                      <span>{leadIntelItem.comments} comentários</span>
-                      <span>@{leadIntelItem.author}</span>
-                      <span>{intelMeta(leadIntelItem)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div
-                  className="rounded-[24px] p-5"
-                  style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.05)' }}
+            <div className="pointer-events-none absolute inset-0">
+              <div
+                className="absolute inset-0 opacity-40"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+                  backgroundSize: '22px 22px',
+                }}
+              />
+              <div
+                className="absolute inset-x-0 top-[18%] h-px"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.66)'}, transparent)`,
+                }}
+              />
+              <motion.div
+                className="absolute inset-x-[-30%] top-[16%] h-[2px]"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.86)'}, transparent)`,
+                  filter: 'blur(1px)',
+                }}
+                animate={{ x: ['-18%', '18%'], opacity: [0.2, 0.75, 0.2] }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              {activeHero ? (
+                <svg
+                  viewBox="0 0 100 120"
+                  preserveAspectRatio="none"
+                  className="absolute inset-x-[34%] bottom-[-10%] h-[68%] w-[76%] opacity-50"
                 >
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                      Vigilância imediata
-                    </div>
-                    <button
-                      onClick={() => navigate('/intel')}
-                      className="text-sm font-medium"
-                      style={{ color: 'var(--accent-orange)' }}
-                    >
-                      Abrir Intel Brief ↗
-                    </button>
-                  </div>
+                  <defs>
+                    <linearGradient id="hero-sparkline-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="transparent" />
+                      <stop offset="38%" stopColor={activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.9)'} />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
+                    </linearGradient>
+                  </defs>
+                  <polyline
+                    fill="none"
+                    stroke="url(#hero-sparkline-gradient)"
+                    strokeWidth="2.1"
+                    points={activeHero.sparklinePoints}
+                  />
+                </svg>
+              ) : null}
+            </div>
 
-                  <div className="space-y-2.5">
-                    {(leadIntelItem?.watch_items?.slice(0, 3) ?? []).map((watchItem) => (
-                      <div
-                        key={watchItem}
-                        className="px-1 py-2.5 text-sm border-b last:border-b-0"
-                        style={{ borderColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}
-                      >
-                        {watchItem}
-                      </div>
-                    ))}
-                    {!leadIntelItem?.watch_items?.length && (
-                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                        {leadIntelSection?.description ?? 'Sem itens imediatos de monitoramento agora.'}
-                      </div>
-                    )}
-                  </div>
+            <div className="relative z-[1]">
+              <div className="flex flex-wrap items-center gap-3 mb-5">
+                <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
+                  Intel Brief
                 </div>
-
-                <div className="rounded-[24px] px-5 py-3" style={{ backgroundColor: 'rgba(10,14,23,0.24)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.05)' }}>
-                  {(leadIntelSection?.items.slice(1, 4) ?? []).map((item) => (
-                    <div
-                      key={item.id}
-                      className="py-3 border-b last:border-b-0"
-                      style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <div className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                          {intelMeta(item)}
-                        </div>
-                        <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                          {item.points} pts
-                        </div>
-                      </div>
-                      {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
-                      <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
-                        {intelSummary(item)}
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-sm" style={{ color: 'var(--text-3)' }}>
+                  {formattedTime}
+                </div>
+                <StatusBadge status={homeData?.intel.last_updated ? 'active' : 'pending'}>ao vivo</StatusBadge>
+                {activeHero ? <StatusBadge status={activeHeroTheme?.badge ?? 'pending'}>{activeHero.section.shortTitle}</StatusBadge> : null}
+                {isFetching ? <StatusBadge status="pending">sincronizando</StatusBadge> : null}
+                <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  atualizado {heroUpdatedAt}
                 </div>
               </div>
+
+              {!activeHero || !activeHeroTheme ? (
+                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                  Nenhum feed de inteligência disponível agora.
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-6 xl:gap-7 min-h-[360px]">
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.div
+                        key={`${activeHero.id}:copy`}
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -16 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="min-w-0"
+                      >
+                        <div className="flex items-center gap-3 mb-5">
+                          <div
+                            className="flex h-12 w-12 items-center justify-center rounded-[20px]"
+                            style={activeHeroTheme.toneStyle}
+                          >
+                            {(() => {
+                              const HeroIcon = intelSectionTheme[activeHero.section.key].icon;
+                              return <HeroIcon className="h-5 w-5" />;
+                            })()}
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                              {activeHero.section.kicker}
+                            </div>
+                            <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                              {activeHero.section.title}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <StatusBadge status={activeHeroTheme.badge}>{activeHero.item.source}</StatusBadge>
+                          <StatusBadge status="pending">{activeHero.item.module}</StatusBadge>
+                          {activeHero.item.impact?.label ? (
+                            <StatusBadge status={activeHero.item.impact.label === 'alto' ? 'warning' : 'active'}>
+                              impacto {activeHero.item.impact.label}
+                            </StatusBadge>
+                          ) : null}
+                          {activeHero.relatedMover ? <StatusBadge status="success">{activeHero.relatedMover.symbol}</StatusBadge> : null}
+                        </div>
+
+                        {renderIntelTitle(
+                          activeHero.item,
+                          'text-3xl xl:text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.035em] text-balance mb-4'
+                        )}
+
+                        <div className="max-w-3xl text-base xl:text-lg mb-4" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
+                          {intelSummary(activeHero.item)}
+                        </div>
+
+                        <div
+                          className="inline-flex max-w-3xl items-center gap-2 rounded-full px-4 py-2 mb-5 text-sm"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
+                        >
+                          <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
+                            O que isso entrega
+                          </span>
+                          <span>{activeHero.implication}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                          <span>{activeHero.item.points} pts</span>
+                          <span>{activeHero.item.comments} comentários</span>
+                          <span>{intelMeta(activeHero.item)}</span>
+                          <span>{activeHero.item.author ? `@${activeHero.item.author}` : activeHero.section.shortTitle}</span>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.div
+                        key={`${activeHero.id}:context`}
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -16 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="flex flex-col gap-4"
+                      >
+                        <div
+                          className="rounded-[24px] p-5"
+                          style={{
+                            background: 'linear-gradient(180deg, rgba(10,14,23,0.44), rgba(10,14,23,0.22))',
+                            borderWidth: '1px',
+                            borderColor: 'rgba(255,255,255,0.06)',
+                            backdropFilter: 'blur(8px)',
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                              Leitura em foco
+                            </div>
+                            <button
+                              onClick={() => openIntelItem(activeHero.item.url)}
+                              className="text-sm font-medium"
+                              style={{ color: 'var(--accent-orange)' }}
+                            >
+                              Abrir Intel Brief ↗
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Janela</div>
+                              <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
+                                {activeHero.section.kicker}
+                              </div>
+                            </div>
+                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Contexto</div>
+                              <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
+                                {activeHero.relatedMover
+                                  ? `${activeHero.relatedMover.symbol} ${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
+                                  : marketRegime?.label ?? 'editorial'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            {(activeHero.item.watch_items?.slice(0, 3) ?? []).map((watchItem) => (
+                              <div
+                                key={watchItem}
+                                className="px-1 py-2.5 text-sm border-b last:border-b-0"
+                                style={{ borderColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}
+                              >
+                                {watchItem}
+                              </div>
+                            ))}
+
+                            {!activeHero.item.watch_items?.length ? (
+                              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                                {activeHero.section.description}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div
+                          className="rounded-[24px] px-5 py-4"
+                          style={{ backgroundColor: 'rgba(10,14,23,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                              Pulso de apoio
+                            </div>
+                            <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                              {activeHero.relatedMover ? 'market-assisted' : 'intel-led'}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Ativo</div>
+                              <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
+                                {activeHero.relatedMover?.symbol ?? intelMeta(activeHero.item)}
+                              </div>
+                            </div>
+                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Pulso</div>
+                              <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
+                                {activeHero.relatedMover ? `$${formatMarketPrice(activeHero.relatedMover.price)}` : marketRegime?.label ?? '--'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {heroTape.length > 0 ? (
+                    <div
+                      className="mt-6 overflow-hidden rounded-[22px] border"
+                      style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(6,10,16,0.55)' }}
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                        <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
+                          Tape operacional
+                        </div>
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: activeHeroTheme.accentColor }} />
+                        <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                          Intel conduz, mercado valida
+                        </div>
+                      </div>
+
+                      <div className="relative overflow-hidden py-3">
+                        <motion.div
+                          className="flex min-w-max items-center gap-3 px-4"
+                          animate={{ x: ['0%', '-50%'] }}
+                          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+                        >
+                          {heroTapeLoop.map((item, index) => (
+                            <div
+                              key={`${item}-${index}`}
+                              className="flex items-center gap-3 whitespace-nowrap rounded-full px-3 py-2 text-sm"
+                              style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
+                            >
+                              <span style={{ color: 'var(--text-1)' }}>{item}</span>
+                              <span style={{ color: 'var(--text-3)' }}>•</span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
           </section>
 
@@ -512,7 +911,7 @@ export function Home() {
           )}
 
           {/* ── Intel Stream ──────────────────────────────────────── */}
-          {secondaryIntelSections.length > 0 && (
+          {intelStreamSections.length > 0 && (
             <section
               className="rounded-[24px] p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
@@ -536,7 +935,7 @@ export function Home() {
               </div>
 
               <div className="space-y-3">
-                {secondaryIntelSections.map((section) => {
+                {intelStreamSections.map((section) => {
                   const lead = section.items[0];
                   const rest = section.items.slice(1, 3);
                   const SectionIcon = intelSectionTheme[section.key].icon;
