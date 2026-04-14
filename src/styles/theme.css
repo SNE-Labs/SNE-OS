@@ -45,9 +45,21 @@
   --spacing-base: 8px;
   --spacing-padding: 24px;
   --spacing-gap: 16px;
+
+  /* Shell */
+  --sidebar-rail-width: 76px;
+  --sidebar-expanded-width: 284px;
+  --dock-height: 72px;
+  --shell-overlay: rgba(3, 5, 8, 0.34);
+  --panel-glow: radial-gradient(circle at top left, rgba(255, 102, 0, 0.16), transparent 34%);
+  --shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.42);
+  --shadow-dock: 0 18px 42px rgba(0, 0, 0, 0.34);
+  --ease-shell: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-shell: 200ms;
   
   /* Font */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: 'SFMono-Regular', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -79,7 +91,11 @@
   }
 
   body {
-    background-color: var(--bg-0);
+    background:
+      radial-gradient(circle at top left, rgba(255, 102, 0, 0.06), transparent 22%),
+      radial-gradient(circle at 55% top, rgba(255,255,255,0.025), transparent 24%),
+      radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 28%),
+      var(--bg-0);
     color: var(--text-1);
     font-family: var(--font-family);
     font-variant-numeric: tabular-nums;
@@ -138,5 +154,27 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
+  }
+
+  .shell-tape-track {
+    width: max-content;
+    min-width: 100%;
+    animation: shell-tape-scroll 34s linear infinite;
+    will-change: transform;
+  }
+
+  @keyframes shell-tape-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shell-tape-track {
+      animation: none;
+    }
   }
 }

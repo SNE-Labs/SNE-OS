@@ -1,9 +1,25 @@
-import { Activity, DollarSign, FileText, Home, KeyRound, Lock, LockKeyhole, Newspaper, Shield } from 'lucide-react';
+import {
+  Activity,
+  FileText,
+  Home,
+  KeyRound,
+  Lock,
+  LockKeyhole,
+  Newspaper,
+  Shield,
+  type LucideIcon,
+} from 'lucide-react';
 
 export type NavigationItem = {
   path: string;
   label: string;
-  icon: typeof Home;
+  shortLabel?: string;
+  icon: LucideIcon;
+};
+
+export type NavigationGroup = {
+  label: string;
+  items: NavigationItem[];
 };
 
 export type RouteMeta = {
@@ -12,41 +28,59 @@ export type RouteMeta = {
   descriptor: string;
 };
 
-export const navigationItems: NavigationItem[] = [
-  { path: '/home', label: 'Início', icon: Home },
+export const dockNavigationItems: NavigationItem[] = [
+  { path: '/home', label: 'Home', icon: Home },
   { path: '/radar', label: 'Radar', icon: Activity },
+  { path: '/intel', label: 'Intel Brief', shortLabel: 'Intel', icon: Newspaper },
   { path: '/pass', label: 'Passport', icon: Shield },
   { path: '/vault', label: 'Vault', icon: Lock },
-  { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
-  { path: '/keys', label: 'Keys', icon: KeyRound },
-  { path: '/intel', label: 'Intelligence', icon: Newspaper },
-  { path: '/pricing', label: 'Planos', icon: DollarSign },
-  { path: '/docs', label: 'Documentação', icon: FileText },
 ];
+
+export const railNavigationGroups: NavigationGroup[] = [
+  {
+    label: 'Core',
+    items: dockNavigationItems,
+  },
+  {
+    label: 'Access',
+    items: [
+      { path: '/keys', label: 'Keys', icon: KeyRound },
+      { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
+    ],
+  },
+  {
+    label: 'Reference',
+    items: [
+      { path: '/docs', label: 'Docs', icon: FileText },
+    ],
+  },
+];
+
+export const navigationItems = railNavigationGroups.flatMap((group) => group.items);
 
 const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMeta }> = [
   {
     match: (pathname) => pathname === '/' || pathname === '/home',
     meta: {
-      title: 'Início',
-      context: 'Base operacional',
-      descriptor: 'Estado do sistema, mercado e editorial em um só lugar.',
+      title: 'Home',
+      context: 'Intel first',
+      descriptor: 'Briefing operacional, memória de sessão e contexto para a próxima janela.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/radar'),
     meta: {
       title: 'Radar',
-      context: 'Mercados líquidos',
-      descriptor: 'Leitura tática dos pares com mais fluxo do universo SNE.',
+      context: 'Mercado em foco',
+      descriptor: 'Leitura direcional, liquidez e contexto de execução antes da decisão.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/pass'),
     meta: {
       title: 'Passport',
-      context: 'Identity hub',
-      descriptor: 'Checkpoint de identidade Web3 e lookup público on-chain.',
+      context: 'Identidade',
+      descriptor: 'Identidade, vínculo e lookup público persistente do OS.',
     },
   },
   {
@@ -54,15 +88,15 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     meta: {
       title: 'Vault',
       context: 'Capital',
-      descriptor: 'Saldo, postura de conta e superfície de capital ao vivo.',
+      descriptor: 'Capital, postura de conta e readiness da carteira conectada.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/secrets'),
     meta: {
       title: 'Secrets',
-      context: 'Privacidade',
-      descriptor: 'Camada cifrada para composição e sincronização de segredos.',
+      context: 'Camada cifrada',
+      descriptor: 'Camada cifrada para composição, sync e material sensível do OS.',
     },
   },
   {
@@ -70,31 +104,31 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     meta: {
       title: 'Keys',
       context: 'Acesso',
-      descriptor: 'Grants, licenças e credenciais do sistema operacional.',
+      descriptor: 'Credenciais, chaves e superfícies de acesso do workspace.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/intel') || pathname.startsWith('/blog'),
     meta: {
-      title: 'Intelligence Layer',
-      context: 'Intel editorial',
-      descriptor: 'Dossiês, briefings e narrativas produzidas a partir do motor de Intel.',
+      title: 'Intel Brief',
+      context: 'Fluxo editorial',
+      descriptor: 'Briefings e dossiês editoriais para contexto, mercado e operação.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/pricing'),
     meta: {
       title: 'Planos',
-      context: 'Entitlements',
-      descriptor: 'Camadas de acesso e orçamento operacional do produto.',
+      context: 'Acesso',
+      descriptor: 'Camadas de acesso, limites e postura comercial do OS.',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/docs'),
     meta: {
-      title: 'Documentação',
+      title: 'Docs',
       context: 'Referência',
-      descriptor: 'Guia do OS, módulos e arquitetura de produto.',
+      descriptor: 'Documentação, contexto de produto e leitura de suporte do OS.',
     },
   },
 ];
@@ -103,6 +137,6 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
   return routeMetaMap.find((entry) => entry.match(pathname))?.meta ?? {
     title: 'SNE OS',
     context: 'Workspace',
-    descriptor: 'Camada operacional do sistema.',
+    descriptor: 'Camada operacional pessoal para mercado, identidade e capital.',
   };
 }

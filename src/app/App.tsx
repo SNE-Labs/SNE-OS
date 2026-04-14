@@ -3,12 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { arbitrum, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 
 // Desktop Components (carregados normalmente)
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
-import { BottomBar } from './components/BottomBar';
+import { BottomDock } from './components/BottomDock';
+import { TapeWire } from './components/TapeWire';
+import { ShellCommandPalette } from './components/ShellCommandPalette';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
@@ -40,6 +42,35 @@ const SUPPORTED_CHAINS = [mainnet, arbitrum, optimism, base, polygon, scroll] as
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
   const isMobile = useIsMobile();
+  const [sidebarPinned, setSidebarPinned] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('sne:shell:sidebar-pinned') === 'true';
+  });
+  const [sidebarExpanded, setSidebarExpanded] = useState(sidebarPinned);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('sne:shell:sidebar-pinned', sidebarPinned ? 'true' : 'false');
+    if (sidebarPinned) {
+      setSidebarExpanded(true);
+    }
+  }, [sidebarPinned]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+      if (event.key === 'Escape' && !sidebarPinned) {
+        setSidebarExpanded(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarPinned]);
 
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
@@ -52,53 +83,68 @@ function AppContent() {
 
   // Desktop Layout (existing)
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-0)' }}>
-      {/* Main Layout */}
-      <div className="flex flex-1">
-        {/* Left Sidebar - Fixed 300px */}
-        <Sidebar />
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-0)' }}>
+      {!sidebarPinned && sidebarExpanded ? (
+        <button
+          type="button"
+          aria-label="Fechar sidebar"
+          onClick={() => setSidebarExpanded(false)}
+          className="fixed inset-0 z-30 hidden bg-black/15 lg:block"
+          style={{ backgroundColor: 'var(--shell-overlay)' }}
+        />
+      ) : null}
 
-        {/* Center Content - Fluid */}
-        <div className="flex-1 flex flex-col">
-          {/* Topbar */}
-          <Topbar />
+      <Sidebar
+        expanded={sidebarExpanded}
+        pinned={sidebarPinned}
+        onExpand={() => setSidebarExpanded(true)}
+        onCollapse={() => setSidebarExpanded(false)}
+        onTogglePin={() => setSidebarPinned((value) => !value)}
+      />
 
-          {/* Main Content Area with Right Panel */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Center Content */}
-            <main className="flex-1 overflow-y-auto">
-              <Suspense fallback={<DesktopSkeleton />}>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/home" replace />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/intel" element={<Blog />} />
-                  <Route path="/intel/topic/:topic" element={<Blog />} />
-                  <Route path="/intel/chain/:chain" element={<Blog />} />
-                  <Route path="/intel/asset/:asset" element={<Blog />} />
-                  <Route path="/intel/:slug" element={<BlogPost />} />
-                  <Route path="/blog" element={<Navigate to="/intel" replace />} />
-                  <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
-                  <Route path="/radar" element={<DesktopRadar />} />
-                  <Route path="/radar/:symbol" element={<DesktopRadar />} />
-                  <Route path="/pass" element={<DesktopPass />} />
-                  <Route path="/vault" element={<DesktopVault />} />
-                  <Route path="/keys" element={<DesktopKeys />} />
-                  <Route path="/secrets" element={<DesktopSecrets />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/status" element={<Status />} />
-                  <Route path="/docs" element={<Docs />} />
-                </Routes>
-              </Suspense>
-            </main>
-          </div>
-        </div>
+      <div className="min-h-screen lg:pl-[var(--sidebar-rail-width)]">
+        <Topbar
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
+          sidebarPinned={sidebarPinned}
+        />
+        <TapeWire />
+
+        <main className="overflow-y-auto pb-32">
+          <Suspense fallback={<DesktopSkeleton />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/intel" element={<Blog />} />
+              <Route path="/intel/topic/:topic" element={<Blog />} />
+              <Route path="/intel/chain/:chain" element={<Blog />} />
+              <Route path="/intel/asset/:asset" element={<Blog />} />
+              <Route path="/intel/:slug" element={<BlogPost />} />
+              <Route path="/blog" element={<Navigate to="/intel" replace />} />
+              <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
+              <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
+              <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
+              <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
+              <Route path="/radar" element={<DesktopRadar />} />
+              <Route path="/radar/:symbol" element={<DesktopRadar />} />
+              <Route path="/pass" element={<DesktopPass />} />
+              <Route path="/vault" element={<DesktopVault />} />
+              <Route path="/keys" element={<DesktopKeys />} />
+              <Route path="/secrets" element={<DesktopSecrets />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/status" element={<Status />} />
+              <Route path="/docs" element={<Docs />} />
+            </Routes>
+          </Suspense>
+        </main>
       </div>
 
-      {/* Bottom Bar - Session Bar */}
-      <BottomBar />
+      <BottomDock
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
+        sidebarPinned={sidebarPinned}
+      />
+      <ShellCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
     </div>
   );
 }
