@@ -105,6 +105,9 @@ BLOG_SURFACE_LIMIT = 6
 BLOG_MARKET_DAILY_LIMIT = 6
 BLOG_TOTAL_LIMIT = 48
 BLOG_REFRESH_INSERT_LIMIT = 1
+MARKET_POST_ASSET_DAILY_LIMIT = 1
+MARKET_POST_RECENT_WINDOW = 3
+MARKET_POST_RECENT_CAP = 1
 POST_CACHE_KEY = "intel:enterprise:posts"
 POST_CACHE_META_KEY = "intel:enterprise:posts:meta"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
@@ -376,6 +379,56 @@ def _post_sort_key(post: Dict[str, Any]) -> str:
     return str(post.get("generated_at") or post.get("created_at") or "")
 
 
+def _post_assets(post: Dict[str, Any]) -> List[str]:
+    assets = post.get("assets") or []
+    if not isinstance(assets, list):
+        return []
+    return [str(asset).strip().upper() for asset in assets if str(asset).strip()]
+
+
+def _post_primary_asset(post: Dict[str, Any]) -> str | None:
+    assets = _post_assets(post)
+    return assets[0] if assets else None
+
+
+def _market_asset_daily_count(posts: List[Dict[str, Any]], asset: str) -> int:
+    today = _reset_day_key()
+    normalized_asset = asset.strip().upper()
+    return sum(
+        1
+        for post in posts
+        if post.get("category") == "market"
+        and normalized_asset in _post_assets(post)
+        and _reset_day_key(_parse_generated_datetime(post.get("generated_at"))) == today
+    )
+
+
+def _recent_market_count(posts: List[Dict[str, Any]], window: int = MARKET_POST_RECENT_WINDOW) -> int:
+    ordered = sorted(posts, key=_post_sort_key, reverse=True)
+    return sum(1 for post in ordered[:window] if post.get("category") == "market")
+
+
+def _prune_redundant_posts(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    ordered = sorted((_normalize_post(post) for post in posts), key=_post_sort_key, reverse=True)
+    pruned: List[Dict[str, Any]] = []
+    seen_market_assets: set[tuple[str, str]] = set()
+
+    for post in ordered:
+        if _is_stale_fallback_post(post):
+            continue
+        if post.get("category") == "market":
+            asset = _post_primary_asset(post)
+            if asset:
+                day_key = _reset_day_key(_parse_generated_datetime(post.get("generated_at")))
+                market_key = (day_key, asset)
+                if market_key in seen_market_assets:
+                    continue
+                seen_market_assets.add(market_key)
+        pruned.append(post)
+
+    return pruned
+
+
 def _pick_post(
     posts: List[Dict[str, Any]],
     selected_ids: set[str],
@@ -549,13 +602,8 @@ def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
         posts = json.loads(cached)
         if not isinstance(posts, list):
             return []
-        return [
-            normalized
-            for post in posts
-            if isinstance(post, dict)
-            for normalized in [_normalize_post(post)]
-            if not _is_stale_fallback_post(normalized)
-        ]
+        normalized_posts = [post for post in posts if isinstance(post, dict)]
+        return _prune_redundant_posts(normalized_posts)
     except Exception:
         return []
 
@@ -614,7 +662,7 @@ def _needs_daily_backfill(posts: List[Dict[str, Any]]) -> bool:
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
     try:
         import json
-        ordered = sorted((_normalize_post(post) for post in posts), key=_post_sort_key, reverse=True)
+        ordered = _prune_redundant_posts(posts)
         cached_at = _iso_now()
         redis_client.setex(POST_CACHE_KEY, POST_CACHE_TTL_SECONDS, json.dumps(ordered))
         redis_client.setex(
@@ -685,17 +733,27 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         inserted_this_refresh = 0
         refresh_insert_limit = max(1, min(limit, BLOG_REFRESH_INSERT_LIMIT))
 
-        candidates: List[tuple[Dict[str, Any], str]] = []
+        market_candidates: List[tuple[Dict[str, Any], str]] = []
         if market_daily_count < BLOG_MARKET_DAILY_LIMIT:
             for item in _market_blog_candidates(limit=BLOG_MARKET_DAILY_LIMIT - market_daily_count):
-                candidates.append((item, "market"))
+                asset = _post_primary_asset(item)
+                if asset and _market_asset_daily_count(posts, asset) >= MARKET_POST_ASSET_DAILY_LIMIT:
+                    continue
+                market_candidates.append((item, "market"))
 
         briefing = build_intel_briefing(limit=max(limit, 6), include_blog=False)
+        news_candidates: List[tuple[Dict[str, Any], str]] = []
         for item in briefing["items"]:
             item = dict(item)
             item.setdefault("editorial_kind", "dossier")
             item.setdefault("category", "news")
-            candidates.append((item, "news"))
+            news_candidates.append((item, "news"))
+
+        candidates: List[tuple[Dict[str, Any], str]] = []
+        prefer_news_first = bool(news_candidates) and _recent_market_count(posts) >= MARKET_POST_RECENT_CAP
+        ordered_groups = (news_candidates, market_candidates) if prefer_news_first else (market_candidates, news_candidates)
+        for group in ordered_groups:
+            candidates.extend(group)
 
         for item, category in candidates:
             if daily_count >= BLOG_DAILY_LIMIT:
@@ -720,6 +778,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             inserted_this_refresh += 1
             if category == "market":
                 market_daily_count += 1
+            posts = _prune_redundant_posts(posts)[:BLOG_TOTAL_LIMIT]
 
         posts = posts[:BLOG_TOTAL_LIMIT]
 
