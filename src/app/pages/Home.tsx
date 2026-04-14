@@ -143,12 +143,6 @@ export function Home() {
   const marketRegime = homeData?.market.regime;
   const intelItems = homeData?.intel.items ?? [];
   const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
-  const leadIntelSection = intelSections[0] ?? null;
-  const leadIntelItem = leadIntelSection?.items[0] ?? null;
-  const leadIntelTheme = leadIntelSection ? intelSectionTheme[leadIntelSection.key] : null;
-  const secondaryIntelSections = leadIntelSection
-    ? intelSections.filter((section) => section.key !== leadIntelSection.key)
-    : [];
   const featuredMover = liveMovers[0] ?? null;
   const secondaryMovers = liveMovers.slice(1, 4);
   const brief = homeData?.brief;
@@ -238,6 +232,12 @@ export function Home() {
       },
     },
   };
+  const leadIntelSection = intelSections[0] ?? null;
+  const leadIntelItem = leadIntelSection?.items[0] ?? null;
+  const leadIntelTheme = leadIntelSection ? intelSectionTheme[leadIntelSection.key] : null;
+  const secondaryIntelSections = leadIntelSection
+    ? intelSections.filter((section) => section.key !== leadIntelSection.key)
+    : [];
   const renderIntelTitle = (item: IntelItem, className: string) => {
     if (!item.url) {
       return (
