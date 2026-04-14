@@ -227,6 +227,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthError(null);
       setAuthStatus('connecting');
 
+      if (walletConnected && walletAddress) {
+        await authenticate(walletAddress);
+        return;
+      }
+
       const preferredMethod =
         method ??
         (injectedAvailable

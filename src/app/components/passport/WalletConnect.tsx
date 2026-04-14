@@ -94,6 +94,17 @@ export function WalletConnect({
   };
 
   const handlePrimaryAction = async () => {
+    if (isWalletConnected && !isAuthenticated) {
+      clearAuthError();
+
+      try {
+        await connect();
+      } catch (error) {
+        // Error state is centralized in AuthProvider.
+      }
+      return;
+    }
+
     if (availableOptions.length === 0) {
       await runConnect(isMobile ? 'walletconnect' : 'injected');
       return;
