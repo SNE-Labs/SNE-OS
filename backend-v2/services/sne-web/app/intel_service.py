@@ -343,6 +343,74 @@ def _post_sort_key(post: Dict[str, Any]) -> str:
     return str(post.get("generated_at") or post.get("created_at") or "")
 
 
+def _pick_post(
+    posts: List[Dict[str, Any]],
+    selected_ids: set[str],
+    *,
+    editorial_kind: str | None = None,
+    category: str | None = None,
+    topics: set[str] | None = None,
+    exclude_topics: set[str] | None = None,
+) -> Dict[str, Any] | None:
+    for post in posts:
+        post_id = str(post.get("id", ""))
+        if post_id in selected_ids:
+            continue
+        if editorial_kind and post.get("editorial_kind") != editorial_kind:
+            continue
+        if category and post.get("category") != category:
+            continue
+        post_topics = {str(topic) for topic in post.get("topics", [])}
+        if topics and not post_topics.intersection(topics):
+            continue
+        if exclude_topics and post_topics.intersection(exclude_topics):
+            continue
+        return post
+    return None
+
+
+def _curate_home_editorial_posts(posts: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    if not posts:
+        return []
+
+    ordered = sorted(posts, key=_post_sort_key, reverse=True)
+    selected: List[Dict[str, Any]] = []
+    selected_ids: set[str] = set()
+
+    def add(post: Dict[str, Any] | None) -> None:
+        if not post:
+            return
+        post_id = str(post.get("id", ""))
+        if not post_id or post_id in selected_ids:
+            return
+        selected.append(post)
+        selected_ids.add(post_id)
+
+    # 1. Open with the strongest long-form dossier.
+    add(_pick_post(ordered, selected_ids, editorial_kind="dossier", exclude_topics={"mercado", "momentum"}))
+
+    # 2. Keep one market briefing near the top for operational rhythm.
+    add(_pick_post(ordered, selected_ids, editorial_kind="briefing", category="market"))
+
+    # 3. Pull in a broader thematic piece so the top isn't all crypto market.
+    add(
+        _pick_post(
+            ordered,
+            selected_ids,
+            editorial_kind="dossier",
+            topics={"tech", "economia", "geopolitica", "ia"},
+        )
+    )
+
+    # 4. Fill the remaining slots by recency, preserving the handcrafted lead trio above.
+    for post in ordered:
+        add(post)
+        if len(selected) >= limit:
+            break
+
+    return selected[:limit]
+
+
 def _asset_to_chain(asset: str) -> str | None:
     return {
         "BTC": "bitcoin",
@@ -579,7 +647,8 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
     if include_blog:
         redis_client = SafeRedis()
         blog_posts = _load_cached_posts(redis_client)
-        blog_items = [_shape_blog_item(post) for post in blog_posts[:max(limit, BLOG_SURFACE_LIMIT)]]
+        curated_posts = _curate_home_editorial_posts(blog_posts, max(limit, BLOG_SURFACE_LIMIT))
+        blog_items = [_shape_blog_item(post) for post in curated_posts]
         if len(blog_posts) < BLOG_DAILY_LIMIT:
             _trigger_enterprise_post_refresh()
         items = blog_items[:limit] if blog_items else raw_items[:limit]
