@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, MobilePageShell, SurfaceCard } from '../../components/mobile';
@@ -41,7 +41,14 @@ function toBadgeVariant(
 
 export function MobileRadar() {
   const navigate = useNavigate();
-  const [activeSymbol, setActiveSymbol] = useState('ETHUSDT');
+  const { symbol: routeSymbol } = useParams();
+  const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
+  const [activeSymbol, setActiveSymbol] = useState(normalizedRouteSymbol);
+
+  useEffect(() => {
+    setActiveSymbol(normalizedRouteSymbol);
+  }, [normalizedRouteSymbol]);
+
   const overviewQuery = useRadarOverview(activeSymbol, '24H');
   const overview = overviewQuery.data;
   const movers = overview?.universe ?? [];
@@ -315,11 +322,11 @@ export function MobileRadar() {
             <div className="grid grid-cols-2 gap-3">
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/docs')}>
                 <Waves className="w-4 h-4 mr-2" />
-                Open Docs
+                Abrir Docs
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/vault')}>
                 <ArrowUpRight className="w-4 h-4 mr-2" />
-                Open Vault
+                Abrir Vault
               </MobileButton>
             </div>
           </SurfaceCard>

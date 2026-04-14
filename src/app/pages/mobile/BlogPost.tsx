@@ -20,6 +20,9 @@ export function MobileBlogPost() {
   const post = postQuery.data;
   const article = parseArticleMarkdown(post?.body_markdown ?? '');
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 3) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
+  const postChains = post?.chains ?? [];
+  const postTopics = post?.topics ?? [];
+  const postSources = post?.sources ?? [];
   const mobileInsightCards = [
     { key: 'watch', title: 'Monitorar', items: article.highlights.watch },
     { key: 'action', title: 'Ação', items: article.highlights.actions },
@@ -29,7 +32,7 @@ export function MobileBlogPost() {
   return (
     <MobilePageShell
       title="Dossiê"
-      subtitle="Intelligence Layer"
+      subtitle="Intel Brief"
       action={
         <button onClick={() => navigate('/intel')} className="text-[var(--text-2)]">
           <ArrowLeft className="w-5 h-5" />
@@ -44,12 +47,12 @@ export function MobileBlogPost() {
           onRetry={() => postQuery.refetch()}
         />
       ) : !post ? (
-        <EmptyState title="Carregando dossiê" description="Buscando a leitura completa da intelligence layer." />
+        <EmptyState title="Carregando dossiê" description="Buscando a leitura completa do Intel Brief." />
       ) : (
         <>
           <SurfaceCard variant="elevated">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <Badge variant="orange" size="sm">Intelligence Layer</Badge>
+              <Badge variant="orange" size="sm">Intel Brief</Badge>
               <Badge variant="info" size="sm">{post.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</Badge>
               <Badge variant="neutral" size="sm">{post.reading_time_minutes} min</Badge>
               <Badge variant={post.status === 'draft' ? 'success' : 'warning'} size="sm">{post.status}</Badge>
@@ -57,10 +60,10 @@ export function MobileBlogPost() {
             <div className="text-[var(--text-1)] mb-2">{post.title}</div>
             <div className="text-sm text-[var(--text-2)] mb-3">{post.subtitle}</div>
             <div className="flex flex-wrap gap-2">
-              {post.chains.map((chain) => (
+              {postChains.map((chain) => (
                 <Badge key={chain} variant="orange" size="sm">{chain}</Badge>
               ))}
-              {post.topics.slice(0, 3).map((topic) => (
+              {postTopics.slice(0, 3).map((topic) => (
                 <Badge key={topic} variant="neutral" size="sm">{topic}</Badge>
               ))}
             </div>
@@ -118,22 +121,26 @@ export function MobileBlogPost() {
           <SurfaceCard>
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-3">
               <Layers3 className="w-3.5 h-3.5" />
-              Origin feeds
+              Feeds de origem
             </div>
-            <div className="space-y-3">
-              {post.sources.map((source) => (
-                <a
-                  key={source.url}
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between gap-3 rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-4 py-3"
-                >
-                  <span className="text-[var(--text-1)]">{source.name}</span>
-                  <ExternalLink className="w-4 h-4 text-[var(--text-3)]" />
-                </a>
-              ))}
-            </div>
+            {postSources.length === 0 ? (
+              <div className="text-sm text-[var(--text-2)]">Sem feeds de origem anexados a esta peça.</div>
+            ) : (
+              <div className="space-y-3">
+                {postSources.map((source) => (
+                  <a
+                    key={source.url}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between gap-3 rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-4 py-3"
+                  >
+                    <span className="text-[var(--text-1)]">{source.name}</span>
+                    <ExternalLink className="w-4 h-4 text-[var(--text-3)]" />
+                  </a>
+                ))}
+              </div>
+            )}
           </SurfaceCard>
         </>
       )}

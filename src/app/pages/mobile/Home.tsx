@@ -113,6 +113,35 @@ function toBadgeVariant(
   return 'neutral';
 }
 
+function localizeOperationalValue(value?: string | null) {
+  if (!value) return '--';
+
+  const normalized = value.trim().toLowerCase();
+  const exactMap: Record<string, string> = {
+    offline: 'offline',
+    pending: 'em sincronizacao',
+    'identity pending': 'identidade em sincronizacao',
+    'identity syncing': 'identidade em sincronizacao',
+    syncing: 'em sincronizacao',
+    'session active': 'sessao ativa',
+    'session authenticated': 'sessao autenticada',
+    authenticated: 'autenticada',
+    ready: 'pronto',
+    active: 'ativo',
+  };
+
+  if (exactMap[normalized]) {
+    return exactMap[normalized];
+  }
+
+  const linkedMatch = normalized.match(/^(\d+)\s+linked$/);
+  if (linkedMatch) {
+    return `${linkedMatch[1]} wallets vinculadas`;
+  }
+
+  return value;
+}
+
 function formatCompactNumber(value: number) {
   return new Intl.NumberFormat('en-US', {
     notation: 'compact',
@@ -164,7 +193,7 @@ export function MobileHome() {
     });
   }, [home?.modules]);
   const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
-    item.title_pt || item.title || item.title_original || 'Intel item';
+    item.title_pt || item.title || item.title_original || 'Leitura Intel';
   const intelSummary = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.summary_pt || item.summary || item.why_it_matters || 'Briefing operacional disponível.';
   const intelMeta = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
@@ -229,8 +258,8 @@ export function MobileHome() {
   };
   const metrics = useMemo(
     () => [
-      { label: 'Identity', value: home?.identity?.status?.label ?? 'offline' },
-      { label: 'Networks', value: `${home?.capital?.aggregate?.active_networks ?? home?.identity?.active_networks ?? 0}` },
+      { label: 'Identidade', value: localizeOperationalValue(home?.identity?.status?.label ?? 'offline') },
+      { label: 'Redes', value: `${home?.capital?.aggregate?.active_networks ?? home?.identity?.active_networks ?? 0}` },
       { label: 'Secrets', value: `${home?.secrets?.item_count ?? 0}` },
     ],
     [home]
@@ -278,7 +307,7 @@ export function MobileHome() {
   return (
     <MobilePageShell
       title="SNE OS"
-      subtitle="Radar, intelligence e operações multichain."
+      subtitle="Inteligencia contextual, identidade e operacao multichain."
       showContext
     >
       {homeQuery.isLoading ? (
@@ -294,11 +323,11 @@ export function MobileHome() {
           <SurfaceCard variant="elevated">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
-                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Intel</div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Intel Brief</div>
                 <h2 className="text-[var(--text-1)]">Leitura prioritária da sessão</h2>
               </div>
               <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
-                Intel
+                Brief
               </MobileButton>
             </div>
 
@@ -316,7 +345,7 @@ export function MobileHome() {
                 {leadIntelItem.watch_items?.length ? (
                   <div className="space-y-2 mb-4">
                     {leadIntelItem.watch_items.slice(0, 2).map((watchItem) => (
-                      <div key={watchItem} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-2.5 text-sm text-[var(--text-2)]">
+                      <div key={watchItem} className="px-1 py-1.5 text-sm text-[var(--text-2)] border-b border-[rgba(255,255,255,0.06)] last:border-b-0">
                         {watchItem}
                       </div>
                     ))}
@@ -354,7 +383,7 @@ export function MobileHome() {
               {home.brief_signals.slice(0, 3).map((signal) => (
                 <div key={signal.label} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-2.5">
                   <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">{signal.label}</div>
-                  <div className="text-sm text-[var(--text-1)] break-words">{signal.value}</div>
+                  <div className="text-sm text-[var(--text-1)] break-words">{localizeOperationalValue(signal.value)}</div>
                 </div>
               ))}
             </div>
@@ -372,8 +401,8 @@ export function MobileHome() {
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-[var(--text-1)]">Since last session</h3>
-                <div className="text-xs text-[var(--text-3)] mt-1">Resumo operacional da última janela.</div>
+                <h3 className="text-[var(--text-1)]">Desde a última sessão</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Resumo operacional da sua última janela.</div>
               </div>
               <Badge variant={toBadgeVariant(home.brief.badge_status)} size="sm">{home.brief.badge}</Badge>
             </div>
@@ -385,7 +414,7 @@ export function MobileHome() {
               {home.brief_signals.slice(0, 3).map((signal) => (
                 <div key={signal.label} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-2.5">
                   <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">{signal.label}</div>
-                  <div className="text-sm text-[var(--text-1)] break-words">{signal.value}</div>
+                  <div className="text-sm text-[var(--text-1)] break-words">{localizeOperationalValue(signal.value)}</div>
                 </div>
               ))}
             </div>
@@ -394,7 +423,7 @@ export function MobileHome() {
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-[var(--text-1)]">Market Pulse</h3>
+                <h3 className="text-[var(--text-1)]">Pulso de mercado</h3>
                 <div className="text-xs text-[var(--text-3)] mt-1">Regime, fluxo e leitura tática para a próxima janela.</div>
               </div>
               <MobileButton variant="secondary" onClick={() => navigate('/radar')}>
@@ -411,7 +440,7 @@ export function MobileHome() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={toBadgeVariant(marketRegime?.tone)} size="sm">{marketRegime?.label ?? 'sem dados'}</Badge>
-                  {marketEditorial?.status === 'ready' && <Badge variant="orange" size="sm">editorial</Badge>}
+                  {marketEditorial?.status === 'ready' && <Badge variant="orange" size="sm">intel</Badge>}
                 </div>
 
                 {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt) && (
@@ -500,18 +529,18 @@ export function MobileHome() {
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-[var(--text-1)]">Intel stream</h3>
+                <h3 className="text-[var(--text-1)]">Fluxo Intel</h3>
                 <div className="text-xs text-[var(--text-3)] mt-1">Leituras secundárias e monitoramento contínuo por tema.</div>
               </div>
               <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
-                Intel
+                Brief
               </MobileButton>
             </div>
 
             {(secondaryIntelSections.length > 0 ? secondaryIntelSections : intelSections).length === 0 ? (
               <EmptyState
                 title="Sem briefing agora"
-                description="O Intel aparece aqui assim que o feed editorial estiver disponível."
+                description="O Intel Brief aparece aqui assim que o feed editorial estiver disponível."
               />
             ) : (
               <div className="space-y-3">

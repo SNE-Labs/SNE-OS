@@ -27,9 +27,15 @@ export function MobilePageShell({
   className,
 }: MobilePageShellProps) {
   const { address, isAuthenticated, tier } = useAuth();
+  const tierLabel =
+    tier === 'pro'
+      ? 'PLANO PRO'
+      : tier === 'premium'
+        ? 'PLANO PREMIUM'
+        : 'PLANO FREE';
 
   const contextPill = showContext && isAuthenticated && address ? {
-    label: `${(tier || 'free').toUpperCase()} TIER • ${formatAddress(address)}`,
+    label: `${tierLabel} • ${formatAddress(address)}`,
     variant: tier === 'pro' ? 'pro' : tier === 'premium' ? 'orange' : 'free' as const,
   } : null;
 

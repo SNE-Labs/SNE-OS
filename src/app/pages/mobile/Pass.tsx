@@ -68,7 +68,7 @@ export function MobilePass() {
   return (
     <MobilePageShell
       title="Passport"
-      subtitle="Checkpoint de identidade Web3 do OS."
+      subtitle="Identidade, vínculo e lookup público do OS."
       showContext
     >
       {!isAuthenticated ? (
@@ -81,7 +81,7 @@ export function MobilePass() {
               <div className="min-w-0">
                 <div className="text-[var(--text-1)] mb-1">Crie sua identidade Passport</div>
                 <p className="text-sm text-[var(--text-2)]">
-                  A primeira wallet autenticada vira a âncora do seu identity graph dentro do OS.
+                  A primeira wallet autenticada vira a âncora do seu grafo de identidade dentro do OS.
                 </p>
               </div>
             </div>
@@ -119,7 +119,7 @@ export function MobilePass() {
               </div>
               <div className="min-w-0">
                 <div className="text-[var(--text-1)] mb-1">
-                  {identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : 'No primary wallet'}
+                  {identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : 'Sem wallet principal'}
                 </div>
                 <p className="text-sm text-[var(--text-2)]">
                   {identity.stats.wallets_total > 1
@@ -131,7 +131,7 @@ export function MobilePass() {
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Primary</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Principal</div>
                 <div className="text-[var(--text-1)]">{identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : '--'}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
@@ -139,7 +139,7 @@ export function MobilePass() {
                 <div className="text-[var(--text-1)]">{identity.stats.wallets_total}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Links</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Vínculos</div>
                 <div className="text-[var(--text-1)]">{linkedAccounts.length}</div>
               </div>
             </div>
@@ -151,7 +151,7 @@ export function MobilePass() {
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={handleLookup}>
                 <Search className="w-4 h-4 mr-2" />
-                Lookup
+                Consultar
               </MobileButton>
             </div>
           </SurfaceCard>
@@ -162,7 +162,7 @@ export function MobilePass() {
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Wallet Graph</h3>
+              <h3 className="text-[var(--text-1)]">Grafo de carteiras</h3>
               <Badge variant="neutral" size="sm">{identity.wallets.length}</Badge>
             </div>
             <div className="space-y-3">
@@ -171,12 +171,12 @@ export function MobilePass() {
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div className="text-[var(--text-1)]">{wallet.label}</div>
                     <Badge variant={wallet.is_primary ? 'orange' : wallet.status === 'active' ? 'success' : 'neutral'} size="sm">
-                      {wallet.is_primary ? 'primary' : wallet.status}
+                      {wallet.is_primary ? 'principal' : wallet.status}
                     </Badge>
                   </div>
                   <div className="text-sm text-[var(--text-2)] break-all mb-1">{wallet.address}</div>
                   <div className="text-[10px] uppercase text-[var(--text-3)]">
-                    last login {formatDate(wallet.last_login_at)}
+                    último login {formatDate(wallet.last_login_at)}
                   </div>
                 </div>
               ))}
@@ -199,7 +199,7 @@ export function MobilePass() {
                   <div key={event.id} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                     <div className="text-[var(--text-1)] mb-1">{event.type.replaceAll('_', ' ')}</div>
                     <div className="text-sm text-[var(--text-2)] break-all">
-                      {event.target_address ?? 'identity event'}
+                      {event.target_address ?? 'evento de identidade'}
                     </div>
                     <div className="text-[10px] uppercase text-[var(--text-3)] mt-2">{formatDate(event.created_at)}</div>
                   </div>
@@ -245,11 +245,11 @@ export function MobilePass() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Type</div>
+                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Tipo</div>
                       <div className="text-[var(--text-1)]">{publicProfile.identity?.accountType ?? '--'}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Balance</div>
+                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Saldo</div>
                       <div className="text-[var(--text-1)]">{publicProfile.identity?.balanceEth ? `${publicProfile.identity.balanceEth} ETH` : '--'}</div>
                     </div>
                   </div>
