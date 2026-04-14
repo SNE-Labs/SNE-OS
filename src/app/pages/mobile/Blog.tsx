@@ -93,34 +93,34 @@ export function MobileBlog() {
         <>
           {filteredPosts.map((post) => (
             <SurfaceCard key={post.id || post.slug}>
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-2xl flex items-center justify-center bg-[var(--accent-orange-dim)] text-[var(--accent-orange)]">
-                    <Brain className="w-4 h-4" />
+              <button type="button" className="w-full text-left" onClick={() => navigate(`/intel/${post.slug || post.id}`)}>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-2xl flex items-center justify-center bg-[var(--accent-orange-dim)] text-[var(--accent-orange)]">
+                      <Brain className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-[var(--text-1)]">Intel Brief</div>
+                      <div className="text-xs text-[var(--text-3)]">{post.reading_time_minutes} min</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[var(--text-1)]">Intel Brief</div>
-                    <div className="text-xs text-[var(--text-3)]">{post.reading_time_minutes} min</div>
-                  </div>
+                  <Badge variant={post.status === 'draft' ? 'success' : 'warning'} size="sm">{post.status}</Badge>
                 </div>
-                <Badge variant={post.status === 'draft' ? 'success' : 'warning'} size="sm">{post.status}</Badge>
-              </div>
-              <div className="text-[var(--text-1)] mb-2">{post.title || post.slug}</div>
-              <div className="text-sm text-[var(--text-2)] mb-4">{post.excerpt || post.subtitle}</div>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                  <Link
-                    key={tag}
-                    to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
-                    className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]"
-                  >
-                    {tag}
-                  </Link>
-                ))}
-              </div>
-              <MobileButton className="w-full" onClick={() => navigate(`/intel/${post.slug || post.id}`)}>
-                Abrir leitura
-              </MobileButton>
+                <div className="text-[var(--text-1)] mb-2">{post.title || post.slug}</div>
+                <div className="text-sm text-[var(--text-2)] mb-4">{post.excerpt || post.subtitle}</div>
+                <div className="flex flex-wrap gap-2">
+                  {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
+                    <Link
+                      key={tag}
+                      to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]"
+                    >
+                      {tag}
+                    </Link>
+                  ))}
+                </div>
+              </button>
             </SurfaceCard>
           ))}
         </>

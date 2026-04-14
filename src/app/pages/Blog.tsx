@@ -199,7 +199,9 @@ export function Blog() {
         ) : (
           <>
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
-              <article
+              <button
+                type="button"
+                onClick={() => navigate(`/intel/${featured.slug}`)}
                 className="w-full rounded-[28px] p-6"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,140,66,0.1), rgba(255,255,255,0.02))',
@@ -222,22 +224,16 @@ export function Blog() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(featured.assets.length > 0 ? featured.assets : featured.chains.length > 0 ? featured.chains : featured.topics).slice(0, 4).map((tag) => (
-                    <Link key={tag} to={featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}>
+                    <Link
+                      key={tag}
+                      to={featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <StatusBadge status="success">{tag}</StatusBadge>
                     </Link>
                   ))}
                 </div>
-                <div className="mt-5">
-                  <Link
-                    to={`/intel/${featured.slug}`}
-                    className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium"
-                    style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    Abrir leitura
-                    <ArrowUpRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </article>
+              </button>
 
               <section
                 className="rounded-[28px] p-5 space-y-4"
@@ -279,8 +275,10 @@ export function Blog() {
               </div>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {secondary.map((post) => (
-                <article
+                <button
                   key={post.id}
+                  type="button"
+                  onClick={() => navigate(`/intel/${post.slug}`)}
                   className="rounded-xl p-5 text-left"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
@@ -295,18 +293,16 @@ export function Blog() {
                   <div className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
                   <div className="flex flex-wrap gap-2">
                     {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                      <Link key={tag} to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}>
+                      <Link
+                        key={tag}
+                        to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <StatusBadge status="success">{tag}</StatusBadge>
                       </Link>
                     ))}
                   </div>
-                  <div className="mt-4">
-                    <Link to={`/intel/${post.slug}`} className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-1)' }}>
-                      Abrir peça
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </article>
+                </button>
               ))}
               </div>
             </section>
