@@ -68,6 +68,25 @@ function normalizeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function normalizeByNetworkItem(item: any) {
+  if (!item || typeof item !== 'object') return null;
+
+  const networkLabel =
+    typeof item.network === 'string'
+      ? item.network
+      : typeof item.network?.label === 'string'
+        ? item.network.label
+        : '--';
+
+  return {
+    network: networkLabel,
+    status: typeof item.status === 'string' ? item.status : 'unavailable',
+    balance_formatted: typeof item.balance_formatted === 'string' ? item.balance_formatted : undefined,
+    gas: typeof item.gas === 'string' ? item.gas : undefined,
+    tx_count: item.tx_count == null ? undefined : Number(item.tx_count),
+  };
+}
+
 function normalizeVaultOverview(payload: any): VaultOverview {
   return {
     connected: Boolean(payload?.connected),
@@ -89,7 +108,7 @@ function normalizeVaultOverview(payload: any): VaultOverview {
           ? payload.aggregate.total_value_display
           : DEFAULT_VAULT_OVERVIEW.aggregate.total_value_display,
     },
-    by_network: normalizeArray(payload?.by_network),
+    by_network: normalizeArray(payload?.by_network).map(normalizeByNetworkItem).filter(Boolean),
     signals: normalizeArray(payload?.signals),
     capital_cards: normalizeArray(payload?.capital_cards),
     posture: normalizeArray(payload?.posture),
