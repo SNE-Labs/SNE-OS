@@ -76,6 +76,44 @@ def build_network_positions(address: str) -> List[Dict[str, Any]]:
     ]
 
 
+def _position_sort_key(position: Dict[str, Any]) -> tuple[int, float, int]:
+    status_rank = {
+        "active": 3,
+        "idle": 2,
+        "degraded": 1,
+        "unavailable": 0,
+    }
+    return (
+        status_rank.get(position.get("status", "unavailable"), 0),
+        float(position.get("balance_native") or 0),
+        int(position.get("tx_count") or 0),
+    )
+
+
+def select_primary_position(
+    requested_network_key: Optional[str],
+    requested_position: Optional[Dict[str, Any]],
+    positions: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    if requested_network_key:
+        requested_match = next(
+            (item for item in positions if item.get("network", {}).get("key") == requested_network_key),
+            requested_position,
+        )
+        if requested_match:
+            return requested_match
+
+    active_positions = [item for item in positions if item.get("status") == "active"]
+    if active_positions:
+        return max(active_positions, key=_position_sort_key)
+
+    visible_positions = [item for item in positions if item.get("status") in {"idle", "degraded"}]
+    if visible_positions:
+        return max(visible_positions, key=_position_sort_key)
+
+    return requested_position or (positions[0] if positions else None)
+
+
 def build_aggregate(position: Optional[Dict[str, Any]], positions: List[Dict[str, Any]]) -> Dict[str, Any]:
     active_networks = [item for item in positions if item["status"] == "active"]
     total_visible_positions = sum(1 for item in positions if item["status"] != "unavailable")
@@ -127,8 +165,10 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
             "last_updated": datetime.utcnow().isoformat(),
         }
 
-    primary_position = build_network_position(address, network["key"])
     positions = build_network_positions(address)
+    requested_position = build_network_position(address, network["key"]) if network_key else None
+    primary_position = select_primary_position(network_key, requested_position, positions)
+    primary_network = primary_position["network"] if primary_position else network
     balance_eth = primary_position["balance_native"] or 0
     tx_count = primary_position["tx_count"] or 0
     account_type = primary_position["account_type"] or "wallet"
@@ -136,7 +176,7 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
 
     status = {"label": "capital online", "tone": "active"} if has_activity else {"label": "idle", "tone": "warning"}
 
-    capital = primary_position["balance_formatted"] or f"0.000000 {network['native_asset']}"
+    capital = primary_position["balance_formatted"] or f"0.000000 {primary_network['native_asset']}"
     gas = primary_position["gas"] or "--"
 
     return {
@@ -144,10 +184,10 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
         "status": status,
         "surface": {
             "address": address,
-            "network": network["label"],
-            "source": "rpc",
+            "network": primary_network["label"],
+            "source": f"{primary_network['key']}-rpc",
         },
-        "network_meta": network,
+        "network_meta": primary_network,
         "aggregate": build_aggregate(primary_position, positions),
         "by_network": positions,
         "signals": [
@@ -156,8 +196,8 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
             {"title": "Camada de proteção", "value": "0 dispositivos", "detail": "Nenhum dispositivo registrado"},
         ],
         "capital_cards": [
-            {"label": "Saldo", "value": capital, "hint": f"{balance_eth:.6f} {network['native_asset']}", "icon": "wallet"},
-            {"label": "Gas", "value": gas, "hint": f"{network['label']} RPC", "icon": "zap"},
+            {"label": "Saldo", "value": capital, "hint": f"{balance_eth:.6f} {primary_network['native_asset']}", "icon": "wallet"},
+            {"label": "Gas", "value": gas, "hint": f"{primary_network['label']} RPC", "icon": "zap"},
             {"label": "Conta", "value": account_type, "hint": f"{tx_count} tx" if has_activity else "Sem atividade visível", "icon": "shield"},
             {"label": "Proteção", "value": "sem dispositivos", "hint": "Nenhum dispositivo confiável", "icon": "box"},
         ],
