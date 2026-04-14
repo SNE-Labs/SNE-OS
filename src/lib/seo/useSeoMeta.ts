@@ -12,7 +12,7 @@ type SeoMetaInput = {
 };
 
 const DEFAULT_ORIGIN = 'https://snelabs.space';
-const DEFAULT_IMAGE = `${DEFAULT_ORIGIN}/og-image.png`;
+const DEFAULT_IMAGE = `${DEFAULT_ORIGIN}/web-app-manifest-512x512.png`;
 
 function ensureMeta(selector: string, attributes: Record<string, string>) {
   let node = document.head.querySelector<HTMLMetaElement>(selector);
@@ -80,6 +80,9 @@ export function useSeoMeta({
     ensureMeta('meta[property="og:title"]', { property: 'og:title' }).setAttribute('content', title);
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }).setAttribute('content', description);
     ensureMeta('meta[property="og:image"]', { property: 'og:image' }).setAttribute('content', image);
+    ensureMeta('meta[property="og:image:width"]', { property: 'og:image:width' }).setAttribute('content', '512');
+    ensureMeta('meta[property="og:image:height"]', { property: 'og:image:height' }).setAttribute('content', '512');
+    ensureMeta('meta[property="og:image:type"]', { property: 'og:image:type' }).setAttribute('content', 'image/png');
 
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title' }).setAttribute('content', title);
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description' }).setAttribute('content', description);

@@ -12,6 +12,7 @@ import { BottomDock } from './components/BottomDock';
 import { TapeWire } from './components/TapeWire';
 import { ShellCommandPalette } from './components/ShellCommandPalette';
 import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
+import { RouteSeo } from './RouteSeo';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
@@ -36,6 +37,7 @@ const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ de
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const SUPPORTED_CHAINS = [mainnet, arbitrum, optimism, base, polygon, scroll] as const;
@@ -78,6 +80,7 @@ function AppContent() {
   if (isMobile) {
     return (
       <Suspense fallback={<MobileSkeleton />}>
+        <RouteSeo />
         <MobileLayout />
       </Suspense>
     );
@@ -88,6 +91,7 @@ function AppContent() {
 
   return (
     <div className={`shell-frame ${atmosphereClass}`} style={{ backgroundColor: 'var(--bg-0)' }}>
+      <RouteSeo />
       <AsciiHaze atmosphereKey={atmosphereClass} />
       <div className="relative z-10 min-h-screen">
         {!sidebarPinned && sidebarExpanded ? (
@@ -253,6 +257,7 @@ export default function App() {
                 {/* Desktop Auth Route - Fullscreen outside main layout */}
                 <Route path="/auth" element={
                   <Suspense fallback={<AuthSkeleton />}>
+                    <AuthSeo />
                     <AuthDesktop />
                   </Suspense>
                 } />
@@ -266,4 +271,14 @@ export default function App() {
       </QueryClientProvider>
     </WagmiProvider>
   );
+}
+
+function AuthSeo() {
+  useSeoMeta({
+    title: 'Autenticação | SNE OS',
+    description: 'Fluxo de autenticação do SNE OS para dispositivos e superfícies protegidas.',
+    canonicalPath: '/auth',
+    robots: 'noindex, nofollow, noarchive',
+  });
+  return null;
 }

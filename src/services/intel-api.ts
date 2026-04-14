@@ -1,5 +1,7 @@
 import { apiGet } from '@/lib/api/http';
 
+const SITE_ORIGIN = 'https://snelabs.space';
+
 export type IntelPost = {
   id: string;
   slug: string;
@@ -63,9 +65,22 @@ function normalizePost(post: IntelPost): IntelPost {
   };
 }
 
+export function intelSharePath(slug: string) {
+  return `/share/intel/${slug}`;
+}
+
+export function intelShareUrl(slug: string) {
+  return `${SITE_ORIGIN}${intelSharePath(slug)}`;
+}
+
+export function intelOgImageUrl(slug: string) {
+  return `${SITE_ORIGIN}/api/og/intel/${slug}.png`;
+}
+
 export const intelApi = {
-  getPosts: async (): Promise<IntelPostsResponse> => {
-    const response = await apiGet<IntelPostsResponse>('/api/intel/posts?limit=36');
+  getPosts: async (limit = 36): Promise<IntelPostsResponse> => {
+    const normalizedLimit = Math.max(1, Math.min(limit, 120));
+    const response = await apiGet<IntelPostsResponse>(`/api/intel/posts?limit=${normalizedLimit}`);
     return {
       ...response,
       items: (response.items ?? []).map(normalizePost),

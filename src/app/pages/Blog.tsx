@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
@@ -59,6 +59,9 @@ export function Blog() {
       }),
     [activeKind, assetFilter, chainFilter, posts, topicFilter]
   );
+  const hubTopicLinks = topicOptions.filter((value) => value !== 'all').slice(0, 8);
+  const hubChainLinks = chainOptions.filter((value) => value !== 'all').slice(0, 8);
+  const hubAssetLinks = assetOptions.filter((value) => value !== 'all').slice(0, 8);
 
   const featured = filteredPosts[0];
   const secondary = filteredPosts.slice(1);
@@ -182,6 +185,13 @@ export function Blog() {
               Índice público ativo para {taxonomyKind} <strong style={{ color: 'var(--text-1)' }}>{taxonomyLabel}</strong>. Esta página pode servir como entrada indexável do Intel Brief.
             </div>
           )}
+          {!taxonomyLabel && (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <HubLinkGroup title="Temas" basePath="/intel/topic" items={hubTopicLinks} />
+              <HubLinkGroup title="Chains" basePath="/intel/chain" items={hubChainLinks} />
+              <HubLinkGroup title="Assets" basePath="/intel/asset" items={hubAssetLinks} />
+            </div>
+          )}
         </section>
 
         {!featured ? (
@@ -189,9 +199,8 @@ export function Blog() {
         ) : (
           <>
             <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
-              <button
-                onClick={() => navigate(`/intel/${featured.slug}`)}
-                className="w-full rounded-[28px] p-6 text-left"
+              <article
+                className="w-full rounded-[28px] p-6"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,140,66,0.1), rgba(255,255,255,0.02))',
                   backgroundColor: 'var(--bg-2)',
@@ -213,12 +222,22 @@ export function Blog() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(featured.assets.length > 0 ? featured.assets : featured.chains.length > 0 ? featured.chains : featured.topics).slice(0, 4).map((tag) => (
-                    <button key={tag} onClick={(event) => { event.stopPropagation(); navigate(featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`); }}>
+                    <Link key={tag} to={featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}>
                       <StatusBadge status="success">{tag}</StatusBadge>
-                    </button>
+                    </Link>
                   ))}
                 </div>
-              </button>
+                <div className="mt-5">
+                  <Link
+                    to={`/intel/${featured.slug}`}
+                    className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium"
+                    style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                  >
+                    Abrir leitura
+                    <ArrowUpRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </article>
 
               <section
                 className="rounded-[28px] p-5 space-y-4"
@@ -260,9 +279,8 @@ export function Blog() {
               </div>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {secondary.map((post) => (
-                <button
+                <article
                   key={post.id}
-                  onClick={() => navigate(`/intel/${post.slug}`)}
                   className="rounded-xl p-5 text-left"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
@@ -277,12 +295,18 @@ export function Blog() {
                   <div className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
                   <div className="flex flex-wrap gap-2">
                     {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                      <button key={tag} onClick={(event) => { event.stopPropagation(); navigate(post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`); }}>
+                      <Link key={tag} to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}>
                         <StatusBadge status="success">{tag}</StatusBadge>
-                      </button>
+                      </Link>
                     ))}
                   </div>
-                </button>
+                  <div className="mt-4">
+                    <Link to={`/intel/${post.slug}`} className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-1)' }}>
+                      Abrir peça
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </article>
               ))}
               </div>
             </section>
@@ -295,4 +319,28 @@ export function Blog() {
 
 function topicLabelSafe(value?: string) {
   return value?.trim() || '';
+}
+
+function HubLinkGroup({ title, basePath, items }: { title: string; basePath: string; items: string[] }) {
+  if (!items.length) return null;
+
+  return (
+    <div className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+      <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+        {title}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <Link
+            key={item}
+            to={`${basePath}/${item}`}
+            className="rounded-full px-3 py-2 text-xs"
+            style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
+            {item}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }

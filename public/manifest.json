@@ -1,0 +1,31 @@
+{
+    "name": "SNE OS",
+    "short_name": "SNE OS",
+    "description": "SNE OS - Sistema Operacional Web3 com Radar de Mercado Cripto, Vault Descentralizado e Autenticação Blockchain SIWE",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0e27",
+    "theme_color": "#3b82f6",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/web-app-manifest-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/web-app-manifest-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "finance",
+        "productivity",
+        "utilities"
+    ],
+    "lang": "pt-BR",
+    "dir": "ltr"
+}

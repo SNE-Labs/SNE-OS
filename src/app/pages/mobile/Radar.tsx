@@ -4,6 +4,7 @@ import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { useRadarOverview } from '../../../hooks/useRadarData';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
 function formatPrice(value: number) {
@@ -58,6 +59,26 @@ export function MobileRadar() {
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
   const marketState = overview?.market_state;
   const hero = overview?.hero;
+  const radarTitleSymbol = (featured?.symbol ?? activeSymbol).toUpperCase();
+  const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
+  const radarDescription = featured
+    ? `Radar do SNE OS para ${radarTitleSymbol}: preço ${formatPrice(featured.price)}, variação ${(featured.change24h * 100).toFixed(2)}% e leitura tática de liquidez.`
+    : `Radar do SNE OS para ${radarTitleSymbol}: leitura tática de liquidez, momentum e direção do mercado.`;
+
+  useSeoMeta({
+    title: `${radarTitleSymbol} Radar | SNE OS`,
+    description: radarDescription,
+    canonicalPath: radarCanonicalPath,
+    type: 'website',
+    keywords: ['crypto radar', 'market intelligence', radarTitleSymbol, `${radarTitleSymbol} price`, 'liquidity', 'momentum'],
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'Dataset',
+      name: `${radarTitleSymbol} Radar | SNE OS`,
+      description: radarDescription,
+      url: `https://snelabs.space${radarCanonicalPath}`,
+    },
+  });
 
   return (
     <MobilePageShell

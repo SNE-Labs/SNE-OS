@@ -47,10 +47,11 @@ def intel_briefing():
 def intel_posts():
     try:
         limit = request.args.get("limit", default=24, type=int) or 24
-        posts = fetch_intel_posts(limit=max(1, min(limit, 48)))
+        normalized_limit = max(1, min(limit, 120))
+        posts = fetch_intel_posts(limit=normalized_limit)
         return jsonify({
             "items": posts,
-            "last_updated": fetch_intel_posts_last_updated(limit=max(1, min(limit, 48))),
+            "last_updated": fetch_intel_posts_last_updated(limit=normalized_limit),
             "refreshed_at": _iso_now(),
         }), 200
     except Exception as exc:

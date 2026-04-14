@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Brain, ExternalLink, Layers3, Radar, Sparkles, TriangleAlert } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Brain, ExternalLink, Layers3, Radar, Share2, Sparkles, TriangleAlert } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
@@ -9,7 +9,7 @@ import { EditorialSnapshot } from '../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../components/blog/articleParser';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { intelApi } from '@/services/intel-api';
+import { intelApi, intelOgImageUrl, intelShareUrl } from '@/services/intel-api';
 
 function formatRelativeTimestamp(value?: string | null): string {
   if (!value) return 'agora';
@@ -31,8 +31,14 @@ export function BlogPost() {
     queryFn: () => intelApi.getPost(slug),
     enabled: Boolean(slug),
   });
+  const relatedPostsQuery = useQuery({
+    queryKey: ['intel-posts', 'related', slug],
+    queryFn: () => intelApi.getPosts(60),
+    enabled: Boolean(slug),
+  });
 
   const post = postQuery.data;
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const article = useMemo(() => parseArticleMarkdown(post?.body_markdown ?? ''), [post?.body_markdown]);
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 4) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
   const sideCards = [
@@ -55,11 +61,37 @@ export function BlogPost() {
       items: article.highlights.risks,
     },
   ].filter((card) => card.items.length > 0);
+  const relatedPosts = useMemo(() => {
+    if (!post) return [];
+    const terms = new Set([...(post.topics ?? []), ...(post.chains ?? []), ...(post.assets ?? [])].map((item) => item.toLowerCase()));
+    return (relatedPostsQuery.data?.items ?? [])
+      .filter((candidate) => candidate.slug !== post.slug)
+      .map((candidate) => {
+        const score = [...(candidate.topics ?? []), ...(candidate.chains ?? []), ...(candidate.assets ?? [])]
+          .map((item) => item.toLowerCase())
+          .filter((item) => terms.has(item)).length;
+        return { candidate, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 4)
+      .map((entry) => entry.candidate);
+  }, [post, relatedPostsQuery.data?.items]);
+  const radarLinks = useMemo(() => {
+    const supported = new Set(['BTC', 'ETH', 'SOL', 'LINK', 'AAVE', 'UNI']);
+    return (post?.assets ?? [])
+      .filter((asset) => supported.has(asset.toUpperCase()))
+      .map((asset) => ({
+        label: `${asset.toUpperCase()} Radar`,
+        href: `/radar/${asset.toLowerCase()}usdt`,
+      }));
+  }, [post?.assets]);
 
   useSeoMeta({
     title: post ? `${post.title} | Intel Brief | SNE OS` : 'Intel Brief | SNE OS',
     description: post?.excerpt || post?.subtitle || 'Dossiê editorial do Intel Brief do SNE OS.',
     canonicalPath: slug ? `/intel/${slug}` : '/intel',
+    image: slug ? intelOgImageUrl(slug) : undefined,
     type: 'article',
     keywords: [
       'crypto intelligence',
@@ -97,6 +129,28 @@ export function BlogPost() {
         </div>
       </div>
     );
+  }
+
+  const shareUrl = intelShareUrl(slug);
+
+  async function handleShare() {
+    if (!post) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.excerpt || post.subtitle,
+          url: shareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback('Link de compartilhamento copiado.');
+      window.setTimeout(() => setShareFeedback(null), 2400);
+    } catch {
+      setShareFeedback('Não foi possível compartilhar agora.');
+      window.setTimeout(() => setShareFeedback(null), 2400);
+    }
   }
 
   if (postQuery.isError || !post) {
@@ -163,21 +217,34 @@ export function BlogPost() {
               <div className="font-semibold mt-1" style={{ color: 'var(--text-1)' }}>{post.sources[0]?.name ?? 'Intel'}</div>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium"
+              style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
+              <Share2 className="w-4 h-4" />
+              Compartilhar
+            </button>
+            {shareFeedback ? (
+              <div className="text-sm" style={{ color: 'var(--text-3)' }}>{shareFeedback}</div>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {post.chains.map((chain) => (
-              <button key={chain} onClick={() => navigate(`/intel/chain/${chain}`)}>
+              <Link key={chain} to={`/intel/chain/${chain}`}>
                 <StatusBadge status="active">{chain}</StatusBadge>
-              </button>
+              </Link>
             ))}
             {post.topics.map((topic) => (
-              <button key={topic} onClick={() => navigate(`/intel/topic/${topic}`)}>
+              <Link key={topic} to={`/intel/topic/${topic}`}>
                 <StatusBadge status="pending">{topic}</StatusBadge>
-              </button>
+              </Link>
             ))}
             {post.assets.map((asset) => (
-              <button key={asset} onClick={() => navigate(`/intel/asset/${asset}`)}>
+              <Link key={asset} to={`/intel/asset/${asset}`}>
                 <StatusBadge status="success">{asset}</StatusBadge>
-              </button>
+              </Link>
             ))}
           </div>
         </header>
@@ -204,6 +271,39 @@ export function BlogPost() {
                 <MarkdownArticle markdown={post.body_markdown} className="space-y-6" variant="desktop" />
               </div>
             </section>
+
+            {relatedPosts.length > 0 && (
+              <section
+                className="rounded-[28px] p-6 space-y-4"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                    Continue a leitura
+                  </div>
+                  <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
+                    Peças relacionadas do Intel Brief
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {relatedPosts.map((related) => (
+                    <Link
+                      key={related.slug}
+                      to={`/intel/${related.slug}`}
+                      className="rounded-2xl p-4"
+                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <StatusBadge status="active">{related.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê'}</StatusBadge>
+                        <ArrowUpRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
+                      </div>
+                      <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>{related.title}</div>
+                      <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>{related.excerpt || related.subtitle}</div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-6 self-start">
@@ -255,6 +355,63 @@ export function BlogPost() {
                       </div>
                       <StatusBadge status={outlineToneStatus(heading.tone)}>{heading.tone}</StatusBadge>
                     </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {((post.chains.length > 0 || post.topics.length > 0 || post.assets.length > 0) || radarLinks.length > 0) && (
+              <section
+                className="rounded-[24px] p-5"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
+                <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                  Explorar contexto
+                </div>
+                <div className="space-y-3">
+                  {post.topics.slice(0, 4).map((topic) => (
+                    <Link
+                      key={`topic-${topic}`}
+                      to={`/intel/topic/${topic}`}
+                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
+                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                    >
+                      <span>Tema: {topic}</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
+                  ))}
+                  {post.chains.slice(0, 4).map((chain) => (
+                    <Link
+                      key={`chain-${chain}`}
+                      to={`/intel/chain/${chain}`}
+                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
+                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                    >
+                      <span>Chain: {chain}</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
+                  ))}
+                  {post.assets.slice(0, 4).map((asset) => (
+                    <Link
+                      key={`asset-${asset}`}
+                      to={`/intel/asset/${asset}`}
+                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
+                      style={{ backgroundColor: 'var(--bg-3)', color: 'var(--text-2)' }}
+                    >
+                      <span>Asset: {asset}</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
+                  ))}
+                  {radarLinks.map((entry) => (
+                    <Link
+                      key={entry.href}
+                      to={entry.href}
+                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm"
+                      style={{ backgroundColor: 'rgba(255,140,66,0.08)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}
+                    >
+                      <span>{entry.label}</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
                   ))}
                 </div>
               </section>

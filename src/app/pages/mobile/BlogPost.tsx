@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ExternalLink, Layers3 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ExternalLink, Layers3, Share2 } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { EditorialSnapshot } from '../../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../../components/blog/articleParser';
-import { intelApi } from '@/services/intel-api';
+import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { intelApi, intelOgImageUrl, intelShareUrl } from '@/services/intel-api';
 
 export function MobileBlogPost() {
   const navigate = useNavigate();
@@ -16,8 +17,14 @@ export function MobileBlogPost() {
     queryFn: () => intelApi.getPost(slug),
     enabled: Boolean(slug),
   });
+  const relatedPostsQuery = useQuery({
+    queryKey: ['intel-posts', 'related', slug, 'mobile'],
+    queryFn: () => intelApi.getPosts(60),
+    enabled: Boolean(slug),
+  });
 
   const post = postQuery.data;
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const article = parseArticleMarkdown(post?.body_markdown ?? '');
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 3) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
   const postChains = post?.chains ?? [];
@@ -28,6 +35,70 @@ export function MobileBlogPost() {
     { key: 'action', title: 'Ação', items: article.highlights.actions },
     { key: 'risk', title: 'Risco', items: article.highlights.risks },
   ].filter((card) => card.items.length > 0);
+  const relatedPosts = post
+    ? (relatedPostsQuery.data?.items ?? [])
+        .filter((candidate) => candidate.slug !== post.slug)
+        .map((candidate) => ({
+          candidate,
+          score: [...(candidate.topics ?? []), ...(candidate.chains ?? []), ...(candidate.assets ?? [])].filter((value) =>
+            new Set([...(post.topics ?? []), ...(post.chains ?? []), ...(post.assets ?? [])]).has(value)
+          ).length,
+        }))
+        .filter((entry) => entry.score > 0)
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 3)
+        .map((entry) => entry.candidate)
+    : [];
+
+  useSeoMeta({
+    title: post ? `${post.title} | Intel Brief | SNE OS` : 'Intel Brief | SNE OS',
+    description: post?.excerpt || post?.subtitle || 'Dossiê editorial do Intel Brief do SNE OS.',
+    canonicalPath: slug ? `/intel/${slug}` : '/intel',
+    image: slug ? intelOgImageUrl(slug) : undefined,
+    type: 'article',
+    keywords: ['crypto intelligence', 'web3 intelligence', ...(post?.topics ?? []), ...(post?.chains ?? []), ...(post?.assets ?? [])],
+    structuredData: post
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.title,
+          description: post.excerpt || post.subtitle,
+          datePublished: post.generated_at,
+          dateModified: post.generated_at,
+          author: {
+            '@type': 'Organization',
+            name: 'SNE Labs',
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'SNE Labs',
+          },
+          mainEntityOfPage: `https://snelabs.space/intel/${slug}`,
+        }
+      : null,
+  });
+
+  const shareUrl = intelShareUrl(slug);
+
+  async function handleShare() {
+    if (!post) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.excerpt || post.subtitle,
+          url: shareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback('Link copiado.');
+      window.setTimeout(() => setShareFeedback(null), 2200);
+    } catch {
+      setShareFeedback('Falha ao compartilhar.');
+      window.setTimeout(() => setShareFeedback(null), 2200);
+    }
+  }
 
   return (
     <MobilePageShell
@@ -61,11 +132,29 @@ export function MobileBlogPost() {
             <div className="text-sm text-[var(--text-2)] mb-3">{post.subtitle}</div>
             <div className="flex flex-wrap gap-2">
               {postChains.map((chain) => (
-                <Badge key={chain} variant="orange" size="sm">{chain}</Badge>
+                <Link key={chain} to={`/intel/chain/${chain}`}>
+                  <Badge variant="orange" size="sm">{chain}</Badge>
+                </Link>
               ))}
               {postTopics.slice(0, 3).map((topic) => (
-                <Badge key={topic} variant="neutral" size="sm">{topic}</Badge>
+                <Link key={topic} to={`/intel/topic/${topic}`}>
+                  <Badge variant="neutral" size="sm">{topic}</Badge>
+                </Link>
               ))}
+              {(post.assets ?? []).slice(0, 3).map((asset) => (
+                <Link key={asset} to={`/intel/asset/${asset}`}>
+                  <Badge variant="success" size="sm">{asset}</Badge>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-4">
+              <MobileButton className="w-full" onClick={handleShare}>
+                <span className="inline-flex items-center gap-2">
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar
+                </span>
+              </MobileButton>
+              {shareFeedback ? <div className="mt-2 text-xs text-[var(--text-3)]">{shareFeedback}</div> : null}
             </div>
           </SurfaceCard>
 
@@ -117,6 +206,24 @@ export function MobileBlogPost() {
           <SurfaceCard>
             <MarkdownArticle markdown={post.body_markdown} className="space-y-5" variant="mobile" />
           </SurfaceCard>
+
+          {relatedPosts.length > 0 && (
+            <SurfaceCard>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-3">Continue a leitura</div>
+              <div className="space-y-3">
+                {relatedPosts.map((related) => (
+                  <Link
+                    key={related.slug}
+                    to={`/intel/${related.slug}`}
+                    className="block rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-4 py-3"
+                  >
+                    <div className="text-[var(--text-1)] mb-1">{related.title}</div>
+                    <div className="text-sm text-[var(--text-2)]">{related.excerpt || related.subtitle}</div>
+                  </Link>
+                ))}
+              </div>
+            </SurfaceCard>
+          )}
 
           <SurfaceCard>
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-3">

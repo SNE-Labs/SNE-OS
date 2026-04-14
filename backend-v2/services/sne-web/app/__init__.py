@@ -90,6 +90,7 @@ def create_app():
     from .intel_api import intel_bp
     from .home_api import home_bp
     from .seo_api import seo_bp
+    from .share_api import share_bp
 
     # Existing blueprints
     app.register_blueprint(auth_siwe.auth_bp)
@@ -108,6 +109,7 @@ def create_app():
     app.register_blueprint(status_bp, url_prefix="/api/status")
     app.register_blueprint(intel_bp, url_prefix="/api/intel")
     app.register_blueprint(seo_bp, url_prefix="/api/seo")
+    app.register_blueprint(share_bp, url_prefix="/api")
     app.register_blueprint(home_bp, url_prefix="/api")
 
     # Register global routes INSIDE create_app()
