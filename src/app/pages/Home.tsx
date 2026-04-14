@@ -540,28 +540,28 @@ export function Home() {
   const heroTopMetricLabel = isMarketBackedHero ? 'Preço' : 'Sinal';
   const heroTopMetricValue = isMarketBackedHero && heroContextMover
     ? `$${formatMarketPrice(heroContextMover.price)}`
-    : compactPhrase(activeHero?.item.watch_items?.[0], 3) ??
-      compactPhrase(activeHero?.implication, 3) ??
-      activeHero?.item.impact?.label ??
+    : activeHero?.item.watch_items?.[0] ??
+      activeHero?.item.assets?.[0] ??
+      activeHero?.item.chains?.[0] ??
+      activeHero?.item.topics?.[0] ??
       '--';
-  const heroSupportMode = isMarketBackedHero ? 'mercado' : 'editorial';
   const heroSupportAsset =
     activeHero?.relatedSymbol ??
-    (activeHero ? compactPhrase(intelMeta(activeHero.item), 3) : null) ??
+    (activeHero ? intelMeta(activeHero.item) : null) ??
     'intel';
   const heroSupportDelta = heroContextMover
     ? `${heroContextMover.change24h >= 0 ? '+' : ''}${(heroContextMover.change24h * 100).toFixed(1)}%`
     : '--';
   const heroSupportPulse = isMarketBackedHero && heroContextMover
     ? `${describeLiquidity(heroContextMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, heroContextMover.volume)} · ${describeRisk(heroContextMover.change24h)}`
-    : compactPhrase(activeHero?.item.watch_items?.[0], 5) ??
-      compactPhrase(activeHero?.implication, 5) ??
-      compactPhrase(stripHeadlinePrefix(activeHero?.item.title), 5) ??
+    : stripHeadlinePrefix(activeHero?.item.watch_items?.[0]) ??
+      stripHeadlinePrefix(activeHero?.item.assets?.[0]) ??
+      stripHeadlinePrefix(activeHero?.item.chains?.[0]) ??
+      stripHeadlinePrefix(activeHero?.item.topics?.[0]) ??
       'leitura ativa';
   const heroSupportChips = uniqueText([
-    compactPhrase(activeHero?.item.watch_items?.[0], 3),
-    compactPhrase(activeHero?.item.watch_items?.[1], 3),
-    activeHero?.item.impact?.label ? `impacto ${activeHero.item.impact.label}` : null,
+    stripHeadlinePrefix(activeHero?.item.watch_items?.[0]),
+    stripHeadlinePrefix(activeHero?.item.watch_items?.[1]),
     isMarketBackedHero && heroContextMover ? describeRisk(heroContextMover.change24h) : null,
   ]).slice(0, 4);
   const heroValidationMetrics = isMarketBackedHero && heroContextMover
@@ -580,11 +580,11 @@ export function Home() {
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ]
     : [
-        { label: 'Formato', value: activeHero?.item.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê', tone: 'default' as const },
-        { label: 'Impacto', value: activeHero?.item.impact?.label ?? activeHero?.section.shortTitle ?? '--', tone: 'default' as const },
+        { label: 'Ativo', value: activeHero?.item.assets?.[0] ?? '--', tone: 'default' as const },
+        { label: 'Chain', value: activeHero?.item.chains?.[0] ?? '--', tone: 'default' as const },
         {
           label: 'Monitorar',
-          value: compactPhrase(activeHero?.item.watch_items?.[0], 2) ?? activeHero?.item.assets?.[0] ?? activeHero?.item.chains?.[0] ?? '--',
+          value: activeHero?.item.watch_items?.[0] ?? activeHero?.item.topics?.[0] ?? '--',
           tone: 'default' as const,
         },
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
@@ -794,16 +794,11 @@ export function Home() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
-                          <StatusBadge status={activeHeroTheme.badge}>{activeHero.item.source}</StatusBadge>
-                          <StatusBadge status="pending">{activeHero.item.module}</StatusBadge>
-                          {activeHero.item.impact?.label ? (
-                            <StatusBadge status={activeHero.item.impact.label === 'alto' ? 'warning' : 'active'}>
-                              impacto {activeHero.item.impact.label}
-                            </StatusBadge>
-                          ) : null}
-                          {activeHero.relatedMover ? <StatusBadge status="success">{activeHero.relatedMover.symbol}</StatusBadge> : null}
-                        </div>
+                        {isMarketBackedHero && activeHero.relatedMover ? (
+                          <div className="flex flex-wrap items-center gap-2 mb-4">
+                            <StatusBadge status="success">{activeHero.relatedMover.symbol}</StatusBadge>
+                          </div>
+                        ) : null}
 
                         {renderIntelTitle(
                           activeHero.item,
@@ -910,9 +905,6 @@ export function Home() {
                             <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
                               Validação agora
                             </div>
-                            <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                              {heroSupportMode}
-                            </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -938,7 +930,10 @@ export function Home() {
                             ))}
                           </div>
 
-                          <div className="rounded-[18px] px-4 py-3 text-xs uppercase tracking-[0.14em]" style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}>
+                          <div
+                            className="rounded-[18px] px-4 py-3 text-xs uppercase tracking-[0.14em]"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
+                          >
                             {heroSupportPulse}
                           </div>
                         </div>
