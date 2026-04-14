@@ -7,12 +7,28 @@ const RAW_API_BASE =
 // Fallback to relative paths so local Vite proxy keeps working.
 export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
 
+export class ApiError extends Error {
+  status: number;
+  body?: string;
+
+  constructor(message: string, status: number, body?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+type RequestOptions = {
+  suppressErrorStatuses?: number[];
+};
+
 function withApiBase(path: string): string {
   if (!API_BASE) return path;
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
+export async function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -27,7 +43,10 @@ export async function apiGet<T>(path: string): Promise<T> {
       credentials: "include",
       headers,
     });
-    if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => "");
+      throw new ApiError(`GET ${path} failed: ${res.status}`, res.status, errorBody);
+    }
 
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -36,7 +55,12 @@ export async function apiGet<T>(path: string): Promise<T> {
 
     return res.json() as Promise<T>;
   } catch (error) {
-    console.warn(`API call failed: ${path}`, error);
+    const isSuppressed =
+      error instanceof ApiError && options?.suppressErrorStatuses?.includes(error.status);
+
+    if (!isSuppressed) {
+      console.warn(`API call failed: ${path}`, error);
+    }
     throw error;
   }
 }

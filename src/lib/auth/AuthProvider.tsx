@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
 
-import { apiGet, apiPost } from "../api/http";
+import { ApiError, apiGet, apiPost } from "../api/http";
 
 export type ConnectMethod = 'injected' | 'walletconnect';
 export type AuthStatus = 'idle' | 'restoring' | 'connecting' | 'signing' | 'verifying' | 'authenticated' | 'error';
@@ -74,6 +74,11 @@ function hasInjectedEthereumProvider() {
   return Boolean((window as Window & { ethereum?: unknown }).ethereum);
 }
 
+function getStoredAuthToken() {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('auth_token');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { address: walletAddress, isConnected: walletConnected } = useAccount();
@@ -124,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const savedToken = localStorage.getItem('auth_token');
+      const savedToken = getStoredAuthToken();
       if (savedToken) {
         setAuthStatus('restoring');
         await checkAuth();
@@ -136,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkWalletConnection = async () => {
-      if (walletAddress && !isAuthenticated) {
+      if (walletAddress && !isAuthenticated && getStoredAuthToken()) {
         await checkAuth();
       }
     };
@@ -145,8 +150,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [walletAddress, isAuthenticated]);
 
   const checkAuth = async (): Promise<boolean> => {
+    if (!getStoredAuthToken()) {
+      setSessionAddress(undefined);
+      setIsAuthenticated(false);
+      setTier('free');
+      setAuthStatus('idle');
+      setAuthError(null);
+      return false;
+    }
+
     try {
-      const response = await apiGet<{ tier: string; address?: string }>('/api/auth/verify');
+      const response = await apiGet<{ tier: string; address?: string }>('/api/auth/verify', {
+        suppressErrorStatuses: [401],
+      });
 
       if (response) {
         setSessionAddress(response.address);
@@ -157,13 +173,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ['home'] });
         return true;
       }
-    } catch (error: any) {
-      console.log('Auth check failed:', error.message);
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        console.log('Auth check failed:', error instanceof Error ? error.message : error);
+      }
+
       localStorage.removeItem('auth_token');
       setSessionAddress(undefined);
       setIsAuthenticated(false);
       setTier('free');
       setAuthStatus('idle');
+      setAuthError(null);
     }
 
     return false;
