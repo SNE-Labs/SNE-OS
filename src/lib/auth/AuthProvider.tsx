@@ -5,6 +5,7 @@ import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
 import { apiGet, apiPost } from "../api/http";
 
 export type ConnectMethod = 'injected' | 'walletconnect';
+export type AuthStatus = 'idle' | 'restoring' | 'connecting' | 'signing' | 'verifying' | 'authenticated' | 'error';
 
 export type ConnectionOption = {
   id: ConnectMethod;
@@ -15,19 +16,23 @@ export type ConnectionOption = {
 type AuthCtx = {
   address?: string;
   isConnected: boolean;
+  isWalletConnected: boolean;
   isAuthenticated: boolean;
+  authStatus: AuthStatus;
+  authError: string | null;
   tier: 'free' | 'premium' | 'pro';
   connectionOptions: ConnectionOption[];
   connect: (method?: ConnectMethod) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
+  clearAuthError: () => void;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-const SIWE_DOMAIN = "snelabs.space";
-const SIWE_ORIGIN = "https://snelabs.space";
-const CHAIN_ID = 534352;
+const SIWE_DOMAIN = import.meta.env.VITE_SIWE_DOMAIN?.trim() || "snelabs.space";
+const SIWE_ORIGIN = import.meta.env.VITE_SIWE_ORIGIN?.trim() || "https://snelabs.space";
+const CHAIN_ID = Number(import.meta.env.VITE_SIWE_CHAIN_ID || 534352);
 
 function getNonce(address: string) {
   return apiPost<{ nonce: string }>("/api/auth/nonce", { address });
@@ -78,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [sessionAddress, setSessionAddress] = useState<string | undefined>();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
+  const [authError, setAuthError] = useState<string | null>(null);
   const [tier, setTier] = useState<'free' | 'premium' | 'pro'>('free');
 
   const injectedAvailable = hasInjectedEthereumProvider();
@@ -119,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       const savedToken = localStorage.getItem('auth_token');
       if (savedToken) {
+        setAuthStatus('restoring');
         await checkAuth();
       }
     };
@@ -144,6 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionAddress(response.address);
         setTier((response.tier as 'free' | 'premium' | 'pro') || 'free');
         setIsAuthenticated(true);
+        setAuthStatus('authenticated');
+        setAuthError(null);
         queryClient.invalidateQueries({ queryKey: ['home'] });
         return true;
       }
@@ -153,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSessionAddress(undefined);
       setIsAuthenticated(false);
       setTier('free');
+      setAuthStatus('idle');
     }
 
     return false;
@@ -160,6 +171,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function authenticate(address: string) {
     if (isAuthenticated && sessionAddress?.toLowerCase() === address.toLowerCase()) {
+      setAuthStatus('authenticated');
+      setAuthError(null);
       return;
     }
 
@@ -172,7 +185,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       nonce,
     });
 
+    setAuthStatus('signing');
     const signature = await signMessageAsync({ message });
+    setAuthStatus('verifying');
     const authResponse = await apiPost<{
       token: string;
       tier: 'free' | 'premium' | 'pro';
@@ -182,11 +197,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionAddress(address);
     setTier(authResponse.tier || 'free');
     setIsAuthenticated(true);
+    setAuthStatus('authenticated');
+    setAuthError(null);
     queryClient.invalidateQueries({ queryKey: ['home'] });
   }
 
   async function connect(method?: ConnectMethod) {
     try {
+      setAuthError(null);
+      setAuthStatus('connecting');
+
       const preferredMethod =
         method ??
         (injectedAvailable
@@ -226,6 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authenticate(nextAddress);
     } catch (error) {
       console.error("Failed to connect wallet:", error);
+      setAuthStatus('error');
+      setAuthError(error instanceof Error ? error.message : 'Falha ao conectar e autenticar carteira.');
       throw error;
     }
   }
@@ -247,21 +269,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionAddress(undefined);
     setIsAuthenticated(false);
     setTier('free');
+    setAuthStatus('idle');
+    setAuthError(null);
     queryClient.invalidateQueries({ queryKey: ['home'] });
+  }
+
+  function clearAuthError() {
+    setAuthError(null);
+    setAuthStatus(isAuthenticated ? 'authenticated' : 'idle');
   }
 
   const value = useMemo(
     () => ({
       address: displayAddress,
       isConnected: walletConnected || Boolean(displayAddress),
+      isWalletConnected: walletConnected,
       isAuthenticated,
+      authStatus,
+      authError,
       tier,
       connectionOptions,
       connect,
       logout,
       checkAuth,
+      clearAuthError,
     }),
-    [displayAddress, walletConnected, isAuthenticated, tier, connectionOptions]
+    [displayAddress, walletConnected, isAuthenticated, authStatus, authError, tier, connectionOptions]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

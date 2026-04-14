@@ -10,7 +10,17 @@ import { type ConnectMethod, useAuth } from '@/lib/auth/AuthProvider';
 type WalletConnectProps = {
   showConnectButton?: boolean;
   showDisconnectButton?: boolean;
+  connectButtonLabel?: string;
+  fullWidth?: boolean;
 };
+
+function statusText(status: ReturnType<typeof useAuth>['authStatus']) {
+  if (status === 'connecting') return 'Abrindo wallet';
+  if (status === 'signing') return 'Assine para entrar';
+  if (status === 'verifying') return 'Verificando SIWE';
+  if (status === 'restoring') return 'Restaurando sessão';
+  return null;
+}
 
 function methodIcon(method: ConnectMethod) {
   return method === 'walletconnect' ? QrCode : Wallet;
@@ -38,18 +48,32 @@ function sortConnectionOptions(options: typeof useAuth extends () => infer T ? T
 export function WalletConnect({
   showConnectButton = false,
   showDisconnectButton = false,
+  connectButtonLabel,
+  fullWidth = false,
 }: WalletConnectProps) {
   const isMobile = useIsMobile();
-  const { address, isConnected, isAuthenticated, connect, logout, connectionOptions } = useAuth();
+  const {
+    address,
+    isConnected,
+    isWalletConnected,
+    isAuthenticated,
+    authStatus,
+    authError,
+    connect,
+    logout,
+    connectionOptions,
+    clearAuthError,
+  } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [pendingMethod, setPendingMethod] = useState<ConnectMethod | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const availableOptions = useMemo(
     () => sortConnectionOptions(connectionOptions, isMobile),
     [connectionOptions, isMobile]
   );
+  const currentStatusLabel = statusText(authStatus);
+  const isBusy = authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying' || authStatus === 'restoring';
 
   const handleLogout = async () => {
     await logout();
@@ -57,13 +81,13 @@ export function WalletConnect({
 
   const runConnect = async (method: ConnectMethod) => {
     setPendingMethod(method);
-    setErrorMessage(null);
+    clearAuthError();
 
     try {
       await connect(method);
       setOpen(false);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Falha ao conectar carteira.');
+      // Error state is centralized in AuthProvider.
     } finally {
       setPendingMethod(null);
     }
@@ -71,7 +95,7 @@ export function WalletConnect({
 
   const handlePrimaryAction = async () => {
     if (availableOptions.length === 0) {
-      setErrorMessage('Nenhum método de conexão está disponível nesta superfície.');
+      await runConnect(isMobile ? 'walletconnect' : 'injected');
       return;
     }
 
@@ -139,11 +163,20 @@ export function WalletConnect({
   const TriggerButton = (
     <button
       onClick={() => void handlePrimaryAction()}
-      className="px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2"
+      disabled={isBusy}
+      className={`px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-2 disabled:opacity-70 ${fullWidth ? 'w-full justify-center' : ''}`}
       style={{ backgroundColor: 'var(--accent-orange)', color: '#FFFFFF' }}
     >
       {isMobile ? <Smartphone className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
-      {isConnected ? 'Assinar entrada' : isMobile ? 'Abrir carteira' : 'Conectar carteira'}
+      {currentStatusLabel ??
+        connectButtonLabel ??
+        (isWalletConnected && !isAuthenticated
+          ? 'Assinar entrada'
+          : isConnected && !isAuthenticated
+            ? 'Retomar sessão'
+            : isMobile
+              ? 'Abrir carteira'
+              : 'Conectar carteira')}
     </button>
   );
 
@@ -208,12 +241,12 @@ export function WalletConnect({
         );
       })}
 
-      {errorMessage ? (
+      {authError ? (
         <div
           className="rounded-2xl px-4 py-3 text-sm"
           style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: '1px', borderColor: 'rgba(239,68,68,0.18)', color: 'var(--text-2)' }}
         >
-          {errorMessage}
+          {authError}
         </div>
       ) : null}
     </div>
@@ -239,7 +272,7 @@ export function WalletConnect({
                 className="rounded-2xl px-4 py-3 text-sm"
                 style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)', color: 'var(--text-2)' }}
               >
-                O fluxo continua no app da sua wallet e volta para o SNE OS para assinar a entrada.
+                O fluxo abre a wallet, conecta o provider e depois pede a assinatura SIWE para autenticar a sessão no SNE OS.
               </div>
               {optionsBody}
             </div>
@@ -268,7 +301,7 @@ export function WalletConnect({
               className="rounded-2xl px-4 py-3 text-sm"
               style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}
             >
-              Extensão atende melhor o fluxo local. WalletConnect atende melhor quando a wallet está em outro dispositivo.
+              Extensão atende melhor o fluxo local. WalletConnect atende melhor quando a wallet está em outro dispositivo. Em ambos os casos, a sessão só é concluída após a assinatura SIWE.
             </div>
             {optionsBody}
           </div>

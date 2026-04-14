@@ -73,7 +73,7 @@ function formatDate(value?: string | null) {
 }
 
 export function Pass() {
-  const { address, isAuthenticated, connect } = useAuth();
+  const { address, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<PassportTab>('identity');
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
@@ -220,15 +220,18 @@ export function Pass() {
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <WalletConnect />
-                  <button
-                    onClick={() => (isAuthenticated ? setShowLinkPanel((current) => !current) : void connect())}
-                    className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium"
-                    style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                  >
-                    {isAuthenticated ? 'Vincular nova wallet' : 'Criar identidade Passport'}
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
+                  {isAuthenticated ? (
+                    <button
+                      onClick={() => setShowLinkPanel((current) => !current)}
+                      className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium"
+                      style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      Vincular nova wallet
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <WalletConnect showConnectButton connectButtonLabel="Criar identidade Passport" fullWidth />
+                  )}
                   <button
                     onClick={() => setActiveTab('lookup')}
                     className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium"
@@ -273,13 +276,17 @@ export function Pass() {
           {activeTab === 'identity' && (
             <>
               {!isAuthenticated ? (
-                <ModuleStateCard
-                  tone="disconnected"
-                  title="Conecte a primeira wallet"
-                  description="O Passport cria uma identidade âncora a partir da sua primeira autenticação SIWE. Depois disso, outras wallets entram no mesmo identity graph."
-                  actionLabel="Conectar wallet"
-                  onAction={() => void connect()}
-                />
+                <div
+                  className="rounded-xl p-5 space-y-4"
+                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
+                >
+                  <ModuleStateCard
+                    tone="disconnected"
+                    title="Conecte a primeira wallet"
+                    description="O Passport cria uma identidade âncora a partir da sua primeira autenticação SIWE. Depois disso, outras wallets entram no mesmo identity graph."
+                  />
+                  <WalletConnect showConnectButton connectButtonLabel="Conectar wallet e assinar SIWE" fullWidth />
+                </div>
               ) : identityQuery.isLoading ? (
                 <ModuleStateCard
                   tone="loading"

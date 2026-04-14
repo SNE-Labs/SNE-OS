@@ -31,7 +31,7 @@ function formatDate(value?: string | null) {
 }
 
 export function MobilePass() {
-  const { address, isAuthenticated, connect } = useAuth();
+  const { address, isAuthenticated } = useAuth();
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -86,11 +86,7 @@ export function MobilePass() {
               </div>
             </div>
 
-            <WalletConnect showConnectButton />
-
-            <MobileButton className="w-full mt-3" onClick={() => void connect()}>
-              Conectar primeira wallet
-            </MobileButton>
+            <WalletConnect showConnectButton connectButtonLabel="Conectar primeira wallet" fullWidth />
           </SurfaceCard>
 
           <SurfaceCard>

@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { scroll } from 'viem/chains';
-import { Suspense, lazy } from 'react';
-import React from 'react';
+import { Suspense, lazy, useState } from 'react';
 
 // Desktop Components (carregados normalmente)
 import { Sidebar } from './components/Sidebar';
@@ -139,42 +138,46 @@ function AuthSkeleton() {
 
 export default function App() {
   const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
+  const walletConnectUrl = import.meta.env.VITE_SIWE_ORIGIN?.trim() || 'https://snelabs.space';
 
-  // Create QueryClient for React Query
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnWindowFocus: false,
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
+  const [wagmiConfig] = useState(() =>
+    createConfig({
+      chains: [scroll],
+      connectors: [
+        injected(),
+        ...(walletConnectProjectId
+          ? [
+              walletConnect({
+                projectId: walletConnectProjectId,
+                showQrModal: true,
+                metadata: {
+                  name: 'SNE OS',
+                  description: 'SNE OS wallet authentication',
+                  url: walletConnectUrl,
+                  icons: [`${walletConnectUrl.replace(/\/$/, '')}/favicon.ico`],
+                },
+              }),
+            ]
+          : []),
+      ],
+      transports: {
+        [scroll.id]: http(),
       },
-    },
-  });
-
-  // Create Wagmi config for Scroll Network with MetaMask support
-  const wagmiConfig = createConfig({
-    chains: [scroll],
-    connectors: [
-      injected(),
-      ...(walletConnectProjectId
-        ? [
-            walletConnect({
-              projectId: walletConnectProjectId,
-              showQrModal: true,
-              metadata: {
-                name: 'SNE OS',
-                description: 'SNE OS wallet authentication',
-                url: 'https://snelabs.space',
-                icons: ['https://snelabs.space/favicon.ico'],
-              },
-            }),
-          ]
-        : []),
-    ],
-    transports: {
-      [scroll.id]: http(),
-    },
-    ssr: true, // Server-side rendering safe
-  });
+      ssr: true,
+    })
+  );
 
   return (
     <WagmiProvider config={wagmiConfig}>

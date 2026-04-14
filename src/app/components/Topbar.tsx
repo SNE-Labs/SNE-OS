@@ -1,23 +1,15 @@
-import { Wallet } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useLocation } from 'react-router-dom';
 
 import { resolveRouteMeta } from '../navigation';
 import { formatAddress } from '@/utils/format';
+import { WalletConnect } from './passport/WalletConnect';
 
 export function Topbar() {
-  const { isConnected, address, tier, connect } = useAuth();
+  const { isAuthenticated, address, tier } = useAuth();
   const location = useLocation();
   const routeMeta = resolveRouteMeta(location.pathname);
   const sessionLabel = tier === 'free' ? 'GRATUITO' : tier === 'pro' ? 'PRO' : tier?.toUpperCase();
-
-  const handleConnect = async () => {
-    try {
-      await connect();
-    } catch (error: any) {
-      console.error('Conexão com carteira falhou:', error);
-    }
-  };
 
   return (
     <header
@@ -40,18 +32,8 @@ export function Topbar() {
           <span className="text-xs" style={{ color: 'var(--text-3)' }}>{routeMeta.context}</span>
         </div>
 
-        {!isConnected ? (
-          <button
-            onClick={handleConnect}
-            className="px-4 py-2 rounded-lg font-medium text-sm transition-all inline-flex items-center gap-2"
-            style={{
-              backgroundColor: 'var(--accent-orange)',
-              color: '#FFFFFF',
-            }}
-          >
-            <Wallet size={16} />
-            Conectar Carteira
-          </button>
+        {!isAuthenticated ? (
+          <WalletConnect showConnectButton connectButtonLabel="Conectar carteira" />
         ) : (
           <div
             className="px-3 py-2 rounded-lg flex items-center gap-3"
