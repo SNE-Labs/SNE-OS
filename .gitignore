@@ -7,6 +7,13 @@ dist/
 build/
 *.tsbuildinfo
 
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
 # Environment variables
 .env
 .env.local
@@ -29,10 +36,3 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# Other SNE projects (not part of SNE OS deployment)
-SNE RADAR DEPLOY/
-SNE VAULT/
-SNE-Scroll-Passport-main/
-SNE_RADAR_DISTRIBUICAO_20251208_175125/
-docs/
