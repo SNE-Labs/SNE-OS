@@ -187,7 +187,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function connect(method?: ConnectMethod) {
     try {
-      const preferredMethod = method ?? 'injected';
+      const preferredMethod =
+        method ??
+        (injectedAvailable
+          ? 'injected'
+          : walletConnectAvailable
+            ? 'walletconnect'
+            : 'injected');
 
       if (preferredMethod === 'injected' && !injectedAvailable) {
         throw new Error(connectorErrorMessage('injected'));
