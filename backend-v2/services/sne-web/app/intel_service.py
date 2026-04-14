@@ -98,7 +98,7 @@ GENERALIST_SOURCES = {"hn_front_page", "techcrunch", "openai_news", "reuters_bus
 COMMUNITY_SOURCE_CAP = 2
 BLOG_SOURCE_NAME = "SNE Enterprise Blog"
 BLOG_DAILY_LIMIT = 14
-BLOG_SURFACE_LIMIT = 3
+BLOG_SURFACE_LIMIT = 6
 BLOG_MARKET_DAILY_LIMIT = 6
 BLOG_TOTAL_LIMIT = 48
 POST_CACHE_KEY = "intel:enterprise:posts"
@@ -579,10 +579,10 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
     if include_blog:
         redis_client = SafeRedis()
         blog_posts = _load_cached_posts(redis_client)
-        blog_items = [_shape_blog_item(post) for post in blog_posts[:BLOG_SURFACE_LIMIT]]
+        blog_items = [_shape_blog_item(post) for post in blog_posts[:max(limit, BLOG_SURFACE_LIMIT)]]
         if len(blog_posts) < BLOG_DAILY_LIMIT:
             _trigger_enterprise_post_refresh()
-        items = (blog_items + raw_items)[:limit]
+        items = blog_items[:limit] if blog_items else raw_items[:limit]
 
     return {
         "locale": "pt-BR",
