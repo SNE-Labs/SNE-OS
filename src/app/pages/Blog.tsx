@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { ChainBadge } from '../components/ChainBadge';
@@ -19,6 +20,10 @@ function formatRelativeTimestamp(value?: string | null): string {
   if (diffHours < 24) return `${diffHours}h atrás`;
   const diffDays = Math.round(diffHours / 24);
   return `${diffDays}d atrás`;
+}
+
+function intelEntity(post: { assets?: string[]; chains?: string[] }) {
+  return post.assets?.[0] || post.chains?.[0] || null;
 }
 
 export function Blog() {
@@ -212,9 +217,18 @@ export function Blog() {
                 }}
               >
                 <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <IntelEntityIcon
+                      symbol={intelEntity(featured)}
+                      sectionKey="market"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                      iconClassName="h-4 w-4"
+                    />
+                    <div className="flex items-center gap-2">
                     <StatusBadge status="active">{featured.editorial_kind === 'briefing' ? 'Briefing principal' : 'Dossiê principal'}</StatusBadge>
                     <StatusBadge status="pending">{featured.reading_time_minutes} min</StatusBadge>
+                    </div>
                   </div>
                   <ArrowUpRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
                 </div>
@@ -284,9 +298,18 @@ export function Blog() {
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <IntelEntityIcon
+                        symbol={intelEntity(post)}
+                        sectionKey="market"
+                        className="flex h-9 w-9 items-center justify-center rounded-2xl"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        iconClassName="h-4 w-4"
+                      />
+                      <div className="flex items-center gap-2">
                       <StatusBadge status="active">{post.editorial_kind === 'briefing' ? 'Intel Brief' : 'Intel Dossiê'}</StatusBadge>
                       <StatusBadge status="pending">{formatRelativeTimestamp(post.generated_at)}</StatusBadge>
+                      </div>
                     </div>
                     <span className="text-xs" style={{ color: 'var(--text-3)' }}>{post.reading_time_minutes} min</span>
                   </div>

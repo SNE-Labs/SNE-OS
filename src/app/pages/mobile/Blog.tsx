@@ -1,11 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { Brain } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { ChainBadge } from '../../components/ChainBadge';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
+
+function intelEntity(post: { assets?: string[]; chains?: string[] }) {
+  return post.assets?.[0] || post.chains?.[0] || null;
+}
 
 export function MobileBlog() {
   const navigate = useNavigate();
@@ -97,9 +101,13 @@ export function MobileBlog() {
               <button type="button" className="w-full text-left" onClick={() => navigate(`/intel/${post.slug || post.id}`)}>
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-2xl flex items-center justify-center bg-[var(--accent-orange-dim)] text-[var(--accent-orange)]">
-                      <Brain className="w-4 h-4" />
-                    </div>
+                    <IntelEntityIcon
+                      symbol={intelEntity(post)}
+                      sectionKey="market"
+                      className="w-9 h-9 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: 'var(--accent-orange-dim)', color: 'var(--accent-orange)' }}
+                      iconClassName="w-4 h-4"
+                    />
                     <div>
                       <div className="text-[var(--text-1)]">Intel Brief</div>
                       <div className="text-xs text-[var(--text-3)]">{post.reading_time_minutes} min</div>

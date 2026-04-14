@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Brain, ExternalLink, Layers3, Share2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ExternalLink, Layers3, Share2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { ChainBadge } from '../components/ChainBadge';
@@ -66,6 +67,10 @@ function toneRailStyle(tone: 'default' | 'context' | 'watch' | 'action' | 'risk'
     background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
     borderColor: 'rgba(255,255,255,0.10)',
   };
+}
+
+function intelEntity(post?: { assets?: string[]; chains?: string[] } | null) {
+  return post?.assets?.[0] || post?.chains?.[0] || null;
 }
 
 export function BlogPost() {
@@ -438,9 +443,13 @@ export function BlogPost() {
             {post.status !== 'draft' ? <StatusBadge status="warning">{post.status}</StatusBadge> : null}
           </div>
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}>
-              <Brain className="w-5 h-5" />
-            </div>
+            <IntelEntityIcon
+              symbol={intelEntity(post)}
+              sectionKey="market"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}
+              iconClassName="w-5 h-5"
+            />
             <div className="min-w-0">
               <div className="text-4xl font-semibold text-balance mb-3" style={{ color: 'var(--text-1)' }}>{post.title}</div>
               <p className="text-lg" style={{ color: 'var(--text-2)' }}>{post.subtitle}</p>

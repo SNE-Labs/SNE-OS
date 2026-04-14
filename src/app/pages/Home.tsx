@@ -9,6 +9,7 @@ import {
   Waves,
   Zap,
 } from 'lucide-react';
+import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { apiGet } from '@/lib/api/http';
@@ -393,6 +394,7 @@ export function Home() {
   const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Leitura Intel';
   const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
   const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
+  const intelEntity = (item: IntelItem) => item.assets?.[0] || item.chains?.[0] || extractIntelSymbols(item)[0] || null;
   const intelSectionTheme: Record<
     HomeIntelSectionKey,
     {
@@ -536,6 +538,9 @@ export function Home() {
   const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
   const isMarketBackedHero = activeHero?.assetConfidence === 'high' && Boolean(activeHero.relatedMover);
   const heroContextMover = isMarketBackedHero ? activeHero?.relatedMover ?? null : null;
+  const heroSupportMover =
+    (activeHero?.relatedSymbol ? marketLookup.get(activeHero.relatedSymbol.toUpperCase()) : null) ??
+    heroContextMover;
   const heroThemeLabel = activeHero?.section.kicker ?? 'Intel';
   const heroTopMetricLabel = isMarketBackedHero ? 'Preço' : 'Sinal';
   const heroTopMetricValue = isMarketBackedHero && heroContextMover
@@ -580,11 +585,15 @@ export function Home() {
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ]
     : [
-        { label: 'Ativo', value: activeHero?.item.assets?.[0] ?? '--', tone: 'default' as const },
-        { label: 'Chain', value: activeHero?.item.chains?.[0] ?? '--', tone: 'default' as const },
+        { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
         {
-          label: 'Monitorar',
-          value: activeHero?.item.watch_items?.[0] ?? activeHero?.item.topics?.[0] ?? '--',
+          label: 'Preço',
+          value: heroSupportMover ? `$${formatMarketPrice(heroSupportMover.price)}` : '--',
+          tone: 'default' as const,
+        },
+        {
+          label: 'Vol/24',
+          value: heroSupportMover ? `$${formatCompactNumber(toNumericVolume(heroSupportMover.volume))}` : '--',
           tone: 'default' as const,
         },
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
@@ -775,15 +784,13 @@ export function Home() {
                         className="min-w-0"
                       >
                         <div className="flex items-center gap-3 mb-5">
-                          <div
+                          <IntelEntityIcon
+                            symbol={activeHero.relatedSymbol ?? intelEntity(activeHero.item)}
+                            sectionKey={activeHero.section.key}
                             className="flex h-12 w-12 items-center justify-center rounded-[20px]"
                             style={activeHeroTheme.toneStyle}
-                          >
-                            {(() => {
-                              const HeroIcon = intelSectionTheme[activeHero.section.key].icon;
-                              return <HeroIcon className="h-5 w-5" />;
-                            })()}
-                          </div>
+                            iconClassName="h-5 w-5"
+                          />
                           <div>
                             <div className="text-xs uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                               {activeHero.section.kicker}
@@ -860,20 +867,25 @@ export function Home() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div
+                              className={isMarketBackedHero ? 'rounded-[18px] px-4 py-3' : 'rounded-[18px] px-4 py-3 col-span-2'}
+                              style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+                            >
                               <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Tema</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
                                 {heroThemeLabel}
                               </div>
                             </div>
-                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                                {heroTopMetricLabel}
+                            {isMarketBackedHero ? (
+                              <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                                <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                  {heroTopMetricLabel}
+                                </div>
+                                <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
+                                  {heroTopMetricValue}
+                                </div>
                               </div>
-                              <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                {heroTopMetricValue}
-                              </div>
-                            </div>
+                            ) : null}
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -1054,7 +1066,6 @@ export function Home() {
                 {intelStreamSections.map((section) => {
                   const lead = section.items[0];
                   const rest = section.items.slice(1, 3);
-                  const SectionIcon = intelSectionTheme[section.key].icon;
 
                   return (
                     <div
@@ -1070,12 +1081,13 @@ export function Home() {
                         <div className="lg:pr-2">
                           <div className="flex items-start justify-between gap-3 mb-4">
                             <div className="flex items-center gap-3">
-                              <div
+                              <IntelEntityIcon
+                                symbol={lead ? intelEntity(lead) : null}
+                                sectionKey={section.key}
                                 className="flex h-10 w-10 items-center justify-center rounded-2xl"
                                 style={intelSectionTheme[section.key].toneStyle}
-                              >
-                                <SectionIcon className="h-4 w-4" />
-                              </div>
+                                iconClassName="h-4 w-4"
+                              />
                               <div>
                                 <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                                   {section.kicker}
@@ -1099,8 +1111,17 @@ export function Home() {
                               className="rounded-[20px] p-4"
                               style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
                             >
-                              <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                {intelMeta(lead)}
+                              <div className="flex items-center gap-2 mb-2">
+                                <IntelEntityIcon
+                                  symbol={intelEntity(lead)}
+                                  sectionKey={section.key}
+                                  className="flex h-7 w-7 items-center justify-center rounded-xl"
+                                  style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                                  iconClassName="h-4 w-4"
+                                />
+                                <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                  {intelMeta(lead)}
+                                </div>
                               </div>
                               {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
                               <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
@@ -1117,8 +1138,17 @@ export function Home() {
                                   className="rounded-[18px] p-4"
                                   style={{ backgroundColor: 'rgba(10,14,23,0.26)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
                                 >
-                                  <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
-                                    {intelMeta(item)}
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <IntelEntityIcon
+                                      symbol={intelEntity(item)}
+                                      sectionKey={section.key}
+                                      className="flex h-6 w-6 items-center justify-center rounded-lg"
+                                      style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                                      iconClassName="h-3.5 w-3.5"
+                                    />
+                                    <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                      {intelMeta(item)}
+                                    </div>
                                   </div>
                                   {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
                                 </div>
