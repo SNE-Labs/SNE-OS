@@ -155,49 +155,6 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1">
-              <div
-                className="space-y-4"
-                style={{
-                  opacity: expanded ? 1 : 0,
-                  transform: expanded ? 'translateX(0)' : 'translateX(-6px)',
-                  transition: `${panelTransition} 50ms`,
-                }}
-              >
-                {railNavigationGroups.map((group) => (
-                  <div key={group.label}>
-                    <div className="mb-2 px-3 text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                      {group.label}
-                    </div>
-                    <div className="space-y-1">
-                      {group.items.map((item) => (
-                        <NavLink
-                          key={item.path}
-                          to={item.path}
-                          className="group flex items-center gap-3 rounded-[18px] px-3 py-3 transition-all duration-200 hover:-translate-y-0.5"
-                          style={({ isActive }) => ({
-                            backgroundColor: isActive ? 'rgba(255, 102, 0, 0.14)' : 'transparent',
-                            color: isActive ? 'var(--text-1)' : 'var(--text-2)',
-                            boxShadow: isActive ? 'inset 0 0 0 1px rgba(255,255,255,0.06)' : 'none',
-                          })}
-                        >
-                          {({ isActive }) => (
-                            <>
-                              <item.icon
-                                className="h-[18px] w-[18px] shrink-0"
-                                style={{ color: isActive ? 'var(--accent-orange)' : 'currentColor' }}
-                              />
-                              <span className="text-sm font-medium">{item.label}</span>
-                            </>
-                          )}
-                        </NavLink>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div
               className="mt-5 rounded-[24px] border p-4"
               style={{

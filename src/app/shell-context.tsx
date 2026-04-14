@@ -51,6 +51,14 @@ function localizeIdentityStatus(value?: string | null) {
   return value || 'Estado de identidade indisponível';
 }
 
+function localizeSignalStrength(value?: string | null) {
+  const normalized = `${value || ''}`.trim().toLowerCase();
+  if (normalized === 'strong') return 'Força alta';
+  if (normalized === 'moderate') return 'Força moderada';
+  if (normalized === 'weak') return 'Força baixa';
+  return 'Força indisponível';
+}
+
 function buildTapeItems(
   pathname: string,
   auth: { isAuthenticated: boolean; address?: string; tier: 'free' | 'premium' | 'pro' },
@@ -147,34 +155,47 @@ function buildSidebarContext(
   if (pathname.startsWith('/radar')) {
     const featured = radar?.featured;
     const signal = radar?.signal;
+    const priceLabel =
+      featured?.price != null
+        ? `US$${Number(featured.price).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+        : '--';
+
     return {
-      eyebrow: 'Foco atual',
-      title: featured?.symbol || routeRadarSymbol(pathname),
+      eyebrow: 'Radar',
+      title: signal?.symbol ? `${signal.symbol} • ${signal.signal || 'HOLD'}` : featured?.symbol || routeRadarSymbol(pathname),
       summary: trimCopy(
-        signal?.symbol
-          ? `${signal.signal || 'HOLD'} • ${signal.change || '--'} • ${signal.timeframe || '24H'}`
-          : radar?.hero?.summary || 'Leitura tática do ativo em foco.',
-        100
+        radar?.market_regime?.summary || radar?.hero?.summary || 'Leitura tática do ativo em foco.',
+        104
       ),
       items: [
+        signal?.timeframe ? `${signal.signal || 'HOLD'} ${signal.timeframe}` : '',
+        signal?.strength ? localizeSignalStrength(signal.strength) : '',
+        priceLabel !== '--' ? `Preço ${priceLabel}` : '',
         radar?.market_regime?.label ? `Regime ${radar.market_regime.label}` : '',
-        featured?.price ? `Preço $${Number(featured.price).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '',
-        featured?.volume ? `Vol ${Number(featured.volume).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })}` : '',
       ].filter(Boolean),
-      actionLabel: 'Abrir Passport',
-      actionPath: '/pass',
+      actionLabel: 'Abrir Intel Brief',
+      actionPath: '/intel',
     };
   }
 
   if (pathname.startsWith('/pass')) {
+    const walletsTotal = passport?.stats?.wallets_total ?? 0;
+    const eventsTotal = passport?.events?.length ?? 0;
+    const hasAnchor = Boolean(passport?.identity?.id);
+
     return {
       eyebrow: 'Passport',
-      title: passport?.primary_wallet?.address ? formatAddress(passport.primary_wallet.address) : 'Passport ativo',
-      summary: trimCopy(localizeIdentityStatus(passport?.stats ? (passport.stats.wallets_total > 1 ? 'wallets vinculadas' : 'active') : undefined), 90),
+      title: passport?.primary_wallet?.address ? formatAddress(passport.primary_wallet.address) : 'Lookup público ativo',
+      summary: trimCopy(
+        hasAnchor
+          ? `${walletsTotal || 1} wallet${walletsTotal === 1 ? '' : 's'} na identidade e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
+          : 'Checkpoint pronto para ancorar identidade e vincular novas wallets ao mesmo grafo.',
+        104
+      ),
       items: [
-        passport?.stats?.wallets_total ? `${passport.stats.wallets_total} wallets` : '',
-        passport?.events?.length ? `${passport.events.length} eventos` : '',
-        passport?.identity?.id ? 'Âncora resolvida' : '',
+        walletsTotal ? `${walletsTotal} wallets` : 'Sem vínculos',
+        eventsTotal ? `${eventsTotal} eventos` : 'Sem eventos',
+        hasAnchor ? 'Âncora resolvida' : 'Lookup público',
       ].filter(Boolean),
       actionLabel: 'Abrir Vault',
       actionPath: '/vault',
@@ -182,17 +203,30 @@ function buildSidebarContext(
   }
 
   if (pathname.startsWith('/vault')) {
+    const totalValue = vault?.aggregate?.total_value_display || '--';
+    const activeNetworks = vault?.aggregate?.active_networks ?? 0;
+    const primaryNetwork =
+      vault?.aggregate?.primary_network?.label ||
+      vault?.surface?.network ||
+      '--';
+
     return {
       eyebrow: 'Capital',
-      title: vault?.aggregate?.total_value_display || 'Capital visível',
-      summary: trimCopy(vault?.surface?.network ? `Rede principal ${vault.surface.network}` : 'Superfície de capital pronta para leitura contextual.', 92),
+      title: totalValue !== '--' ? totalValue : 'Capital visível',
+      summary: trimCopy(
+        primaryNetwork !== '--'
+          ? `Rede principal ${primaryNetwork}. ${vault?.protection?.state || 'Capital pronto para leitura contextual.'}`
+          : 'Superfície de capital pronta para leitura contextual.',
+        108
+      ),
       items: [
-        vault?.aggregate?.active_networks != null ? `${vault.aggregate.active_networks} redes ativas` : '',
+        `${activeNetworks} redes ativas`,
+        primaryNetwork !== '--' ? `Rede ${primaryNetwork}` : '',
+        vault?.status?.label ? `Estado ${vault.status.label}` : '',
         vault?.surface?.source ? `Fonte ${vault.surface.source}` : '',
-        vault?.protection?.state ? trimCopy(vault.protection.state, 34) : '',
       ].filter(Boolean),
-      actionLabel: 'Abrir Passport',
-      actionPath: '/pass',
+      actionLabel: 'Abrir Radar',
+      actionPath: '/radar',
     };
   }
 
@@ -209,6 +243,39 @@ function buildSidebarContext(
       ].filter(Boolean),
       actionLabel: 'Abrir Radar',
       actionPath: '/radar',
+    };
+  }
+
+  if (pathname.startsWith('/docs')) {
+    return {
+      eyebrow: 'Referência',
+      title: 'Docs do workspace',
+      summary: 'Documentação de produto, contexto operacional e leitura de suporte para navegar o OS com menos fricção.',
+      items: ['Fluxos do produto', 'Contexto operacional', 'Leitura de suporte'],
+      actionLabel: 'Abrir Home',
+      actionPath: '/home',
+    };
+  }
+
+  if (pathname.startsWith('/keys')) {
+    return {
+      eyebrow: 'Acesso',
+      title: 'Keys em foco',
+      summary: 'Superfície para credenciais, chaves e postura de acesso do workspace.',
+      items: ['Credenciais', 'Superfícies de acesso', 'Postura operacional'],
+      actionLabel: 'Abrir Secrets',
+      actionPath: '/secrets',
+    };
+  }
+
+  if (pathname.startsWith('/secrets')) {
+    return {
+      eyebrow: 'Camada cifrada',
+      title: 'Secrets em foco',
+      summary: 'Material sensível, sync cifrado e leitura privada para composição do workspace.',
+      items: ['Sync cifrado', 'Material sensível', 'Camada privada'],
+      actionLabel: 'Abrir Keys',
+      actionPath: '/keys',
     };
   }
 
