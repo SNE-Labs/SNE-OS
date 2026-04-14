@@ -514,16 +514,37 @@ export function Home() {
   const heroScenario = activeHero?.relatedMover
     ? `${activeHero.relatedMover.symbol} ${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
     : compactPhrase(marketRegime?.label, 3) ?? 'contexto editorial';
-  const heroSupportMode = activeHero?.relatedMover ? 'validado por mercado' : 'editorial em curso';
+  const heroSupportMode = activeHero?.relatedMover ? 'mercado' : 'editorial';
   const heroSupportAsset = activeHero?.relatedMover?.symbol ?? compactPhrase(heroFallbackMeta, 3) ?? 'intel';
+  const heroSupportDelta = activeHero?.relatedMover
+    ? `${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
+    : activeHero?.item.impact?.label ?? '--';
   const heroSupportPulse = activeHero?.relatedMover
     ? `${describeLiquidity(activeHero.relatedMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, activeHero.relatedMover.volume)} · ${describeRisk(activeHero.relatedMover.change24h)}`
     : compactPhrase(marketEditorial?.headline, 5) ?? compactPhrase(activeHero?.implication, 5) ?? 'monitoramento ativo';
-  const heroSupportBody =
-    compactPhrase(activeHero?.item.watch_items?.[0], 8) ??
-    compactPhrase(activeHero?.implication, 8) ??
-    activeHero?.section.description ??
-    'Sem sinais adicionais agora.';
+  const heroSupportChips = uniqueText([
+    activeHero?.item.impact?.label ? `impacto ${activeHero.item.impact.label}` : null,
+    compactPhrase(activeHero?.item.watch_items?.[0], 3),
+    compactPhrase(activeHero?.item.watch_items?.[1], 3),
+    activeHero?.relatedMover ? describeRisk(activeHero.relatedMover.change24h) : compactPhrase(marketRegime?.label, 3),
+  ]).slice(0, 4);
+  const heroValidationMetrics = activeHero?.relatedMover
+    ? [
+        { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
+        { label: 'Preço', value: `$${formatMarketPrice(activeHero.relatedMover.price)}`, tone: 'default' as const },
+        { label: '24H', value: heroSupportDelta, tone: activeHero.relatedMover.change24h >= 0 ? 'positive' as const : 'negative' as const },
+        {
+          label: 'Liquidez',
+          value: describeLiquidity(activeHero.relatedMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, activeHero.relatedMover.volume),
+          tone: 'default' as const,
+        },
+      ]
+    : [
+        { label: 'Fonte', value: activeHero?.item.source ?? '--', tone: 'default' as const },
+        { label: 'Impacto', value: activeHero?.item.impact?.label ?? activeHero?.section.shortTitle ?? '--', tone: 'default' as const },
+        { label: 'Pulso', value: compactPhrase(marketRegime?.label, 2) ?? '--', tone: 'default' as const },
+        { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
+      ];
   const renderIntelTitle = (item: IntelItem, className: string) => {
     if (!item.url) {
       return (
@@ -797,7 +818,7 @@ export function Home() {
                         >
                           <div className="flex items-center justify-between gap-3 mb-4">
                             <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                              Radar da leitura
+                              Leitura em dados
                             </div>
                             <button
                               onClick={() => openIntelItem(activeHero.item.url)}
@@ -808,11 +829,7 @@ export function Home() {
                             </button>
                           </div>
 
-                          <div className="text-sm mb-4" style={{ color: 'var(--text-2)' }}>
-                            {heroSupportBody}
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="grid grid-cols-2 gap-3 mb-3">
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
                               <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Modo Intel</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
@@ -827,20 +844,22 @@ export function Home() {
                             </div>
                           </div>
 
-                          <div className="space-y-2.5">
-                            {(activeHero.item.watch_items?.slice(0, 3) ?? []).map((watchItem) => (
+                          <div className="flex flex-wrap gap-2">
+                            {heroSupportChips.map((chip) => (
                               <div
-                                key={watchItem}
-                                className="px-1 py-2.5 text-sm border-b last:border-b-0"
-                                style={{ borderColor: 'rgba(255,255,255,0.06)', color: 'var(--text-2)' }}
+                                key={chip}
+                                className="rounded-full px-3 py-2 text-xs uppercase tracking-[0.14em]"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
                               >
-                                {watchItem}
+                                {chip}
                               </div>
                             ))}
-
-                            {!activeHero.item.watch_items?.length ? (
-                              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                                {activeHero.section.description}
+                            {heroSupportChips.length === 0 ? (
+                              <div
+                                className="rounded-full px-3 py-2 text-xs uppercase tracking-[0.14em]"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
+                              >
+                                leitura ativa
                               </div>
                             ) : null}
                           </div>
@@ -859,19 +878,31 @@ export function Home() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Ativo relacionado</div>
-                              <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
-                                {heroSupportAsset}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            {heroValidationMetrics.map((metric) => (
+                              <div key={metric.label} className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                                <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                  {metric.label}
+                                </div>
+                                <div
+                                  className="font-semibold text-sm leading-5"
+                                  style={{
+                                    color:
+                                      metric.tone === 'positive'
+                                        ? 'var(--ok-green)'
+                                        : metric.tone === 'negative'
+                                          ? 'var(--danger-red)'
+                                          : 'var(--text-1)',
+                                  }}
+                                >
+                                  {metric.value}
+                                </div>
                               </div>
-                            </div>
-                            <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Sinal de validação</div>
-                              <div className="font-semibold text-sm leading-5" style={{ color: 'var(--text-1)' }}>
-                                {heroSupportPulse}
-                              </div>
-                            </div>
+                            ))}
+                          </div>
+
+                          <div className="rounded-[18px] px-4 py-3 text-xs uppercase tracking-[0.14em]" style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}>
+                            {heroSupportPulse}
                           </div>
                         </div>
                       </motion.div>
