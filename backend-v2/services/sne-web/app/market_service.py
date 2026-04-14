@@ -109,6 +109,10 @@ def _extract_response_text(data: Dict[str, Any]) -> str:
     return "\n".join(chunks).strip()
 
 
+def _is_ready_editorial(payload: Dict[str, Any] | None) -> bool:
+    return bool(payload) and payload.get("status") == "ready"
+
+
 def _market_regime(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not entries:
         return {"label": "sem dados", "tone": "pending", "avg_change_24h": 0.0}
@@ -271,14 +275,7 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
         }
     except Exception as exc:
         logger.warning("Market editorial generation failed: %s", exc)
-        return {
-            "status": "failed",
-            "headline": "",
-            "summary_pt": "",
-            "watch_items": [],
-            "highlights": [],
-            "generated_at": _iso_now(),
-        }
+        return None
 
 
 def _refresh_market_payload() -> None:
@@ -286,13 +283,13 @@ def _refresh_market_payload() -> None:
     try:
         snapshot = _collect_market_snapshot()
         editorial = _load_cached_json(redis_client, MARKET_EDITORIAL_CACHE_KEY)
-        if not editorial or editorial.get("status") != "ready":
+        if not _is_ready_editorial(editorial):
             generated = _market_editorial_payload(snapshot)
-            if generated:
+            if _is_ready_editorial(generated):
                 editorial = generated
                 _store_cached_json(redis_client, MARKET_EDITORIAL_CACHE_KEY, MARKET_EDITORIAL_TTL, editorial)
 
-        if editorial:
+        if _is_ready_editorial(editorial):
             snapshot["editorial"] = editorial
 
         _store_cached_json(redis_client, MARKET_CACHE_KEY, MARKET_CACHE_TTL, snapshot)
@@ -313,12 +310,17 @@ def build_home_market_payload() -> Dict[str, Any]:
     redis_client = SafeRedis()
     cached = _load_cached_json(redis_client, MARKET_CACHE_KEY)
     if cached:
+        cached_editorial = cached.get("editorial") if isinstance(cached, dict) else None
+        if not _is_ready_editorial(cached_editorial):
+            ready_editorial = _load_cached_json(redis_client, MARKET_EDITORIAL_CACHE_KEY)
+            if _is_ready_editorial(ready_editorial):
+                cached["editorial"] = ready_editorial
         _trigger_market_refresh()
         return cached
 
     snapshot = _collect_market_snapshot()
     editorial = _load_cached_json(redis_client, MARKET_EDITORIAL_CACHE_KEY)
-    if editorial:
+    if _is_ready_editorial(editorial):
         snapshot["editorial"] = editorial
     _store_cached_json(redis_client, MARKET_CACHE_KEY, MARKET_CACHE_TTL, snapshot)
     _trigger_market_refresh()
