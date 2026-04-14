@@ -287,6 +287,20 @@ function formatRelativeTimestamp(value: string | null | undefined, now: Date) {
   }).format(date);
 }
 
+function withAlpha(color: string, alpha: number) {
+  const normalizedAlpha = Math.max(0, Math.min(1, alpha));
+
+  if (color.startsWith('rgba(')) {
+    return color.replace(/rgba\(([^)]+),\s*[\d.]+\)/, `rgba($1, ${normalizedAlpha})`);
+  }
+
+  if (color.startsWith('rgb(')) {
+    return color.replace('rgb(', 'rgba(').replace(')', `, ${normalizedAlpha})`);
+  }
+
+  return color;
+}
+
 export function Home() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
@@ -495,6 +509,21 @@ export function Home() {
   );
   const heroTape = activeHero?.tapeItems ?? [];
   const heroTapeLoop = [...heroTape, ...heroTape];
+  const heroFallbackMeta = activeHero ? intelMeta(activeHero.item) : null;
+  const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
+  const heroScenario = activeHero?.relatedMover
+    ? `${activeHero.relatedMover.symbol} ${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
+    : compactPhrase(marketRegime?.label, 3) ?? 'contexto editorial';
+  const heroSupportMode = activeHero?.relatedMover ? 'validado por mercado' : 'editorial em curso';
+  const heroSupportAsset = activeHero?.relatedMover?.symbol ?? compactPhrase(heroFallbackMeta, 3) ?? 'intel';
+  const heroSupportPulse = activeHero?.relatedMover
+    ? `${describeLiquidity(activeHero.relatedMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, activeHero.relatedMover.volume)} · ${describeRisk(activeHero.relatedMover.change24h)}`
+    : compactPhrase(marketEditorial?.headline, 5) ?? compactPhrase(activeHero?.implication, 5) ?? 'monitoramento ativo';
+  const heroSupportBody =
+    compactPhrase(activeHero?.item.watch_items?.[0], 8) ??
+    compactPhrase(activeHero?.implication, 8) ??
+    activeHero?.section.description ??
+    'Sem sinais adicionais agora.';
   const renderIntelTitle = (item: IntelItem, className: string) => {
     if (!item.url) {
       return (
@@ -581,7 +610,13 @@ export function Home() {
           <section
             className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
             style={{
-              background: `radial-gradient(circle at top left, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.22)'} 0%, transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))`,
+              background: `
+                radial-gradient(circle at 0% 8%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.22)} 0%, transparent 28%),
+                radial-gradient(circle at 100% 18%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.18)} 0%, transparent 24%),
+                radial-gradient(circle at 84% 100%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.14)} 0%, transparent 26%),
+                radial-gradient(circle at 14% 100%, rgba(255,255,255,0.05) 0%, transparent 22%),
+                linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))
+              `,
               backgroundColor: 'var(--bg-2)',
               borderWidth: '1px',
               borderColor: 'rgba(255,255,255,0.06)',
@@ -589,6 +624,22 @@ export function Home() {
             }}
           >
             <div className="pointer-events-none absolute inset-0">
+              <div
+                className="absolute left-[-10%] top-[-14%] h-[38%] w-[34%] rounded-full blur-3xl"
+                style={{ backgroundColor: withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.12) }}
+              />
+              <div
+                className="absolute right-[-12%] top-[6%] h-[34%] w-[30%] rounded-full blur-3xl"
+                style={{ backgroundColor: withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.1) }}
+              />
+              <div
+                className="absolute bottom-[-18%] left-[18%] h-[30%] w-[32%] rounded-full blur-3xl"
+                style={{ backgroundColor: withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.08) }}
+              />
+              <div
+                className="absolute bottom-[-16%] right-[10%] h-[26%] w-[28%] rounded-full blur-3xl"
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+              />
               <div
                 className="absolute inset-0 opacity-40"
                 style={{
@@ -746,7 +797,7 @@ export function Home() {
                         >
                           <div className="flex items-center justify-between gap-3 mb-4">
                             <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                              Leitura em foco
+                              Radar da leitura
                             </div>
                             <button
                               onClick={() => openIntelItem(activeHero.item.url)}
@@ -757,19 +808,21 @@ export function Home() {
                             </button>
                           </div>
 
+                          <div className="text-sm mb-4" style={{ color: 'var(--text-2)' }}>
+                            {heroSupportBody}
+                          </div>
+
                           <div className="grid grid-cols-2 gap-3 mb-4">
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Janela</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Modo Intel</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
                                 {activeHero.section.kicker}
                               </div>
                             </div>
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Contexto</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Cenário</div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                {activeHero.relatedMover
-                                  ? `${activeHero.relatedMover.symbol} ${activeHero.relatedMover.change24h >= 0 ? '+' : ''}${(activeHero.relatedMover.change24h * 100).toFixed(1)}%`
-                                  : marketRegime?.label ?? 'editorial'}
+                                {heroScenario}
                               </div>
                             </div>
                           </div>
@@ -799,24 +852,24 @@ export function Home() {
                         >
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                              Pulso de apoio
+                              Validação agora
                             </div>
                             <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                              {activeHero.relatedMover ? 'market-assisted' : 'intel-led'}
+                              {heroSupportMode}
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Ativo</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Ativo relacionado</div>
                               <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
-                                {activeHero.relatedMover?.symbol ?? intelMeta(activeHero.item)}
+                                {heroSupportAsset}
                               </div>
                             </div>
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Pulso</div>
-                              <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
-                                {activeHero.relatedMover ? `$${formatMarketPrice(activeHero.relatedMover.price)}` : marketRegime?.label ?? '--'}
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Sinal de validação</div>
+                              <div className="font-semibold text-sm leading-5" style={{ color: 'var(--text-1)' }}>
+                                {heroSupportPulse}
                               </div>
                             </div>
                           </div>
