@@ -486,7 +486,7 @@ export function BlogPost() {
 
             {relatedPosts.length > 0 && (
               <section
-                className="rounded-[28px] p-6 space-y-4"
+                className="rounded-[28px] p-6 space-y-4 xl:hidden"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
                 <div>
@@ -695,7 +695,7 @@ export function BlogPost() {
 
             {relatedPosts.length > 0 && (
               <section
-                className="rounded-[24px] p-5"
+                className="hidden rounded-[24px] p-5 xl:block"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
                 <div className="text-xs uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>

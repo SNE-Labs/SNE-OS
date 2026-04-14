@@ -95,6 +95,34 @@ function parseListItems(lines: string[]) {
   return null;
 }
 
+function parseInlineList(text: string) {
+  const items = text
+    .split(/\s+-\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (items.length >= 3) {
+    return items;
+  }
+
+  return null;
+}
+
+function isPlainHeadingBlock(lines: string[], hasNextBlock: boolean) {
+  if (!hasNextBlock || lines.length !== 1) return false;
+
+  const line = lines[0]?.trim() ?? '';
+  if (!line) return false;
+  if (line.startsWith('#') || line.startsWith('-') || line.startsWith('*')) return false;
+  if (/^\d+\.\s+/.test(line)) return false;
+  if (/[.!?:;]$/.test(line)) return false;
+
+  const words = line.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 12) return false;
+
+  return line.length <= 96;
+}
+
 function parseSpecialBlock(lines: string[]): ArticleBlock | null {
   const firstLine = lines[0];
   if (!firstLine) return null;
@@ -147,6 +175,13 @@ function parseBlock(rawBlock: string): ArticleBlock | null {
   const specialBlock = parseSpecialBlock(lines);
   if (specialBlock) {
     return specialBlock;
+  }
+
+  if (lines.length === 1) {
+    const inlineList = parseInlineList(lines[0]);
+    if (inlineList) {
+      return { type: 'list', items: inlineList };
+    }
   }
 
   const listItems = parseListItems(lines);
@@ -219,12 +254,13 @@ export function parseArticleMarkdown(markdown: string): ArticleDocument {
   const sections: ArticleSection[] = [];
   let currentSection: ArticleSection | null = null;
 
-  rawBlocks.forEach((rawBlock) => {
+  rawBlocks.forEach((rawBlock, index) => {
     const trimmed = rawBlock.trim();
     if (!trimmed) return;
 
     const lines = trimmed.split('\n').map((line) => line.trim()).filter(Boolean);
     const headingLine = lines[0] ?? '';
+    const hasNextBlock = index < rawBlocks.length - 1;
 
     if (headingLine.startsWith('## ') || headingLine.startsWith('# ')) {
       const title = headingLine.replace(/^#+\s+/, '').trim();
@@ -241,6 +277,17 @@ export function parseArticleMarkdown(markdown: string): ArticleDocument {
         const parsed = parseBlock(remainder);
         if (parsed) currentSection.blocks.push(parsed);
       }
+      return;
+    }
+
+    if (isPlainHeadingBlock(lines, hasNextBlock)) {
+      currentSection = {
+        id: slugify(headingLine),
+        title: headingLine,
+        tone: detectTone(headingLine),
+        blocks: [],
+      };
+      sections.push(currentSection);
       return;
     }
 
