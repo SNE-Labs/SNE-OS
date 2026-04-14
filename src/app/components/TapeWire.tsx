@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 import { useShellContextData } from '../shell-context';
 
@@ -82,12 +83,22 @@ export function TapeWire() {
             key={`${item.label}-${index}`}
             className="flex shrink-0 items-center gap-3"
           >
-            <div
-              className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em]"
-              style={toneStyles[item.tone]}
-            >
-              {item.label}
-            </div>
+            {item.href ? (
+              <Link
+                to={item.href}
+                className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+                style={toneStyles[item.tone]}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <div
+                className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em]"
+                style={toneStyles[item.tone]}
+              >
+                {item.label}
+              </div>
+            )}
             <div
               className="h-px w-6 shrink-0"
               style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}

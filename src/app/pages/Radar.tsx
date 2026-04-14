@@ -132,7 +132,7 @@ export function Radar() {
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
   const radarDescription = selectedMarket
     ? `Radar do SNE OS para ${radarTitleSymbol}: preço ${formatPrice(selectedMarket.price)}, variação ${(selectedMarket.change24h * 100).toFixed(2)}% e leitura tática de liquidez.`
-    : `Radar do SNE OS para ${radarTitleSymbol}: leitura tática de liquidez, momentum e regime de mercado.`;
+    : `Radar do SNE OS para ${radarTitleSymbol}: leitura tática de liquidez, momentum e direção do mercado.`;
 
   useSeoMeta({
     title: `${radarTitleSymbol} Radar | SNE OS`,

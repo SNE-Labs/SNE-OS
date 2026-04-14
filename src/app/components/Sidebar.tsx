@@ -17,6 +17,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
   const navigate = useNavigate();
   const { routeMeta, sidebarContext, sessionStats } = useShellContextData();
   const panelTransition = 'opacity 180ms var(--ease-shell), transform 220ms var(--ease-shell)';
+  const sidebarItems = railNavigationGroups.flatMap((group) => group.items).filter((item) => item.path !== '/home');
 
   return (
     <aside
@@ -61,7 +62,8 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               {pinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
             </button>
 
-            <div
+            <NavLink
+              to="/home"
               className="flex h-12 w-12 items-center justify-center rounded-[20px] border"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.025)',
@@ -75,10 +77,10 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
                 alt="SNE OS"
                 className="h-6 w-6 object-contain"
               />
-            </div>
+            </NavLink>
 
             <nav className="flex w-full flex-col items-center gap-2 px-3">
-              {railNavigationGroups.flatMap((group) => group.items).map((item) => (
+              {sidebarItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}

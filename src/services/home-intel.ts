@@ -52,7 +52,7 @@ const SECTION_COPY: Record<HomeIntelSectionKey, Omit<HomeIntelSection, 'items'>>
     title: 'Pulso de mercado',
     shortTitle: 'Mercado',
     kicker: 'Fluxo tático',
-    description: 'Leituras de preço, liquidez e regime de risco com foco operacional.',
+    description: 'Leituras de preço, liquidez e direção do fluxo com foco operacional.',
   },
   tech: {
     key: 'tech',

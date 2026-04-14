@@ -440,7 +440,7 @@ export function MobileHome() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-[var(--text-1)]">Pulso de mercado</h3>
-                <div className="text-xs text-[var(--text-3)] mt-1">Regime, fluxo e leitura tática para a próxima janela.</div>
+                <div className="text-xs text-[var(--text-3)] mt-1">Direção, fluxo e leitura tática para a próxima janela.</div>
               </div>
               <MobileButton variant="secondary" onClick={() => navigate('/radar')}>
                 Radar

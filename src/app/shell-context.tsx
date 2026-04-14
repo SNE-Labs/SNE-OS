@@ -12,6 +12,7 @@ type ShellTone = 'accent' | 'success' | 'warning' | 'neutral';
 export type ShellChip = {
   label: string;
   tone: ShellTone;
+  href?: string;
 };
 
 export type SidebarContext = {
@@ -23,7 +24,7 @@ export type SidebarContext = {
   actionPath: string;
 };
 
-type TapeBucket = 'global' | 'route' | 'session' | 'identity' | 'editorial';
+type TapeBucket = 'global' | 'route' | 'session' | 'identity' | 'editorial' | 'editorial_secondary';
 
 function trimCopy(value: string | undefined | null, max = 88) {
   const clean = (value || '').trim();
@@ -90,9 +91,14 @@ function buildTapeItems(
   const passport = snapshots.passport;
   const vault = snapshots.vault;
 
-  const regime = home?.market?.regime?.label || radar?.market_regime?.label;
-  if (regime) {
-    pushUnique('global', { label: `Regime ${regime.toUpperCase()}`, tone: 'accent' });
+  const avgMarketChange = home?.market?.regime?.avg_change_24h ?? radar?.market_regime?.avg_change_24h;
+  if (typeof avgMarketChange === 'number' && Number.isFinite(avgMarketChange)) {
+    const formatted = `${avgMarketChange >= 0 ? '+' : ''}${(avgMarketChange * 100).toFixed(1)}% média 24h`;
+    pushUnique('global', {
+      label: formatted,
+      tone: avgMarketChange >= 0 ? 'success' : avgMarketChange < 0 ? 'warning' : 'accent',
+      href: '/radar',
+    });
   }
 
   const featured = radar?.featured;
@@ -101,47 +107,84 @@ function buildTapeItems(
     pushUnique('route', {
       label: `${featured.symbol} ${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
       tone: change >= 0 ? 'success' : 'warning',
+      href: `/radar/${String(featured.symbol).toLowerCase()}`,
     });
   }
 
-  const leadIntel = home?.intel?.items?.[0];
-  if (leadIntel?.title_pt || leadIntel?.title) {
-    pushUnique(pathname.startsWith('/intel') || pathname.startsWith('/blog') ? 'route' : 'editorial', {
-      label: `Intel Brief • ${trimCopy(leadIntel.title_pt || leadIntel.title, 40)}`,
+  const intelItems = Array.isArray(home?.intel?.items) ? home.intel.items.slice(0, 2) : [];
+  const leadIntel = intelItems[0];
+  intelItems.forEach((item: any, index: number) => {
+    const title = item?.title_pt || item?.title;
+    if (!title) return;
+    const href = typeof item?.url === 'string' ? normalizeIntelRoute(item.url) : undefined;
+    const bucket: TapeBucket =
+      pathname.startsWith('/intel') || pathname.startsWith('/blog')
+        ? 'route'
+        : index === 0
+          ? 'editorial'
+          : 'editorial_secondary';
+    pushUnique(bucket, {
+      label: `Intel Brief • ${trimCopy(title, 58)}`,
       tone: 'neutral',
+      href,
     });
-  }
+  });
 
   if (auth.isAuthenticated && auth.address) {
-    pushUnique('session', { label: `Sessão ativa • ${formatAddress(auth.address)}`, tone: 'success' });
+    pushUnique('session', {
+      label: `Sessão ativa • ${formatAddress(auth.address)}`,
+      tone: 'success',
+      href: '/vault',
+    });
   } else {
-    pushUnique('session', { label: 'Conecte uma wallet para persistir contexto', tone: 'warning' });
+    pushUnique('session', {
+      label: 'Conecte uma wallet para persistir contexto',
+      tone: 'warning',
+      href: '/vault',
+    });
   }
 
   if (pathname.startsWith('/pass') && passport?.stats?.wallets_total) {
-    pushUnique('identity', { label: `${passport.stats.wallets_total} wallets vinculadas`, tone: 'neutral' });
+    pushUnique('identity', {
+      label: `${passport.stats.wallets_total} wallets vinculadas`,
+      tone: 'neutral',
+      href: '/pass',
+    });
   }
 
   if (pathname.startsWith('/vault') && vault?.aggregate?.total_value_display) {
-    pushUnique('route', { label: `Capital visível ${vault.aggregate.total_value_display}`, tone: 'neutral' });
+    pushUnique('route', {
+      label: `Capital visível ${vault.aggregate.total_value_display}`,
+      tone: 'neutral',
+      href: '/vault',
+    });
   }
 
   if (pathname.startsWith('/vault') && vault?.aggregate?.active_networks != null) {
-    pushUnique('identity', { label: `${vault.aggregate.active_networks} redes em leitura`, tone: 'neutral' });
+    pushUnique('identity', {
+      label: `${vault.aggregate.active_networks} redes em leitura`,
+      tone: 'neutral',
+      href: '/vault',
+    });
   }
 
   if (pathname.startsWith('/pass') && !passport?.stats?.wallets_total) {
-    pushUnique('identity', { label: 'Lookup público pronto', tone: 'neutral' });
+    pushUnique('identity', {
+      label: 'Lookup público pronto',
+      tone: 'neutral',
+      href: '/pass',
+    });
   }
 
   if ((pathname.startsWith('/intel') || pathname.startsWith('/blog')) && leadIntel?.editorial_kind) {
     pushUnique('route', {
       label: leadIntel.editorial_kind === 'briefing' ? 'Leitura rápida ativa' : 'Dossiê em foco',
       tone: 'neutral',
+      href: typeof leadIntel?.url === 'string' ? normalizeIntelRoute(leadIntel.url) : '/intel',
     });
   }
 
-  const priority: TapeBucket[] = ['global', 'route', 'session', 'identity', 'editorial'];
+  const priority: TapeBucket[] = ['global', 'route', 'editorial', 'editorial_secondary', 'session', 'identity'];
   return priority
     .map((bucket) => items.find((item) => item.bucket === bucket))
     .filter(Boolean)
@@ -182,7 +225,9 @@ function buildSidebarContext(
         signal?.timeframe ? `${signal.signal || 'HOLD'} ${signal.timeframe}` : '',
         signal?.strength ? localizeSignalStrength(signal.strength) : '',
         priceLabel !== '--' ? `Preço ${priceLabel}` : '',
-        radar?.market_regime?.label ? `Regime ${radar.market_regime.label}` : '',
+        typeof radar?.market_regime?.avg_change_24h === 'number'
+          ? `${radar.market_regime.avg_change_24h >= 0 ? '+' : ''}${(radar.market_regime.avg_change_24h * 100).toFixed(1)}% média 24h`
+          : '',
       ].filter(Boolean),
       actionLabel: 'Abrir Intel Brief',
       actionPath: '/intel',
@@ -324,8 +369,12 @@ export function useShellContextData() {
     const routeMeta = resolveRouteMeta(location.pathname);
     const topbarChips: ShellChip[] = [];
 
-    if (home?.market?.regime?.label) {
-      topbarChips.push({ label: `Regime ${home.market.regime.label.toUpperCase()}`, tone: 'accent' });
+    if (typeof home?.market?.regime?.avg_change_24h === 'number') {
+      const avgChange = home.market.regime.avg_change_24h;
+      topbarChips.push({
+        label: `${avgChange >= 0 ? '+' : ''}${(avgChange * 100).toFixed(1)}% média 24h`,
+        tone: avgChange >= 0 ? 'success' : avgChange < 0 ? 'warning' : 'accent',
+      });
     }
 
     if (location.pathname.startsWith('/pass') && passport?.stats?.wallets_total) {

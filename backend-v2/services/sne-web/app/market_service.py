@@ -133,10 +133,10 @@ def _market_regime(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     negatives = sum(1 for item in entries if item["change24h"] < 0)
 
     if avg_change >= 0.02 and positives >= negatives:
-        return {"label": "risk-on", "tone": "active", "avg_change_24h": avg_change}
+        return {"label": "compra dominante", "tone": "active", "avg_change_24h": avg_change}
     if avg_change <= -0.02 and negatives > positives:
-        return {"label": "risk-off", "tone": "warning", "avg_change_24h": avg_change}
-    return {"label": "mixed", "tone": "pending", "avg_change_24h": avg_change}
+        return {"label": "venda dominante", "tone": "warning", "avg_change_24h": avg_change}
+    return {"label": "mercado misto", "tone": "pending", "avg_change_24h": avg_change}
 
 
 def _normalize_market_entries(raw: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

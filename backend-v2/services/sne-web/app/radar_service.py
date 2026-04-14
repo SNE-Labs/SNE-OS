@@ -47,23 +47,23 @@ def _market_regime(markets: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     if avg_change >= 0.015 and positive >= max(3, len(markets) // 2):
         return {
-            "label": "risk-on",
+            "label": "compra dominante",
             "tone": "active",
             "avg_change_24h": avg_change,
             "summary": "Fluxo comprador domina o universo liquido monitorado pelo Radar.",
         }
     if avg_change <= -0.015 and negative >= max(3, len(markets) // 2):
         return {
-            "label": "risk-off",
+            "label": "venda dominante",
             "tone": "warning",
             "avg_change_24h": avg_change,
             "summary": "Pressao vendedora domina a janela atual do universo Radar.",
         }
     return {
-        "label": "mixed",
+        "label": "mercado misto",
         "tone": "pending",
         "avg_change_24h": avg_change,
-        "summary": "Mercado dividido, sem dominancia clara entre risco e defensividade.",
+        "summary": "Mercado dividido, sem direcao clara entre compra e venda.",
     }
 
 

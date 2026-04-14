@@ -549,12 +549,12 @@ def _market_blog_candidates(limit: int = BLOG_MARKET_DAILY_LIMIT) -> List[Dict[s
             )
             why = (
                 f"{asset} concentra atenção no market pulse e merece acompanhamento em liquidez, "
-                f"regime de risco e continuidade de fluxo nas próximas horas."
+                f"direção do fluxo e continuidade de movimento nas próximas horas."
             )
             watch_items = [
                 f"momentum de {asset}",
                 f"liquidez de {asset}",
-                "continuidade do regime intradiario",
+                "continuidade do fluxo intradiario",
             ]
 
             candidates.append({
