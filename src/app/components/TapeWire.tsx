@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { useShellContextData } from '../shell-context';
 
 const toneStyles = {
@@ -25,7 +27,16 @@ const toneStyles = {
 
 export function TapeWire() {
   const { tapeItems } = useShellContextData();
-  const items = tapeItems.slice(0, 4);
+  const items = useMemo(() => {
+    if (tapeItems.length === 0) return [];
+    const repeated: typeof tapeItems = [];
+
+    while (repeated.length < Math.max(tapeItems.length * 3, 12)) {
+      repeated.push(...tapeItems);
+    }
+
+    return repeated;
+  }, [tapeItems]);
 
   if (items.length === 0) {
     return null;
@@ -40,21 +51,47 @@ export function TapeWire() {
           'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)), rgba(6,8,12,0.9)',
       }}
     >
-      <div className="mx-auto grid max-w-[1480px] grid-cols-1 gap-2 px-6 py-3 lg:grid-cols-4 xl:px-8">
-        {items.map((item) => (
+      <div
+        className="absolute left-6 top-1/2 z-20 hidden -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] lg:flex"
+        style={{
+          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundColor: 'rgba(8, 11, 16, 0.74)',
+          color: 'var(--text-3)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
+      >
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: 'var(--accent-orange)', boxShadow: '0 0 12px rgba(255,102,0,0.45)' }}
+        />
+        Fluxo
+      </div>
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20"
+        style={{ background: 'linear-gradient(90deg, rgba(7,9,11,0.92), transparent)' }}
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20"
+        style={{ background: 'linear-gradient(270deg, rgba(7,9,11,0.92), transparent)' }}
+      />
+
+      <div className="shell-tape-track flex min-w-max items-center gap-3 py-3 pl-28 pr-8">
+        {items.map((item, index) => (
           <div
-            key={item.label}
-            className="min-w-0 rounded-[18px] border px-4 py-2.5"
-            style={{
-              ...toneStyles[item.tone],
-              backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0))',
-            }}
+            key={`${item.label}-${index}`}
+            className="flex shrink-0 items-center gap-3"
           >
             <div
-              className="truncate text-[11px] uppercase tracking-[0.18em]"
+              className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em]"
+              style={toneStyles[item.tone]}
             >
               {item.label}
             </div>
+            <div
+              className="h-px w-6 shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+            />
           </div>
         ))}
       </div>

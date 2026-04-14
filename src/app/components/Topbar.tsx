@@ -1,4 +1,4 @@
-import { Command, PanelLeft, Wallet } from 'lucide-react';
+import { PanelLeft, Wallet } from 'lucide-react';
 
 import { useShellContextData } from '../shell-context';
 import { WalletConnect } from './passport/WalletConnect';
@@ -34,6 +34,7 @@ const chipStyles = {
 
 export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned }: TopbarProps) {
   const { routeMeta, topbarChips, sessionStats } = useShellContextData();
+  void onOpenCommandPalette;
 
   return (
     <header
@@ -45,7 +46,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         WebkitBackdropFilter: 'blur(20px)',
       }}
     >
-      <div className="grid items-center gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(460px,1.45fr)_auto]">
+      <div className="flex items-start justify-between gap-5">
         <div className="flex min-w-0 items-start gap-4">
           <button
             type="button"
@@ -71,33 +72,6 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
               {routeMeta.descriptor}
             </div>
           </div>
-        </div>
-
-        <div className="flex min-w-0 justify-center px-2 xl:px-4">
-          <button
-            type="button"
-            onClick={onOpenCommandPalette}
-            className="hidden w-full max-w-[720px] items-center gap-3 rounded-[22px] border px-5 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 lg:flex"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.035)',
-              borderColor: 'rgba(255,255,255,0.08)',
-              color: 'var(--text-2)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 16px 36px rgba(0,0,0,0.12)',
-            }}
-          >
-            <Command className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-            <span className="flex-1 text-[15px]">Buscar ativo, wallet ou leitura</span>
-            <span
-              className="rounded-full border px-2 py-1 text-[11px] uppercase tracking-[0.18em]"
-              style={{
-                borderColor: 'rgba(255,255,255,0.08)',
-                backgroundColor: 'rgba(255,255,255,0.02)',
-                color: 'var(--text-3)',
-              }}
-            >
-              ⌘K
-            </span>
-          </button>
         </div>
 
         <div className="flex items-center justify-end gap-3">
