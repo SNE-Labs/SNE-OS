@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
@@ -11,6 +11,7 @@ import { Topbar } from './components/Topbar';
 import { BottomDock } from './components/BottomDock';
 import { TapeWire } from './components/TapeWire';
 import { ShellCommandPalette } from './components/ShellCommandPalette';
+import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
@@ -41,6 +42,7 @@ const SUPPORTED_CHAINS = [mainnet, arbitrum, optimism, base, polygon, scroll] as
 
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [sidebarPinned, setSidebarPinned] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -82,71 +84,87 @@ function AppContent() {
   }
 
   // Desktop Layout (existing)
+  const atmosphereClass = resolveAtmosphereClass(location.pathname);
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-0)' }}>
-      {!sidebarPinned && sidebarExpanded ? (
-        <button
-          type="button"
-          aria-label="Fechar sidebar"
-          onClick={() => setSidebarExpanded(false)}
-          className="fixed inset-0 z-30 hidden bg-black/15 lg:block"
-          style={{ backgroundColor: 'var(--shell-overlay)' }}
+    <div className={`shell-frame ${atmosphereClass}`} style={{ backgroundColor: 'var(--bg-0)' }}>
+      <AsciiHaze atmosphereKey={atmosphereClass} />
+      <div className="relative z-10 min-h-screen">
+        {!sidebarPinned && sidebarExpanded ? (
+          <button
+            type="button"
+            aria-label="Fechar sidebar"
+            onClick={() => setSidebarExpanded(false)}
+            className="fixed inset-0 z-30 hidden bg-black/15 lg:block"
+            style={{ backgroundColor: 'var(--shell-overlay)' }}
+          />
+        ) : null}
+
+        <Sidebar
+          expanded={sidebarExpanded}
+          pinned={sidebarPinned}
+          onExpand={() => setSidebarExpanded(true)}
+          onCollapse={() => setSidebarExpanded(false)}
+          onTogglePin={() => setSidebarPinned((value) => !value)}
         />
-      ) : null}
 
-      <Sidebar
-        expanded={sidebarExpanded}
-        pinned={sidebarPinned}
-        onExpand={() => setSidebarExpanded(true)}
-        onCollapse={() => setSidebarExpanded(false)}
-        onTogglePin={() => setSidebarPinned((value) => !value)}
-      />
+        <div className="min-h-screen lg:pl-[var(--sidebar-rail-width)]">
+          <Topbar
+            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+            onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
+            sidebarPinned={sidebarPinned}
+          />
+          <TapeWire />
 
-      <div className="min-h-screen lg:pl-[var(--sidebar-rail-width)]">
-        <Topbar
+          <main className="overflow-y-auto pb-32">
+            <Suspense fallback={<DesktopSkeleton />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/intel" element={<Blog />} />
+                <Route path="/intel/topic/:topic" element={<Blog />} />
+                <Route path="/intel/chain/:chain" element={<Blog />} />
+                <Route path="/intel/asset/:asset" element={<Blog />} />
+                <Route path="/intel/:slug" element={<BlogPost />} />
+                <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
+                <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
+                <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
+                <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
+                <Route path="/radar" element={<DesktopRadar />} />
+                <Route path="/radar/:symbol" element={<DesktopRadar />} />
+                <Route path="/pass" element={<DesktopPass />} />
+                <Route path="/vault" element={<DesktopVault />} />
+                <Route path="/keys" element={<DesktopKeys />} />
+                <Route path="/secrets" element={<DesktopSecrets />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/status" element={<Status />} />
+                <Route path="/docs" element={<Docs />} />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
+
+        <BottomDock
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
           sidebarPinned={sidebarPinned}
         />
-        <TapeWire />
-
-        <main className="overflow-y-auto pb-32">
-          <Suspense fallback={<DesktopSkeleton />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/intel" element={<Blog />} />
-              <Route path="/intel/topic/:topic" element={<Blog />} />
-              <Route path="/intel/chain/:chain" element={<Blog />} />
-              <Route path="/intel/asset/:asset" element={<Blog />} />
-              <Route path="/intel/:slug" element={<BlogPost />} />
-              <Route path="/blog" element={<Navigate to="/intel" replace />} />
-              <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
-              <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
-              <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
-              <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
-              <Route path="/radar" element={<DesktopRadar />} />
-              <Route path="/radar/:symbol" element={<DesktopRadar />} />
-              <Route path="/pass" element={<DesktopPass />} />
-              <Route path="/vault" element={<DesktopVault />} />
-              <Route path="/keys" element={<DesktopKeys />} />
-              <Route path="/secrets" element={<DesktopSecrets />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/status" element={<Status />} />
-              <Route path="/docs" element={<Docs />} />
-            </Routes>
-          </Suspense>
-        </main>
+        <ShellCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       </div>
-
-      <BottomDock
-        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
-        sidebarPinned={sidebarPinned}
-      />
-      <ShellCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
     </div>
   );
+}
+
+function resolveAtmosphereClass(pathname: string): AtmosphereKey {
+  if (pathname.startsWith('/radar')) return 'shell-frame--radar';
+  if (pathname.startsWith('/intel') || pathname.startsWith('/blog')) return 'shell-frame--intel';
+  if (pathname.startsWith('/pass')) return 'shell-frame--passport';
+  if (pathname.startsWith('/vault')) return 'shell-frame--vault';
+  if (pathname.startsWith('/keys') || pathname.startsWith('/secrets')) return 'shell-frame--keys';
+  if (pathname.startsWith('/pricing')) return 'shell-frame--vault';
+  if (pathname.startsWith('/docs') || pathname.startsWith('/status')) return 'shell-frame--docs';
+  return 'shell-frame--home';
 }
 
 function LegacyBlogRedirect() {

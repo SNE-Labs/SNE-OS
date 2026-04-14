@@ -56,6 +56,12 @@
   --shadow-dock: 0 18px 42px rgba(0, 0, 0, 0.34);
   --ease-shell: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-shell: 200ms;
+  --shell-bg-accent-1: rgba(52, 24, 8, 0.34);
+  --shell-bg-accent-2: rgba(10, 30, 44, 0.34);
+  --shell-bg-accent-3: rgba(10, 36, 28, 0.22);
+  --shell-bg-intensity: 1.12;
+  --shell-bg-halo: rgba(255, 255, 255, 0.028);
+  --shell-noise-opacity: 0.065;
   
   /* Font */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -92,9 +98,9 @@
 
   body {
     background:
-      radial-gradient(circle at top left, rgba(255, 102, 0, 0.06), transparent 22%),
-      radial-gradient(circle at 55% top, rgba(255,255,255,0.025), transparent 24%),
-      radial-gradient(circle at bottom right, rgba(255,255,255,0.03), transparent 28%),
+      radial-gradient(circle at top left, rgba(255, 102, 0, 0.04), transparent 24%),
+      radial-gradient(circle at 55% top, rgba(255,255,255,0.018), transparent 24%),
+      radial-gradient(circle at bottom right, rgba(255,255,255,0.022), transparent 28%),
       var(--bg-0);
     color: var(--text-1);
     font-family: var(--font-family);
@@ -163,6 +169,96 @@
     will-change: transform;
   }
 
+  .shell-frame {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+
+  .shell-frame::before,
+  .shell-frame::after {
+    content: '';
+    position: fixed;
+    inset: -16%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: calc(0.98 * var(--shell-bg-intensity));
+    will-change: transform, opacity;
+  }
+
+  .shell-frame::before {
+    background:
+      radial-gradient(circle at 18% 20%, var(--shell-bg-accent-1), transparent 40%),
+      radial-gradient(circle at 28% 52%, var(--shell-bg-halo), transparent 24%),
+      radial-gradient(circle at 44% 74%, rgba(255, 255, 255, 0.018), transparent 22%);
+    filter: blur(20px);
+    animation: shell-atmosphere-drift-a 22s var(--ease-shell) infinite alternate;
+  }
+
+  .shell-frame::after {
+    background:
+      radial-gradient(circle at 72% 24%, var(--shell-bg-accent-2), transparent 36%),
+      radial-gradient(circle at 76% 76%, var(--shell-bg-accent-3), transparent 30%),
+      radial-gradient(circle at 58% 56%, rgba(255, 255, 255, 0.02), transparent 18%);
+    filter: blur(24px);
+    animation: shell-atmosphere-drift-b 26s var(--ease-shell) infinite alternate;
+  }
+
+  .shell-frame__ascii {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    opacity: 0.9;
+    mix-blend-mode: screen;
+  }
+
+  .shell-frame--home {
+    --shell-bg-accent-1: rgba(56, 24, 10, 0.36);
+    --shell-bg-accent-2: rgba(8, 26, 42, 0.36);
+    --shell-bg-accent-3: rgba(18, 44, 36, 0.22);
+  }
+
+  .shell-frame--radar {
+    --shell-bg-accent-1: rgba(8, 46, 30, 0.34);
+    --shell-bg-accent-2: rgba(7, 24, 42, 0.38);
+    --shell-bg-accent-3: rgba(10, 56, 38, 0.24);
+  }
+
+  .shell-frame--intel {
+    --shell-bg-accent-1: rgba(58, 28, 10, 0.35);
+    --shell-bg-accent-2: rgba(8, 24, 40, 0.36);
+    --shell-bg-accent-3: rgba(14, 28, 56, 0.2);
+  }
+
+  .shell-frame--passport {
+    --shell-bg-accent-1: rgba(50, 24, 10, 0.33);
+    --shell-bg-accent-2: rgba(24, 28, 36, 0.28);
+    --shell-bg-accent-3: rgba(8, 20, 38, 0.2);
+  }
+
+  .shell-frame--vault {
+    --shell-bg-accent-1: rgba(8, 44, 30, 0.34);
+    --shell-bg-accent-2: rgba(8, 26, 44, 0.38);
+    --shell-bg-accent-3: rgba(10, 54, 40, 0.22);
+  }
+
+  .shell-frame--keys {
+    --shell-bg-accent-1: rgba(8, 26, 52, 0.34);
+    --shell-bg-accent-2: rgba(6, 18, 38, 0.4);
+    --shell-bg-accent-3: rgba(44, 20, 8, 0.18);
+  }
+
+  .shell-frame--docs {
+    --shell-bg-accent-1: rgba(24, 30, 42, 0.24);
+    --shell-bg-accent-2: rgba(8, 18, 32, 0.28);
+    --shell-bg-accent-3: rgba(38, 22, 10, 0.14);
+    --shell-bg-intensity: 0.9;
+  }
+
   @keyframes shell-tape-scroll {
     0% {
       transform: translateX(0);
@@ -172,8 +268,36 @@
     }
   }
 
+  @keyframes shell-atmosphere-drift-a {
+    0% {
+      transform: translate3d(-2.5%, -1.5%, 0) scale(1);
+      opacity: calc(0.9 * var(--shell-bg-intensity));
+    }
+    100% {
+      transform: translate3d(3.5%, 2.5%, 0) scale(1.1);
+      opacity: calc(1.02 * var(--shell-bg-intensity));
+    }
+  }
+
+  @keyframes shell-atmosphere-drift-b {
+    0% {
+      transform: translate3d(2.5%, -2.5%, 0) scale(1.02);
+      opacity: calc(0.88 * var(--shell-bg-intensity));
+    }
+    100% {
+      transform: translate3d(-3%, 3%, 0) scale(1.12);
+      opacity: calc(1.04 * var(--shell-bg-intensity));
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .shell-tape-track {
+      animation: none;
+    }
+
+    .shell-frame::before,
+    .shell-frame::after,
+    .shell-frame__ascii {
       animation: none;
     }
   }
