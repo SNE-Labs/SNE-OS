@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, ArrowUpRight, BadgeCheck, FileText, KeyRound, LockKeyhole, Shield, Waves, Wallet, Zap } from 'lucide-react';
+import { Activity, ArrowUpRight, Shield, Waves, Wallet, Zap } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, LoadingSkeletonGroup, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { apiGet } from '@/lib/api/http';
@@ -104,15 +104,6 @@ type HomeResponse = {
   };
 };
 
-const QUICK_ACTIONS = [
-  { label: 'Passport', path: '/pass', icon: BadgeCheck },
-  { label: 'Vault', path: '/vault', icon: Shield },
-  { label: 'Radar', path: '/radar', icon: Waves },
-  { label: 'Secrets', path: '/secrets', icon: LockKeyhole },
-  { label: 'Keys', path: '/keys', icon: KeyRound },
-  { label: 'Docs', path: '/docs', icon: FileText },
-] as const;
-
 function toBadgeVariant(
   tone?: 'active' | 'success' | 'warning' | 'pending'
 ): 'success' | 'warning' | 'neutral' | 'orange' {
@@ -152,6 +143,21 @@ export function MobileHome() {
   const marketRegime = home?.market.regime;
   const intelItems = home?.intel.items ?? [];
   const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
+  const orderedModules = useMemo(() => {
+    const priority: Record<string, number> = {
+      '/radar': 0,
+      '/vault': 1,
+      '/pass': 2,
+      '/keys': 3,
+      '/secrets': 4,
+      '/docs': 5,
+    };
+    return [...(home?.modules ?? [])].sort((left, right) => {
+      const leftScore = priority[left.path] ?? 99;
+      const rightScore = priority[right.path] ?? 99;
+      return leftScore - rightScore;
+    });
+  }, [home?.modules]);
   const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.title_pt || item.title || item.title_original || 'Intel item';
   const intelSummary = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
@@ -267,7 +273,7 @@ export function MobileHome() {
   return (
     <MobilePageShell
       title="SNE OS"
-      subtitle="Identidade, capital, secrets e intel multichain."
+      subtitle="Radar, intelligence e operações multichain."
       statusPill={{
         label: home?.brief.badge ?? 'loading',
         variant: toBadgeVariant(home?.brief.badge_status),
@@ -291,12 +297,13 @@ export function MobileHome() {
               </div>
               <div className="min-w-0">
                 <div className="text-[var(--text-1)] mb-1">
-                  {home.session.address ? formatAddress(home.session.address) : 'No wallet linked'}
+                  {home.session.address ? formatAddress(home.session.address) : 'Sessão sem carteira'}
                 </div>
                 <p className="text-sm text-[var(--text-2)]">{home.brief.summary}</p>
               </div>
             </div>
 
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Hub operacional</div>
             <h2 className="text-[var(--text-1)] mb-4">{home.brief.headline}</h2>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -319,66 +326,20 @@ export function MobileHome() {
 
             <div className="grid grid-cols-2 gap-3">
               <MobileButton className="w-full" onClick={() => navigate(home.session.authenticated ? '/vault' : '/pass')}>
-                {home.session.authenticated ? 'Open Vault' : 'Connect Wallet'}
+                {home.session.authenticated ? 'Abrir Vault' : 'Conectar carteira'}
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/radar')}>
-                Open Radar
+                Abrir Radar
               </MobileButton>
             </div>
           </SurfaceCard>
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Quick Launch</h3>
-              <Badge variant="neutral" size="sm">{QUICK_ACTIONS.length}</Badge>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {QUICK_ACTIONS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
-                  >
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <Icon className="w-4 h-4 text-[var(--accent-orange)]" />
-                      <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
-                    </div>
-                    <div className="text-[var(--text-1)]">{item.label}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Modules</h3>
-              <Badge variant="neutral" size="sm">{home.modules.length}</Badge>
-            </div>
-
-            <div className="space-y-3">
-              {home.modules.map((module) => (
-                <button
-                  key={module.path}
-                  onClick={() => navigate(module.path)}
-                  className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="text-[var(--text-1)]">{module.title}</div>
-                    <Badge variant={toBadgeVariant(module.status)} size="sm">{module.label}</Badge>
-                  </div>
-                  <div className="text-sm text-[var(--text-2)]">Open {module.title} inside the OS.</div>
-                </button>
-              ))}
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Market Pulse</h3>
+              <div>
+                <h3 className="text-[var(--text-1)]">Market Pulse</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Regime, fluxo e leitura tática para a próxima janela.</div>
+              </div>
               <MobileButton variant="secondary" onClick={() => navigate('/radar')}>
                 Radar
               </MobileButton>
@@ -386,38 +347,23 @@ export function MobileHome() {
 
             {movers.length === 0 ? (
               <EmptyState
-                title="No live movers"
-                description="The market pulse is waiting for fresh market data."
+                title="Sem tape ao vivo"
+                description="O market pulse volta a aparecer assim que o Radar trouxer novos dados."
               />
             ) : (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={toBadgeVariant(marketRegime?.tone)} size="sm">{marketRegime?.label ?? 'sem dados'}</Badge>
-                  {marketEditorial?.status === 'ready' && <Badge variant="orange" size="sm">IA</Badge>}
+                  {marketEditorial?.status === 'ready' && <Badge variant="orange" size="sm">editorial</Badge>}
                 </div>
 
-                {movers.map((item) => (
-                  <div key={item.symbol} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <div className="text-[var(--text-1)]">{item.symbol}</div>
-                      <div className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
-                        {item.change24h >= 0 ? '+' : ''}{(item.change24h * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 text-sm text-[var(--text-2)]">
-                      <span>${formatPrice(item.price)}</span>
-                      <span>Vol ${formatCompactNumber(Number(item.volume))}</span>
-                    </div>
-                  </div>
-                ))}
-
                 {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt) && (
-                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 space-y-2">
+                  <div className="rounded-2xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-4 space-y-2">
                     {marketEditorial.headline && <div className="text-[var(--text-1)]">{marketEditorial.headline}</div>}
                     {marketEditorial.summary_pt && <div className="text-sm text-[var(--text-2)]">{marketEditorial.summary_pt}</div>}
                     {marketEditorial.watch_items?.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {marketEditorial.watch_items.map((item) => (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {marketEditorial.watch_items.slice(0, 3).map((item) => (
                           <Badge key={item} variant="neutral" size="sm">{item}</Badge>
                         ))}
                       </div>
@@ -425,31 +371,69 @@ export function MobileHome() {
                   </div>
                 )}
 
-                {losers.length > 0 && (
-                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                    <div className="text-xs uppercase text-[var(--text-3)] mb-2">Maiores Quedas</div>
-                    <div className="space-y-2">
-                      {losers.map((item) => (
-                        <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="text-[var(--text-1)]">{item.symbol}</span>
-                          <span className="text-[var(--danger)]">{(item.change24h * 100).toFixed(1)}%</span>
-                        </div>
-                      ))}
+                {movers[0] && (
+                  <div className="rounded-2xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-4">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--text-3)] mb-1">Líder do fluxo</div>
+                        <div className="text-[var(--text-1)]">{movers[0].symbol}</div>
+                      </div>
+                      <div className={movers[0].change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
+                        {movers[0].change24h >= 0 ? '+' : ''}{(movers[0].change24h * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm text-[var(--text-2)]">
+                      <span>${formatPrice(movers[0].price)}</span>
+                      <span>Vol ${formatCompactNumber(Number(movers[0].volume))}</span>
                     </div>
                   </div>
                 )}
 
-                {volumeLeaders.length > 0 && (
-                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                    <div className="text-xs uppercase text-[var(--text-3)] mb-2">Volume Dominante</div>
-                    <div className="space-y-2">
-                      {volumeLeaders.map((item) => (
-                        <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="text-[var(--text-1)]">{item.symbol}</span>
-                          <span className="text-[var(--text-2)]">${formatCompactNumber(Number(item.volume))}</span>
+                {(movers.slice(1, 3).length > 0 || volumeLeaders.length > 0 || losers.length > 0) && (
+                  <div className="grid grid-cols-1 gap-3">
+                    {movers.slice(1, 3).length > 0 && (
+                      <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                        <div className="text-xs uppercase text-[var(--text-3)] mb-2">Continuação do movimento</div>
+                        <div className="space-y-2">
+                          {movers.slice(1, 3).map((item) => (
+                            <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="text-[var(--text-1)]">{item.symbol}</span>
+                              <span className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
+                                {item.change24h >= 0 ? '+' : ''}{(item.change24h * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {volumeLeaders.length > 0 && (
+                      <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                        <div className="text-xs uppercase text-[var(--text-3)] mb-2">Volume dominante</div>
+                        <div className="space-y-2">
+                          {volumeLeaders.slice(0, 2).map((item) => (
+                            <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="text-[var(--text-1)]">{item.symbol}</span>
+                              <span className="text-[var(--text-2)]">${formatCompactNumber(Number(item.volume))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {losers.length > 0 && (
+                      <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                        <div className="text-xs uppercase text-[var(--text-3)] mb-2">Pressão vendedora</div>
+                        <div className="space-y-2">
+                          {losers.slice(0, 2).map((item) => (
+                            <div key={item.symbol} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="text-[var(--text-1)]">{item.symbol}</span>
+                              <span className="text-[var(--danger)]">{(item.change24h * 100).toFixed(1)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -458,14 +442,19 @@ export function MobileHome() {
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Intel</h3>
-              <Badge variant="neutral" size="sm">{intelItems.length}</Badge>
+              <div>
+                <h3 className="text-[var(--text-1)]">Intelligence Layer</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Leitura editorial organizada por tema, não por ruído de feed.</div>
+              </div>
+              <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
+                Intel
+              </MobileButton>
             </div>
 
             {intelSections.length === 0 ? (
               <EmptyState
                 title="Sem briefing agora"
-                description="O Intel aparece aqui assim que o feed estiver disponível."
+                description="O Intel aparece aqui assim que o feed editorial estiver disponível."
               />
             ) : (
               <div className="space-y-3">
@@ -479,7 +468,7 @@ export function MobileHome() {
 
                 {intelSections.map((section) => {
                   const lead = section.items[0];
-                  const rest = section.items.slice(1, section.key === 'market' ? 3 : 2);
+                  const rest = section.items.slice(1, 2);
                   const SectionIcon = intelSectionTheme[section.key].icon;
 
                   return (
@@ -551,6 +540,32 @@ export function MobileHome() {
                 })}
               </div>
             )}
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-[var(--text-1)]">Espaços do OS</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Acesso secundário, utilidades e estados dos módulos.</div>
+              </div>
+              <Badge variant="neutral" size="sm">{orderedModules.length}</Badge>
+            </div>
+
+            <div className="space-y-3">
+              {orderedModules.map((module) => (
+                <button
+                  key={module.path}
+                  onClick={() => navigate(module.path)}
+                  className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div className="text-[var(--text-1)]">{module.title}</div>
+                    <Badge variant={toBadgeVariant(module.status)} size="sm">{module.label}</Badge>
+                  </div>
+                  <div className="text-sm text-[var(--text-2)]">Abrir {module.title} dentro do OS.</div>
+                </button>
+              ))}
+            </div>
           </SurfaceCard>
         </>
       )}

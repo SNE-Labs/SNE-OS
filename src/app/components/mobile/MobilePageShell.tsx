@@ -28,11 +28,10 @@ export function MobilePageShell({
 }: MobilePageShellProps) {
   const { address, isAuthenticated, tier } = useAuth();
 
-  // Auto-gerar statusPill se não fornecido e showContext estiver ativo
   const contextPill = showContext && isAuthenticated && address ? {
     label: `${(tier || 'free').toUpperCase()} TIER • ${formatAddress(address)}`,
     variant: tier === 'pro' ? 'pro' : tier === 'premium' ? 'orange' : 'free' as const,
-  } : statusPill;
+  } : null;
 
   return (
     <div className={cn('flex flex-col h-full bg-[var(--bg-0)]', className)}>
@@ -47,20 +46,31 @@ export function MobilePageShell({
           </div>
           {action && <div className="flex-shrink-0">{action}</div>}
         </div>
-        {contextPill && (
-          <Badge variant={contextPill.variant} size="sm">
-            {contextPill.label}
-          </Badge>
+        {(statusPill || contextPill) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {statusPill && (
+              <Badge variant={statusPill.variant} size="sm">
+                {statusPill.label}
+              </Badge>
+            )}
+            {contextPill && (
+              <Badge variant={contextPill.variant} size="sm">
+                {contextPill.label}
+              </Badge>
+            )}
+          </div>
         )}
       </div>
 
       {/* Content area with scroll */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 py-4 space-y-4">
+        <div
+          className="px-4 py-4 space-y-4"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7.5rem)' }}
+        >
           {children}
         </div>
       </div>
     </div>
   );
 }
-
