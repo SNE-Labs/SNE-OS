@@ -333,6 +333,13 @@ def _extract_response_text(data: Dict[str, Any]) -> str:
     return "\n".join(chunks).strip()
 
 
+def _truncate_response_body(value: str | None, max_chars: int = 1200) -> str:
+    text = (value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars].rstrip()}…"
+
+
 class IntelEnricher:
     def __init__(self):
         self.provider = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic").strip().lower()
@@ -544,6 +551,15 @@ class IntelEnricher:
                 "reading_time_minutes": max(1, round(len((parsed.get("body_markdown") or "").split()) / 180)),
                 "editorial_kind": editorial_kind,
             }
+        except requests.HTTPError as exc:
+            response = exc.response
+            logger.warning(
+                "Intel LLM post request failed for %s: status=%s body=%s",
+                item_id,
+                response.status_code if response is not None else "unknown",
+                _truncate_response_body(response.text if response is not None else ""),
+            )
+            return None
         except Exception as exc:
             logger.warning(f"Intel LLM post generation failed: {exc}")
             return None

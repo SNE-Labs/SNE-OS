@@ -141,6 +141,11 @@ def _reset_day_key(value: datetime | None = None) -> str:
     return current.strftime("%Y-%m-%d")
 
 
+def _utc_day_key(value: datetime | None = None) -> str:
+    current = value.astimezone(timezone.utc) if value else datetime.now(timezone.utc)
+    return current.strftime("%Y-%m-%d")
+
+
 def _normalize_title(title: str) -> str:
     return "".join(ch for ch in title.lower() if ch.isalnum() or ch.isspace()).strip()
 

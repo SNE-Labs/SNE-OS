@@ -109,6 +109,13 @@ def _extract_response_text(data: Dict[str, Any]) -> str:
     return "\n".join(chunks).strip()
 
 
+def _truncate_response_body(value: str | None, max_chars: int = 1200) -> str:
+    text = (value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars].rstrip()}…"
+
+
 def _is_ready_editorial(payload: Dict[str, Any] | None) -> bool:
     return bool(payload) and payload.get("status") == "ready"
 
@@ -273,6 +280,14 @@ def _market_editorial_payload(snapshot: Dict[str, Any]) -> Dict[str, Any] | None
             "highlights": highlights[:3],
             "generated_at": _iso_now(),
         }
+    except requests.HTTPError as exc:
+        response = exc.response
+        logger.warning(
+            "Market editorial generation failed: status=%s body=%s",
+            response.status_code if response is not None else "unknown",
+            _truncate_response_body(response.text if response is not None else ""),
+        )
+        return None
     except Exception as exc:
         logger.warning("Market editorial generation failed: %s", exc)
         return None
