@@ -3,7 +3,6 @@ import { useAccount } from 'wagmi';
 import { ArrowUpRight, Eye, KeyRound, Lock, Plus, Server, Shield, Trash2, Wallet } from 'lucide-react';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
-import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useCreateSecretItem, useDeleteSecretItem, useSecretItems, useSecretsOverview } from '../../hooks/useSecretsData';
 import { formatAddress } from '@/utils/format';
@@ -83,7 +82,6 @@ export function Secrets() {
   const [revealPending, setRevealPending] = useState(false);
 
   const overview = overviewQuery.data;
-  const status = overview?.status ?? { label: 'locked', tone: 'pending' as const };
   const moduleState = resolveModuleState({
     isConnected,
     isLoading: overviewQuery.isLoading,
@@ -185,7 +183,6 @@ export function Secrets() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={status.tone}>{status.label}</StatusBadge>
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Secrets</div>
                 </div>
 

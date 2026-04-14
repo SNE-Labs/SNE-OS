@@ -164,7 +164,6 @@ export function Pass() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.72fr_0.28fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={identityStatus.tone}>{identityStatus.label}</StatusBadge>
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Passport</div>
                 </div>
 

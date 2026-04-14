@@ -30,15 +30,6 @@ function formatDate(value?: string | null) {
   return date.toLocaleString('pt-BR');
 }
 
-function toBadgeVariant(
-  tone?: 'active' | 'success' | 'warning' | 'pending'
-): 'success' | 'warning' | 'neutral' | 'orange' {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'active') return 'orange';
-  return 'neutral';
-}
-
 export function MobilePass() {
   const { address, isAuthenticated, connect } = useAuth();
   const [lookupInput, setLookupInput] = useState('');
@@ -74,31 +65,10 @@ export function MobilePass() {
     setLookupTarget(candidate);
   };
 
-  const statusTone = !isAuthenticated
-    ? 'pending'
-    : identityQuery.isLoading
-      ? 'pending'
-      : identityQuery.isError
-        ? 'warning'
-        : (identity?.stats.wallets_total ?? 0) > 1
-          ? 'success'
-          : 'active';
-
-  const statusLabel = !isAuthenticated
-    ? 'offline'
-    : identityQuery.isLoading
-      ? 'syncing'
-      : identityQuery.isError
-        ? 'degraded'
-        : (identity?.stats.wallets_total ?? 0) > 1
-          ? 'linked'
-          : 'active';
-
   return (
     <MobilePageShell
       title="Passport"
       subtitle="Checkpoint de identidade Web3 do OS."
-      statusPill={{ label: statusLabel, variant: toBadgeVariant(statusTone) }}
       showContext
     >
       {!isAuthenticated ? (

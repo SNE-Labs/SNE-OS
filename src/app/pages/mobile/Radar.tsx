@@ -2,19 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 
-import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { Badge, EmptyState, ErrorState, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { useRadarOverview } from '../../../hooks/useRadarData';
-
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
-
-function toBadgeVariant(
-  tone?: 'active' | 'success' | 'warning' | 'pending'
-): 'success' | 'warning' | 'neutral' | 'orange' {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'active') return 'orange';
-  return 'neutral';
-}
 
 function formatPrice(value: number) {
   if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -55,10 +45,6 @@ export function MobileRadar() {
     <MobilePageShell
       title="Radar"
       subtitle="Mercado líquido, leitura direcional e contexto antes da execução."
-      statusPill={{
-        label: overview?.execution.label ?? 'loading',
-        variant: toBadgeVariant(overview?.execution.tone),
-      }}
       showContext
     >
       <SurfaceCard variant="elevated">

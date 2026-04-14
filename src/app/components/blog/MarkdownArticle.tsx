@@ -78,7 +78,6 @@ function toneConfig(tone: ArticleTone) {
 }
 
 function renderList(section: ArticleSection, items: string[], variant: 'desktop' | 'mobile') {
-  const config = toneConfig(section.tone);
   if (section.tone === 'watch' || section.tone === 'action' || section.tone === 'risk') {
     return (
       <div
@@ -125,7 +124,7 @@ function renderBlock(section: ArticleSection | null, block: ArticleBlock, varian
   return (
     <p
       key={key}
-      className={cn(variant === 'desktop' ? 'text-[1.03rem] leading-8' : 'text-[0.96rem] leading-7')}
+      className={cn(variant === 'desktop' ? 'text-[1.06rem] leading-[1.95]' : 'text-[0.98rem] leading-7')}
       style={{ color: 'var(--text-2)' }}
     >
       {renderInline(block.text)}
@@ -142,11 +141,14 @@ function renderSection(section: ArticleSection, variant: 'desktop' | 'mobile') {
     <section
       key={section.id}
       id={section.id}
-      className={cn('space-y-4 scroll-mt-28', special && 'rounded-[26px] border p-5')}
+      className={cn(
+        'space-y-4 scroll-mt-28',
+        special && (variant === 'desktop' ? 'rounded-[28px] border px-6 py-6' : 'rounded-[24px] border p-5')
+      )}
       style={special ? { ...config.panelStyle, borderWidth: '1px' } : undefined}
     >
       {section.title && (
-        <div className="space-y-2">
+        <div className="space-y-2 mb-1">
           <div className="flex items-center gap-2">
             {Icon && (
               <div
@@ -190,12 +192,12 @@ export function MarkdownArticle({ markdown, className, variant = 'desktop' }: Ma
   const remainderIntro = introParagraphs.slice(1);
 
   return (
-    <div className={cn('space-y-8', className)}>
+    <div className={cn(variant === 'desktop' ? 'space-y-10' : 'space-y-8', className)}>
       {lede && (
         <div
           className={cn(
-            'rounded-[26px] border px-5 py-5',
-            variant === 'desktop' ? 'text-[1.12rem] leading-8' : 'text-[1rem] leading-7'
+            'rounded-[26px] border',
+            variant === 'desktop' ? 'px-6 py-6 text-[1.14rem] leading-[1.95]' : 'px-5 py-5 text-[1rem] leading-7'
           )}
           style={{
             background: 'linear-gradient(135deg, rgba(255,140,66,0.10), rgba(255,255,255,0.02))',
@@ -208,13 +210,13 @@ export function MarkdownArticle({ markdown, className, variant = 'desktop' }: Ma
       )}
 
       {remainderIntro.length > 0 && (
-        <div className="space-y-4">
+        <div className={cn(variant === 'desktop' ? 'space-y-5' : 'space-y-4')}>
           {remainderIntro.map((block, index) => renderBlock(null, block, variant, `intro-${index}`))}
         </div>
       )}
 
       {introLists.length > 0 && (
-        <div className="space-y-4">
+        <div className={cn(variant === 'desktop' ? 'space-y-5' : 'space-y-4')}>
           {introLists.map((block, index) => renderBlock(null, block, variant, `intro-list-${index}`))}
         </div>
       )}

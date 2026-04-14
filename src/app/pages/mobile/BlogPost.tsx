@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, Layers3 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { EditorialSnapshot } from '../../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../../components/blog/articleParser';
 import { intelApi } from '@/services/intel-api';
@@ -19,6 +20,11 @@ export function MobileBlogPost() {
   const post = postQuery.data;
   const article = parseArticleMarkdown(post?.body_markdown ?? '');
   const snapshotItems = post ? (post.tldr.length > 0 ? post.tldr.slice(0, 3) : [post.excerpt || post.subtitle].filter(Boolean)) : [];
+  const mobileInsightCards = [
+    { key: 'watch', title: 'Monitorar', items: article.highlights.watch },
+    { key: 'action', title: 'Ação', items: article.highlights.actions },
+    { key: 'risk', title: 'Risco', items: article.highlights.risks },
+  ].filter((card) => card.items.length > 0);
 
   return (
     <MobilePageShell
@@ -63,16 +69,7 @@ export function MobileBlogPost() {
           {snapshotItems.length > 0 && (
             <SurfaceCard>
               <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-3">Snapshot editorial</div>
-              <div className="space-y-2">
-                {snapshotItems.map((line, index) => (
-                  <div
-                    key={`${line}-${index}`}
-                    className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-sm text-[var(--text-2)]"
-                  >
-                    {line}
-                  </div>
-                ))}
-              </div>
+              <EditorialSnapshot items={snapshotItems} variant="mobile" />
             </SurfaceCard>
           )}
 
@@ -89,6 +86,26 @@ export function MobileBlogPost() {
                   >
                     {heading.title}
                   </a>
+                ))}
+              </div>
+            </SurfaceCard>
+          )}
+
+          {mobileInsightCards.length > 0 && (
+            <SurfaceCard>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-3">Leitura guiada</div>
+              <div className="space-y-3">
+                {mobileInsightCards.map((card) => (
+                  <div key={card.key} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-3)] mb-2">{card.title}</div>
+                    <div className="space-y-2">
+                      {card.items.slice(0, 2).map((item, index) => (
+                        <div key={`${card.key}-${index}`} className="text-sm text-[var(--text-2)]">
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </SurfaceCard>

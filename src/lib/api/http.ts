@@ -1,4 +1,7 @@
-const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+const RAW_API_BASE =
+  import.meta.env.VITE_API_BASE_URL?.trim() ??
+  import.meta.env.VITE_API_BASE?.trim() ??
+  "";
 
 // Use explicit API base in production when configured.
 // Fallback to relative paths so local Vite proxy keeps working.

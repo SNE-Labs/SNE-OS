@@ -114,11 +114,6 @@ export function Radar() {
   const regime = overview?.market_regime;
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
-  const executionState = overview?.execution ?? {
-    label: hasAccess ? 'ready' : 'preview',
-    tone: hasAccess ? ('active' as const) : ('warning' as const),
-  };
-
   const selectedMarket = movers.find((item) => item.symbol === activeSymbol) ?? featured;
   const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({
     symbol,
@@ -170,7 +165,6 @@ export function Radar() {
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_360px]">
               <div className="min-w-0">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <StatusBadge status={executionState.tone}>{executionState.label}</StatusBadge>
                   <div
                     className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em]"
                     style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-3)' }}

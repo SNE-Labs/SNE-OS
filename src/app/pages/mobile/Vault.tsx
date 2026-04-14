@@ -6,15 +6,6 @@ import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCa
 import { useVaultOverview } from '../../../hooks/useVaultData';
 import { formatAddress } from '@/utils/format';
 
-function toBadgeVariant(
-  tone?: 'active' | 'success' | 'warning' | 'pending'
-): 'success' | 'warning' | 'neutral' | 'orange' {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'active') return 'orange';
-  return 'neutral';
-}
-
 function iconForCapitalCard(icon: string) {
   if (icon === 'wallet') return Wallet;
   if (icon === 'zap') return Zap;
@@ -42,10 +33,6 @@ export function MobileVault() {
     <MobilePageShell
       title="Vault"
       subtitle="Self-custody, capital surface and network allocation."
-      statusPill={{
-        label: overview?.status.label ?? 'offline',
-        variant: toBadgeVariant(overview?.status.tone),
-      }}
       showContext
     >
       {overviewQuery.isLoading ? (

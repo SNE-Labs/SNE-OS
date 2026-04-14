@@ -334,15 +334,12 @@ export function Home() {
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm" style={{ color: 'var(--text-3)' }}>{formattedTime}</span>
-              <StatusBadge status={homeData?.session.authenticated ? 'active' : 'pending'}>
-                {homeData?.session.authenticated ? 'sessão ativa' : 'sem sessão'}
-              </StatusBadge>
-              <StatusBadge status={liveMovers.length > 0 ? 'active' : 'pending'}>
-                {liveMovers.length > 0 ? 'mercado ao vivo' : 'mercado offline'}
-              </StatusBadge>
-              <StatusBadge status={data.status.overall_status === 'Operational' ? 'success' : 'warning'}>
-                {data.status.overall_status}
-              </StatusBadge>
+              {homeData?.session.authenticated ? (
+                <span className="text-sm" style={{ color: 'var(--text-2)' }}>sessão conectada</span>
+              ) : null}
+              {liveMovers.length > 0 ? (
+                <span className="text-sm" style={{ color: 'var(--text-2)' }}>mercado sincronizado</span>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
               {homeData?.session.address && (

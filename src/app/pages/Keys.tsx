@@ -2,7 +2,6 @@ import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, KeyRound, Shield, Wallet } from 'lucide-react';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
-import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useKeysOverview } from '../../hooks/useKeysData';
 import { resolveModuleState } from '../../lib/moduleState';
@@ -18,8 +17,6 @@ export function Keys() {
     isError: overviewQuery.isError,
     data: overview,
   });
-
-  const status = overview?.status ?? { label: 'offline', tone: 'pending' as const };
   const signals = overview?.signals ?? [];
 
   return (
@@ -39,7 +36,6 @@ export function Keys() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={status.tone}>{status.label}</StatusBadge>
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Keys</div>
                 </div>
 

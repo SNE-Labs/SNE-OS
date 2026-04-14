@@ -3,7 +3,6 @@ import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, KeyRound, Shield, Wallet, Waves, Zap } from 'lucide-react';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
-import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useVaultOverview } from '../../hooks/useVaultData';
 import { resolveModuleState } from '../../lib/moduleState';
@@ -19,9 +18,6 @@ export function Vault() {
     isError: overviewQuery.isError,
     data: overview,
   });
-
-  const vaultStatus = overview?.status ?? { label: 'offline', tone: 'pending' as const };
-
   const capitalCards = useMemo(
     () => (overview?.capital_cards ?? []).map((card) => ({
       ...card,
@@ -56,7 +52,6 @@ export function Vault() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={vaultStatus.tone}>{vaultStatus.label}</StatusBadge>
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Cofre</div>
                 </div>
 

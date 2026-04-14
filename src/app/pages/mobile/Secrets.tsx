@@ -29,15 +29,6 @@ const INITIAL_COMPOSER: ComposerState = {
   passphrase: '',
 };
 
-function toBadgeVariant(
-  tone?: 'active' | 'success' | 'warning' | 'pending'
-): 'success' | 'warning' | 'neutral' | 'orange' {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'active') return 'orange';
-  return 'neutral';
-}
-
 function formatRelativeTimestamp(value?: string | null): string {
   if (!value) return '--';
   const date = new Date(value);
@@ -145,10 +136,6 @@ export function MobileSecrets() {
     <MobilePageShell
       title="Secrets"
       subtitle="Passwords, notes e recovery material sob criptografia no cliente."
-      statusPill={{
-        label: overview?.status.label ?? 'locked',
-        variant: toBadgeVariant(overview?.status.tone),
-      }}
       showContext
     >
       <SurfaceCard>

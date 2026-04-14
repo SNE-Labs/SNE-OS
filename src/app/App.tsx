@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider, createConfig, http, injected } from 'wagmi';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { injected, walletConnect } from 'wagmi/connectors';
 import { scroll } from 'viem/chains';
 import { Suspense, lazy } from 'react';
 import React from 'react';
@@ -137,6 +138,8 @@ function AuthSkeleton() {
 }
 
 export default function App() {
+  const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
+
   // Create QueryClient for React Query
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -151,7 +154,21 @@ export default function App() {
   const wagmiConfig = createConfig({
     chains: [scroll],
     connectors: [
-      injected(), // MetaMask and other injected wallets
+      injected(),
+      ...(walletConnectProjectId
+        ? [
+            walletConnect({
+              projectId: walletConnectProjectId,
+              showQrModal: true,
+              metadata: {
+                name: 'SNE OS',
+                description: 'SNE OS wallet authentication',
+                url: 'https://snelabs.space',
+                icons: ['https://snelabs.space/favicon.ico'],
+              },
+            }),
+          ]
+        : []),
     ],
     transports: {
       [scroll.id]: http(),

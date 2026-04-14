@@ -274,10 +274,6 @@ export function MobileHome() {
     <MobilePageShell
       title="SNE OS"
       subtitle="Radar, intelligence e operações multichain."
-      statusPill={{
-        label: home?.brief.badge ?? 'loading',
-        variant: toBadgeVariant(home?.brief.badge_status),
-      }}
       showContext
     >
       {homeQuery.isLoading ? (
