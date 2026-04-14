@@ -121,6 +121,8 @@ type HeroCandidate = {
     description: string;
   };
   relatedMover: MarketMover | null;
+  relatedSymbol: string | null;
+  assetConfidence: 'high' | 'medium' | 'none';
   implication: string;
   tapeItems: string[];
   sparklinePoints: string;
@@ -476,10 +478,13 @@ export function Home() {
         const item = section.items[depth];
         if (!item) return;
 
+        const relatedSymbols = extractIntelSymbols(item);
         const relatedMover =
-          extractIntelSymbols(item)
+          relatedSymbols
             .map((symbol) => marketLookup.get(symbol))
             .find((mover): mover is MarketMover => Boolean(mover)) ?? null;
+        const relatedSymbol = relatedMover?.symbol ?? relatedSymbols[0] ?? item.assets?.[0] ?? item.chains?.[0] ?? null;
+        const assetConfidence: HeroCandidate['assetConfidence'] = relatedMover ? 'high' : relatedSymbol ? 'medium' : 'none';
         const implication = item.why_it_matters || section.description;
 
         const thesisTape = uniqueText([
@@ -489,21 +494,17 @@ export function Home() {
           ...(item.watch_items?.slice(0, 2).map((watchItem) => compactPhrase(watchItem, 4)) ?? []),
         ]).slice(0, 4);
 
-        const marketTape = relatedMover
+        const marketTape = assetConfidence === 'high' && relatedMover
           ? uniqueText([
               `${relatedMover.symbol} US$ ${formatMarketPrice(relatedMover.price)}`,
               `${relatedMover.change24h >= 0 ? '+' : ''}${(relatedMover.change24h * 100).toFixed(1)}%`,
               describeLiquidity(relatedMover.symbol.toUpperCase(), volumeLeaderSymbols, relatedMover.volume),
               altPressure,
             ]).slice(0, 4)
-          : uniqueText([
-              marketRegime?.label?.toLocaleLowerCase('pt-BR'),
-              compactPhrase(marketEditorial?.headline, 5),
-              compactPhrase(marketEditorial?.summary_pt, 5),
-            ]).slice(0, 3);
+          : [];
 
         const riskTape = uniqueText([
-          relatedMover ? describeRisk(relatedMover.change24h) : 'vigilância imediata',
+          relatedMover ? describeRisk(relatedMover.change24h) : compactPhrase(item.watch_items?.[0], 4) ?? 'vigilância imediata',
           compactPhrase(item.watch_items?.[0], 4) ?? 'monitorar adoção',
         ]).slice(0, 2);
 
@@ -512,6 +513,8 @@ export function Home() {
           item,
           section,
           relatedMover,
+          relatedSymbol,
+          assetConfidence,
           implication,
           tapeItems: interleaveSignals(thesisTape, marketTape, riskTape),
           sparklinePoints: buildHeroSparkline(`${section.key}:${item.id}`, relatedMover?.change24h ?? marketRegime?.avg_change_24h ?? 0),
@@ -531,27 +534,37 @@ export function Home() {
   const heroTape = activeHero?.tapeItems ?? [];
   const heroTapeLoop = [...heroTape, ...heroTape];
   const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
-  const heroContextMover = activeHero?.relatedMover ?? featuredMover ?? liveMovers[1] ?? null;
-  const heroThemeLabel =
-    activeHero?.item.topics?.[0] ??
-    activeHero?.item.chains?.[0] ??
-    activeHero?.item.assets?.[0] ??
-    activeHero?.section.title ??
-    'Intel';
-  const heroScenario = heroContextMover ? `$${formatMarketPrice(heroContextMover.price)}` : '--';
-  const heroSupportMode = heroContextMover ? 'mercado' : 'editorial';
-  const heroSupportAsset = heroContextMover?.symbol ?? (activeHero ? compactPhrase(intelMeta(activeHero.item), 3) : null) ?? 'intel';
+  const isMarketBackedHero = activeHero?.assetConfidence === 'high' && Boolean(activeHero.relatedMover);
+  const heroContextMover = isMarketBackedHero ? activeHero?.relatedMover ?? null : null;
+  const heroThemeLabel = activeHero?.section.kicker ?? 'Intel';
+  const heroTopMetricLabel = isMarketBackedHero ? 'Preço' : 'Sinal';
+  const heroTopMetricValue = isMarketBackedHero && heroContextMover
+    ? `$${formatMarketPrice(heroContextMover.price)}`
+    : compactPhrase(activeHero?.item.watch_items?.[0], 3) ??
+      compactPhrase(activeHero?.implication, 3) ??
+      activeHero?.item.impact?.label ??
+      '--';
+  const heroSupportMode = isMarketBackedHero ? 'mercado' : 'editorial';
+  const heroSupportAsset =
+    activeHero?.relatedSymbol ??
+    (activeHero ? compactPhrase(intelMeta(activeHero.item), 3) : null) ??
+    'intel';
   const heroSupportDelta = heroContextMover
     ? `${heroContextMover.change24h >= 0 ? '+' : ''}${(heroContextMover.change24h * 100).toFixed(1)}%`
     : '--';
-  const heroSupportPulse = compactPhrase(stripHeadlinePrefix(marketEditorial?.headline), 4) ?? compactPhrase(activeHero?.item.watch_items?.[0], 4) ?? 'leitura ativa';
+  const heroSupportPulse = isMarketBackedHero && heroContextMover
+    ? `${describeLiquidity(heroContextMover.symbol.toUpperCase(), heroVolumeLeaderSymbols, heroContextMover.volume)} · ${describeRisk(heroContextMover.change24h)}`
+    : compactPhrase(activeHero?.item.watch_items?.[0], 5) ??
+      compactPhrase(activeHero?.implication, 5) ??
+      compactPhrase(stripHeadlinePrefix(activeHero?.item.title), 5) ??
+      'leitura ativa';
   const heroSupportChips = uniqueText([
     compactPhrase(activeHero?.item.watch_items?.[0], 3),
     compactPhrase(activeHero?.item.watch_items?.[1], 3),
-    compactPhrase(stripHeadlinePrefix(marketEditorial?.headline), 3),
-    heroContextMover ? describeRisk(heroContextMover.change24h) : null,
+    activeHero?.item.impact?.label ? `impacto ${activeHero.item.impact.label}` : null,
+    isMarketBackedHero && heroContextMover ? describeRisk(heroContextMover.change24h) : null,
   ]).slice(0, 4);
-  const heroValidationMetrics = heroContextMover
+  const heroValidationMetrics = isMarketBackedHero && heroContextMover
     ? [
         { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
         {
@@ -567,9 +580,13 @@ export function Home() {
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ]
     : [
-        { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
-        { label: 'Volume', value: '--', tone: 'default' as const },
-        { label: '24H', value: '--', tone: 'default' as const },
+        { label: 'Formato', value: activeHero?.item.editorial_kind === 'briefing' ? 'Briefing' : 'Dossiê', tone: 'default' as const },
+        { label: 'Impacto', value: activeHero?.item.impact?.label ?? activeHero?.section.shortTitle ?? '--', tone: 'default' as const },
+        {
+          label: 'Monitorar',
+          value: compactPhrase(activeHero?.item.watch_items?.[0], 2) ?? activeHero?.item.assets?.[0] ?? activeHero?.item.chains?.[0] ?? '--',
+          tone: 'default' as const,
+        },
         { label: 'Atualiz.', value: heroUpdatedAt, tone: 'default' as const },
       ];
   const renderIntelTitle = (item: IntelItem, className: string) => {
@@ -855,9 +872,11 @@ export function Home() {
                               </div>
                             </div>
                             <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
+                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                {heroTopMetricLabel}
+                              </div>
                               <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                {heroScenario}
+                                {heroTopMetricValue}
                               </div>
                             </div>
                           </div>
