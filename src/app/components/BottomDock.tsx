@@ -12,13 +12,13 @@ type BottomDockProps = {
 export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned }: BottomDockProps) {
   return (
     <div
-      className="fixed left-1/2 z-40 hidden -translate-x-1/2 items-center gap-3 lg:flex"
-      style={{ bottom: '24px' }}
+      className="fixed left-1/2 z-40 hidden -translate-x-1/2 items-center gap-2.5 lg:flex"
+      style={{ bottom: '20px' }}
     >
       <button
         type="button"
         onClick={onToggleSidebarPin}
-        className="flex h-14 w-14 items-center justify-center rounded-[22px] border transition-all duration-200 hover:-translate-y-0.5"
+        className="flex h-12 w-12 items-center justify-center rounded-[20px] border transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: sidebarPinned ? 'rgba(255, 102, 0, 0.16)' : 'rgba(10, 14, 20, 0.82)',
           borderColor: sidebarPinned ? 'rgba(255, 102, 0, 0.28)' : 'rgba(255,255,255,0.08)',
@@ -33,7 +33,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
       </button>
 
       <nav
-        className="flex items-center gap-1 rounded-[28px] border px-3 py-2"
+        className="flex items-center gap-1 rounded-[24px] border px-2.5 py-1.5"
         style={{
           backgroundColor: 'rgba(9, 12, 18, 0.82)',
           borderColor: 'rgba(255,255,255,0.08)',
@@ -47,15 +47,15 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `group flex min-w-[88px] items-center justify-center gap-2 rounded-[18px] px-4 py-3 transition-all duration-200 ${
+              `group flex min-w-[78px] items-center justify-center gap-2 rounded-[16px] px-3 py-2.5 transition-all duration-200 ${
                 isActive ? 'is-active' : ''
               }`
             }
             style={({ isActive }) => ({
-              backgroundColor: isActive ? 'rgba(255, 102, 0, 0.14)' : 'transparent',
+              backgroundColor: isActive ? 'rgba(255, 102, 0, 0.12)' : 'transparent',
               color: isActive ? 'var(--text-1)' : 'var(--text-2)',
               boxShadow: isActive
-                ? 'inset 0 0 0 1px rgba(255,255,255,0.06), 0 10px 24px rgba(0,0,0,0.18)'
+                ? 'inset 0 0 0 1px rgba(255,255,255,0.05), 0 8px 18px rgba(0,0,0,0.14)'
                 : 'none',
               transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
             })}
@@ -66,7 +66,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
                   className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
                   style={{ color: isActive ? 'var(--accent-orange)' : 'currentColor' }}
                 />
-                <span className="text-sm font-medium whitespace-nowrap">
+                <span className="text-[13px] font-medium whitespace-nowrap">
                   {item.shortLabel || item.label}
                 </span>
               </>
@@ -78,7 +78,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
       <button
         type="button"
         onClick={onOpenCommandPalette}
-        className="flex items-center gap-2 rounded-[22px] border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5"
+        className="flex items-center gap-2 rounded-[20px] border px-3.5 py-3 transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: 'rgba(9, 12, 18, 0.82)',
           borderColor: 'rgba(255,255,255,0.08)',
@@ -90,7 +90,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
       >
         <Command className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
         <Sparkles className="h-4 w-4" />
-        <span className="text-xs uppercase tracking-[0.18em]">Command</span>
+        <span className="text-[11px] uppercase tracking-[0.18em]">Comandos</span>
       </button>
     </div>
   );

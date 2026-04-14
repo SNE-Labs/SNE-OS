@@ -46,9 +46,18 @@ function formatRelativeTimestamp(value?: string | null): string {
 
 function prettyVaultLabel(vaultId: string): string {
   if (vaultId === 'api_keys') return 'API Keys';
-  if (vaultId === 'secure_notes') return 'Secure Notes';
-  if (vaultId === 'recovery_material') return 'Recovery Material';
-  return 'Passwords';
+  if (vaultId === 'secure_notes') return 'Notas seguras';
+  if (vaultId === 'recovery_material') return 'Material de recuperação';
+  return 'Senhas';
+}
+
+function localizeSyncMode(value?: string | null): string {
+  const normalized = `${value || ''}`.trim().toLowerCase();
+  if (!normalized) return '--';
+  if (normalized === 'local-first') return 'Somente neste dispositivo';
+  if (normalized === 'client-side-encrypted') return 'Cifrado no dispositivo';
+  if (normalized === 'disabled') return 'Desativado';
+  return value || '--';
 }
 
 function fieldStyle() {
@@ -205,7 +214,7 @@ export function Secrets() {
                   <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Sync</div>
                     <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
-                      {overview?.sync.configured ? overview.sync.backend : 'local-first'}
+                      {overview?.sync.configured ? overview.sync.backend : 'Somente neste dispositivo'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                       {overview?.sync.detail ?? 'Sync criptografado ainda não configurado.'}
@@ -246,7 +255,7 @@ export function Secrets() {
                     </div>
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Modo</div>
-                      <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>{overview?.surface.mode ?? '--'}</div>
+                      <div className="font-semibold break-words" style={{ color: 'var(--text-1)' }}>{localizeSyncMode(overview?.surface.mode)}</div>
                     </div>
                   </div>
                 </div>

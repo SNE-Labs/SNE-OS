@@ -63,7 +63,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname === '/' || pathname === '/home',
     meta: {
       title: 'Home',
-      context: 'Intel first',
+      context: 'Intel em primeiro plano',
       descriptor: 'Briefing operacional, memória de sessão e contexto para a próxima janela.',
     },
   },
@@ -111,7 +111,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname.startsWith('/intel') || pathname.startsWith('/blog'),
     meta: {
       title: 'Intel Brief',
-      context: 'Fluxo editorial',
+      context: 'Contexto editorial',
       descriptor: 'Briefings e dossiês editoriais para contexto, mercado e operação.',
     },
   },
@@ -136,7 +136,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
 export function resolveRouteMeta(pathname: string): RouteMeta {
   return routeMetaMap.find((entry) => entry.match(pathname))?.meta ?? {
     title: 'SNE OS',
-    context: 'Workspace',
+    context: 'Workspace pessoal',
     descriptor: 'Camada operacional pessoal para mercado, identidade e capital.',
   };
 }

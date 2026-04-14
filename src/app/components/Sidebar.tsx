@@ -144,7 +144,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
                     color: pinned ? 'var(--accent-orange)' : 'var(--text-3)',
                   }}
                 >
-                  {pinned ? 'Pinned' : 'Rail'}
+                  {pinned ? 'Fixado' : 'Rail'}
                 </span>
               </div>
               <div className="text-lg font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-1)' }}>

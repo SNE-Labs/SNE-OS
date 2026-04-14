@@ -29,12 +29,12 @@ export function ShellCommandPalette({ open, onOpenChange }: ShellCommandPaletteP
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="SNE OS Command" description="Buscar ativo, wallet, rota ou ação rápida.">
-      <CommandInput placeholder="Buscar ativo, wallet, rota ou comando..." />
+    <CommandDialog open={open} onOpenChange={onOpenChange} title="Comandos do SNE OS" description="Buscar ativo, wallet, rota ou ação rápida.">
+      <CommandInput placeholder="Buscar ativo, wallet, rota ou ação..." />
       <CommandList>
         <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
 
-        <CommandGroup heading="Core">
+        <CommandGroup heading="Principal">
           {dockNavigationItems.map((item) => (
             <CommandItem key={item.path} onSelect={() => handleNavigate(item.path)}>
               <item.icon />
@@ -63,7 +63,7 @@ export function ShellCommandPalette({ open, onOpenChange }: ShellCommandPaletteP
 
         <CommandSeparator />
 
-        <CommandGroup heading="Support">
+        <CommandGroup heading="Suporte">
           {railNavigationGroups.flatMap((group) => group.items).filter((item) => !dockNavigationItems.some((dockItem) => dockItem.path === item.path)).map((item) => (
             <CommandItem key={item.path} onSelect={() => handleNavigate(item.path)}>
               <item.icon />
@@ -74,7 +74,7 @@ export function ShellCommandPalette({ open, onOpenChange }: ShellCommandPaletteP
 
         <CommandSeparator />
 
-        <CommandGroup heading="Shortcuts">
+        <CommandGroup heading="Atalhos">
           <CommandItem onSelect={() => handleNavigate('/home')}>
             <House />
             <span>Ir para Home</span>

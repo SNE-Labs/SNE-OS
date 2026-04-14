@@ -40,7 +40,7 @@ export function Keys() {
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
-                  Grants, bindings e dispositivos.
+                  Licenças, vínculos e dispositivos.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
                   A camada de Keys controla o que a conta acessa, quais credenciais estão vinculadas e quais dispositivos entram na superfície de confiança.
@@ -83,7 +83,7 @@ export function Keys() {
                       {overview?.surface.address ? formatAddress(overview.surface.address) : 'Conecte sua carteira'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.connected ? 'Surface de acesso carregada para esta sessão.' : 'Conecte uma carteira para carregar grants e bindings.'}
+                      {overview?.connected ? 'Superfície de acesso carregada para esta sessão.' : 'Conecte uma carteira para carregar licenças e vínculos.'}
                     </div>
                   </div>
                 </div>
@@ -110,21 +110,21 @@ export function Keys() {
               className="rounded-xl p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
             >
-              <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                Grants e Credenciais
+                <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+                Licenças e credenciais
               </div>
 
               {moduleState === 'disconnected' ? (
                 <ModuleStateCard
                   tone="disconnected"
                   title="Conecte uma carteira"
-                  description="Keys precisa de uma sessão conectada para resolver grants, bindings e devices."
+                  description="Keys precisa de uma sessão conectada para resolver licenças, vínculos e dispositivos."
                 />
               ) : moduleState === 'loading' ? (
                 <ModuleStateCard
                   tone="loading"
                   title="Carregando camada de acesso"
-                  description="Lendo grants, bindings e dispositivos confiáveis da conta."
+                  description="Lendo licenças, vínculos e dispositivos confiáveis da conta."
                 />
               ) : moduleState === 'error' ? (
                 <ModuleStateCard
@@ -139,20 +139,20 @@ export function Keys() {
                   <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Licenças / Grants</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Licenças</div>
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.grants.length ? `${overview.grants.length} grant(s) carregados.` : 'Nenhum grant ativo carregado para esta conta.'}
+                      {overview?.grants.length ? `${overview.grants.length} licença(s) carregadas.` : 'Nenhuma licença ativa carregada para esta conta.'}
                     </div>
                   </div>
 
                   <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="flex items-center gap-2 mb-3">
                       <KeyRound className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Bindings</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Vínculos</div>
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.bindings.length ? `${overview.bindings.length} binding(s) carregados.` : 'Nenhuma credencial portátil vinculada ainda.'}
+                      {overview?.bindings.length ? `${overview.bindings.length} vínculo(s) carregados.` : 'Nenhuma credencial portátil vinculada ainda.'}
                     </div>
                   </div>
 
@@ -179,15 +179,15 @@ export function Keys() {
                 </div>
                 <div className="space-y-3">
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Grants</div>
+                    <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Licenças</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.boundary.grants ?? 'Licenças e grants definem o que esta conta pode acessar.'}
+                      {overview?.boundary.grants ?? 'Licenças definem o que esta conta pode acessar.'}
                     </div>
                   </div>
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Devices</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.boundary.devices ?? 'Devices e bindings representam a camada portátil de confiança.'}
+                      {overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
                     </div>
                   </div>
                 </div>

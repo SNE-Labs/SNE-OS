@@ -38,6 +38,12 @@ function normalizeStringArray(value: unknown): string[] {
   return [];
 }
 
+function normalizeSourceName(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'sne enterprise blog') return 'Intel Brief';
+  return value;
+}
+
 function normalizePost(post: IntelPost): IntelPost {
   const category = post.category || 'news';
   const editorialKind = post.editorial_kind || (category === 'market' ? 'briefing' : 'dossier');
@@ -48,6 +54,10 @@ function normalizePost(post: IntelPost): IntelPost {
     chains: normalizeStringArray(post.chains),
     protocols: normalizeStringArray(post.protocols),
     assets: normalizeStringArray(post.assets),
+    sources: (post.sources ?? []).map((source) => ({
+      ...source,
+      name: normalizeSourceName(source.name || ''),
+    })),
     category,
     editorial_kind: editorialKind,
   };

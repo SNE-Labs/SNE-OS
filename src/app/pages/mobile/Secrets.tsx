@@ -44,9 +44,18 @@ function formatRelativeTimestamp(value?: string | null): string {
 
 function prettyVaultLabel(vaultId: string): string {
   if (vaultId === 'api_keys') return 'API Keys';
-  if (vaultId === 'secure_notes') return 'Notes';
-  if (vaultId === 'recovery_material') return 'Recovery';
-  return 'Passwords';
+  if (vaultId === 'secure_notes') return 'Notas';
+  if (vaultId === 'recovery_material') return 'Recuperação';
+  return 'Senhas';
+}
+
+function localizeSyncMode(value?: string | null): string {
+  const normalized = `${value || ''}`.trim().toLowerCase();
+  if (!normalized) return '--';
+  if (normalized === 'local-first') return 'Somente neste dispositivo';
+  if (normalized === 'client-side-encrypted') return 'Cifrado no dispositivo';
+  if (normalized === 'disabled') return 'Desativado';
+  return value || '--';
 }
 
 export function MobileSecrets() {
@@ -162,7 +171,7 @@ export function MobileSecrets() {
           </div>
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Sync</div>
-            <div className="text-[var(--text-1)]">{overview?.sync.configured ? overview.sync.backend : 'local-first'}</div>
+            <div className="text-[var(--text-1)]">{overview?.sync.configured ? overview.sync.backend : 'Somente neste dispositivo'}</div>
           </div>
         </div>
       </SurfaceCard>

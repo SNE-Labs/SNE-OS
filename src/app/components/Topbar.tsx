@@ -45,7 +45,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         WebkitBackdropFilter: 'blur(20px)',
       }}
     >
-      <div className="flex items-center justify-between gap-5">
+      <div className="grid items-center gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(460px,1.45fr)_auto]">
         <div className="flex min-w-0 items-start gap-4">
           <button
             type="button"
@@ -73,20 +73,20 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 justify-center px-4">
+        <div className="flex min-w-0 justify-center px-2 xl:px-4">
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="hidden w-full max-w-[520px] items-center gap-3 rounded-[20px] border px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 lg:flex"
+            className="hidden w-full max-w-[720px] items-center gap-3 rounded-[22px] border px-5 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 lg:flex"
             style={{
               backgroundColor: 'rgba(255,255,255,0.035)',
               borderColor: 'rgba(255,255,255,0.08)',
               color: 'var(--text-2)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 16px 36px rgba(0,0,0,0.12)',
             }}
           >
             <Command className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-            <span className="flex-1 text-sm">Buscar ativo, wallet ou briefing</span>
+            <span className="flex-1 text-[15px]">Buscar ativo, wallet ou leitura</span>
             <span
               className="rounded-full border px-2 py-1 text-[11px] uppercase tracking-[0.18em]"
               style={{
@@ -100,9 +100,9 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end gap-3">
           <div className="hidden items-center gap-2 xl:flex">
-            {topbarChips.map((chip) => (
+            {topbarChips.slice(0, 2).map((chip) => (
               <div
                 key={chip.label}
                 className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em]"

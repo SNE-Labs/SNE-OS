@@ -23,6 +23,8 @@ export type SidebarContext = {
   actionPath: string;
 };
 
+type TapeBucket = 'global' | 'route' | 'session' | 'identity' | 'editorial';
+
 function trimCopy(value: string | undefined | null, max = 88) {
   const clean = (value || '').trim();
   if (!clean) return '';
@@ -59,6 +61,14 @@ function localizeSignalStrength(value?: string | null) {
   return 'Força indisponível';
 }
 
+function localizeStorageMode(value?: string | null) {
+  const normalized = `${value || ''}`.trim().toLowerCase();
+  if (!normalized) return '--';
+  if (normalized === 'client-side-encrypted') return 'Cifrado no dispositivo';
+  if (normalized === 'local-first') return 'Somente neste dispositivo';
+  return value || '--';
+}
+
 function buildTapeItems(
   pathname: string,
   auth: { isAuthenticated: boolean; address?: string; tier: 'free' | 'premium' | 'pro' },
@@ -69,11 +79,11 @@ function buildTapeItems(
     vault?: any;
   }
 ): ShellChip[] {
-  const items: ShellChip[] = [];
-  const pushUnique = (chip: ShellChip) => {
+  const items: Array<ShellChip & { bucket: TapeBucket }> = [];
+  const pushUnique = (bucket: TapeBucket, chip: ShellChip) => {
     if (!chip.label.trim()) return;
     if (items.some((item) => item.label === chip.label)) return;
-    items.push(chip);
+    items.push({ ...chip, bucket });
   };
   const home = snapshots.home;
   const radar = snapshots.radar;
@@ -82,13 +92,13 @@ function buildTapeItems(
 
   const regime = home?.market?.regime?.label || radar?.market_regime?.label;
   if (regime) {
-    pushUnique({ label: `Regime ${regime.toUpperCase()}`, tone: 'accent' });
+    pushUnique('global', { label: `Regime ${regime.toUpperCase()}`, tone: 'accent' });
   }
 
   const featured = radar?.featured;
-  if (featured?.symbol) {
+  if ((pathname.startsWith('/radar') || pathname.startsWith('/home')) && featured?.symbol) {
     const change = Number(featured.change24h || 0) * 100;
-    pushUnique({
+    pushUnique('route', {
       label: `${featured.symbol} ${change >= 0 ? '+' : ''}${change.toFixed(1)}%`,
       tone: change >= 0 ? 'success' : 'warning',
     });
@@ -96,46 +106,47 @@ function buildTapeItems(
 
   const leadIntel = home?.intel?.items?.[0];
   if (leadIntel?.title_pt || leadIntel?.title) {
-    pushUnique({
+    pushUnique(pathname.startsWith('/intel') || pathname.startsWith('/blog') ? 'route' : 'editorial', {
       label: `Intel Brief • ${trimCopy(leadIntel.title_pt || leadIntel.title, 40)}`,
       tone: 'neutral',
     });
   }
 
   if (auth.isAuthenticated && auth.address) {
-    pushUnique({ label: `Persistência ativa • ${formatAddress(auth.address)}`, tone: 'success' });
+    pushUnique('session', { label: `Sessão ativa • ${formatAddress(auth.address)}`, tone: 'success' });
   } else {
-    pushUnique({ label: 'Conecte wallet para persistência', tone: 'warning' });
-    const publicMarkets = home?.brief_signals?.find((signal: { label?: string }) => `${signal.label || ''}`.toLowerCase() === 'radar');
-    if (publicMarkets?.value) {
-      pushUnique({ label: `Radar público • ${publicMarkets.value}`, tone: 'neutral' });
-    }
+    pushUnique('session', { label: 'Conecte uma wallet para persistir contexto', tone: 'warning' });
   }
 
   if (pathname.startsWith('/pass') && passport?.stats?.wallets_total) {
-    pushUnique({ label: `${passport.stats.wallets_total} wallets vinculadas`, tone: 'neutral' });
+    pushUnique('identity', { label: `${passport.stats.wallets_total} wallets vinculadas`, tone: 'neutral' });
   }
 
   if (pathname.startsWith('/vault') && vault?.aggregate?.total_value_display) {
-    pushUnique({ label: `Capital visível ${vault.aggregate.total_value_display}`, tone: 'neutral' });
+    pushUnique('route', { label: `Capital visível ${vault.aggregate.total_value_display}`, tone: 'neutral' });
   }
 
   if (pathname.startsWith('/vault') && vault?.aggregate?.active_networks != null) {
-    pushUnique({ label: `${vault.aggregate.active_networks} redes em leitura`, tone: 'neutral' });
+    pushUnique('identity', { label: `${vault.aggregate.active_networks} redes em leitura`, tone: 'neutral' });
   }
 
   if (pathname.startsWith('/pass') && !passport?.stats?.wallets_total) {
-    pushUnique({ label: 'Lookup público pronto', tone: 'neutral' });
+    pushUnique('identity', { label: 'Lookup público pronto', tone: 'neutral' });
   }
 
   if ((pathname.startsWith('/intel') || pathname.startsWith('/blog')) && leadIntel?.editorial_kind) {
-    pushUnique({
+    pushUnique('route', {
       label: leadIntel.editorial_kind === 'briefing' ? 'Leitura rápida ativa' : 'Dossiê em foco',
       tone: 'neutral',
     });
   }
 
-  return items.slice(0, 6);
+  const priority: TapeBucket[] = ['global', 'route', 'session', 'identity', 'editorial'];
+  return priority
+    .map((bucket) => items.find((item) => item.bucket === bucket))
+    .filter(Boolean)
+    .slice(0, 4)
+    .map(({ bucket: _bucket, ...chip }) => chip);
 }
 
 function buildSidebarContext(
@@ -342,6 +353,7 @@ export function useShellContextData() {
         { label: 'Wallet', value: address ? formatAddress(address) : 'Sem wallet' },
         { label: 'Sessão', value: isAuthenticated ? 'Autenticada' : 'Anônima' },
         { label: 'Foco', value: routeMeta.context },
+        { label: 'Modo', value: localizeStorageMode(vault?.surface?.mode || home?.secrets?.sync?.mode) },
       ],
     };
   }, [address, isAuthenticated, location.pathname, tier, tick]);

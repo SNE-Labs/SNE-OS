@@ -15,7 +15,7 @@ export function MobileKeys() {
   return (
     <MobilePageShell
       title="Keys"
-      subtitle="Acesso, bindings e dispositivos da conta."
+      subtitle="Acesso, vínculos e dispositivos da conta."
       showContext
     >
       <SurfaceCard>
@@ -29,8 +29,8 @@ export function MobileKeys() {
             </div>
             <p className="text-sm text-[var(--text-2)]">
               {overview?.connected
-                ? 'Surface de acesso carregada para esta sessão.'
-                : 'Conecte uma carteira para carregar grants e bindings.'}
+                ? 'Superfície de acesso carregada para esta sessão.'
+                : 'Conecte uma carteira para carregar licenças e vínculos.'}
             </p>
           </div>
         </div>
@@ -74,23 +74,23 @@ export function MobileKeys() {
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="flex items-center gap-2 mb-2 text-[var(--text-1)]">
               <Shield className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Grants</span>
+              <span>Licenças</span>
             </div>
             <div className="text-sm text-[var(--text-2)]">
               {overview?.grants.length
-                ? `${overview.grants.length} grant(s) ativos carregados.`
-                : 'Nenhum grant ativo carregado para esta conta.'}
+                ? `${overview.grants.length} licença(s) ativas carregadas.`
+                : 'Nenhuma licença ativa carregada para esta conta.'}
             </div>
           </div>
 
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="flex items-center gap-2 mb-2 text-[var(--text-1)]">
               <KeyRound className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Bindings</span>
+              <span>Vínculos</span>
             </div>
             <div className="text-sm text-[var(--text-2)]">
               {overview?.bindings.length
-                ? `${overview.bindings.length} binding(s) disponíveis.`
+                ? `${overview.bindings.length} vínculo(s) disponíveis.`
                 : 'Nenhuma credencial portátil vinculada ainda.'}
             </div>
           </div>
@@ -119,15 +119,15 @@ export function MobileKeys() {
 
         <div className="space-y-3 mb-4">
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-            <div className="text-[var(--text-1)] mb-1">Grants</div>
+            <div className="text-[var(--text-1)] mb-1">Licenças</div>
             <div className="text-sm text-[var(--text-2)]">
-              {overview?.boundary.grants ?? 'Licenças e grants definem o que esta conta pode acessar.'}
+              {overview?.boundary.grants ?? 'Licenças definem o que esta conta pode acessar.'}
             </div>
           </div>
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="text-[var(--text-1)] mb-1">Devices</div>
             <div className="text-sm text-[var(--text-2)]">
-              {overview?.boundary.devices ?? 'Devices e bindings representam a camada portátil de confiança.'}
+              {overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
             </div>
           </div>
         </div>

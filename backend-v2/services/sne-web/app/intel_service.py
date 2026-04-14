@@ -98,7 +98,7 @@ BROADER_RELEVANCE_TOKENS = {
 
 GENERALIST_SOURCES = {"hn_front_page", "techcrunch", "openai_news", "reuters_business", "reuters_world"}
 COMMUNITY_SOURCE_CAP = 2
-BLOG_SOURCE_NAME = "SNE Enterprise Blog"
+BLOG_SOURCE_NAME = "Intel Brief"
 BLOG_DAILY_LIMIT = 100
 BLOG_MIN_DAILY_POSTS = 15
 BLOG_SURFACE_LIMIT = 6
