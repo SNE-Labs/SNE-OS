@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, Brain, Clock3, Layers3 } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
@@ -34,10 +34,6 @@ export function Blog() {
   });
 
   const posts = postsQuery.data?.items ?? [];
-  const topicCount = new Set(posts.flatMap((post) => post.topics ?? [])).size;
-  const chainCount = new Set(posts.flatMap((post) => post.chains ?? [])).size;
-  const briefingCount = posts.filter((post) => post.editorial_kind === 'briefing').length;
-  const dossierCount = posts.filter((post) => post.editorial_kind === 'dossier').length;
 
   const topicOptions = useMemo(
     () => ['all', ...Array.from(new Set(posts.flatMap((post) => post.topics ?? []))).sort()],
@@ -130,61 +126,6 @@ export function Blog() {
   return (
     <div className="flex-1 px-8 py-6 overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header
-          className="rounded-[28px] p-6 space-y-5"
-          style={{
-            background:
-              'radial-gradient(circle at top left, rgba(255,140,66,0.18), transparent 38%), linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
-            backgroundColor: 'var(--bg-2)',
-            borderWidth: '1px',
-            borderColor: 'var(--stroke-1)',
-          }}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status="active">Intel Brief</StatusBadge>
-            <StatusBadge status="pending">{posts.length} peças</StatusBadge>
-            <StatusBadge status="success">{formatRelativeTimestamp(postsQuery.data?.last_updated)}</StatusBadge>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,140,66,0.12)', color: 'var(--accent-orange)' }}>
-              <Brain className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Editorial Intel</p>
-              <h1 className="text-4xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Intel Brief</h1>
-              <p className="text-sm max-w-3xl" style={{ color: 'var(--text-2)' }}>
-                Leituras editoriais do OS para transformar sinais de mercado, notícias e movimento multichain em briefing, leitura operacional e dossiês persistentes.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                <Layers3 className="w-3.5 h-3.5" />
-                Camadas
-              </div>
-              <div className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-1)' }}>{topicCount}</div>
-              <div className="text-sm" style={{ color: 'var(--text-3)' }}>temas editoriais ativos</div>
-            </div>
-            <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                <Brain className="w-3.5 h-3.5" />
-                Dossiês
-              </div>
-              <div className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-1)' }}>{dossierCount}</div>
-              <div className="text-sm" style={{ color: 'var(--text-3)' }}>leituras profundas disponíveis</div>
-            </div>
-            <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                <Clock3 className="w-3.5 h-3.5" />
-                Briefings
-              </div>
-              <div className="text-2xl font-semibold mt-2" style={{ color: 'var(--text-1)' }}>{briefingCount}</div>
-              <div className="text-sm" style={{ color: 'var(--text-3)' }}>leituras rápidas de mercado</div>
-            </div>
-          </div>
-        </header>
-
         <section
           className="rounded-[28px] p-5 space-y-4"
           style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
