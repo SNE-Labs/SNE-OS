@@ -143,6 +143,11 @@ export function MobileHome() {
   const marketRegime = home?.market.regime;
   const intelItems = home?.intel.items ?? [];
   const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
+  const leadIntelSection = intelSections[0] ?? null;
+  const leadIntelItem = leadIntelSection?.items[0] ?? null;
+  const secondaryIntelSections = leadIntelSection
+    ? intelSections.filter((section) => section.key !== leadIntelSection.key)
+    : [];
   const orderedModules = useMemo(() => {
     const priority: Record<string, number> = {
       '/radar': 0,
@@ -287,6 +292,43 @@ export function MobileHome() {
       ) : (
         <>
           <SurfaceCard variant="elevated">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Intel</div>
+                <h2 className="text-[var(--text-1)]">Leitura prioritária da sessão</h2>
+              </div>
+              <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
+                Intel
+              </MobileButton>
+            </div>
+
+            {leadIntelSection && leadIntelItem ? (
+              <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <Badge variant={intelSectionTheme[leadIntelSection.key].badge} size="sm">{leadIntelSection.shortTitle}</Badge>
+                  <Badge variant="neutral" size="sm">{leadIntelItem.source}</Badge>
+                  <Badge variant="neutral" size="sm">{intelMeta(leadIntelItem)}</Badge>
+                </div>
+
+                {renderIntelTitle(leadIntelItem)}
+                <div className="text-sm text-[var(--text-2)] mb-3">{intelSummary(leadIntelItem)}</div>
+
+                {leadIntelItem.watch_items?.length ? (
+                  <div className="space-y-2 mb-4">
+                    {leadIntelItem.watch_items.slice(0, 2).map((watchItem) => (
+                      <div key={watchItem} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-2.5 text-sm text-[var(--text-2)]">
+                        {watchItem}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="text-sm text-[var(--text-2)] mb-4">
+                O motor editorial ainda não publicou a leitura prioritária desta sessão.
+              </div>
+            )}
+
             <div className="flex items-start gap-3 mb-4">
               <div className="w-11 h-11 rounded-2xl bg-[var(--accent-orange-dim)] text-[var(--accent-orange)] flex items-center justify-center">
                 <Wallet className="w-5 h-5" />
@@ -295,12 +337,9 @@ export function MobileHome() {
                 <div className="text-[var(--text-1)] mb-1">
                   {home.session.address ? formatAddress(home.session.address) : 'Sessão sem carteira'}
                 </div>
-                <p className="text-sm text-[var(--text-2)]">{home.brief.summary}</p>
+                <p className="text-sm text-[var(--text-2)]">{home.session.authenticated ? 'Sessão autenticada e pronta para operar.' : 'Conecte uma wallet para persistir sua sessão no OS.'}</p>
               </div>
             </div>
-
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-1">Hub operacional</div>
-            <h2 className="text-[var(--text-1)] mb-4">{home.brief.headline}</h2>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               {metrics.map((item) => (
@@ -324,9 +363,31 @@ export function MobileHome() {
               <MobileButton className="w-full" onClick={() => navigate(home.session.authenticated ? '/vault' : '/pass')}>
                 {home.session.authenticated ? 'Abrir Vault' : 'Conectar carteira'}
               </MobileButton>
-              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/radar')}>
-                Abrir Radar
+              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/home')}>
+                Sessão
               </MobileButton>
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-[var(--text-1)]">Since last session</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Resumo operacional da última janela.</div>
+              </div>
+              <Badge variant={toBadgeVariant(home.brief.badge_status)} size="sm">{home.brief.badge}</Badge>
+            </div>
+
+            <div className="text-[var(--text-1)] mb-2">{home.brief.headline}</div>
+            <div className="text-sm text-[var(--text-2)] mb-4">{home.brief.summary}</div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {home.brief_signals.slice(0, 3).map((signal) => (
+                <div key={signal.label} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-2.5">
+                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">{signal.label}</div>
+                  <div className="text-sm text-[var(--text-1)] break-words">{signal.value}</div>
+                </div>
+              ))}
             </div>
           </SurfaceCard>
 
@@ -439,15 +500,15 @@ export function MobileHome() {
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-[var(--text-1)]">Intelligence Layer</h3>
-                <div className="text-xs text-[var(--text-3)] mt-1">Leitura editorial organizada por tema, não por ruído de feed.</div>
+                <h3 className="text-[var(--text-1)]">Intel stream</h3>
+                <div className="text-xs text-[var(--text-3)] mt-1">Leituras secundárias e monitoramento contínuo por tema.</div>
               </div>
               <MobileButton variant="secondary" onClick={() => navigate('/intel')}>
                 Intel
               </MobileButton>
             </div>
 
-            {intelSections.length === 0 ? (
+            {(secondaryIntelSections.length > 0 ? secondaryIntelSections : intelSections).length === 0 ? (
               <EmptyState
                 title="Sem briefing agora"
                 description="O Intel aparece aqui assim que o feed editorial estiver disponível."
@@ -455,14 +516,14 @@ export function MobileHome() {
             ) : (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  {intelSections.map((section) => (
+                  {(secondaryIntelSections.length > 0 ? secondaryIntelSections : intelSections).map((section) => (
                     <Badge key={section.key} variant={intelSectionTheme[section.key].badge} size="sm">
                       {section.shortTitle}
                     </Badge>
                   ))}
                 </div>
 
-                {intelSections.map((section) => {
+                {(secondaryIntelSections.length > 0 ? secondaryIntelSections : intelSections).map((section) => {
                   const lead = section.items[0];
                   const rest = section.items.slice(1, 2);
                   const SectionIcon = intelSectionTheme[section.key].icon;

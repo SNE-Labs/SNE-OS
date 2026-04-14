@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
-import { scroll } from 'viem/chains';
+import { arbitrum, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
 import { Suspense, lazy, useState } from 'react';
 
 // Desktop Components (carregados normalmente)
@@ -34,6 +34,8 @@ const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ de
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
 import { useIsMobile } from '../hooks/useIsMobile';
+
+const SUPPORTED_CHAINS = [mainnet, arbitrum, optimism, base, polygon, scroll] as const;
 
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
@@ -154,7 +156,7 @@ export default function App() {
 
   const [wagmiConfig] = useState(() =>
     createConfig({
-      chains: [scroll],
+      chains: [...SUPPORTED_CHAINS],
       connectors: [
         injected(),
         ...(walletConnectProjectId
@@ -172,9 +174,7 @@ export default function App() {
             ]
           : []),
       ],
-      transports: {
-        [scroll.id]: http(),
-      },
+      transports: Object.fromEntries(SUPPORTED_CHAINS.map((chain) => [chain.id, http()])) as Record<number, ReturnType<typeof http>>,
       ssr: true,
     })
   );

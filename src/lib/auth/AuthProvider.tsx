@@ -74,14 +74,60 @@ function hasInjectedEthereumProvider() {
   return Boolean((window as Window & { ethereum?: unknown }).ethereum);
 }
 
+type InjectedEthereumProvider = {
+  request: (args: { method: string; params?: unknown[] | object }) => Promise<unknown>;
+};
+
 function getStoredAuthToken() {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem('auth_token');
 }
 
+function getInjectedProvider(): InjectedEthereumProvider | null {
+  if (typeof window === 'undefined') return null;
+  return ((window as Window & { ethereum?: InjectedEthereumProvider }).ethereum ?? null);
+}
+
+async function getInjectedAccounts() {
+  const provider = getInjectedProvider();
+  if (!provider) return [];
+
+  const accounts = await provider.request({ method: 'eth_requestAccounts' });
+  return Array.isArray(accounts) ? accounts.filter((item): item is string => typeof item === 'string') : [];
+}
+
+async function getInjectedChainId() {
+  const provider = getInjectedProvider();
+  if (!provider) return null;
+
+  const rawChainId = await provider.request({ method: 'eth_chainId' });
+  if (typeof rawChainId !== 'string') return null;
+
+  const parsed = Number.parseInt(rawChainId, 16);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function signWithInjectedProvider(message: string, address: string) {
+  const provider = getInjectedProvider();
+  if (!provider) {
+    throw new Error('Nenhuma wallet do navegador foi encontrada. Instale MetaMask, Rabby, Brave Wallet ou use WalletConnect.');
+  }
+
+  const signature = await provider.request({
+    method: 'personal_sign',
+    params: [message, address],
+  });
+
+  if (typeof signature !== 'string') {
+    throw new Error('Falha ao obter assinatura da wallet conectada.');
+  }
+
+  return signature;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const { address: walletAddress, isConnected: walletConnected } = useAccount();
+  const { address: walletAddress, isConnected: walletConnected, chainId: walletChainId } = useAccount();
   const { connectAsync, connectors } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
@@ -189,7 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  async function authenticate(address: string) {
+  async function authenticate(address: string, method?: ConnectMethod, chainIdOverride?: number | null) {
     if (isAuthenticated && sessionAddress?.toLowerCase() === address.toLowerCase()) {
       setAuthStatus('authenticated');
       setAuthError(null);
@@ -201,12 +247,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       domain: SIWE_DOMAIN,
       address,
       uri: SIWE_ORIGIN,
-      chainId: CHAIN_ID,
+      chainId: chainIdOverride ?? walletChainId ?? CHAIN_ID,
       nonce,
     });
 
     setAuthStatus('signing');
-    const signature = await signMessageAsync({ message });
+    const signature =
+      method === 'injected'
+        ? await signWithInjectedProvider(message, address)
+        : await signMessageAsync({ message });
     setAuthStatus('verifying');
     const authResponse = await apiPost<{
       token: string;
@@ -228,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthStatus('connecting');
 
       if (walletConnected && walletAddress) {
-        await authenticate(walletAddress);
+        await authenticate(walletAddress, method);
         return;
       }
 
@@ -257,6 +306,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(connectorErrorMessage(preferredMethod));
       }
 
+      if (preferredMethod === 'injected') {
+        const accounts = await getInjectedAccounts();
+        const nextAddress = accounts[0];
+
+        if (!nextAddress) {
+          throw new Error('Nenhuma conta foi retornada pela wallet conectada.');
+        }
+
+        await authenticate(nextAddress, 'injected', await getInjectedChainId());
+        return;
+      }
+
       let nextAddress = walletAddress;
 
       if (!nextAddress || method) {
@@ -268,7 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Nenhuma conta foi retornada pela wallet conectada.');
       }
 
-      await authenticate(nextAddress);
+      await authenticate(nextAddress, preferredMethod);
     } catch (error) {
       console.error("Failed to connect wallet:", error);
       setAuthStatus('error');

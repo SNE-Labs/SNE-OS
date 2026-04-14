@@ -30,6 +30,15 @@ function translateStrength(value?: string | null) {
   return map[value] ?? value;
 }
 
+function toBadgeVariant(
+  tone?: 'active' | 'success' | 'warning' | 'pending'
+): 'success' | 'warning' | 'neutral' | 'orange' {
+  if (tone === 'success') return 'success';
+  if (tone === 'warning') return 'warning';
+  if (tone === 'active') return 'orange';
+  return 'neutral';
+}
+
 export function MobileRadar() {
   const navigate = useNavigate();
   const [activeSymbol, setActiveSymbol] = useState('ETHUSDT');
