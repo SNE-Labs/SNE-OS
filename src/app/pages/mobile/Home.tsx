@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, BadgeCheck, FileText, KeyRound, LockKeyhole, Shield, Waves, Wallet } from 'lucide-react';
+import { Activity, ArrowUpRight, BadgeCheck, FileText, KeyRound, LockKeyhole, Shield, Waves, Wallet, Zap } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, LoadingSkeletonGroup, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { apiGet } from '@/lib/api/http';
+import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
 
@@ -70,13 +71,17 @@ type HomeResponse = {
       url: string;
       source: string;
       module: string;
+      category?: string;
+      editorial_kind?: string;
       impact?: {
         label: string;
         score: number;
       };
       topics?: string[];
       chains?: string[];
+      assets?: string[];
       why_it_matters?: string;
+      watch_items?: string[];
     }>;
   };
   identity?: {
@@ -145,11 +150,72 @@ export function MobileHome() {
   const volumeLeaders = home?.market.volume_leaders?.slice(0, 2) ?? [];
   const marketEditorial = home?.market.editorial;
   const marketRegime = home?.market.regime;
-  const intelItems = home?.intel.items?.slice(0, 2) ?? [];
+  const intelItems = home?.intel.items ?? [];
+  const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
   const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.title_pt || item.title || item.title_original || 'Intel item';
   const intelSummary = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.summary_pt || item.summary || item.why_it_matters || 'Briefing operacional disponível.';
+  const intelMeta = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
+    item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
+  const intelSectionTheme: Record<
+    HomeIntelSectionKey,
+    {
+      icon: typeof Activity;
+      badge: 'success' | 'warning' | 'neutral' | 'orange';
+      panelStyle: CSSProperties;
+      toneStyle: CSSProperties;
+    }
+  > = {
+    market: {
+      icon: Activity,
+      badge: 'orange',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(255,140,66,0.24)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(255,140,66,0.12)',
+        color: 'var(--accent-orange)',
+      },
+    },
+    tech: {
+      icon: Zap,
+      badge: 'neutral',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(74,144,226,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(74,144,226,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(74,144,226,0.12)',
+        color: '#7cb4ff',
+      },
+    },
+    politica: {
+      icon: Shield,
+      badge: 'warning',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(201,173,93,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(201,173,93,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(201,173,93,0.12)',
+        color: '#d9ba67',
+      },
+    },
+    cripto: {
+      icon: Waves,
+      badge: 'success',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(77,201,144,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(77,201,144,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(77,201,144,0.12)',
+        color: '#74dca8',
+      },
+    },
+  };
   const metrics = useMemo(
     () => [
       { label: 'Identity', value: home?.identity?.status?.label ?? 'offline' },
@@ -396,31 +462,93 @@ export function MobileHome() {
               <Badge variant="neutral" size="sm">{intelItems.length}</Badge>
             </div>
 
-            {intelItems.length === 0 ? (
+            {intelSections.length === 0 ? (
               <EmptyState
                 title="Sem briefing agora"
                 description="O Intel aparece aqui assim que o feed estiver disponível."
               />
             ) : (
               <div className="space-y-3">
-                {intelItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
-                  >
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <div className="text-xs uppercase text-[var(--text-3)]">{item.source}</div>
-                      <Badge variant={item.impact?.label === 'alto' ? 'warning' : 'neutral'} size="sm">
-                        {item.impact?.label ? `impacto ${item.impact.label}` : item.module}
-                      </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {intelSections.map((section) => (
+                    <Badge key={section.key} variant={intelSectionTheme[section.key].badge} size="sm">
+                      {section.shortTitle}
+                    </Badge>
+                  ))}
+                </div>
+
+                {intelSections.map((section) => {
+                  const lead = section.items[0];
+                  const rest = section.items.slice(1, section.key === 'market' ? 3 : 2);
+                  const SectionIcon = intelSectionTheme[section.key].icon;
+
+                  return (
+                    <div
+                      key={section.key}
+                      className="w-full rounded-2xl border p-4 text-left"
+                      style={intelSectionTheme[section.key].panelStyle}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                            style={intelSectionTheme[section.key].toneStyle}
+                          >
+                            <SectionIcon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-3)]">{section.kicker}</div>
+                            <div className="text-[var(--text-1)]">{section.title}</div>
+                          </div>
+                        </div>
+                        <Badge variant={intelSectionTheme[section.key].badge} size="sm">
+                          {section.items.length}
+                        </Badge>
+                      </div>
+
+                      <div className="text-sm text-[var(--text-2)] mb-3">{section.description}</div>
+
+                      {lead && (
+                        <div className="rounded-xl bg-[rgba(10,14,23,0.42)] border border-[rgba(255,255,255,0.08)] p-3 mb-3">
+                          <div className="flex items-center justify-between gap-3 mb-1">
+                            <div className="text-xs uppercase text-[var(--text-3)]">{lead.source}</div>
+                            <Badge variant={lead.impact?.label === 'alto' ? 'warning' : intelSectionTheme[section.key].badge} size="sm">
+                              {intelMeta(lead)}
+                            </Badge>
+                          </div>
+                          {renderIntelTitle(lead)}
+                          <div className="text-sm text-[var(--text-2)] mb-2">{intelSummary(lead)}</div>
+                          {section.key === 'market' && lead.watch_items?.length ? (
+                            <div className="space-y-2">
+                              {lead.watch_items.slice(0, 2).map((watchItem) => (
+                                <div key={watchItem} className="text-xs text-[var(--text-3)]">
+                                  {watchItem}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-[var(--text-3)]">{lead.why_it_matters || intelMeta(lead)}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {rest.length > 0 && (
+                        <div className="space-y-2">
+                          {rest.map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-xl bg-[rgba(10,14,23,0.32)] border border-[rgba(255,255,255,0.08)] p-3"
+                            >
+                              <div className="text-xs uppercase text-[var(--text-3)] mb-1">{intelMeta(item)}</div>
+                              {renderIntelTitle(item)}
+                              <div className="text-sm text-[var(--text-2)]">{intelSummary(item)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {renderIntelTitle(item)}
-                    <div className="text-sm text-[var(--text-2)] mb-2">{intelSummary(item)}</div>
-                    <div className="text-xs text-[var(--text-3)]">
-                      {item.chains?.[0] || item.topics?.[0] || item.module}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SurfaceCard>

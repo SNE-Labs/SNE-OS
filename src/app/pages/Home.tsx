@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { apiGet } from '@/lib/api/http';
 import { normalizeIntelRoute } from '@/services/intel-api';
+import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
 import { formatAddress } from '@/utils/format';
 
 type DashboardPayload = {
@@ -44,6 +45,8 @@ type IntelItem = {
   created_at: string;
   module: string;
   agent_note: string;
+  category?: string;
+  editorial_kind?: string;
   impact?: {
     label: string;
     score: number;
@@ -139,8 +142,9 @@ export function Home() {
   const marketEditorial = homeData?.market.editorial;
   const marketRegime = homeData?.market.regime;
   const intelItems = homeData?.intel.items ?? [];
-  const featuredIntel = intelItems[0];
-  const secondaryIntel = intelItems.slice(1, 5);
+  const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
+  const marketIntelSection = intelSections.find((section) => section.key === 'market');
+  const nonMarketIntelSections = intelSections.filter((section) => section.key !== 'market');
   const featuredMover = liveMovers[0] ?? null;
   const secondaryMovers = liveMovers.slice(1, 4);
   const brief = homeData?.brief;
@@ -171,6 +175,64 @@ export function Home() {
   const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Intel item';
   const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
   const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
+  const intelSectionTheme: Record<
+    HomeIntelSectionKey,
+    {
+      icon: typeof Activity;
+      badge: 'active' | 'success' | 'warning' | 'pending';
+      panelStyle: CSSProperties;
+      toneStyle: CSSProperties;
+    }
+  > = {
+    market: {
+      icon: Activity,
+      badge: 'warning',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(255,140,66,0.24)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(255,140,66,0.12)',
+        color: 'var(--accent-orange)',
+      },
+    },
+    tech: {
+      icon: Zap,
+      badge: 'active',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(74,144,226,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(74,144,226,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(74,144,226,0.12)',
+        color: '#7cb4ff',
+      },
+    },
+    politica: {
+      icon: Shield,
+      badge: 'pending',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(201,173,93,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(201,173,93,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(201,173,93,0.12)',
+        color: '#d9ba67',
+      },
+    },
+    cripto: {
+      icon: Waves,
+      badge: 'success',
+      panelStyle: {
+        background: 'linear-gradient(135deg, rgba(77,201,144,0.12), rgba(255,255,255,0.02))',
+        borderColor: 'rgba(77,201,144,0.22)',
+      },
+      toneStyle: {
+        backgroundColor: 'rgba(77,201,144,0.12)',
+        color: '#74dca8',
+      },
+    },
+  };
   const renderIntelTitle = (item: IntelItem, className: string) => {
     if (!item.url) {
       return (
@@ -307,70 +369,184 @@ export function Home() {
                 </span>
               </div>
 
-              {!featuredIntel ? (
+              {intelSections.length === 0 ? (
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>Nenhum feed disponível agora.</div>
               ) : (
                 <div className="space-y-3">
-                  {/* Featured */}
-                  <div
-                    className="w-full rounded-xl p-5 text-left"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02))',
-                      backgroundColor: 'var(--bg-3)',
-                      borderWidth: '1px',
-                      borderColor: 'var(--stroke-1)',
-                    }}
-                  >
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <StatusBadge status="active">{featuredIntel.source}</StatusBadge>
-                      <StatusBadge status="pending">{featuredIntel.module}</StatusBadge>
-                      {featuredIntel.impact?.label && (
-                        <StatusBadge status={featuredIntel.impact.label === 'alto' ? 'warning' : 'active'}>
-                          impacto {featuredIntel.impact.label}
-                        </StatusBadge>
-                      )}
-                    </div>
-                    {renderIntelTitle(featuredIntel, 'text-lg font-semibold mb-2 text-balance')}
-                    <div className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
-                      {intelSummary(featuredIntel)}
-                    </div>
-                    {featuredIntel.title_original && featuredIntel.title_original !== intelTitle(featuredIntel) && (
-                      <div className="text-xs mb-3 line-clamp-1" style={{ color: 'var(--text-3)' }}>
-                        Original: {featuredIntel.title_original}
-                      </div>
-                    )}
-                    <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
-                      {featuredIntel.why_it_matters || 'Sem nota editorial adicional.'}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
-                      <span>{featuredIntel.points} pts</span>
-                      <span>{featuredIntel.comments} comentários</span>
-                      <span>@{featuredIntel.author}</span>
-                      <span>{intelMeta(featuredIntel)}</span>
-                    </div>
-                  </div>
-
-                  {/* Secondary grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {secondaryIntel.map((item) => (
-                      <div
-                        key={item.id}
-                        className="w-full rounded-lg p-4 text-left"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                            {intelMeta(item)}
+                  {marketIntelSection && marketIntelSection.items[0] && (
+                    <div
+                      className="rounded-xl border p-5"
+                      style={{
+                        backgroundColor: 'var(--bg-3)',
+                        borderWidth: '1px',
+                        ...intelSectionTheme.market.panelStyle,
+                      }}
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-3">
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                              style={intelSectionTheme.market.toneStyle}
+                            >
+                              <Activity className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                                {marketIntelSection.kicker}
+                              </div>
+                              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                {marketIntelSection.title}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs" style={{ color: 'var(--text-3)' }}>{item.points} pts</div>
+
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <StatusBadge status="warning">{marketIntelSection.items[0].source}</StatusBadge>
+                            <StatusBadge status="pending">{marketIntelSection.items[0].module}</StatusBadge>
+                            {marketIntelSection.items[0].impact?.label && (
+                              <StatusBadge status={marketIntelSection.items[0].impact?.label === 'alto' ? 'warning' : 'active'}>
+                                impacto {marketIntelSection.items[0].impact?.label}
+                              </StatusBadge>
+                            )}
+                          </div>
+
+                          {renderIntelTitle(marketIntelSection.items[0], 'text-lg font-semibold mb-2 text-balance')}
+                          <div className="text-sm mb-3" style={{ color: 'var(--text-2)' }}>
+                            {intelSummary(marketIntelSection.items[0])}
+                          </div>
+                          <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+                            {marketIntelSection.items[0].why_it_matters || marketIntelSection.description}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
+                            <span>{marketIntelSection.items[0].points} pts</span>
+                            <span>{marketIntelSection.items[0].comments} comentários</span>
+                            <span>@{marketIntelSection.items[0].author}</span>
+                            <span>{intelMeta(marketIntelSection.items[0])}</span>
+                          </div>
                         </div>
-                        {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
-                        <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
-                          {intelSummary(item)}
+
+                        <div className="space-y-3">
+                          <div
+                            className="rounded-xl border p-4"
+                            style={{ backgroundColor: 'rgba(10,14,23,0.48)', borderColor: 'rgba(255,255,255,0.08)' }}
+                          >
+                            <div className="text-xs uppercase tracking-[0.16em] mb-2" style={{ color: 'var(--text-3)' }}>
+                              Vigilância imediata
+                            </div>
+                            <div className="space-y-2">
+                              {(marketIntelSection.items[0].watch_items?.slice(0, 3) ?? []).map((watchItem) => (
+                                <div
+                                  key={watchItem}
+                                  className="rounded-lg px-3 py-2 text-sm"
+                                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
+                                >
+                                  {watchItem}
+                                </div>
+                              ))}
+                              {!marketIntelSection.items[0].watch_items?.length && (
+                                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                                  {marketIntelSection.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {marketIntelSection.items.slice(1, 3).map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border p-4"
+                              style={{ backgroundColor: 'rgba(10,14,23,0.42)', borderColor: 'rgba(255,255,255,0.08)' }}
+                            >
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                                  {intelMeta(item)}
+                                </div>
+                                <div className="text-xs" style={{ color: 'var(--text-3)' }}>
+                                  {item.points} pts
+                                </div>
+                              </div>
+                              {renderIntelTitle(item, 'font-semibold mb-1.5 line-clamp-2')}
+                              <div className="text-sm line-clamp-2" style={{ color: 'var(--text-2)' }}>
+                                {intelSummary(item)}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {nonMarketIntelSections.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                      {nonMarketIntelSections.map((section) => {
+                        const lead = section.items[0];
+                        const rest = section.items.slice(1, 3);
+                        const SectionIcon = intelSectionTheme[section.key].icon;
+
+                        return (
+                          <div
+                            key={section.key}
+                            className="rounded-xl border p-4"
+                            style={{
+                              backgroundColor: 'var(--bg-3)',
+                              borderWidth: '1px',
+                              ...intelSectionTheme[section.key].panelStyle,
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                                  style={intelSectionTheme[section.key].toneStyle}
+                                >
+                                  <SectionIcon className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                                    {section.kicker}
+                                  </div>
+                                  <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                                    {section.title}
+                                  </div>
+                                </div>
+                              </div>
+                              <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
+                            </div>
+
+                            <div className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+                              {section.description}
+                            </div>
+
+                            {lead && (
+                              <div className="mb-3">
+                                <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                  {intelMeta(lead)}
+                                </div>
+                                {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
+                                <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
+                                  {intelSummary(lead)}
+                                </div>
+                              </div>
+                            )}
+
+                            {rest.length > 0 && (
+                              <div className="space-y-2 border-t pt-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                                {rest.map((item) => (
+                                  <div key={item.id}>
+                                    <div className="text-xs uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--text-3)' }}>
+                                      {intelMeta(item)}
+                                    </div>
+                                    {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
