@@ -209,19 +209,19 @@ def build_intel_og_image_url(slug: str) -> str:
     return f"{SITE_ORIGIN}/api/og/intel/{slug}.png"
 
 
-def build_intel_share_html(post: dict[str, Any]) -> str:
-    slug = str(post.get("slug") or "")
-    title = str(post.get("title") or "Intel Brief | SNE OS")
-    description = str(post.get("excerpt") or post.get("subtitle") or "Leitura editorial do Intel Brief.")
-    share_url = build_intel_share_url(slug)
-    canonical_url = f"{SITE_ORIGIN}/intel/{slug}"
-    image_url = build_intel_og_image_url(slug)
-
+def build_static_share_html(
+    *,
+    title: str,
+    description: str,
+    canonical_url: str,
+    image_url: str,
+    label: str,
+) -> str:
     escaped_title = html.escape(title)
     escaped_description = html.escape(description)
     escaped_canonical = html.escape(canonical_url)
-    escaped_share = html.escape(share_url)
     escaped_image = html.escape(image_url)
+    escaped_label = html.escape(label)
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -233,22 +233,23 @@ def build_intel_share_html(post: dict[str, Any]) -> str:
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="{escaped_canonical}" />
 
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SNE OS" />
+    <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="{escaped_title}" />
     <meta property="og:description" content="{escaped_description}" />
-    <meta property="og:url" content="{escaped_share}" />
+    <meta property="og:url" content="{escaped_canonical}" />
     <meta property="og:image" content="{escaped_image}" />
+    <meta property="og:image:secure_url" content="{escaped_image}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="{escaped_canonical}" />
     <meta name="twitter:title" content="{escaped_title}" />
     <meta name="twitter:description" content="{escaped_description}" />
     <meta name="twitter:image" content="{escaped_image}" />
-
-    <meta http-equiv="refresh" content="1;url={escaped_canonical}" />
     <style>
       :root {{
         color-scheme: dark;
@@ -295,16 +296,117 @@ def build_intel_share_html(post: dict[str, Any]) -> str:
   </head>
   <body>
     <div class="card">
-      <div class="eyebrow">Intel Brief • Share</div>
+      <div class="eyebrow">{escaped_label}</div>
       <h1>{escaped_title}</h1>
       <p>{escaped_description}</p>
-      <a href="{escaped_canonical}">Abrir leitura</a>
+      <a href="{escaped_canonical}">Abrir página</a>
     </div>
-    <script>
-      window.setTimeout(function () {{
-        window.location.replace({escaped_canonical!r});
-      }}, 1200);
-    </script>
+  </body>
+</html>
+"""
+
+
+def build_intel_share_html(post: dict[str, Any], surface: str = "share") -> str:
+    slug = str(post.get("slug") or "")
+    title = str(post.get("title") or "Intel Brief | SNE OS")
+    description = str(post.get("excerpt") or post.get("subtitle") or "Leitura editorial do Intel Brief.")
+    share_url = build_intel_share_url(slug)
+    article_url = f"{SITE_ORIGIN}/intel/{slug}"
+    image_url = build_intel_og_image_url(slug)
+    article_surface = surface == "article"
+    og_url = article_url if article_surface else share_url
+
+    escaped_title = html.escape(title)
+    escaped_description = html.escape(description)
+    escaped_article = html.escape(article_url)
+    escaped_share = html.escape(share_url)
+    escaped_image = html.escape(image_url)
+    escaped_og_url = html.escape(og_url)
+    redirect_script = (
+        f"<script>window.setTimeout(function () {{ window.location.replace({article_url!r}); }}, 150);</script>"
+        if not article_surface
+        else ""
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{escaped_title}</title>
+    <meta name="description" content="{escaped_description}" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{escaped_og_url}" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="SNE OS" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="{escaped_title}" />
+    <meta property="og:description" content="{escaped_description}" />
+    <meta property="og:url" content="{escaped_og_url}" />
+    <meta property="og:image" content="{escaped_image}" />
+    <meta property="og:image:secure_url" content="{escaped_image}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="{escaped_og_url}" />
+    <meta name="twitter:title" content="{escaped_title}" />
+    <meta name="twitter:description" content="{escaped_description}" />
+    <meta name="twitter:image" content="{escaped_image}" />
+    <style>
+      :root {{
+        color-scheme: dark;
+      }}
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #05070c;
+        color: #f4f7fb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }}
+      .card {{
+        width: min(92vw, 560px);
+        padding: 28px;
+        border-radius: 24px;
+        background: rgba(15, 18, 26, 0.92);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+      }}
+      .eyebrow {{
+        color: rgba(214,220,230,0.58);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }}
+      h1 {{
+        margin: 0 0 12px;
+        font-size: 28px;
+        line-height: 1.2;
+      }}
+      p {{
+        margin: 0 0 18px;
+        color: rgba(214,220,230,0.78);
+        line-height: 1.55;
+      }}
+      a {{
+        color: #ffb17f;
+        text-decoration: none;
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="eyebrow">Intel Brief • {html.escape('Article' if article_surface else 'Share')}</div>
+      <h1>{escaped_title}</h1>
+      <p>{escaped_description}</p>
+      <a href="{escaped_article}">Abrir leitura</a>
+    </div>
+    {redirect_script}
   </body>
 </html>
 """
