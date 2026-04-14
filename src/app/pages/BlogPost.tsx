@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Brain, ExternalLink, Layers3, Radar, Share2, Sparkles, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Brain, ExternalLink, Layers3, Radar, Share2, Sparkles, TriangleAlert } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
