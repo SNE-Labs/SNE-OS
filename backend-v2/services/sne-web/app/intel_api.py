@@ -12,6 +12,7 @@ from .intel_service import (
     fetch_intel_items,
     fetch_intel_post,
     fetch_intel_posts,
+    fetch_intel_posts_last_updated,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,8 @@ def intel_posts():
         posts = fetch_intel_posts(limit=max(1, min(limit, 48)))
         return jsonify({
             "items": posts,
-            "last_updated": _iso_now(),
+            "last_updated": fetch_intel_posts_last_updated(limit=max(1, min(limit, 48))),
+            "refreshed_at": _iso_now(),
         }), 200
     except Exception as exc:
         logger.warning(f"Intel posts failed: {exc}")

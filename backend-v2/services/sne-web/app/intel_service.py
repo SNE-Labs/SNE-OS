@@ -5,7 +5,7 @@ Combines multi-source ingestion, curation, enrichment and editorial drafts.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 import re
 import threading
@@ -102,7 +102,10 @@ BLOG_SURFACE_LIMIT = 6
 BLOG_MARKET_DAILY_LIMIT = 6
 BLOG_TOTAL_LIMIT = 48
 POST_CACHE_KEY = "intel:enterprise:posts"
+POST_CACHE_META_KEY = "intel:enterprise:posts:meta"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
+POST_CACHE_TTL_SECONDS = 86400
+POST_REFRESH_INTERVAL = timedelta(minutes=10)
 
 
 def _iso_now() -> str:
@@ -527,11 +530,70 @@ def _load_cached_posts(redis_client: SafeRedis) -> List[Dict[str, Any]]:
         return []
 
 
+def _load_cached_posts_meta(redis_client: SafeRedis) -> Dict[str, Any]:
+    cached = redis_client.get(POST_CACHE_META_KEY)
+    if not cached:
+        return {}
+    try:
+        import json
+        payload = json.loads(cached)
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+      return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _latest_posts_timestamp(posts: List[Dict[str, Any]]) -> str:
+    for post in sorted(posts, key=_post_sort_key, reverse=True):
+        candidate = str(post.get("generated_at") or post.get("created_at") or "").strip()
+        if candidate:
+            return candidate
+    return _iso_now()
+
+
+def _cached_posts_last_updated(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> str:
+    meta = _load_cached_posts_meta(redis_client)
+    cached_at = str(meta.get("cached_at") or "").strip()
+    if cached_at:
+        return cached_at
+    return _latest_posts_timestamp(posts)
+
+
+def _cached_posts_are_stale(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> bool:
+    if not posts:
+        return True
+    last_updated = _cached_posts_last_updated(redis_client, posts)
+    last_updated_dt = _parse_iso_datetime(last_updated)
+    if not last_updated_dt:
+        return True
+    return datetime.now(timezone.utc) - last_updated_dt >= POST_REFRESH_INTERVAL
+
+
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
     try:
         import json
         ordered = sorted((_normalize_post(post) for post in posts), key=_post_sort_key, reverse=True)
-        redis_client.setex(POST_CACHE_KEY, 86400, json.dumps(ordered))
+        cached_at = _iso_now()
+        redis_client.setex(POST_CACHE_KEY, POST_CACHE_TTL_SECONDS, json.dumps(ordered))
+        redis_client.setex(
+            POST_CACHE_META_KEY,
+            POST_CACHE_TTL_SECONDS,
+            json.dumps(
+                {
+                    "cached_at": cached_at,
+                    "latest_generated_at": _latest_posts_timestamp(ordered),
+                    "count": len(ordered),
+                }
+            ),
+        )
     except Exception:
         pass
 
@@ -573,6 +635,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
     redis_client = SafeRedis()
     try:
         existing = _load_cached_posts(redis_client)
+        cache_stale = _cached_posts_are_stale(redis_client, existing)
 
         enricher = IntelEnricher()
         posts = list(existing)[:BLOG_TOTAL_LIMIT]
@@ -581,8 +644,8 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         counter_count = _blog_daily_count(redis_client)
         if counter_count > daily_count:
             # Recover from stale counters when the cache has fewer posts than expected.
-            daily_count = min(counter_count, BLOG_DAILY_LIMIT) if len(posts) >= counter_count else daily_count
-        if daily_count >= BLOG_DAILY_LIMIT:
+            daily_count = min(counter_count, BLOG_TOTAL_LIMIT) if len(posts) >= counter_count else daily_count
+        if daily_count >= BLOG_DAILY_LIMIT and not cache_stale:
             return
         market_daily_count = _blog_daily_market_count(posts)
 
@@ -649,7 +712,7 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
         blog_posts = _load_cached_posts(redis_client)
         curated_posts = _curate_home_editorial_posts(blog_posts, max(limit, BLOG_SURFACE_LIMIT))
         blog_items = [_shape_blog_item(post) for post in curated_posts]
-        if len(blog_posts) < BLOG_DAILY_LIMIT:
+        if len(blog_posts) < BLOG_DAILY_LIMIT or _cached_posts_are_stale(redis_client, blog_posts):
             _trigger_enterprise_post_refresh()
         items = blog_items[:limit] if blog_items else raw_items[:limit]
 
@@ -659,7 +722,7 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
         "items": items,
         "resumo_executivo": _executive_summary(items),
         "clusters": _clusters(items),
-        "last_updated": _iso_now(),
+        "last_updated": _latest_posts_timestamp(curated_posts) if include_blog and 'curated_posts' in locals() and curated_posts else _iso_now(),
     }
 
 
@@ -670,9 +733,15 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)
-    if len(posts) < min(limit, BLOG_TOTAL_LIMIT):
+    if len(posts) < min(limit, BLOG_TOTAL_LIMIT) or _cached_posts_are_stale(redis_client, posts):
         _trigger_enterprise_post_refresh()
     return posts[:limit]
+
+
+def fetch_intel_posts_last_updated(limit: int = 8) -> str:
+    redis_client = SafeRedis()
+    posts = _load_cached_posts(redis_client)[:limit]
+    return _latest_posts_timestamp(posts)
 
 
 def fetch_intel_post(slug: str) -> Dict[str, Any] | None:
