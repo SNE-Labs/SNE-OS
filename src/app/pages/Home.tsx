@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   ArrowUpRight,
-  BadgeCheck,
-  Clock,
   FileText,
   KeyRound,
   Shield,
@@ -14,12 +12,10 @@ import {
 } from 'lucide-react';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
-import { WalletConnect } from '../components/passport/WalletConnect';
 import { apiGet } from '@/lib/api/http';
 import { readPersistedSnapshot, writePersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
-import { formatAddress } from '@/utils/format';
 
 type DashboardPayload = {
   status: { overall_status: string; uptime_percentage: number | null };
@@ -113,14 +109,6 @@ type HomeResponse = {
   last_updated: string;
 };
 
-const OS_NAV = [
-  { label: 'Radar', path: '/radar', icon: Waves },
-  { label: 'Passport', path: '/pass', icon: BadgeCheck },
-  { label: 'Vault', path: '/vault', icon: Shield },
-  { label: 'Keys', path: '/keys', icon: KeyRound },
-  { label: 'Docs', path: '/docs', icon: FileText },
-];
-
 const HOME_SNAPSHOT_KEY = 'sne:query:home';
 
 export function Home() {
@@ -161,7 +149,6 @@ export function Home() {
   const brief = homeData?.brief;
   const briefSignals = homeData?.brief_signals ?? [];
   const data = homeData?.dashboard;
-  const latestAlert = data?.alerts[0] ?? null;
 
   const openIntelItem = (url: string) => {
     const normalized = normalizeIntelRoute(url);
@@ -294,17 +281,6 @@ export function Home() {
     if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
     return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
   };
-
-  const workspaceItems = useMemo(
-    () =>
-      (homeData?.system.workspace ?? [])
-        .filter((item) => item.value && item.value !== '--' && item.label !== 'Componentes')
-        .map((item, index) => ({
-          ...item,
-          icon: [Zap, Activity, Clock, BadgeCheck][index] ?? BadgeCheck,
-        })),
-    [homeData?.system.workspace]
-  );
 
   if (isLoading && !homeData) {
     return (
@@ -813,71 +789,6 @@ export function Home() {
               </div>
             )}
           </section>
-
-          {/* ── Operational Ribbon ────────────────────────────────── */}
-          <section className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4">
-            <div
-              className="rounded-[22px] px-4 py-3"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-[auto_auto_auto_1fr_auto] gap-3 items-center">
-                <div className="text-sm" style={{ color: 'var(--text-3)' }}>{formattedTime}</div>
-                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  {homeData?.session.authenticated ? 'sessão conectada' : 'sessão anônima'}
-                </div>
-                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  {liveMovers.length > 0 ? 'mercado sincronizado' : 'mercado parcial'}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {workspaceItems.slice(0, 3).map((item) => (
-                    <StatusBadge key={item.label} status="pending">
-                      {item.label}: {item.value}
-                    </StatusBadge>
-                  ))}
-                  {latestAlert ? (
-                    <StatusBadge status={latestAlert.type === 'warning' ? 'warning' : latestAlert.type === 'error' ? 'pending' : 'active'}>
-                      alerta: {latestAlert.message}
-                    </StatusBadge>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-3 justify-start md:justify-end">
-                  {homeData?.session.address && (
-                    <span className="text-sm font-mono" style={{ color: 'var(--text-2)' }}>
-                      {formatAddress(homeData.session.address)}
-                    </span>
-                  )}
-                  <WalletConnect />
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="rounded-[22px] p-4 self-start"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
-              <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>OS</div>
-              <div className="flex flex-col gap-2">
-                {OS_NAV.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => navigate(item.path)}
-                      className="flex items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 text-left"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="w-3.5 h-3.5" style={{ color: 'var(--accent-orange)' }} />
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{item.label}</span>
-                      </div>
-                      <ArrowUpRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
         </div>
       </div>
     </div>

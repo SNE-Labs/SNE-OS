@@ -190,21 +190,6 @@ export function MobileHome() {
   const secondaryIntelSections = leadIntelSection
     ? intelSections.filter((section) => section.key !== leadIntelSection.key)
     : [];
-  const orderedModules = useMemo(() => {
-    const priority: Record<string, number> = {
-      '/radar': 0,
-      '/vault': 1,
-      '/pass': 2,
-      '/keys': 3,
-      '/secrets': 4,
-      '/docs': 5,
-    };
-    return [...(home?.modules ?? [])].sort((left, right) => {
-      const leftScore = priority[left.path] ?? 99;
-      const rightScore = priority[right.path] ?? 99;
-      return leftScore - rightScore;
-    });
-  }, [home?.modules]);
   const intelTitle = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
     item.title_pt || item.title || item.title_original || 'Leitura Intel';
   const intelSummary = (item: NonNullable<HomeResponse['intel']>['items'][number]) =>
@@ -642,32 +627,6 @@ export function MobileHome() {
                 })}
               </div>
             )}
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-[var(--text-1)]">Espaços do OS</h3>
-                <div className="text-xs text-[var(--text-3)] mt-1">Acesso secundário, utilidades e estados dos módulos.</div>
-              </div>
-              <Badge variant="neutral" size="sm">{orderedModules.length}</Badge>
-            </div>
-
-            <div className="space-y-3">
-              {orderedModules.map((module) => (
-                <button
-                  key={module.path}
-                  onClick={() => navigate(module.path)}
-                  className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-left"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="text-[var(--text-1)]">{module.title}</div>
-                    <Badge variant={toBadgeVariant(module.status)} size="sm">{module.label}</Badge>
-                  </div>
-                  <div className="text-sm text-[var(--text-2)]">Abrir {module.title} dentro do OS.</div>
-                </button>
-              ))}
-            </div>
           </SurfaceCard>
         </>
       )}
