@@ -121,6 +121,8 @@ export function Radar() {
     change24h: 0,
     volume: 0,
   }));
+  const hero = overview?.hero;
+  const marketState = overview?.market_state;
 
   const handleRefresh = () => {
     overviewQuery.refetch();
@@ -177,10 +179,10 @@ export function Radar() {
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="min-w-0">
                     <h1 className="mb-2 text-3xl font-semibold leading-tight" style={{ color: 'var(--text-1)' }}>
-                      {overview?.hero.headline ?? 'Mercados líquidos. Sinais em tempo real.'}
+                      {hero?.headline ?? 'Mercados líquidos. Sinais em tempo real.'}
                     </h1>
                     <p className="max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      {overview?.hero.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}
+                      {hero?.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}
                     </p>
                   </div>
 
@@ -222,7 +224,7 @@ export function Radar() {
                           Acesso
                         </div>
                         <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {overview?.market_state.access ?? (hasAccess ? 'completo' : 'prévia')}
+                          {marketState?.access ?? (hasAccess ? 'completo' : 'prévia')}
                         </div>
                       </div>
                       <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
@@ -230,7 +232,7 @@ export function Radar() {
                           Execução
                         </div>
                         <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {overview?.market_state.execution ?? 'bloqueada'}
+                          {marketState?.execution ?? 'bloqueada'}
                         </div>
                       </div>
                       <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>

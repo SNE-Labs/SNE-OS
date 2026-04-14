@@ -57,6 +57,7 @@ export function MobileRadar() {
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
   const marketState = overview?.market_state;
+  const hero = overview?.hero;
 
   return (
     <MobilePageShell
@@ -67,8 +68,8 @@ export function MobileRadar() {
       <SurfaceCard variant="elevated">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
-            <div className="text-[var(--text-1)] mb-1">{overview?.hero.headline ?? 'Mercados líquidos. Sinais em tempo real.'}</div>
-            <div className="text-sm text-[var(--text-2)]">{overview?.hero.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}</div>
+            <div className="text-[var(--text-1)] mb-1">{hero?.headline ?? 'Mercados líquidos. Sinais em tempo real.'}</div>
+            <div className="text-sm text-[var(--text-2)]">{hero?.summary ?? 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.'}</div>
           </div>
           <button
             onClick={() => overviewQuery.refetch()}
