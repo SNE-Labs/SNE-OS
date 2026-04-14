@@ -290,13 +290,17 @@ def _openai_chat_payload(model: str, messages: List[Dict[str, str]]) -> Dict[str
 
 
 def _openai_responses_payload(model: str, instructions: str, user_input: str, max_output_tokens: int) -> Dict[str, Any]:
+    json_input = (
+        "Responda em JSON valido, sem markdown e sem texto fora do objeto JSON.\n\n"
+        f"{user_input}"
+    )
     payload: Dict[str, Any] = {
         "model": model,
         "instructions": instructions,
         "input": [
             {
                 "role": "user",
-                "content": user_input,
+                "content": json_input,
             }
         ],
         "text": {
