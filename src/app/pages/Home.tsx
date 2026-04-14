@@ -217,10 +217,12 @@ export function Home() {
 
   const workspaceItems = useMemo(
     () =>
-      (homeData?.system.workspace ?? []).map((item, index) => ({
-        ...item,
-        icon: [Zap, Activity, Clock, BadgeCheck][index] ?? BadgeCheck,
-      })),
+      (homeData?.system.workspace ?? [])
+        .filter((item) => item.value && item.value !== '--' && item.label !== 'Componentes')
+        .map((item, index) => ({
+          ...item,
+          icon: [Zap, Activity, Clock, BadgeCheck][index] ?? BadgeCheck,
+        })),
     [homeData?.system.workspace]
   );
 
