@@ -183,6 +183,14 @@ function buildTapeItems(
     });
   }
 
+  if (pathname.startsWith('/swaps')) {
+    pushUnique('route', {
+      label: auth.isAuthenticated && auth.address ? `Execucao pronta • ${formatAddress(auth.address)}` : 'Conecte uma wallet para executar',
+      tone: auth.isAuthenticated && auth.address ? 'success' : 'warning',
+      href: '/swaps',
+    });
+  }
+
   if (pathname.startsWith('/pass') && !passport?.stats?.wallets_total) {
     pushUnique('identity', {
       label: 'Lookup público pronto',
@@ -301,6 +309,17 @@ function buildSidebarContext(
     };
   }
 
+  if (pathname.startsWith('/swaps')) {
+    return {
+      eyebrow: 'Execucao',
+      title: 'Swaps LI.FI',
+      summary: 'Superficie de swap e bridge multichain separada do Radar para preservar leitura e execucao em camadas distintas.',
+      items: ['Swap', 'Bridge', 'Wallet conectada'],
+      actionLabel: 'Abrir Radar',
+      actionPath: '/radar',
+    };
+  }
+
   if (pathname.startsWith('/intel') || pathname.startsWith('/blog')) {
     const leadIntel = home?.intel?.items?.[0];
     return {
@@ -398,6 +417,10 @@ export function useShellContextData() {
 
     if (location.pathname.startsWith('/vault') && vault?.aggregate?.active_networks != null) {
       topbarChips.push({ label: `${vault.aggregate.active_networks} redes`, tone: 'neutral' });
+    }
+
+    if (location.pathname.startsWith('/swaps')) {
+      topbarChips.push({ label: 'LI.FI execution', tone: 'accent' });
     }
 
     if (isAuthenticated && address) {

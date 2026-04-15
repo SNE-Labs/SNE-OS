@@ -1,5 +1,6 @@
 import {
   Activity,
+  ArrowLeftRight,
   FileText,
   Home,
   KeyRound,
@@ -42,6 +43,12 @@ export const railNavigationGroups: NavigationGroup[] = [
     items: dockNavigationItems,
   },
   {
+    label: 'Execution',
+    items: [
+      { path: '/swaps', label: 'Swaps', icon: ArrowLeftRight },
+    ],
+  },
+  {
     label: 'Access',
     items: [
       { path: '/keys', label: 'Keys', icon: KeyRound },
@@ -73,6 +80,14 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Radar',
       context: 'Mercado em foco',
       descriptor: 'Leitura direcional, liquidez e contexto de execução antes da decisão.',
+    },
+  },
+  {
+    match: (pathname) => pathname.startsWith('/swaps'),
+    meta: {
+      title: 'Swaps',
+      context: 'Execucao',
+      descriptor: 'Swap e bridge multichain quando a tese ja foi validada no Radar.',
     },
   },
   {

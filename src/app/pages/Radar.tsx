@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
+import { Activity, ArrowLeftRight, ArrowUpRight, Lock, RefreshCw, Sparkles, Waves } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
@@ -9,6 +9,7 @@ import { useRadarOverview } from '../../hooks/useRadarData';
 import { resolveModuleState } from '../../lib/moduleState';
 import { useEntitlements } from '../../lib/auth/useEntitlements';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { buildSwapsHrefFromRadarSymbol, hasRadarSwapPrefill } from '../components/swaps/radarSwapPrefill';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
@@ -128,6 +129,8 @@ export function Radar() {
   }));
   const hero = overview?.hero;
   const marketState = overview?.market_state;
+  const swapsHref = buildSwapsHrefFromRadarSymbol(selectedMarket?.symbol ?? activeSymbol);
+  const swapsReady = hasRadarSwapPrefill(selectedMarket?.symbol ?? activeSymbol);
 
   const handleRefresh = () => {
     overviewQuery.refetch();
@@ -409,6 +412,29 @@ export function Radar() {
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => navigate(swapsHref)}
+                  className="mt-4 flex w-full items-center justify-between rounded-[22px] px-4 py-3 text-left transition-all"
+                  style={{
+                    backgroundColor: 'rgba(255,140,66,0.08)',
+                    borderWidth: '1px',
+                    borderColor: 'rgba(255,140,66,0.16)',
+                  }}
+                >
+                  <div>
+                    <div className="mb-1 flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                      <ArrowLeftRight className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
+                      Abrir em Swaps
+                    </div>
+                    <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                      {swapsReady
+                        ? 'Levar este ativo para a superficie de execucao com prefill de destino.'
+                        : 'Abrir a superficie de execucao. Este ativo ainda entra sem prefill especifico.'}
+                    </div>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+                </button>
 
                 <div className="mt-5 space-y-4">
                   <div
@@ -722,10 +748,10 @@ export function Radar() {
                 <div className="space-y-3">
                   <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="mb-2 font-semibold" style={{ color: 'var(--text-1)' }}>
-                      Execução bloqueada
+                      Execucao deslocada
                     </div>
                     <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      O Radar segue somente leitura. Swap e roteamento entram depois que o contexto de protocolo estiver definido.
+                      O Radar segue somente leitura. Swap e roteamento entram depois que o contexto de protocolo estiver definido, em `/swaps`.
                     </div>
                   </div>
 
@@ -749,6 +775,24 @@ export function Radar() {
                       O Radar prioriza liquidez, direção e contexto. A decisão de execução entra depois, em outra superfície.
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => navigate(swapsHref)}
+                    className="flex w-full items-center justify-between rounded-[22px] p-4 text-left transition-all"
+                    style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.16)' }}
+                  >
+                    <div>
+                      <div className="mb-2 font-semibold" style={{ color: 'var(--text-1)' }}>
+                        Abrir Swaps
+                      </div>
+                      <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                        {swapsReady
+                          ? 'Abrir a rota de execucao com o ativo selecionado como destino.'
+                          : 'Abrir a superficie de execucao e escolher manualmente o ativo de destino.'}
+                      </div>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+                  </button>
                 </div>
               </div>
             </div>

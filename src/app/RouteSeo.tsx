@@ -91,6 +91,25 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
     };
   }
 
+  if (pathname === '/swaps') {
+    return {
+      title: 'Swaps | SNE OS',
+      description:
+        'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+      canonicalPath: '/swaps',
+      image: `${SITE_ORIGIN}/og-image.png`,
+      keywords: ['sne os swaps', 'cross-chain swap', 'bridge crypto', 'lifi widget', 'multichain execution'],
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Swaps | SNE OS',
+        description:
+          'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+        url: 'https://snelabs.space/swaps',
+      },
+    };
+  }
+
   if (pathname === '/pass' || pathname === '/vault' || pathname === '/keys' || pathname === '/secrets') {
     return {
       title: 'SNE OS',

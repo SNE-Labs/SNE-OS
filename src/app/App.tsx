@@ -24,6 +24,7 @@ import { Docs } from './pages/Docs';
 
 // Desktop Pages (lazy loaded para performance)
 const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
+const DesktopSwaps = lazy(() => import('./pages/Swaps').then(m => ({ default: m.Swaps })));
 const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
 const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
 const DesktopKeys = lazy(() => import('./pages/Keys').then(m => ({ default: m.Keys })));
@@ -137,6 +138,7 @@ function AppContent() {
                 <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
                 <Route path="/radar" element={<DesktopRadar />} />
                 <Route path="/radar/:symbol" element={<DesktopRadar />} />
+                <Route path="/swaps" element={<DesktopSwaps />} />
                 <Route path="/pass" element={<DesktopPass />} />
                 <Route path="/vault" element={<DesktopVault />} />
                 <Route path="/keys" element={<DesktopKeys />} />
@@ -162,6 +164,7 @@ function AppContent() {
 
 function resolveAtmosphereClass(pathname: string): AtmosphereKey {
   if (pathname.startsWith('/radar')) return 'shell-frame--radar';
+  if (pathname.startsWith('/swaps')) return 'shell-frame--vault';
   if (pathname.startsWith('/intel') || pathname.startsWith('/blog')) return 'shell-frame--intel';
   if (pathname.startsWith('/pass')) return 'shell-frame--passport';
   if (pathname.startsWith('/vault')) return 'shell-frame--vault';

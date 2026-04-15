@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Activity, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
+import { Activity, ArrowLeftRight, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
 
 const MobileHome = lazy(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
 const MobileRadar = lazy(() => import('../pages/mobile/Radar').then((m) => ({ default: m.MobileRadar })));
+const MobileSwaps = lazy(() => import('../pages/mobile/Swaps').then((m) => ({ default: m.MobileSwaps })));
 const MobileVault = lazy(() => import('../pages/mobile/Vault').then((m) => ({ default: m.MobileVault })));
 const MobilePass = lazy(() => import('../pages/mobile/Pass').then((m) => ({ default: m.MobilePass })));
 const MobileKeys = lazy(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
@@ -206,6 +207,12 @@ const primaryTabs = [
 
 const moreItems = [
   {
+    label: 'Swaps',
+    path: '/swaps',
+    icon: ArrowLeftRight,
+    copy: 'Execucao multichain com swap e bridge via LI.FI.',
+  },
+  {
     label: 'Passport',
     path: '/pass',
     icon: BadgeCheck,
@@ -291,6 +298,7 @@ export function MobileLayout() {
             <Route path="/home" element={<MobileHome />} />
             <Route path="/radar" element={<MobileRadar />} />
             <Route path="/radar/:symbol" element={<MobileRadar />} />
+            <Route path="/swaps" element={<MobileSwaps />} />
             <Route path="/intel" element={<MobileBlog />} />
             <Route path="/intel/topic/:topic" element={<MobileBlog />} />
             <Route path="/intel/chain/:chain" element={<MobileBlog />} />

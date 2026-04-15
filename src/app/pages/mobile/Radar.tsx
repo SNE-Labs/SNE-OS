@@ -6,6 +6,7 @@ import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCa
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { useRadarOverview } from '../../../hooks/useRadarData';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { buildSwapsHrefFromRadarSymbol, hasRadarSwapPrefill } from '../../components/swaps/radarSwapPrefill';
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 
 function formatPrice(value: number) {
@@ -64,6 +65,8 @@ export function MobileRadar() {
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
   const marketState = overview?.market_state;
   const hero = overview?.hero;
+  const swapsHref = buildSwapsHrefFromRadarSymbol(featured?.symbol ?? overview?.signal?.symbol ?? activeSymbol);
+  const swapsReady = hasRadarSwapPrefill(featured?.symbol ?? overview?.signal?.symbol ?? activeSymbol);
   const radarTitleSymbol = (featured?.symbol ?? activeSymbol).toUpperCase();
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
   const radarDescription = featured
@@ -195,6 +198,11 @@ export function MobileRadar() {
                     <div className="text-[var(--text-1)]">${compact(Number(featured.volume))}</div>
                   </div>
                 </div>
+
+                <MobileButton className="w-full" onClick={() => navigate(swapsHref)}>
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  {swapsReady ? 'Abrir Swaps' : 'Abrir execucao'}
+                </MobileButton>
               </div>
             ) : (
               <EmptyState
@@ -384,15 +392,15 @@ export function MobileRadar() {
               <div className="rounded-xl border border-[rgba(255,140,66,0.16)] bg-[rgba(255,140,66,0.08)] p-3">
                 <div className="text-[var(--text-1)] mb-1">Próxima camada</div>
                 <div className="text-sm text-[var(--text-2)]">
-                  O passo seguinte é contexto DeFi e rota real, não um botão de compra genérico.
+                  O passo seguinte é contexto DeFi e rota real em `/swaps`, não um botão de compra genérico.
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/docs')}>
-                <Waves className="w-4 h-4 mr-2" />
-                Abrir Docs
+              <MobileButton className="w-full" onClick={() => navigate(swapsHref)}>
+                <ArrowUpRight className="w-4 h-4 mr-2" />
+                {swapsReady ? 'Abrir Swaps' : 'Execucao'}
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/vault')}>
                 <ArrowUpRight className="w-4 h-4 mr-2" />
