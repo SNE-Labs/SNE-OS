@@ -21,6 +21,17 @@ from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
 
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return max(minimum, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s=%s. Falling back to %s.", name, raw, default)
+        return default
+
 CRYPTO_RELEVANCE_TOKENS = {
     "bitcoin",
     "btc",
@@ -99,12 +110,12 @@ BROADER_RELEVANCE_TOKENS = {
 GENERALIST_SOURCES = {"hn_front_page", "techcrunch", "openai_news", "reuters_business", "reuters_world"}
 COMMUNITY_SOURCE_CAP = 2
 BLOG_SOURCE_NAME = "Intel Brief"
-BLOG_DAILY_LIMIT = 100
-BLOG_MIN_DAILY_POSTS = 15
-BLOG_SURFACE_LIMIT = 6
-BLOG_MARKET_DAILY_LIMIT = 6
-BLOG_TOTAL_LIMIT = 120
-BLOG_REFRESH_INSERT_LIMIT = 1
+BLOG_DAILY_LIMIT = _env_int("INTEL_BLOG_DAILY_LIMIT", 240)
+BLOG_MIN_DAILY_POSTS = _env_int("INTEL_BLOG_MIN_DAILY_POSTS", 24)
+BLOG_SURFACE_LIMIT = _env_int("INTEL_BLOG_SURFACE_LIMIT", 6)
+BLOG_MARKET_DAILY_LIMIT = _env_int("INTEL_BLOG_MARKET_DAILY_LIMIT", 12)
+BLOG_TOTAL_LIMIT = _env_int("INTEL_BLOG_TOTAL_LIMIT", 320)
+BLOG_REFRESH_INSERT_LIMIT = _env_int("INTEL_BLOG_REFRESH_INSERT_LIMIT", 3)
 MARKET_POST_ASSET_DAILY_LIMIT = 1
 MARKET_POST_RECENT_WINDOW = 3
 MARKET_POST_RECENT_CAP = 1
@@ -112,7 +123,7 @@ POST_CACHE_KEY = "intel:enterprise:posts"
 POST_CACHE_META_KEY = "intel:enterprise:posts:meta"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 POST_CACHE_TTL_SECONDS = 86400
-POST_REFRESH_INTERVAL = timedelta(minutes=15)
+POST_REFRESH_INTERVAL = timedelta(minutes=_env_int("INTEL_POST_REFRESH_INTERVAL_MINUTES", 5))
 DEFAULT_INTEL_RESET_TZ = "America/Sao_Paulo"
 
 

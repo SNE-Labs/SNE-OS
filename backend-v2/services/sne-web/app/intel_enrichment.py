@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Dict, List
 
 import requests
@@ -20,6 +21,33 @@ from .utils.redis_safe import SafeRedis
 logger = logging.getLogger(__name__)
 
 CACHE_VERSION = "v7"
+
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return max(minimum, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s=%s. Falling back to %s.", name, raw, default)
+        return default
+
+
+def _parse_retry_after_seconds(value: str | None) -> int | None:
+    if not value:
+        return None
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        return None
+    return max(1, min(seconds, 30))
+
+
+INTEL_BRIEF_MAX_OUTPUT_TOKENS = _env_int("INTEL_BRIEF_MAX_OUTPUT_TOKENS", 4000)
+INTEL_DOSSIER_MAX_OUTPUT_TOKENS = _env_int("INTEL_DOSSIER_MAX_OUTPUT_TOKENS", 10000)
+INTEL_LLM_TIMEOUT_SECONDS = _env_int("INTEL_LLM_TIMEOUT_SECONDS", 40)
+INTEL_LLM_MAX_ATTEMPTS = _env_int("INTEL_LLM_MAX_ATTEMPTS", 3)
 
 TOPIC_RULES = {
     "seguranca": ["security", "breach", "exploit", "malware", "vulnerability", "attack", "seed", "seguranca", "segurança"],
@@ -497,73 +525,111 @@ class IntelEnricher:
             "item": item,
             "instruction": instruction,
         }
-        try:
-            max_output_tokens = 8000 if editorial_kind == "dossier" else 3000
-            response = requests.post(
-                f"{self.base_url}/responses",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=_openai_responses_payload(
-                    self.model,
-                    (
-                        "Voce e o editor-chefe da Intelligence Layer do SNE OS. "
-                        "Produza JSON valido em pt-BR, sem markdown fora do campo body_markdown. "
-                        "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
-                    ),
-                    json.dumps(prompt, ensure_ascii=False),
-                    max_output_tokens,
-                ),
-                timeout=25,
-            )
-            response.raise_for_status()
-            data = response.json()
-            content = _extract_response_text(data)
-            if not content:
+        max_output_tokens = INTEL_DOSSIER_MAX_OUTPUT_TOKENS if editorial_kind == "dossier" else INTEL_BRIEF_MAX_OUTPUT_TOKENS
+        payload = _openai_responses_payload(
+            self.model,
+            (
+                "Voce e o editor-chefe da Intelligence Layer do SNE OS. "
+                "Produza JSON valido em pt-BR, sem markdown fora do campo body_markdown. "
+                "Nao invente fatos fora do contexto fornecido, mas produza leitura propria e conclusoes operacionais."
+            ),
+            json.dumps(prompt, ensure_ascii=False),
+            max_output_tokens,
+        )
+
+        for attempt in range(1, INTEL_LLM_MAX_ATTEMPTS + 1):
+            try:
+                response = requests.post(
+                    f"{self.base_url}/responses",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=INTEL_LLM_TIMEOUT_SECONDS,
+                )
+                response.raise_for_status()
+                data = response.json()
+                content = _extract_response_text(data)
+                if not content:
+                    logger.warning(
+                        "Intel LLM post returned empty output for %s: status=%s incomplete_details=%s usage=%s max_output_tokens=%s",
+                        item_id,
+                        data.get("status"),
+                        data.get("incomplete_details"),
+                        data.get("usage"),
+                        max_output_tokens,
+                    )
+                    return None
+                parsed = _extract_json(content)
+                if not isinstance(parsed, dict):
+                    logger.warning("Intel LLM post returned non-JSON payload for %s", item_id)
+                    return None
+
+                slug = _slugify(parsed.get("title") or item.get("title_pt") or item.get("title") or item_id)
+                logger.info("Intel LLM post generation succeeded for %s", item_id)
+                return {
+                    "id": f"post:{slug}",
+                    "slug": slug,
+                    "title": parsed.get("title") or item.get("title_pt") or item.get("title") or item_id,
+                    "subtitle": parsed.get("subtitle") or item.get("why_it_matters", ""),
+                    "excerpt": parsed.get("excerpt") or item.get("summary_pt", ""),
+                    "body_markdown": _clean_body_markdown(parsed.get("body_markdown")),
+                    "tldr": _normalize_tldr(parsed.get("tldr")) or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
+                    "topics": item.get("topics", []),
+                    "chains": item.get("chains", []),
+                    "protocols": item.get("protocols", []),
+                    "assets": item.get("assets", []),
+                    "sources": [{"name": item.get("source", "Unknown"), "url": item.get("url", "")}],
+                    "status": "draft",
+                    "generated_at": _iso_now(),
+                    "reading_time_minutes": max(1, round(len((parsed.get("body_markdown") or "").split()) / 180)),
+                    "editorial_kind": editorial_kind,
+                }
+            except requests.HTTPError as exc:
+                response = exc.response
+                status_code = response.status_code if response is not None else None
+                response_body = _truncate_response_body(response.text if response is not None else "")
+                if status_code in {429, 500, 502, 503, 504} and attempt < INTEL_LLM_MAX_ATTEMPTS:
+                    retry_after = _parse_retry_after_seconds(response.headers.get("Retry-After") if response is not None else None)
+                    delay_seconds = retry_after or min(12, attempt * 3)
+                    logger.warning(
+                        "Intel LLM post request retry for %s: attempt=%s/%s status=%s delay=%ss body=%s",
+                        item_id,
+                        attempt,
+                        INTEL_LLM_MAX_ATTEMPTS,
+                        status_code,
+                        delay_seconds,
+                        response_body,
+                    )
+                    time.sleep(delay_seconds)
+                    continue
+
                 logger.warning(
-                    "Intel LLM post returned empty output for %s: status=%s incomplete_details=%s usage=%s max_output_tokens=%s",
+                    "Intel LLM post request failed for %s: attempt=%s/%s status=%s body=%s",
                     item_id,
-                    data.get("status"),
-                    data.get("incomplete_details"),
-                    data.get("usage"),
-                    max_output_tokens,
+                    attempt,
+                    INTEL_LLM_MAX_ATTEMPTS,
+                    status_code if status_code is not None else "unknown",
+                    response_body,
                 )
                 return None
-            parsed = _extract_json(content)
-            if not isinstance(parsed, dict):
-                logger.warning("Intel LLM post returned non-JSON payload for %s", item_id)
+            except requests.Timeout:
+                if attempt < INTEL_LLM_MAX_ATTEMPTS:
+                    delay_seconds = min(10, attempt * 2)
+                    logger.warning(
+                        "Intel LLM post timeout for %s: attempt=%s/%s delay=%ss",
+                        item_id,
+                        attempt,
+                        INTEL_LLM_MAX_ATTEMPTS,
+                        delay_seconds,
+                    )
+                    time.sleep(delay_seconds)
+                    continue
+                logger.warning("Intel LLM post timed out for %s after %s attempts", item_id, INTEL_LLM_MAX_ATTEMPTS)
+                return None
+            except Exception as exc:
+                logger.warning(f"Intel LLM post generation failed: {exc}")
                 return None
 
-            slug = _slugify(parsed.get("title") or item.get("title_pt") or item.get("title") or item_id)
-            logger.info("Intel LLM post generation succeeded for %s", item_id)
-            return {
-                "id": f"post:{slug}",
-                "slug": slug,
-                "title": parsed.get("title") or item.get("title_pt") or item.get("title") or item_id,
-                "subtitle": parsed.get("subtitle") or item.get("why_it_matters", ""),
-                "excerpt": parsed.get("excerpt") or item.get("summary_pt", ""),
-                "body_markdown": _clean_body_markdown(parsed.get("body_markdown")),
-                "tldr": _normalize_tldr(parsed.get("tldr")) or [value for value in [item.get("summary_pt", ""), item.get("why_it_matters", "")] if value],
-                "topics": item.get("topics", []),
-                "chains": item.get("chains", []),
-                "protocols": item.get("protocols", []),
-                "assets": item.get("assets", []),
-                "sources": [{"name": item.get("source", "Unknown"), "url": item.get("url", "")}],
-                "status": "draft",
-                "generated_at": _iso_now(),
-                "reading_time_minutes": max(1, round(len((parsed.get("body_markdown") or "").split()) / 180)),
-                "editorial_kind": editorial_kind,
-            }
-        except requests.HTTPError as exc:
-            response = exc.response
-            logger.warning(
-                "Intel LLM post request failed for %s: status=%s body=%s",
-                item_id,
-                response.status_code if response is not None else "unknown",
-                _truncate_response_body(response.text if response is not None else ""),
-            )
-            return None
-        except Exception as exc:
-            logger.warning(f"Intel LLM post generation failed: {exc}")
-            return None
+        return None
