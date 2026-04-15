@@ -95,16 +95,16 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
     return {
       title: 'Swaps | SNE OS',
       description:
-        'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+        'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
       canonicalPath: '/swaps',
       image: `${SITE_ORIGIN}/og-image.png`,
-      keywords: ['sne os swaps', 'cross-chain swap', 'bridge crypto', 'lifi widget', 'multichain execution'],
+      keywords: ['sne os swaps', 'usdt multichain', 'cross-chain usdt', 'digital dollar', 'multichain execution'],
       structuredData: {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: 'Swaps | SNE OS',
         description:
-          'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+          'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
         url: 'https://snelabs.space/swaps',
       },
     };

@@ -87,7 +87,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     meta: {
       title: 'Swaps',
       context: 'Execucao',
-      descriptor: 'Swap e bridge multichain quando a tese ja foi validada no Radar.',
+      descriptor: 'Mover, converter e usar USDT quando a intencao ja esta definida.',
     },
   },
   {

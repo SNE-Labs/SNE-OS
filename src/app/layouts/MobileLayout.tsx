@@ -210,7 +210,7 @@ const moreItems = [
     label: 'Swaps',
     path: '/swaps',
     icon: ArrowLeftRight,
-    copy: 'Execucao multichain com swap e bridge via LI.FI.',
+    copy: 'Mover, converter e usar USDT em ambiente multichain.',
   },
   {
     label: 'Passport',

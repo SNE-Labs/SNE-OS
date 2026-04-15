@@ -312,9 +312,9 @@ function buildSidebarContext(
   if (pathname.startsWith('/swaps')) {
     return {
       eyebrow: 'Execucao',
-      title: 'Swaps LI.FI',
-      summary: 'Superficie de swap e bridge multichain separada do Radar para preservar leitura e execucao em camadas distintas.',
-      items: ['Swap', 'Bridge', 'Wallet conectada'],
+      title: 'USDT execution',
+      summary: 'Superficie para mover, converter e usar USDT sem transformar Radar ou Vault em terminais de execucao.',
+      items: ['USDT-first', 'Multichain', 'Wallet conectada'],
       actionLabel: 'Abrir Radar',
       actionPath: '/radar',
     };
@@ -420,7 +420,7 @@ export function useShellContextData() {
     }
 
     if (location.pathname.startsWith('/swaps')) {
-      topbarChips.push({ label: 'LI.FI execution', tone: 'accent' });
+      topbarChips.push({ label: 'USDT execution', tone: 'accent' });
     }
 
     if (isAuthenticated && address) {

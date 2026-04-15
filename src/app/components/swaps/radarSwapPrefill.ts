@@ -1,3 +1,5 @@
+import { DEFAULT_USDT_CHAIN_ID, getUsdtTokenAddress } from '@/lib/usdt';
+
 const AddressZero = '0x0000000000000000000000000000000000000000';
 
 const RADAR_SWAP_DESTINATIONS: Record<string, { toChain: number; toToken: string }> = {
@@ -31,6 +33,14 @@ export function buildSwapsHrefFromRadarSymbol(symbol?: string | null) {
   const asset = radarAssetSymbol(symbol);
   const params = new URLSearchParams();
   const destination = RADAR_SWAP_DESTINATIONS[asset];
+  const fromToken = getUsdtTokenAddress(DEFAULT_USDT_CHAIN_ID);
+
+  params.set('mode', 'trade');
+
+  if (fromToken) {
+    params.set('fromChain', String(DEFAULT_USDT_CHAIN_ID));
+    params.set('fromToken', fromToken);
+  }
 
   if (destination?.toChain) {
     params.set('toChain', String(destination.toChain));
@@ -41,7 +51,7 @@ export function buildSwapsHrefFromRadarSymbol(symbol?: string | null) {
   }
 
   const query = params.toString();
-  return query ? `/swaps?${query}` : '/swaps';
+  return query ? `/swaps?${query}` : '/swaps?mode=trade';
 }
 
 export function hasRadarSwapPrefill(symbol?: string | null) {

@@ -201,7 +201,7 @@ export function MobileRadar() {
 
                 <MobileButton className="w-full" onClick={() => navigate(swapsHref)}>
                   <ArrowUpRight className="w-4 h-4 mr-2" />
-                  {swapsReady ? 'Abrir Swaps' : 'Abrir execucao'}
+                  {swapsReady ? 'Usar USDT' : 'Execucao USDT'}
                 </MobileButton>
               </div>
             ) : (
@@ -392,7 +392,7 @@ export function MobileRadar() {
               <div className="rounded-xl border border-[rgba(255,140,66,0.16)] bg-[rgba(255,140,66,0.08)] p-3">
                 <div className="text-[var(--text-1)] mb-1">Próxima camada</div>
                 <div className="text-sm text-[var(--text-2)]">
-                  O passo seguinte é contexto DeFi e rota real em `/swaps`, não um botão de compra genérico.
+                  O passo seguinte é usar USDT em uma superficie separada, não um botão de compra genérico.
                 </div>
               </div>
             </div>
@@ -400,7 +400,7 @@ export function MobileRadar() {
             <div className="grid grid-cols-2 gap-3">
               <MobileButton className="w-full" onClick={() => navigate(swapsHref)}>
                 <ArrowUpRight className="w-4 h-4 mr-2" />
-                {swapsReady ? 'Abrir Swaps' : 'Execucao'}
+                {swapsReady ? 'Usar USDT' : 'Execucao USDT'}
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/vault')}>
                 <ArrowUpRight className="w-4 h-4 mr-2" />

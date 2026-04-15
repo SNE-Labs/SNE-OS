@@ -32,7 +32,7 @@ export function MobileVault() {
   return (
     <MobilePageShell
       title="Vault"
-      subtitle="Self-custody, capital surface and network allocation."
+      subtitle="Leitura USDT multichain via RPC. O Vault nao transaciona."
       showContext
     >
       {overviewQuery.isLoading && !overview ? (
@@ -43,7 +43,7 @@ export function MobileVault() {
       ) : (overviewQuery.isError || !overview) && !overview ? (
         <ErrorState
           title="Vault indisponível"
-          description="A superfície de capital não carregou agora."
+          description="A leitura on-chain da wallet nao carregou agora."
           onRetry={() => overviewQuery.refetch()}
         />
       ) : (
@@ -59,8 +59,8 @@ export function MobileVault() {
                 </div>
                 <p className="text-sm text-[var(--text-2)]">
                   {overview.connected
-                    ? 'Capital, gas and posture loaded for the current wallet.'
-                    : 'Connect a wallet to load the capital surface.'}
+                    ? 'Saldo, gas e postura lidos via RPC para a wallet atual.'
+                    : 'Conecte uma wallet para carregar a leitura USDT.'}
                 </p>
               </div>
             </div>
@@ -73,7 +73,7 @@ export function MobileVault() {
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Portfolio</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">USDT view</div>
                 <div className="text-[var(--text-1)]">{aggregate?.total_value_display ?? '--'}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
@@ -87,25 +87,25 @@ export function MobileVault() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <MobileButton className="w-full" onClick={() => navigate('/secrets')}>
-                Open Secrets
+              <MobileButton className="w-full" onClick={() => navigate('/swaps?mode=move')}>
+                Mover USDT
               </MobileButton>
               <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/radar')}>
-                Open Radar
+                Abrir Radar
               </MobileButton>
             </div>
           </SurfaceCard>
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">Capital Surface</h3>
+              <h3 className="text-[var(--text-1)]">Leitura USDT</h3>
               <Badge variant="neutral" size="sm">{overview.capital_cards.length}</Badge>
             </div>
 
             {overview.capital_cards.length === 0 ? (
               <EmptyState
-                title="No capital cards"
-                description="The Vault did not return capital metrics for this session."
+                title="Sem leitura disponivel"
+                description="O Vault nao retornou metricas on-chain para esta sessao."
               />
             ) : (
               <div className="space-y-3">
@@ -128,14 +128,14 @@ export function MobileVault() {
 
           <SurfaceCard>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[var(--text-1)]">By Network</h3>
+              <h3 className="text-[var(--text-1)]">Por rede</h3>
               <Badge variant="neutral" size="sm">{byNetwork.length}</Badge>
             </div>
 
             {byNetwork.length === 0 ? (
               <EmptyState
-                title="No network allocation"
-                description="The Vault has not returned any network positions yet."
+                title="Sem leitura por rede"
+                description="O Vault ainda nao retornou posicoes por rede."
               />
             ) : (
               <div className="space-y-3">
@@ -169,7 +169,7 @@ export function MobileVault() {
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
               <Shield className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Protection</span>
+              <span>Protecao</span>
             </div>
 
             <div className="space-y-3 mb-4">
@@ -184,12 +184,12 @@ export function MobileVault() {
             </div>
 
             <button
-              onClick={() => navigate('/radar')}
+              onClick={() => navigate('/swaps?mode=move')}
               className="w-full rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] px-3 py-3 flex items-center justify-between text-left"
             >
               <div>
-                <div className="text-[var(--text-1)] mb-1">Execution remains downstream</div>
-                <div className="text-sm text-[var(--text-2)]">Use Radar and Swap after the capital context is ready.</div>
+                <div className="text-[var(--text-1)] mb-1">Execucao fica fora do Vault</div>
+                <div className="text-sm text-[var(--text-2)]">Use Swaps para mover ou converter USDT depois da leitura.</div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
             </button>
@@ -198,20 +198,20 @@ export function MobileVault() {
           <SurfaceCard>
             <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
               <Waves className="w-4 h-4 text-[var(--accent-orange)]" />
-              <span>Readiness</span>
+              <span>Prontidao</span>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Custody</div>
+                <div className="text-[var(--text-1)] mb-1">Somente leitura</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.readiness.custody}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Staking</div>
+                <div className="text-[var(--text-1)] mb-1">Gas readiness</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.readiness.staking}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Provisioning</div>
+                <div className="text-[var(--text-1)] mb-1">Execucao</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.readiness.provisioning}</div>
               </div>
             </div>

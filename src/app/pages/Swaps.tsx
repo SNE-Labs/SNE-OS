@@ -6,6 +6,7 @@ import { ArrowLeftRight, ArrowUpRight, Sparkles, Wallet } from 'lucide-react';
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { DEFAULT_USDT_CHAIN_ID, getUsdtChainName, getUsdtTokenAddress, normalizeSwapMode } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
 
 function parseChainId(value: string | null) {
@@ -23,31 +24,47 @@ export function Swaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const mode = normalizeSwapMode(searchParams.get('mode'));
 
-  const prefill = useMemo(
-    () => ({
-      fromChain: parseChainId(searchParams.get('fromChain')),
-      toChain: parseChainId(searchParams.get('toChain')),
-      fromToken: parseToken(searchParams.get('fromToken')),
-      toToken: parseToken(searchParams.get('toToken')),
+  const prefill = useMemo(() => {
+    const explicitFromChain = parseChainId(searchParams.get('fromChain'));
+    const explicitToChain = parseChainId(searchParams.get('toChain'));
+    const fromChain = explicitFromChain ?? (mode === 'advanced' ? undefined : DEFAULT_USDT_CHAIN_ID);
+    const toChain = explicitToChain;
+    const fromUsdt = getUsdtTokenAddress(fromChain);
+    const toUsdt = getUsdtTokenAddress(toChain);
+
+    return {
+      fromChain,
+      toChain,
+      fromToken: parseToken(searchParams.get('fromToken')) ?? (mode === 'to-usdt' ? undefined : fromUsdt),
+      toToken: parseToken(searchParams.get('toToken')) ?? (mode === 'move' || mode === 'to-usdt' ? toUsdt : undefined),
       toAddress: address ?? parseToken(searchParams.get('toAddress')),
-    }),
-    [address, searchParams]
-  );
+    };
+  }, [address, mode, searchParams]);
+
+  const modeLabel =
+    mode === 'trade'
+      ? 'usar USDT'
+      : mode === 'to-usdt'
+        ? 'converter para USDT'
+        : mode === 'advanced'
+          ? 'modo avancado'
+          : 'mover USDT';
 
   useSeoMeta({
     title: 'Swaps | SNE OS',
     description:
-      'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+      'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
     canonicalPath: '/swaps',
     type: 'website',
-    keywords: ['sne os swaps', 'lifi widget', 'cross-chain swap', 'bridge crypto', 'multichain execution'],
+    keywords: ['sne os swaps', 'usdt multichain', 'cross-chain usdt', 'digital dollar', 'multichain execution'],
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',
       name: 'Swaps | SNE OS',
       description:
-        'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+        'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
       url: 'https://snelabs.space/swaps',
     },
   });
@@ -75,18 +92,18 @@ export function Swaps() {
                     style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-3)' }}
                   >
                     <ArrowLeftRight className="h-3.5 w-3.5" />
-                    Swaps
+                    USDT execution
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="min-w-0">
                     <h1 className="mb-2 text-3xl font-semibold leading-tight" style={{ color: 'var(--text-1)' }}>
-                      Execucao multichain, sem confundir o papel do Radar.
+                      Mova e use USDT sem sair da sua wallet.
                     </h1>
                     <p className="max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      O Radar continua lendo liquidez, regime e direcao. O modulo Swaps executa a rota quando a tese ja
-                      esta validada. A superficie abaixo usa a LI.FI como camada de swap e bridge.
+                      Esta e a superficie de execucao do OS. O saldo continua on-chain, a assinatura acontece na sua
+                      wallet e o fluxo padrao usa USDT como unidade operacional.
                     </p>
                   </div>
 
@@ -104,7 +121,7 @@ export function Swaps() {
                           Superficie ativa
                         </div>
                         <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                          Rota de swap pronta para a wallet conectada.
+                          Modo atual: {modeLabel}.
                         </div>
                       </div>
                       <div
@@ -140,7 +157,7 @@ export function Swaps() {
                             Origem
                           </div>
                           <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                            {prefill.fromChain ?? '--'}
+                            {getUsdtChainName(prefill.fromChain)}
                           </div>
                         </div>
                         <div
@@ -151,7 +168,7 @@ export function Swaps() {
                             Destino
                           </div>
                           <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                            {prefill.toChain ?? '--'}
+                            {getUsdtChainName(prefill.toChain)}
                           </div>
                         </div>
                       </div>
@@ -176,7 +193,7 @@ export function Swaps() {
                       {address ? formatAddress(address) : 'Conecte uma wallet'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Use a wallet do workspace para assinar a execucao final.
+                      Use a wallet do workspace para revisar e assinar a execucao final.
                     </div>
                   </div>
                 </div>
@@ -207,12 +224,12 @@ export function Swaps() {
                     <div className="mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
                       <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Execucao assistida
+                        USDT-first
                       </div>
                     </div>
                     <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      Quando a rota vier do Radar, o ativo de destino pode chegar pre-selecionado. Antes de assinar,
-                      revise rede, token, cotacao, slippage e endereco final dentro do widget.
+                      Quando a rota vier do Radar, o OS prepara a intencao de uso do seu USDT. Antes de assinar,
+                      revise rede, token, cotacao, slippage e endereco final.
                     </div>
                   </div>
                 </div>

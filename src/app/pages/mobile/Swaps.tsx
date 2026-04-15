@@ -6,6 +6,7 @@ import { ArrowLeftRight, ArrowUpRight, BadgeCheck, Waves } from 'lucide-react';
 import { Badge, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { LiFiSwapWidget } from '../../components/swaps/LiFiSwapWidget';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { DEFAULT_USDT_CHAIN_ID, getUsdtChainName, getUsdtTokenAddress, normalizeSwapMode } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
 
 function parseChainId(value: string | null) {
@@ -23,31 +24,38 @@ export function MobileSwaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const mode = normalizeSwapMode(searchParams.get('mode'));
 
-  const prefill = useMemo(
-    () => ({
-      fromChain: parseChainId(searchParams.get('fromChain')),
-      toChain: parseChainId(searchParams.get('toChain')),
-      fromToken: parseToken(searchParams.get('fromToken')),
-      toToken: parseToken(searchParams.get('toToken')),
+  const prefill = useMemo(() => {
+    const explicitFromChain = parseChainId(searchParams.get('fromChain'));
+    const explicitToChain = parseChainId(searchParams.get('toChain'));
+    const fromChain = explicitFromChain ?? (mode === 'advanced' ? undefined : DEFAULT_USDT_CHAIN_ID);
+    const toChain = explicitToChain;
+    const fromUsdt = getUsdtTokenAddress(fromChain);
+    const toUsdt = getUsdtTokenAddress(toChain);
+
+    return {
+      fromChain,
+      toChain,
+      fromToken: parseToken(searchParams.get('fromToken')) ?? (mode === 'to-usdt' ? undefined : fromUsdt),
+      toToken: parseToken(searchParams.get('toToken')) ?? (mode === 'move' || mode === 'to-usdt' ? toUsdt : undefined),
       toAddress: address ?? parseToken(searchParams.get('toAddress')),
-    }),
-    [address, searchParams]
-  );
+    };
+  }, [address, mode, searchParams]);
 
   useSeoMeta({
     title: 'Swaps | SNE OS',
     description:
-      'Superficie de execucao do SNE OS com LI.FI para swap e bridge multichain a partir da wallet conectada.',
+      'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
     canonicalPath: '/swaps',
     type: 'website',
-    keywords: ['sne os swaps', 'lifi widget', 'cross-chain swap', 'bridge crypto', 'multichain execution'],
+    keywords: ['sne os swaps', 'usdt multichain', 'cross-chain usdt', 'digital dollar', 'multichain execution'],
   });
 
   return (
     <MobilePageShell
       title="Swaps"
-      subtitle="Execucao multichain separada do Radar, com rota pronta para swap e bridge."
+      subtitle="Execucao USDT-first para mover, converter ou usar dolar digital pela wallet."
       statusPill={{
         label: isConnected ? 'wallet online' : 'wallet pending',
         variant: isConnected ? 'success' : 'orange',
@@ -56,10 +64,9 @@ export function MobileSwaps() {
       <SurfaceCard variant="elevated">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <div className="mb-1 text-[var(--text-1)]">Execucao depois da leitura.</div>
+            <div className="mb-1 text-[var(--text-1)]">USDT como unidade base.</div>
             <div className="text-sm text-[var(--text-2)]">
-              Intel interpreta, Radar valida, Swaps executa. O widget abaixo recebe parametros da URL e pode usar a
-              wallet atual como destino.
+              O saldo segue on-chain. Esta tela prepara a rota e a wallet confirma a execucao.
             </div>
           </div>
           <ArrowLeftRight className="h-5 w-5 text-[var(--accent-orange)]" />
@@ -68,11 +75,11 @@ export function MobileSwaps() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Origem</div>
-            <div className="text-[var(--text-1)]">{prefill.fromChain ?? '--'}</div>
+            <div className="text-[var(--text-1)]">{getUsdtChainName(prefill.fromChain)}</div>
           </div>
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Destino</div>
-            <div className="text-[var(--text-1)]">{prefill.toChain ?? '--'}</div>
+            <div className="text-[var(--text-1)]">{getUsdtChainName(prefill.toChain)}</div>
           </div>
         </div>
 
@@ -108,7 +115,7 @@ export function MobileSwaps() {
               <span>Antes de assinar</span>
             </div>
             <div className="text-sm text-[var(--text-2)]">
-              Confira rede, token, cotacao, slippage e endereco final no widget antes de confirmar na wallet.
+              Confira rede, token, cotacao, slippage e endereco final antes de confirmar na wallet.
             </div>
           </div>
         </div>

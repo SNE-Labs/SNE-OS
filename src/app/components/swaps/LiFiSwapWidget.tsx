@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import { LIFI_RPC_URLS } from '@/lib/rpcUrls';
+import { TRON_CHAIN_ID } from '@/lib/usdt';
 
 type SwapPrefill = {
   fromChain?: number;
@@ -19,7 +20,7 @@ type LiFiSwapWidgetProps = {
   className?: string;
 };
 
-const SUPPORTED_SWAP_CHAINS = [1, 42161, 10, 8453, 137, 534352];
+const SUPPORTED_SWAP_CHAINS = [1, 42161, 10, 8453, 137, 534352, TRON_CHAIN_ID];
 const LIFI_INTEGRATOR = 'sne-os';
 
 export function LiFiSwapWidget({
@@ -40,7 +41,7 @@ export function LiFiSwapWidget({
       })
       .catch((error) => {
         if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Falha ao carregar o widget da LI.FI.');
+        setLoadError(error instanceof Error ? error.message : 'Falha ao carregar a superficie de execucao.');
       });
 
     return () => {
@@ -111,7 +112,7 @@ export function LiFiSwapWidget({
               Widget indisponivel nesta sessao
             </div>
             <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-              A integracao da LI.FI nao carregou com o stack atual do frontend.
+              A superficie de execucao nao carregou nesta sessao.
             </div>
             <div className="mt-2 text-xs leading-5" style={{ color: 'var(--text-3)' }}>
               {loadError}
@@ -136,7 +137,7 @@ export function LiFiSwapWidget({
         <div className="flex items-center gap-3">
           <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--accent-orange)' }} />
           <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-            Carregando superficie de swap da LI.FI...
+            Carregando superficie de execucao...
           </div>
         </div>
       </div>

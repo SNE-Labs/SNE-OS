@@ -425,12 +425,12 @@ export function Radar() {
                   <div>
                     <div className="mb-1 flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
                       <ArrowLeftRight className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-                      Abrir em Swaps
+                      Usar USDT
                     </div>
                     <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
                       {swapsReady
-                        ? 'Levar este ativo para a superficie de execucao com prefill de destino.'
-                        : 'Abrir a superficie de execucao. Este ativo ainda entra sem prefill especifico.'}
+                        ? 'Preparar uma rota usando USDT como origem para este ativo.'
+                        : 'Abrir a superficie de execucao com USDT como unidade base.'}
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
@@ -751,7 +751,7 @@ export function Radar() {
                       Execucao deslocada
                     </div>
                     <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      O Radar segue somente leitura. Swap e roteamento entram depois que o contexto de protocolo estiver definido, em `/swaps`.
+                      O Radar segue somente leitura. Movimento e conversao de USDT entram depois, em outra superficie.
                     </div>
                   </div>
 
@@ -783,12 +783,12 @@ export function Radar() {
                   >
                     <div>
                       <div className="mb-2 font-semibold" style={{ color: 'var(--text-1)' }}>
-                        Abrir Swaps
+                        Usar USDT
                       </div>
                       <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
                         {swapsReady
-                          ? 'Abrir a rota de execucao com o ativo selecionado como destino.'
-                          : 'Abrir a superficie de execucao e escolher manualmente o ativo de destino.'}
+                          ? 'Preparar uma rota usando USDT para o ativo selecionado.'
+                          : 'Abrir a superficie de execucao com USDT como unidade base.'}
                       </div>
                     </div>
                     <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />

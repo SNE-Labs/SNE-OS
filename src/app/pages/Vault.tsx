@@ -52,17 +52,17 @@ export function Vault() {
             <div className="grid grid-cols-1 xl:grid-cols-[0.7fr_0.3fr] gap-5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>Cofre</div>
+                  <div className="text-sm" style={{ color: 'var(--text-3)' }}>USDT Account</div>
                   {overviewQuery.isFetching && overview ? (
                     <div className="text-xs uppercase" style={{ color: 'var(--text-3)' }}>sincronizando</div>
                   ) : null}
                 </div>
 
                 <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
-                  Seu capital, em um só lugar.
+                  Sua leitura USDT multichain.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
-                  O Vault exibe saldo ao vivo, contexto de gas, atividade da conta e registros de proteção de hardware a partir da carteira conectada.
+                  O Vault nao transaciona. Ele le a wallet conectada via RPC e organiza saldo, gas e postura para o uso de USDT no OS.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
@@ -102,7 +102,7 @@ export function Vault() {
                       {overview?.surface.address ? formatAddress(overview.surface.address) : 'Conecte sua carteira'}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.connected ? 'Saldo e postura da conta carregados ao vivo.' : 'Conecte uma carteira para carregar seu capital.'}
+                      {overview?.connected ? 'Leitura on-chain carregada para esta wallet.' : 'Conecte uma carteira para carregar sua leitura USDT.'}
                     </div>
                   </div>
                 </div>
@@ -130,26 +130,26 @@ export function Vault() {
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
             >
               <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                Superfície de Capital
+                Leitura USDT
               </div>
 
               {moduleState === 'disconnected' ? (
                 <ModuleStateCard
                   tone="disconnected"
                   title="Conecte uma carteira"
-                  description="O Vault precisa de uma carteira conectada para resolver capital, gas e postura por network."
+                  description="O Vault precisa de uma carteira conectada para ler saldo, gas e postura via RPC."
                 />
               ) : moduleState === 'loading' ? (
                 <ModuleStateCard
                   tone="loading"
-                  title="Carregando capital"
-                  description="Lendo saldo, atividade e superfície de custódia da conta conectada."
+                  title="Carregando leitura on-chain"
+                  description="Lendo saldo, atividade e prontidao da wallet conectada."
                 />
               ) : moduleState === 'error' ? (
                 <ModuleStateCard
                   tone="error"
                   title="Falha ao carregar o Vault"
-                  description="O estado do capital não pôde ser resolvido agora."
+                  description="A leitura on-chain da wallet nao pôde ser resolvida agora."
                   actionLabel="Tentar novamente"
                   onAction={() => overviewQuery.refetch()}
                 />
@@ -186,7 +186,7 @@ export function Vault() {
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
                 <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Postura da Conta
+                  Postura da Wallet
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {(overview?.posture ?? []).map((item) => (
@@ -237,48 +237,58 @@ export function Vault() {
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  Prontidão para Execução
+                  Prontidao USDT
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-3)' }}>
-                  O Vault permanece em modo leitura até que ações de capital sejam configuradas.
+                  O Vault permanece somente leitura. Para mover ou converter USDT, abra a superficie de execucao.
                 </div>
               </div>
-              <button
-                onClick={() => window.location.assign('/radar')}
-                className="text-sm font-medium inline-flex items-center gap-2"
-                style={{ color: 'var(--accent-orange)' }}
-              >
-                Radar
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => window.location.assign('/swaps?mode=move')}
+                  className="text-sm font-medium inline-flex items-center gap-2"
+                  style={{ color: 'var(--accent-orange)' }}
+                >
+                  Mover USDT
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => window.location.assign('/radar')}
+                  className="text-sm font-medium inline-flex items-center gap-2"
+                  style={{ color: 'var(--text-2)' }}
+                >
+                  Radar
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                 <div className="flex items-center gap-2 mb-2">
                   <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Custódia</div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Somente leitura</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  {overview?.readiness.custody ?? 'Não custodial. O capital permanece na carteira conectada.'}
+                  {overview?.readiness.custody ?? 'O Vault nao assina nem envia transacoes. O saldo permanece na wallet conectada.'}
                 </div>
               </div>
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                 <div className="flex items-center gap-2 mb-2">
                   <Waves className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Staking</div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Gas readiness</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  {overview?.readiness.staking ?? 'Nenhuma rota de staking disponível para esta conta.'}
+                  {overview?.readiness.staking ?? 'Use esta leitura para entender se a wallet esta pronta para mover USDT em outra superficie.'}
                 </div>
               </div>
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                 <div className="flex items-center gap-2 mb-2">
                   <Box className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Provisionamento</div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Execucao</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  {overview?.readiness.provisioning ?? 'Provisionamento de hardware requer um dispositivo SNE Vault vinculado.'}
+                  {overview?.readiness.provisioning ?? 'Movimento, conversao e uso de USDT acontecem apenas em Swaps.'}
                 </div>
               </div>
             </div>
