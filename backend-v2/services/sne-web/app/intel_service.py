@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import os
 import re
+import threading
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -123,6 +124,7 @@ POST_CACHE_META_KEY = "intel:enterprise:posts:meta"
 POST_REFRESH_LOCK_KEY = "intel:enterprise:refreshing"
 POST_CACHE_TTL_SECONDS = 86400
 POST_REFRESH_INTERVAL = timedelta(minutes=_env_int("INTEL_POST_REFRESH_INTERVAL_MINUTES", 5))
+POST_REFRESH_LOCK_TTL_SECONDS = _env_int("INTEL_POST_REFRESH_LOCK_TTL_SECONDS", 600, minimum=60)
 DEFAULT_INTEL_RESET_TZ = "America/Sao_Paulo"
 
 
@@ -665,8 +667,21 @@ def _cached_posts_are_stale(redis_client: SafeRedis, posts: List[Dict[str, Any]]
     return datetime.now(timezone.utc) - last_updated_dt >= POST_REFRESH_INTERVAL
 
 
+def _refresh_is_running(redis_client: SafeRedis | None = None) -> bool:
+    client = redis_client or SafeRedis()
+    return bool(client.get(POST_REFRESH_LOCK_KEY))
+
+
 def _needs_daily_backfill(posts: List[Dict[str, Any]]) -> bool:
     return _blog_daily_post_count(posts) < BLOG_MIN_DAILY_POSTS
+
+
+def _posts_need_refresh(redis_client: SafeRedis, posts: List[Dict[str, Any]], limit: int) -> bool:
+    return (
+        len(posts) < min(limit, BLOG_TOTAL_LIMIT)
+        or _cached_posts_are_stale(redis_client, posts)
+        or _needs_daily_backfill(posts)
+    )
 
 
 def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) -> None:
@@ -800,14 +815,29 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         redis_client.delete(POST_REFRESH_LOCK_KEY)
 
 
-def _trigger_enterprise_post_refresh() -> None:
+def trigger_enterprise_post_refresh(*, async_refresh: bool = False, force: bool = False) -> bool:
     redis_client = SafeRedis()
-    if redis_client.get(POST_REFRESH_LOCK_KEY):
-        return
-    if not redis_client.setex(POST_REFRESH_LOCK_KEY, 120, "1"):
-        return
+    if not force and _refresh_is_running(redis_client):
+        return False
+    if not redis_client.setex(POST_REFRESH_LOCK_KEY, POST_REFRESH_LOCK_TTL_SECONDS, "1"):
+        return False
+
+    if async_refresh:
+        thread = threading.Thread(
+            target=_refresh_enterprise_posts,
+            kwargs={"limit": BLOG_DAILY_LIMIT},
+            name="intel-enterprise-refresh",
+            daemon=True,
+        )
+        thread.start()
+        return True
 
     _refresh_enterprise_posts(limit=BLOG_DAILY_LIMIT)
+    return True
+
+
+def _trigger_enterprise_post_refresh() -> None:
+    trigger_enterprise_post_refresh(async_refresh=False)
 
 
 def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog: bool = True) -> Dict[str, Any]:
@@ -822,7 +852,9 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
         blog_posts = _load_cached_posts(redis_client)
         curated_posts = _curate_home_editorial_posts(blog_posts, max(limit, BLOG_SURFACE_LIMIT))
         blog_items = [_shape_blog_item(post) for post in curated_posts]
-        if len(blog_posts) < BLOG_DAILY_LIMIT or _cached_posts_are_stale(redis_client, blog_posts):
+        if blog_posts and (len(blog_posts) < BLOG_DAILY_LIMIT or _cached_posts_are_stale(redis_client, blog_posts)):
+            trigger_enterprise_post_refresh(async_refresh=True)
+        elif not blog_posts:
             _trigger_enterprise_post_refresh()
             blog_posts = _load_cached_posts(redis_client)
             curated_posts = _curate_home_editorial_posts(blog_posts, max(limit, BLOG_SURFACE_LIMIT))
@@ -846,11 +878,12 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)
-    if (
-        len(posts) < min(limit, BLOG_TOTAL_LIMIT)
-        or _cached_posts_are_stale(redis_client, posts)
-        or _needs_daily_backfill(posts)
-    ):
+    if posts:
+        if _posts_need_refresh(redis_client, posts, limit):
+            trigger_enterprise_post_refresh(async_refresh=True)
+        return posts[:limit]
+
+    if _posts_need_refresh(redis_client, posts, limit):
         _trigger_enterprise_post_refresh()
         posts = _load_cached_posts(redis_client)
     return posts[:limit]
@@ -860,6 +893,18 @@ def fetch_intel_posts_last_updated(limit: int = 8) -> str:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)[:limit]
     return _latest_posts_timestamp(posts)
+
+
+def fetch_intel_posts_state(limit: int = 8) -> Dict[str, Any]:
+    redis_client = SafeRedis()
+    posts = _load_cached_posts(redis_client)
+    return {
+        "count": len(posts),
+        "stale": _posts_need_refresh(redis_client, posts, limit),
+        "refreshing": _refresh_is_running(redis_client),
+        "last_updated": _latest_posts_timestamp(posts),
+        "cache_updated_at": _cached_posts_last_updated(redis_client, posts) if posts else None,
+    }
 
 
 def fetch_intel_post(slug: str) -> Dict[str, Any] | None:

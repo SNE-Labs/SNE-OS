@@ -48,6 +48,7 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `DATABASE_URL`: PostgreSQL connection string
 - `SECRET_KEY`: Flask secret key
 - `PORT`: Server port (default: 8080)
+- `INTEL_REFRESH_SECRET`: shared secret required by `POST /api/intel/refresh` for Railway cron/manual refresh
 - `ETHEREUM_RPC_URLS`: comma-separated fallback RPC list for Ethereum
 - `POLYGON_RPC_URLS`: comma-separated fallback RPC list for Polygon
 - `SCROLL_RPC_URLS`: comma-separated fallback RPC list for Scroll
