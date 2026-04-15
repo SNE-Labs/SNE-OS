@@ -46,20 +46,20 @@ export const railNavigationGroups: NavigationGroup[] = [
     items: dockNavigationItems,
   },
   {
-    label: 'Execution',
+    label: 'Execução',
     items: [
-      { path: '/swaps', label: 'Swaps', icon: ArrowLeftRight },
+      { path: '/swaps', label: 'Mover USDT', shortLabel: 'USDT', icon: ArrowLeftRight },
     ],
   },
   {
-    label: 'Access',
+    label: 'Acesso',
     items: [
       { path: '/keys', label: 'Keys', icon: KeyRound },
       { path: '/secrets', label: 'Secrets', icon: LockKeyhole },
     ],
   },
   {
-    label: 'Reference',
+    label: 'Referência',
     items: [
       { path: '/docs', label: 'Docs', icon: FileText },
     ],
@@ -73,8 +73,8 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname === '/' || pathname === '/home',
     meta: {
       title: 'Home',
-      context: 'Intel em primeiro plano',
-      descriptor: 'Briefing operacional, memória de sessão e contexto para a próxima janela.',
+      context: 'Conta USDT-first',
+      descriptor: 'Conta soberana em dólar digital com contexto, saldo-base e execução multichain.',
       family: 'narrativa',
     },
   },
@@ -82,17 +82,17 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname.startsWith('/radar'),
     meta: {
       title: 'Radar',
-      context: 'Mercado em foco',
-      descriptor: 'Leitura direcional, liquidez e contexto de execução antes da decisão.',
+      context: 'Pré-execução',
+      descriptor: 'Leia o mercado antes de mover capital: regime, risco e liquidez para decidir.',
       family: 'narrativa',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/swaps'),
     meta: {
-      title: 'Swaps',
-      context: 'Execução',
-      descriptor: 'Mover, converter e usar USDT quando a intenção já está definida.',
+      title: 'Mover USDT',
+      context: 'Rail de execução',
+      descriptor: 'Use seu saldo-base para converter, mover ou rotacionar entre redes e ativos.',
       family: 'execucao',
     },
   },
@@ -100,8 +100,8 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname.startsWith('/pass'),
     meta: {
       title: 'Passport',
-      context: 'Identidade',
-      descriptor: 'Conta, wallets vinculadas e lookup público persistente do OS.',
+      context: 'Identidade operacional',
+      descriptor: 'Camada de continuidade entre carteiras, sessão e conta soberana do OS.',
       family: 'infraestrutura',
     },
   },
@@ -109,8 +109,8 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     match: (pathname) => pathname.startsWith('/vault'),
     meta: {
       title: 'Vault',
-      context: 'Capital',
-      descriptor: 'Capital, postura de conta e readiness da carteira conectada.',
+      context: 'Saldo-base',
+      descriptor: 'Leitura somente on-chain do saldo USDT, redes e prontidão da conta.',
       family: 'infraestrutura',
     },
   },
@@ -164,8 +164,8 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
 export function resolveRouteMeta(pathname: string): RouteMeta {
   return routeMetaMap.find((entry) => entry.match(pathname))?.meta ?? {
     title: 'SNE OS',
-    context: 'Workspace pessoal',
-    descriptor: 'Camada operacional pessoal para mercado, identidade e capital.',
+    context: 'Conta operacional',
+    descriptor: 'Camada operacional auto custodial com USDT como saldo-base.',
     family: 'narrativa',
   };
 }

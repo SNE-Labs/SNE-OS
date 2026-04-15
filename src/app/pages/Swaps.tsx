@@ -47,18 +47,18 @@ export function Swaps() {
   }, [address, searchParams]);
 
   useSeoMeta({
-    title: 'Swaps | SNE OS',
+    title: 'Mover USDT | SNE OS',
     description:
-      'Superfície de execução do SNE OS para mover, converter e usar USDT em ambiente multichain.',
+      'Rail de execução do SNE OS para usar USDT como saldo-base, mover entre redes e rotacionar para outros ativos.',
     canonicalPath: '/swaps',
     type: 'website',
     keywords: ['sne os swaps', 'usdt multichain', 'cross-chain usdt', 'digital dollar', 'multichain execution'],
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'WebPage',
-      name: 'Swaps | SNE OS',
+      name: 'Mover USDT | SNE OS',
       description:
-        'Superfície de execução do SNE OS para mover, converter e usar USDT em ambiente multichain.',
+        'Rail de execução do SNE OS para usar USDT como saldo-base, mover entre redes e rotacionar para outros ativos.',
       url: 'https://snelabs.space/swaps',
     },
   });
@@ -72,13 +72,13 @@ export function Swaps() {
           <header className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-2 text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                Superfície de execução
+                Rail de execução
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.035em]" style={{ color: 'var(--text-1)' }}>
-                Execução USDT
+                Mover USDT
               </h1>
               <p className="mt-1 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                Assinatura na carteira. Contexto no OS. Execute somente depois de revisar rede, rota e endereço final.
+                Use seu saldo-base para converter, mover ou rotacionar entre redes e ativos sem sair da auto custódia.
               </p>
             </div>
 
@@ -105,7 +105,7 @@ export function Swaps() {
                     Motor de execução
                   </div>
                   <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
-                    Superfície preparada para USDT nas principais redes.
+                    USDT entra como unidade operacional. O motor transforma saldo em execução.
                   </div>
                 </div>
                 <div
@@ -124,7 +124,7 @@ export function Swaps() {
             </section>
 
             <aside className="space-y-3">
-              <Panel title="Sessão" icon={Wallet}>
+              <Panel title="Conta" icon={Wallet}>
                 <div className="space-y-3">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
@@ -135,7 +135,7 @@ export function Swaps() {
                     </div>
                   </div>
                   <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    Use a carteira do workspace para revisar e assinar a execução final.
+                    A conta permanece na sua carteira. O OS só organiza contexto, rota e assinatura.
                   </div>
                   <WalletConnect />
                 </div>

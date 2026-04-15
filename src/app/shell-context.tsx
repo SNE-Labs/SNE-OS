@@ -48,7 +48,7 @@ function localizeIdentityStatus(value?: string | null) {
   const normalized = `${value || ''}`.trim().toLowerCase();
   if (!normalized) return 'Sem identidade resolvida';
   if (normalized === 'active') return 'Identidade ativa';
-  if (normalized === 'wallets vinculadas') return 'Wallets vinculadas';
+  if (normalized === 'wallets vinculadas') return 'Carteiras vinculadas';
   if (normalized === 'sincronizando') return 'Identidade em sincronização';
   if (normalized === 'degraded') return 'Identidade degradada';
   return value || 'Estado de identidade indisponível';
@@ -73,7 +73,7 @@ function localizeStorageMode(value?: string | null) {
 function formatPassportDisplayLabel(
   passport?: { profile?: { display_name?: string | null; handle?: string | null }; primary_wallet?: { address?: string | null } } | null,
   fallbackAddress?: string | null,
-  emptyLabel = 'Sem wallet'
+  emptyLabel = 'Sem carteira'
 ) {
   const displayName = `${passport?.profile?.display_name ?? ''}`.trim();
   if (displayName) return trimCopy(displayName, 28);
@@ -153,7 +153,7 @@ function buildTapeItems(
     });
   } else {
     pushUnique('session', {
-      label: 'Conecte uma wallet para persistir contexto',
+      label: 'Conecte uma carteira para persistir contexto',
       tone: 'warning',
       href: '/vault',
     });
@@ -161,7 +161,7 @@ function buildTapeItems(
 
   if (pathname.startsWith('/pass') && passport?.stats?.wallets_total) {
     pushUnique('identity', {
-      label: `${passport.stats.wallets_total} wallets vinculadas`,
+      label: `${passport.stats.wallets_total} carteiras vinculadas`,
       tone: 'neutral',
       href: '/pass',
     });
@@ -185,7 +185,7 @@ function buildTapeItems(
 
   if (pathname.startsWith('/swaps')) {
     pushUnique('route', {
-      label: auth.isAuthenticated && auth.address ? `Execução pronta • ${formatAddress(auth.address)}` : 'Conecte uma wallet para executar',
+      label: auth.isAuthenticated && auth.address ? `Execução pronta • ${formatAddress(auth.address)}` : 'Conecte uma carteira para executar',
       tone: auth.isAuthenticated && auth.address ? 'success' : 'warning',
       href: '/swaps',
     });
@@ -241,7 +241,7 @@ function buildSidebarContext(
       eyebrow: 'Radar',
       title: signal?.symbol ? `${signal.symbol} • ${signal.signal || 'HOLD'}` : featured?.symbol || routeRadarSymbol(pathname),
       summary: trimCopy(
-        radar?.market_regime?.summary || radar?.hero?.summary || 'Leitura tática do ativo em foco.',
+        radar?.market_regime?.summary || radar?.hero?.summary || 'Leia o mercado antes de mover capital.',
         104
       ),
       items: [
@@ -264,17 +264,17 @@ function buildSidebarContext(
 
     return {
       eyebrow: 'Passport',
-      title: formatPassportDisplayLabel(passport, passport?.primary_wallet?.address, 'Conta publica ativa'),
+      title: formatPassportDisplayLabel(passport, passport?.primary_wallet?.address, 'Conta pública ativa'),
       summary: trimCopy(
         hasAnchor
-          ? `${walletsTotal || 1} wallet${walletsTotal === 1 ? '' : 's'} na conta e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
-          : 'Checkpoint pronto para ancorar a conta e vincular novas wallets ao mesmo Passport.',
+          ? `${walletsTotal || 1} carteira${walletsTotal === 1 ? '' : 's'} na conta e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
+          : 'Checkpoint pronto para ancorar a conta e vincular novas carteiras ao mesmo Passport.',
         104
       ),
       items: [
-        walletsTotal ? `${walletsTotal} wallets` : 'Sem vínculos',
+        walletsTotal ? `${walletsTotal} carteiras` : 'Sem vínculos',
         eventsTotal ? `${eventsTotal} eventos` : 'Sem eventos',
-        hasAnchor ? 'Ancora resolvida' : 'Lookup publico',
+        hasAnchor ? 'Âncora resolvida' : 'Lookup público',
       ].filter(Boolean),
       actionLabel: 'Abrir Vault',
       actionPath: '/vault',
@@ -290,12 +290,12 @@ function buildSidebarContext(
       '--';
 
     return {
-      eyebrow: 'Capital',
-      title: totalValue !== '--' ? totalValue : 'Capital visível',
+      eyebrow: 'Saldo-base',
+      title: totalValue !== '--' ? totalValue : 'Saldo USDT visível',
       summary: trimCopy(
         primaryNetwork !== '--'
-          ? `Rede principal ${primaryNetwork}. ${vault?.protection?.state || 'Capital pronto para leitura contextual.'}`
-          : 'Superfície de capital pronta para leitura contextual.',
+          ? `Rede principal ${primaryNetwork}. ${vault?.protection?.state || 'Conta pronta para leitura contextual.'}`
+          : 'Conta pronta para leitura contextual.',
         108
       ),
       items: [
@@ -311,10 +311,10 @@ function buildSidebarContext(
 
   if (pathname.startsWith('/swaps')) {
     return {
-      eyebrow: 'Execução',
-      title: 'Execução USDT',
-      summary: 'Superfície para mover, converter e usar USDT sem transformar Radar ou Vault em terminais de execução.',
-      items: ['USDT-first', 'Multichain', 'Wallet conectada'],
+      eyebrow: 'Rail de execução',
+      title: 'Mover USDT',
+      summary: 'Use seu saldo-base para converter, mover ou rotacionar entre redes e ativos.',
+      items: ['USDT-first', 'Multichain', 'Carteira conectada'],
       actionLabel: 'Abrir Radar',
       actionPath: '/radar',
     };
@@ -412,7 +412,7 @@ export function useShellContextData() {
     }
 
     if (location.pathname.startsWith('/pass') && passport?.stats?.wallets_total) {
-      topbarChips.push({ label: `${passport.stats.wallets_total} wallets`, tone: 'neutral' });
+      topbarChips.push({ label: `${passport.stats.wallets_total} carteiras`, tone: 'neutral' });
     }
 
     if (location.pathname.startsWith('/vault') && vault?.aggregate?.active_networks != null) {
@@ -420,7 +420,7 @@ export function useShellContextData() {
     }
 
     if (location.pathname.startsWith('/swaps')) {
-      topbarChips.push({ label: 'USDT execution', tone: 'accent' });
+      topbarChips.push({ label: 'USDT-first', tone: 'accent' });
     }
 
     if (isAuthenticated && address) {
@@ -432,7 +432,7 @@ export function useShellContextData() {
       topbarChips.push({ label: 'Sessão anônima', tone: 'warning' });
     }
 
-    const sessionIdentityLabel = isAuthenticated && address ? formatPassportDisplayLabel(passport, address) : 'Sem wallet';
+    const sessionIdentityLabel = isAuthenticated && address ? formatPassportDisplayLabel(passport, address) : 'Sem carteira';
 
     return {
       routeMeta,
@@ -442,7 +442,7 @@ export function useShellContextData() {
       sidebarContext: buildSidebarContext(location.pathname, { home, radar, passport, vault }),
       sessionStats: [
         { label: 'Plano', value: localizeTier(tier) },
-        { label: 'Wallet', value: sessionIdentityLabel },
+        { label: 'Carteira', value: sessionIdentityLabel },
         { label: 'Sessão', value: isAuthenticated ? 'Autenticada' : 'Anônima' },
         { label: 'Foco', value: routeMeta.context },
         { label: 'Modo', value: localizeStorageMode(vault?.surface?.mode || home?.secrets?.sync?.mode) },

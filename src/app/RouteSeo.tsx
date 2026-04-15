@@ -17,9 +17,9 @@ const SITE_ORIGIN = 'https://snelabs.space';
 function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
   if (pathname === '/' || pathname === '/home') {
     return {
-      title: 'SNE OS | Home operacional para Web3 e cripto',
+      title: 'SNE OS | Conta soberana em USDT',
       description:
-        'Home do SNE OS com Radar, Intel Brief, contexto de mercado, identidade e leitura operacional multichain em uma única superfície.',
+        'SNE OS usa USDT como saldo-base para conta soberana, leitura de mercado, contexto Intel e execução multichain.',
       canonicalPath: '/home',
       image: `${SITE_ORIGIN}/home-share.png`,
       keywords: ['sne os', 'crypto intelligence', 'web3 operating system', 'radar cripto', 'intel brief'],
@@ -28,7 +28,7 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
         '@type': 'WebPage',
         name: 'SNE OS Home',
         description:
-          'Home operacional do SNE OS com Radar, Intel Brief, contexto de mercado, identidade e leitura multichain.',
+          'Home operacional do SNE OS com conta USDT-first, Radar, Intel Brief, Vault e rail de execução.',
         url: 'https://snelabs.space/home',
       },
     };
@@ -93,18 +93,18 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
 
   if (pathname === '/swaps') {
     return {
-      title: 'Swaps | SNE OS',
+      title: 'Mover USDT | SNE OS',
       description:
-        'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
+        'Rail de execução do SNE OS para usar USDT como saldo-base, mover entre redes e rotacionar para outros ativos.',
       canonicalPath: '/swaps',
       image: `${SITE_ORIGIN}/og-image.png`,
       keywords: ['sne os swaps', 'usdt multichain', 'cross-chain usdt', 'digital dollar', 'multichain execution'],
       structuredData: {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
-        name: 'Swaps | SNE OS',
+        name: 'Mover USDT | SNE OS',
         description:
-          'Superficie de execucao do SNE OS para mover, converter e usar USDT em ambiente multichain.',
+          'Rail de execução do SNE OS para usar USDT como saldo-base, mover entre redes e rotacionar para outros ativos.',
         url: 'https://snelabs.space/swaps',
       },
     };
@@ -124,7 +124,7 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
     return {
       title: 'Radar | SNE OS',
       description:
-        'Radar do SNE OS para leitura tática de mercado, liquidez, momentum e direção dos principais pares cripto.',
+        'Radar do SNE OS para ler regime, risco e liquidez antes de mover capital no rail de execução USDT.',
       canonicalPath: pathname,
       image: `${SITE_ORIGIN}/radar-share.png`,
       keywords: ['crypto radar', 'market intelligence', 'bitcoin radar', 'ethereum radar', 'sne radar'],
@@ -133,7 +133,7 @@ function buildStaticRouteSeo(pathname: string): StaticRouteSeo | null {
         '@type': 'CollectionPage',
         name: 'Radar SNE OS',
         description:
-          'Radar do SNE OS para leitura tática de mercado, liquidez, momentum e direção dos principais pares cripto.',
+          'Radar do SNE OS para ler regime, risco e liquidez antes de mover capital.',
         url: `${SITE_ORIGIN}${pathname}`,
       },
     };
