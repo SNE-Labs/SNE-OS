@@ -23,6 +23,7 @@ import {
   useSecretsOverview,
   useUpdateSecretItem,
 } from '../../hooks/useSecretsData';
+import { usePassportIdentity } from '../../hooks/usePassportData';
 import { formatAddress } from '@/utils/format';
 import {
   buildSecureNotePreview,
@@ -118,6 +119,7 @@ function fieldStyle() {
 export function Secrets() {
   const { address, isAuthenticated } = useAuth();
   const overviewQuery = useSecretsOverview(isAuthenticated && address ? address : null);
+  const passportIdentityQuery = usePassportIdentity(isAuthenticated);
   const itemsQuery = useSecretItems(Boolean(isAuthenticated), null, address ?? null);
   const createMutation = useCreateSecretItem();
   const updateMutation = useUpdateSecretItem();
@@ -140,7 +142,11 @@ export function Secrets() {
   const [revealPending, setRevealPending] = useState(false);
 
   const overview = overviewQuery.data;
-  const ownerKey = overview?.owner?.key ?? null;
+  const ownerKey =
+    overview?.owner?.key ??
+    passportIdentityQuery.data?.identity_id ??
+    address ??
+    null;
   const allItems = itemsQuery.data?.items ?? [];
 
   const secureNotes = useMemo(

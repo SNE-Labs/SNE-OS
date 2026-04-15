@@ -10,6 +10,7 @@ import {
   useSecretsOverview,
   useUpdateSecretItem,
 } from '../../../hooks/useSecretsData';
+import { usePassportIdentity } from '../../../hooks/usePassportData';
 import { WalletConnect } from '../../components/passport/WalletConnect';
 import {
   createEncryptedSecretEnvelope,
@@ -87,6 +88,7 @@ export function MobileSecrets() {
   const navigate = useNavigate();
   const { address, isAuthenticated } = useAuth();
   const overviewQuery = useSecretsOverview(isAuthenticated && address ? address : null);
+  const passportIdentityQuery = usePassportIdentity(isAuthenticated);
   const itemsQuery = useSecretItems(Boolean(isAuthenticated), null, address ?? null);
   const createMutation = useCreateSecretItem();
   const updateMutation = useUpdateSecretItem();
@@ -107,7 +109,11 @@ export function MobileSecrets() {
   const [revealError, setRevealError] = useState<string | null>(null);
 
   const overview = overviewQuery.data;
-  const ownerKey = overview?.owner?.key ?? null;
+  const ownerKey =
+    overview?.owner?.key ??
+    passportIdentityQuery.data?.identity_id ??
+    address ??
+    null;
   const items = itemsQuery.data?.items ?? [];
   const notes = useMemo(
     () => items.filter((item) => item.vault_id === 'secure_notes'),
