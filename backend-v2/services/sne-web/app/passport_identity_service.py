@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 from eth_account import Account
 from eth_account.messages import encode_defunct
+from sqlalchemy.exc import IntegrityError, PendingRollbackError
 
 from .extensions import db
 from .models import (
@@ -213,44 +214,66 @@ def get_identity_by_address(address: str) -> PassportIdentity | None:
 
 def get_or_create_identity_for_address(address: str) -> PassportIdentity:
     normalized = normalize_passport_address(address)
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
     existing = get_identity_by_address(normalized)
     if existing:
-        wallet = PassportIdentityWallet.query.filter_by(address=normalized).first()
-        if wallet:
-            wallet.last_login_at = _utcnow()
-            db.session.commit()
+        try:
+            wallet = PassportIdentityWallet.query.filter_by(address=normalized).first()
+            if wallet:
+                wallet.last_login_at = _utcnow()
+                db.session.commit()
+        except (IntegrityError, PendingRollbackError):
+            db.session.rollback()
         return existing
 
-    identity = PassportIdentity(anchor_address=normalized, status="active")
-    db.session.add(identity)
-    db.session.flush()
+    try:
+        identity = PassportIdentity(anchor_address=normalized, status="active")
+        db.session.add(identity)
+        db.session.flush()
 
-    wallet = PassportIdentityWallet(
-        identity_id=identity.id,
-        address=normalized,
-        chain_family="evm",
-        wallet_type="wallet",
-        label="Carteira inicial",
-        status="active",
-        is_primary=True,
-        added_at=_utcnow(),
-        last_login_at=_utcnow(),
-    )
-    db.session.add(wallet)
-    db.session.flush()
+        wallet = PassportIdentityWallet(
+            identity_id=identity.id,
+            address=normalized,
+            chain_family="evm",
+            wallet_type="wallet",
+            label="Carteira inicial",
+            status="active",
+            is_primary=True,
+            added_at=_utcnow(),
+            last_login_at=_utcnow(),
+        )
+        db.session.add(wallet)
+        db.session.flush()
 
-    identity.primary_wallet_id = wallet.id
-    identity.updated_at = _utcnow()
+        identity.primary_wallet_id = wallet.id
+        identity.updated_at = _utcnow()
 
-    _event(
-        identity.id,
-        "identity_created",
-        actor_address=normalized,
-        target_address=normalized,
-        payload={"primary_wallet_id": wallet.id},
-    )
-    db.session.commit()
-    return identity
+        _event(
+            identity.id,
+            "identity_created",
+            actor_address=normalized,
+            target_address=normalized,
+            payload={"primary_wallet_id": wallet.id},
+        )
+        db.session.commit()
+        return identity
+    except (IntegrityError, PendingRollbackError):
+        db.session.rollback()
+        existing = get_identity_by_address(normalized)
+        if existing:
+            wallet = PassportIdentityWallet.query.filter_by(address=normalized).first()
+            if wallet:
+                wallet.last_login_at = _utcnow()
+                db.session.commit()
+            return existing
+        raise
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 def build_identity_checkpoint(address: str) -> Dict[str, Any]:

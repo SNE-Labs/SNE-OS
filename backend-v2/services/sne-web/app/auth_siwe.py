@@ -248,6 +248,7 @@ def siwe_login():
     }
     """
     try:
+        db.session.rollback()
         data = request.get_json()
         if not data or 'message' not in data or 'signature' not in data:
             return jsonify({'error': 'Message and signature required'}), 400
@@ -319,9 +320,11 @@ def siwe_login():
             }), 200
 
         except Exception as e:
+            db.session.rollback()
             return jsonify({'error': f'SIWE verification failed: {str(e)}'}), 401
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': 'Authentication failed'}), 500
 
 @auth_bp.route('/api/auth/verify', methods=['GET'])
