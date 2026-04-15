@@ -1,4 +1,4 @@
-import { ChevronRight, PanelLeft, Sparkles, Wallet } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 
 import { useShellContextData } from '../shell-context';
 import { WalletConnect } from './passport/WalletConnect';
@@ -90,11 +90,16 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
   const { routeMeta, topbarChips, sessionStats, pathname } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
+  const planLabel = sessionStats[0]?.value ?? 'FREE';
   const isWalletConnected = walletLabel !== 'Sem wallet';
+  const visibleChips = topbarChips.filter((chip) => {
+    const label = chip.label.toLowerCase();
+    return !label.includes('free') && !label.includes('premium') && !label.includes('pro') && !label.includes('sessão');
+  });
 
   return (
     <header
-      className="sticky top-0 z-20 border-b px-6 py-3"
+      className="sticky top-0 z-20 border-b px-6 py-2.5"
       style={{
         background:
           'linear-gradient(180deg, rgba(7,9,11,0.92), rgba(7,9,11,0.78)), radial-gradient(circle at 45% 0%, rgba(255,255,255,0.045), transparent 42%)',
@@ -103,7 +108,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         WebkitBackdropFilter: 'blur(24px)',
       }}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(360px,620px)_minmax(0,1fr)] items-center gap-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-5">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -119,16 +124,11 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
           </button>
 
           <div className="min-w-0">
-            <div className="mb-1 flex min-w-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-              <span>SNE OS</span>
-              <ChevronRight className="h-3 w-3 opacity-55" />
-              <span className="truncate">{routeMeta.context}</span>
-            </div>
-            <div className="truncate text-[1.12rem] font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-1)' }}>
+            <div className="truncate text-[1.05rem] font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-1)' }}>
               {routeMeta.title}
             </div>
-            <div className="truncate text-xs" style={{ color: 'var(--text-2)' }}>
-              {routeMeta.descriptor}
+            <div className="truncate text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+              {routeMeta.context}
             </div>
           </div>
         </div>
@@ -136,66 +136,27 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         <button
           type="button"
           onClick={onOpenCommandPalette}
-          className="group relative isolate flex h-[58px] min-w-0 items-center justify-between overflow-hidden rounded-[24px] border px-3.5 transition-all duration-300 hover:-translate-y-0.5"
+          className="group relative isolate flex h-12 w-12 items-center justify-center overflow-hidden rounded-[20px] border transition-all duration-300 hover:-translate-y-0.5"
           style={{
             background:
-              `radial-gradient(circle at 10% 50%, ${glow.wash}, transparent 42%), linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025))`,
+              `radial-gradient(circle at 50% 50%, ${glow.wash}, transparent 48%), linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))`,
             borderColor: 'rgba(255,255,255,0.10)',
             boxShadow: '0 18px 52px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.07)',
           }}
           aria-label="Abrir comandos"
         >
           <div
-            className="absolute left-2 top-1/2 -z-10 h-20 w-28 -translate-y-1/2 rounded-full opacity-75 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+            className="absolute inset-[-18px] -z-10 rounded-full opacity-80 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
             style={{
               background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 46%, transparent 72%)`,
             }}
           />
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border"
-              style={{
-                backgroundColor: 'rgba(6,8,12,0.64)',
-                borderColor: 'rgba(255,255,255,0.12)',
-                boxShadow: `0 0 28px ${glow.primary}, inset 0 1px 0 rgba(255,255,255,0.08)`,
-              }}
-            >
-              <img src="/favicon.ico" alt="" className="h-5 w-5 rounded-md" />
-            </div>
-
-            <div className="min-w-0 text-left">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                  Buscar ou executar
-                </span>
-                <span className="hidden rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] md:inline-flex" style={{ color: 'var(--text-3)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                  {glow.label}
-                </span>
-              </div>
-              <div className="truncate text-xs" style={{ color: 'var(--text-3)' }}>
-                Navegue módulos, abra leituras ou acione comandos do workspace
-              </div>
-            </div>
-          </div>
-
-          <div className="ml-4 flex items-center gap-2">
-            <Sparkles className="hidden h-4 w-4 opacity-65 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 sm:block" style={{ color: 'var(--accent-orange)' }} />
-            <div
-              className="rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]"
-              style={{
-                color: 'var(--text-2)',
-                borderColor: 'rgba(255,255,255,0.10)',
-                backgroundColor: 'rgba(0,0,0,0.20)',
-              }}
-            >
-              Ctrl K
-            </div>
-          </div>
+          <img src="/favicon.ico" alt="" className="h-5 w-5 rounded-md transition-transform duration-300 group-hover:scale-110" />
         </button>
 
         <div className="flex min-w-0 items-center justify-end gap-3">
           <div className="hidden min-w-0 items-center justify-end gap-2 2xl:flex">
-            {topbarChips.slice(0, 3).map((chip) => (
+            {visibleChips.slice(0, 2).map((chip) => (
               <div
                 key={chip.label}
                 className="max-w-[180px] truncate rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.15em]"
@@ -207,7 +168,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
           </div>
 
           {!isWalletConnected ? (
-            <WalletConnect showConnectButton connectButtonLabel="Conectar carteira" />
+            <WalletConnect showConnectButton connectButtonLabel="Criar ID" />
           ) : (
             <div
               className="hidden items-center gap-3 rounded-[22px] border px-3 py-2 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
@@ -225,13 +186,20 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                   color: 'var(--text-1)',
                 }}
               >
-                <Wallet className="h-4 w-4" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">ID</span>
               </div>
-              <div className="text-right">
-                <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                  {sessionStats[0]?.value}
-                </div>
-                <div className="max-w-[150px] truncate text-sm" style={{ color: 'var(--text-1)' }}>
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]"
+                  style={{
+                    color: 'var(--text-3)',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                  }}
+                >
+                  {planLabel}
+                </span>
+                <div className="max-w-[140px] truncate text-sm" style={{ color: 'var(--text-1)' }}>
                   {walletLabel}
                 </div>
               </div>
