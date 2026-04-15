@@ -40,7 +40,7 @@ export function LiFiSwapWidget({
       })
       .catch((error) => {
         if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Falha ao carregar a superficie de execucao.');
+        setLoadError(error instanceof Error ? error.message : 'Falha ao carregar a superfície de execução.');
       });
 
     return () => {
@@ -118,10 +118,10 @@ export function LiFiSwapWidget({
           </div>
           <div className="min-w-0">
             <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-              Widget indisponivel nesta sessao
+              Motor indisponível nesta sessão
             </div>
             <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-              A superficie de execucao nao carregou nesta sessao.
+              A superfície de execução não carregou nesta sessão.
             </div>
             <div className="mt-2 text-xs leading-5" style={{ color: 'var(--text-3)' }}>
               {loadError}
@@ -146,7 +146,7 @@ export function LiFiSwapWidget({
         <div className="flex items-center gap-3">
           <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--accent-orange)' }} />
           <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-            Carregando superficie de execucao...
+            Carregando superfície de execução...
           </div>
         </div>
       </div>
