@@ -6,7 +6,7 @@ import { ArrowLeftRight, ArrowUpRight, BadgeCheck, Waves } from 'lucide-react';
 import { Badge, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { LiFiSwapWidget } from '../../components/swaps/LiFiSwapWidget';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName, getUsdtTokenAddress } from '@/lib/usdt';
+import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
 
 function parseChainId(value: string | null) {
@@ -33,8 +33,6 @@ export function MobileSwaps() {
     return {
       fromChain,
       toChain,
-      fromToken: getUsdtTokenAddress(fromChain),
-      toToken: getUsdtTokenAddress(toChain),
       toAddress: address ?? searchParams.get('toAddress') ?? undefined,
     };
   }, [address, searchParams]);

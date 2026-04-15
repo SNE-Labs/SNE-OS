@@ -6,7 +6,7 @@ import { ArrowLeftRight, ArrowUpRight, Sparkles, Wallet } from 'lucide-react';
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName, getUsdtTokenAddress } from '@/lib/usdt';
+import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
 
 function parseChainId(value: string | null) {
@@ -33,8 +33,6 @@ export function Swaps() {
     return {
       fromChain,
       toChain,
-      fromToken: getUsdtTokenAddress(fromChain),
-      toToken: getUsdtTokenAddress(toChain),
       toAddress: address ?? searchParams.get('toAddress') ?? undefined,
     };
   }, [address, searchParams]);
