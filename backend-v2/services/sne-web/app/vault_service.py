@@ -85,6 +85,16 @@ def _format_token_balance(value: float, symbol: str) -> str:
     return f"{value:.2f} {symbol}" if value >= 1 else f"{value:.6f} {symbol}"
 
 
+def _tone_for_level(level: str) -> str:
+    if level == "ready":
+        return "success"
+    if level == "attention":
+        return "warning"
+    if level == "blocked":
+        return "pending"
+    return "pending"
+
+
 def _load_usdt_balance(w3: Any, network_key: str, checksum_address: str) -> tuple[float, str]:
     token = USDT_TOKEN_BY_NETWORK.get(network_key)
     if not token:
@@ -191,10 +201,230 @@ def build_aggregate(position: Optional[Dict[str, Any]], positions: List[Dict[str
     }
 
 
+def _build_hero(aggregate: Dict[str, Any], readiness: Dict[str, Any]) -> Dict[str, Any]:
+    active_networks = int(aggregate.get("active_networks") or 0)
+
+    return {
+        "eyebrow": "Conta USDT-first",
+        "title": readiness["title"],
+        "summary": "O saldo permanece na wallet. O OS so le, organiza e qualifica saldo-base, gas e prontidao para execucao.",
+        "metrics": [
+            {
+                "label": "Saldo-base",
+                "value": aggregate.get("total_value_display") or "--",
+                "detail": "USDT visivel na conta conectada",
+                "tone": "success" if aggregate.get("total_value_display") not in {None, "--", "0.000000 USDT"} else "pending",
+            },
+            {
+                "label": "Redes ativas",
+                "value": str(active_networks),
+                "detail": "Redes com saldo, gas ou atividade detectavel",
+                "tone": "active" if active_networks > 0 else "pending",
+            },
+            {
+                "label": "Prontidao de execucao",
+                "value": readiness["label"],
+                "detail": readiness["summary"],
+                "tone": readiness["tone"],
+            },
+        ],
+    }
+
+
+def _build_readiness(positions: List[Dict[str, Any]], aggregate: Dict[str, Any]) -> Dict[str, Any]:
+    total_usdt = sum(float(item.get("token_balance") or 0) for item in positions)
+    gas_ready_positions = [item for item in positions if float(item.get("balance_native") or 0) > 0]
+    usdt_ready_positions = [item for item in positions if float(item.get("token_balance") or 0) > 0]
+    active_networks = int(aggregate.get("active_networks") or 0)
+
+    if total_usdt <= 0:
+        level = "blocked"
+        label = "preparar saldo"
+        title = "Conta conectada, sem saldo-base visivel."
+        summary = "Nao ha USDT suficiente nas redes lidas para abrir uma execucao agora."
+    elif not gas_ready_positions:
+        level = "attention"
+        label = "gas ausente"
+        title = "Saldo-base visivel, mas a execucao ainda depende de gas."
+        summary = "USDT foi detectado, mas nao ha gas suficiente nas redes lidas para operar com conforto."
+    elif active_networks <= 0:
+        level = "attention"
+        label = "revisar conta"
+        title = "Saldo-base visivel, com baixa atividade operacional."
+        summary = "A conta foi detectada, mas ainda precisa confirmar rede ativa e rota antes de executar."
+    else:
+        level = "ready"
+        label = "pronta"
+        title = "Saldo-base pronto para decisao."
+        summary = "USDT e gas foram encontrados em uma superficie legivel pelo OS."
+
+    tone = _tone_for_level(level)
+
+    return {
+        "level": level,
+        "label": label,
+        "tone": tone,
+        "title": title,
+        "summary": summary,
+        "items": [
+            {
+                "label": "Custodia",
+                "value": "somente leitura",
+                "detail": "O Vault nao assina nem envia transacoes. O saldo permanece na wallet conectada.",
+                "tone": "active",
+            },
+            {
+                "label": "Saldo-base",
+                "value": aggregate.get("total_value_display") or "--",
+                "detail": f"{len(usdt_ready_positions)} rede(s) com USDT visivel.",
+                "tone": "success" if usdt_ready_positions else "pending",
+            },
+            {
+                "label": "Gas",
+                "value": "ok" if gas_ready_positions else "insuficiente",
+                "detail": f"{len(gas_ready_positions)} rede(s) com gas disponivel.",
+                "tone": "success" if gas_ready_positions else "warning",
+            },
+            {
+                "label": "Execucao",
+                "value": label,
+                "detail": summary,
+                "tone": tone,
+            },
+        ],
+    }
+
+
+def _build_balances(
+    positions: List[Dict[str, Any]],
+    aggregate: Dict[str, Any],
+    primary_position: Optional[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    total_usdt = sum(float(item.get("token_balance") or 0) for item in positions)
+    usdt_ready_positions = [item for item in positions if float(item.get("token_balance") or 0) > 0]
+    gas_ready_positions = [item for item in positions if float(item.get("balance_native") or 0) > 0]
+    primary_network = primary_position.get("network", {}) if primary_position else {}
+    primary_native_asset = primary_network.get("native_asset") or "gas"
+    primary_gas_balance = (
+        primary_position.get("gas_balance_formatted")
+        if primary_position and primary_position.get("gas_balance_formatted")
+        else f"0.000000 {primary_native_asset}"
+    )
+
+    return {
+        "usdt": {
+            "label": "USDT",
+            "value": aggregate.get("total_value_display") or "--",
+            "detail": (
+                f"{len(usdt_ready_positions)} rede(s) com saldo-base visivel."
+                if total_usdt > 0
+                else "Nenhum saldo-base USDT apareceu nas redes lidas."
+            ),
+            "tone": "success" if total_usdt > 0 else "warning",
+        },
+        "gas": {
+            "label": "Gas",
+            "value": primary_gas_balance,
+            "detail": (
+                f"{len(gas_ready_positions)} rede(s) com gas disponivel."
+                if gas_ready_positions
+                else "Adicione gas na rede operacional antes de mover USDT."
+            ),
+            "tone": "success" if gas_ready_positions else "warning",
+        },
+        "other_assets": {
+            "label": "Outros ativos",
+            "value": "leitura USDT-first",
+            "detail": "Nesta fase o Vault organiza USDT e gas. Outros ativos ainda nao entram no saldo-base consolidado.",
+            "tone": "pending",
+        },
+    }
+
+
+def _build_next_action(readiness: Dict[str, Any]) -> Dict[str, Any]:
+    if readiness["level"] == "ready":
+        reason = "A conta ja tem saldo-base e gas suficiente para abrir o rail de execucao."
+        actions = [
+            {"label": "Mover USDT", "href": "/swaps?mode=move", "tone": "accent"},
+            {"label": "Abrir Radar", "href": "/radar", "tone": "neutral"},
+        ]
+    elif readiness["level"] == "attention":
+        reason = "Existe saldo-base, mas ainda falta gas ou confirmacao de superficie para operar."
+        actions = [
+            {"label": "Preparar saldo", "href": "/swaps?mode=move", "tone": "accent"},
+            {"label": "Abrir Radar", "href": "/radar", "tone": "neutral"},
+        ]
+    else:
+        reason = "Sem saldo-base visivel. O proximo passo e preparar USDT antes de tentar executar."
+        actions = [
+            {"label": "Preparar saldo", "href": "/swaps?mode=move", "tone": "accent"},
+            {"label": "Abrir Radar", "href": "/radar", "tone": "neutral"},
+        ]
+
+    return {
+        "reason": reason,
+        "actions": actions,
+    }
+
+
+def _build_empty_state(readiness: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if readiness["level"] != "blocked":
+        return None
+
+    return {
+        "title": "Nenhum saldo-base visivel ainda.",
+        "description": "Conecte a wallet operacional correta ou envie USDT antes de abrir uma execucao.",
+        "steps": [
+            "Confirme se esta wallet e a conta operacional certa.",
+            "Envie ou consolide USDT na rede que voce pretende usar.",
+            "Garanta gas minimo antes de abrir o rail de execucao.",
+        ],
+    }
+
+
 def build_vault_overview(address: Optional[str], network_key: Optional[str] = None) -> Dict[str, Any]:
     network = get_public_network_metadata(network_key or "scroll")
 
     if not address:
+        disconnected_readiness = {
+            "level": "disconnected",
+            "label": "conectar carteira",
+            "tone": "pending",
+            "title": "Conecte uma wallet para abrir sua conta USDT-first.",
+            "summary": "Sem wallet conectada o OS nao consegue ler saldo-base, gas e prontidao operacional.",
+            "items": [
+                {
+                    "label": "Custodia",
+                    "value": "wallet desconectada",
+                    "detail": "O saldo permanece na wallet. Conecte uma wallet para o OS conseguir ler o estado da conta.",
+                    "tone": "pending",
+                },
+                {
+                    "label": "Saldo-base",
+                    "value": "--",
+                    "detail": "Nenhum USDT visivel enquanto a conta nao for conectada.",
+                    "tone": "pending",
+                },
+                {
+                    "label": "Gas",
+                    "value": "--",
+                    "detail": "Sem leitura de rede enquanto a conta estiver desconectada.",
+                    "tone": "pending",
+                },
+                {
+                    "label": "Execucao",
+                    "value": "aguardando conexao",
+                    "detail": "Conecte a wallet para carregar a conta operacional.",
+                    "tone": "pending",
+                },
+            ],
+        }
+        aggregate = {
+            "active_networks": 0,
+            "visible_networks": 0,
+            "primary_network": network,
+            "total_value_display": "--",
+        }
         return {
             "connected": False,
             "status": {"label": "offline", "tone": "pending"},
@@ -202,30 +432,48 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
                 "address": None,
                 "network": network["label"],
                 "source": "registry",
+                "mode": "read-only",
             },
             "network_meta": network,
-            "aggregate": {
-                "active_networks": 0,
-                "visible_networks": 0,
-                "primary_network": network,
-                "total_value_display": "--",
-            },
+            "aggregate": aggregate,
             "by_network": [],
-            "signals": [
-                {"title": "Estado do USDT", "value": "--", "detail": "Conecte uma wallet para carregar o saldo estavel"},
-                {"title": "Superfície de acesso", "value": "0 chaves", "detail": "Nenhuma chave vinculada ainda"},
-                {"title": "Camada de proteção", "value": "0 dispositivos", "detail": "Nenhum dispositivo registrado"},
-            ],
-            "capital_cards": [],
+            "hero": _build_hero(aggregate, disconnected_readiness),
+            "balances": {
+                "usdt": {
+                    "label": "USDT",
+                    "value": "--",
+                    "detail": "Conecte uma wallet para ver o saldo-base.",
+                    "tone": "pending",
+                },
+                "gas": {
+                    "label": "Gas",
+                    "value": "--",
+                    "detail": "Conecte uma wallet para ver redes ativas e gas.",
+                    "tone": "pending",
+                },
+                "other_assets": {
+                    "label": "Outros ativos",
+                    "value": "leitura USDT-first",
+                    "detail": "O Vault prioriza USDT e gas na conta operacional.",
+                    "tone": "pending",
+                },
+            },
             "posture": [],
             "protection": {
                 "state": "A leitura USDT fica indisponivel ate a conexao de uma wallet.",
-                "boundary": "Chaves e Dispositivos continuam sendo a fronteira de proteção do Vault.",
+                "boundary": "Chaves e dispositivos continuam sendo a fronteira de protecao do Vault.",
             },
-            "readiness": {
-                "custody": "O Vault nao assina nem envia transacoes. O saldo permanece na wallet conectada.",
-                "staking": "Leia gas e presenca de saldo antes de abrir a superficie de execucao.",
-                "provisioning": "Movimento, conversao e uso de USDT acontecem apenas em Swaps.",
+            "readiness": disconnected_readiness,
+            "next_action": {
+                "reason": "Conecte a wallet para carregar a conta operacional.",
+                "actions": [
+                    {"label": "Abrir Radar", "href": "/radar", "tone": "neutral"},
+                ],
+            },
+            "empty_state": None,
+            "source_of_truth": {
+                "title": "Leitura organizada, sem custodia",
+                "description": "O saldo permanece na wallet. O OS so le e organiza a conta operacional.",
             },
             "last_updated": datetime.utcnow().isoformat(),
         }
@@ -240,10 +488,11 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
 
     status = {"label": "capital online", "tone": "active"} if has_activity else {"label": "idle", "tone": "warning"}
 
-    capital = primary_position["balance_formatted"] or "0.000000 USDT"
-    gas = primary_position["gas"] or "--"
     aggregate = build_aggregate(primary_position, positions)
-    total_usdt_display = aggregate["total_value_display"]
+    readiness = _build_readiness(positions, aggregate)
+    balances = _build_balances(positions, aggregate, primary_position)
+    next_action = _build_next_action(readiness)
+    empty_state = _build_empty_state(readiness)
 
     return {
         "connected": True,
@@ -252,21 +501,13 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
             "address": address,
             "network": primary_network["label"],
             "source": f"{primary_network['key']}-rpc",
+            "mode": "read-only",
         },
         "network_meta": primary_network,
         "aggregate": aggregate,
         "by_network": positions,
-        "signals": [
-            {"title": "Estado do USDT", "value": total_usdt_display, "detail": "Saldo estavel visivel pela wallet conectada"},
-            {"title": "Redes visiveis", "value": str(sum(1 for item in positions if item["status"] == "active")), "detail": "Networks com USDT, gas ou atividade detectavel"},
-            {"title": "Camada de proteção", "value": "0 dispositivos", "detail": "Nenhum dispositivo registrado"},
-        ],
-        "capital_cards": [
-            {"label": "Saldo USDT", "value": capital, "hint": f"Total consolidado: {total_usdt_display}", "icon": "wallet"},
-            {"label": "Gas", "value": gas, "hint": primary_position["gas_balance_formatted"] or f"0.000000 {primary_network['native_asset']}", "icon": "zap"},
-            {"label": "Conta", "value": account_type, "hint": f"{tx_count} tx" if has_activity else "Sem atividade visível", "icon": "shield"},
-            {"label": "Proteção", "value": "sem dispositivos", "hint": "Nenhum dispositivo confiável", "icon": "box"},
-        ],
+        "hero": _build_hero(aggregate, readiness),
+        "balances": balances,
         "posture": [
             {"label": "Tipo", "value": account_type},
             {"label": "Transações", "value": str(tx_count)},
@@ -275,12 +516,14 @@ def build_vault_overview(address: Optional[str], network_key: Optional[str] = No
         ],
         "protection": {
             "state": "A leitura USDT da wallet esta ativa. O Vault continua somente leitura e nao executa rotas.",
-            "boundary": "Chaves e Dispositivos seguem como fronteira de protecao. Leitura fica no Vault; execucao fica em Swaps.",
+            "boundary": "Chaves e dispositivos seguem como fronteira de protecao. Leitura fica no Vault; execucao fica em Swaps.",
         },
-        "readiness": {
-            "custody": "O Vault nao assina nem envia transacoes. O saldo permanece na wallet conectada.",
-            "staking": "Leia gas e presenca de saldo antes de abrir a superficie de execucao.",
-            "provisioning": "Movimento, conversao e uso de USDT acontecem apenas em Swaps.",
+        "readiness": readiness,
+        "next_action": next_action,
+        "empty_state": empty_state,
+        "source_of_truth": {
+            "title": "Leitura organizada, sem custodia",
+            "description": "O saldo permanece na wallet. O OS so le, organiza e qualifica a conta operacional.",
         },
         "last_updated": datetime.utcnow().isoformat(),
     }

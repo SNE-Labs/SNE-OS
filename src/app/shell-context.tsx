@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { readPersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
+import { getVaultSnapshotKey } from '@/hooks/useVaultData';
 import { resolveRouteMeta } from './navigation';
 
 type ShellTone = 'accent' | 'success' | 'warning' | 'neutral';
@@ -399,7 +400,7 @@ export function useShellContextData() {
     const radarSymbol = routeRadarSymbol(location.pathname);
     const radar = readPersistedSnapshot<any>(`sne:query:radar:${radarSymbol}:24H`)?.data;
     const passport = readPersistedSnapshot<any>('sne:query:passport:identity')?.data;
-    const vault = readPersistedSnapshot<any>(`sne:query:vault:${isAuthenticated && address ? address : 'anonymous'}`)?.data;
+    const vault = readPersistedSnapshot<any>(getVaultSnapshotKey(isAuthenticated && address ? address : 'anonymous'))?.data;
     const routeMeta = resolveRouteMeta(location.pathname);
     const topbarChips: ShellChip[] = [];
 

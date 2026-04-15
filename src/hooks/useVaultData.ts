@@ -2,8 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { readPersistedSnapshot, writePersistedSnapshot } from '../lib/querySnapshot';
 import { vaultApi } from '../services/vault-api';
 
+export function getVaultSnapshotKey(address: string | null) {
+  return `sne:query:vault:v2:${address ?? 'anonymous'}`;
+}
+
 export function useVaultOverview(address: string | null) {
-  const snapshotKey = `sne:query:vault:v2:${address ?? 'anonymous'}`;
+  const snapshotKey = getVaultSnapshotKey(address);
   const persistedSnapshot = readPersistedSnapshot(snapshotKey);
 
   return useQuery({

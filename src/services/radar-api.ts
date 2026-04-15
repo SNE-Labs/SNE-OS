@@ -32,7 +32,7 @@ export interface RadarOverview {
   hero: {
     headline: string;
     summary: string;
-    metrics: Array<{ label: string; value: string }>;
+    metrics: Array<{ label: string; value: string; detail?: string; tone?: 'active' | 'success' | 'warning' | 'pending' }>;
   };
   market_regime: {
     label: string;
@@ -67,6 +67,38 @@ export interface RadarOverview {
     change24h: number;
     volume: string | number;
   } | null;
+  focus_asset: {
+    symbol: string;
+    price: number;
+    change24h: number;
+    volume: string | number;
+    score: number;
+    confidence: { label: string; tone: 'active' | 'success' | 'warning' | 'pending' };
+    liquidity: { label: string; tone: 'active' | 'success' | 'warning' | 'pending' };
+  } | null;
+  execution_risk: {
+    label: string;
+    tone: 'active' | 'success' | 'warning' | 'pending';
+    score: number;
+    summary: string;
+    blockers: string[];
+  };
+  next_action: {
+    state: string;
+    title: string;
+    summary: string;
+    actions: Array<{
+      label: string;
+      href: string;
+      tone: 'accent' | 'neutral';
+      kind: string;
+      recommended: boolean;
+    }>;
+  };
+  universe_summary: {
+    title: string;
+    summary: string;
+  };
   signal: Signal | null;
   universe: Array<{
     symbol: string;
@@ -90,9 +122,9 @@ export interface WatchlistResponse {
 }
 
 const DEFAULT_RADAR_HERO = {
-  headline: 'Mercados líquidos. Sinais em tempo real.',
-  summary: 'Acompanhe os pares mais ativos do universo SNE e leia sinais direcionais antes de executar.',
-  metrics: [] as Array<{ label: string; value: string }>,
+  headline: 'Regime sem ativo em foco.',
+  summary: 'O Radar esta sincronizando o universo monitorado antes de sugerir uma decisao.',
+  metrics: [] as Array<{ label: string; value: string; detail?: string; tone?: 'active' | 'success' | 'warning' | 'pending' }>,
 };
 
 const DEFAULT_MARKET_REGIME = {
@@ -104,8 +136,8 @@ const DEFAULT_MARKET_REGIME = {
 
 const DEFAULT_MARKET_STATE = {
   label: 'Sem dados.',
-  access: 'prévia',
-  execution: 'bloqueada',
+  access: 'previa',
+  execution: 'intel-first',
 };
 
 function normalizeMarketItem(item: any) {
@@ -176,6 +208,49 @@ function normalizeRadarOverview(payload: any): RadarOverview {
           : DEFAULT_MARKET_STATE.execution,
     },
     featured,
+    focus_asset: payload?.focus_asset && typeof payload.focus_asset === 'object'
+      ? {
+          symbol: typeof payload.focus_asset.symbol === 'string' ? payload.focus_asset.symbol : '',
+          price: Number(payload.focus_asset.price ?? 0),
+          change24h: Number(payload.focus_asset.change24h ?? 0),
+          volume: payload.focus_asset.volume ?? 0,
+          score: Number(payload.focus_asset.score ?? 0),
+          confidence: payload.focus_asset.confidence ?? { label: '--', tone: 'pending' },
+          liquidity: payload.focus_asset.liquidity ?? { label: '--', tone: 'pending' },
+        }
+      : null,
+    execution_risk: {
+      label: typeof payload?.execution_risk?.label === 'string' ? payload.execution_risk.label : 'sem dados',
+      tone: payload?.execution_risk?.tone ?? 'pending',
+      score: Number(payload?.execution_risk?.score ?? 0),
+      summary:
+        typeof payload?.execution_risk?.summary === 'string'
+          ? payload.execution_risk.summary
+          : 'Sem leitura suficiente para qualificar risco de execucao.',
+      blockers: Array.isArray(payload?.execution_risk?.blockers) ? payload.execution_risk.blockers : [],
+    },
+    next_action: {
+      state: typeof payload?.next_action?.state === 'string' ? payload.next_action.state : 'intel-first',
+      title:
+        typeof payload?.next_action?.title === 'string'
+          ? payload.next_action.title
+          : 'Contexto antes da execucao.',
+      summary:
+        typeof payload?.next_action?.summary === 'string'
+          ? payload.next_action.summary
+          : 'Sem guidance state-based disponivel.',
+      actions: Array.isArray(payload?.next_action?.actions) ? payload.next_action.actions : [],
+    },
+    universe_summary: {
+      title:
+        typeof payload?.universe_summary?.title === 'string'
+          ? payload.universe_summary.title
+          : 'Universo monitorado',
+      summary:
+        typeof payload?.universe_summary?.summary === 'string'
+          ? payload.universe_summary.summary
+          : 'Liquidez viva, regime relativo e selecao rapida do ativo em foco.',
+    },
     signal: normalizeSignal(payload?.signal),
     universe,
     last_updated: typeof payload?.last_updated === 'string' ? payload.last_updated : '',

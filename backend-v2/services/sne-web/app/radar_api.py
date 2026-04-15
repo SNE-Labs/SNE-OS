@@ -80,8 +80,8 @@ def overview():
       return jsonify({
           "execution": {"label": "offline", "tone": "pending"},
           "hero": {
-              "headline": "Mercados líquidos. Sinais em tempo real.",
-              "summary": "O Radar está indisponível agora.",
+              "headline": "Regime sem ativo em foco.",
+              "summary": "O Radar esta indisponivel agora.",
               "metrics": [],
           },
           "market_regime": {
@@ -90,8 +90,29 @@ def overview():
               "avg_change_24h": 0.0,
               "summary": "O Radar ainda nao tem snapshot suficiente para classificar o mercado.",
           },
+          "focus_asset": None,
+          "execution_risk": {
+              "label": "sem dados",
+              "tone": "pending",
+              "score": 0,
+              "summary": "Sem leitura suficiente para qualificar risco de execucao.",
+              "blockers": ["O Radar nao retornou contexto suficiente nesta sessao."],
+          },
+          "next_action": {
+              "state": "intel-first",
+              "title": "Contexto antes da execucao.",
+              "summary": "Use Intel e observacao ate o mercado voltar a responder.",
+              "actions": [
+                  {"label": "Ler Intel", "href": "/intel", "tone": "accent", "kind": "intel", "recommended": True},
+                  {"label": "Observar", "href": "/radar", "tone": "neutral", "kind": "observe", "recommended": False},
+              ],
+          },
+          "universe_summary": {
+              "title": "Universo monitorado",
+              "summary": "Liquidez viva, regime relativo e selecao rapida do ativo em foco.",
+          },
           "rankings": {"momentum": [], "liquidity": []},
-          "market_state": {"label": "Sem dados.", "access": "prévia", "execution": "bloqueada"},
+          "market_state": {"label": "Sem dados.", "access": "previa", "execution": "intel-first"},
           "featured": None,
           "signal": None,
           "universe": [],
