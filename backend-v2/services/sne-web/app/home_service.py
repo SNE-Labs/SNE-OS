@@ -4,6 +4,7 @@ Builds the aggregated home view model from session, market, intel and system sta
 """
 
 from datetime import datetime
+import re
 from typing import Any, Dict, List, Optional
 
 from .networks import get_default_network_metadata, get_public_network_metadata, list_networks, normalize_evm_address, with_evm_provider
@@ -146,7 +147,6 @@ def build_brief(
 ) -> Dict[str, Any]:
     mover_count = len(market.get("top_movers", []))
     authenticated = session_data.get("authenticated", False)
-    network_label = wallet.get("network", {}).get("label", "network") if wallet else "network"
     linked_accounts = identity.get("linked_accounts_count", 0) if identity else 0
     active_networks = capital.get("aggregate", {}).get("active_networks", 0) if capital else 0
 
@@ -167,7 +167,7 @@ def build_brief(
             "badge": "session active",
             "badge_status": "warning",
             "headline": "Carteira vinculada.",
-            "summary": f"Sessão ativa em {network_label}, mas ainda sem atividade on-chain detectada. O Radar acompanha {mover_count} mercado(s)." if mover_count else f"Sessão ativa em {network_label}, mas ainda sem atividade on-chain detectada.",
+            "summary": "Sessão ativa, mas ainda sem atividade on-chain detectada.",
         }
 
     overall = dashboard.get("status", {}).get("overall_status", "Operational")
@@ -176,10 +176,10 @@ def build_brief(
         "badge_status": "active" if overall == "Operational" else "warning",
         "headline": "Hub online.",
         "summary": (
-            f"Identidade e capital carregados em {network_label}. "
+            "Identidade e capital carregados. "
             f"{linked_accounts} conta(s) ligadas, {active_networks} network(s) ativas e {mover_count} mercado(s) no Radar."
             if mover_count
-            else f"Identidade e capital carregados em {network_label}. {linked_accounts} conta(s) ligadas e {active_networks} network(s) ativas."
+            else f"Identidade e capital carregados. {linked_accounts} conta(s) ligadas e {active_networks} network(s) ativas."
         ),
     }
 
@@ -226,11 +226,9 @@ def build_brief_signals(
     capital: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, str]]:
     authenticated = session_data.get("authenticated", False)
-    mover_count = len(market.get("top_movers", []))
     wallet_ready = wallet is not None and wallet.get("status") == "ready"
     has_chain_state = wallet_ready and (((wallet.get("tx_count") or 0) > 0) or ((wallet.get("balance_eth") or 0) > 0))
     capital_display = capital.get("aggregate", {}).get("total_value_display") if capital else None
-    active_networks = capital.get("aggregate", {}).get("active_networks") if capital else 0
     linked_accounts = identity.get("linked_accounts_count") if identity else 0
 
     vault_value = "offline"
@@ -238,6 +236,23 @@ def build_brief_signals(
         vault_value = capital_display
     elif authenticated:
         vault_value = "syncing"
+
+    radar_value = "sem carteira"
+    if authenticated:
+        if not wallet_ready:
+            radar_value = "leitura em sincronização"
+        else:
+            amount_match = re.search(r"([0-9]+(?:\.[0-9]+)?)", capital_display or "")
+            capital_amount = float(amount_match.group(1)) if amount_match else None
+
+            if capital_amount is None:
+                radar_value = "leitura em sincronização"
+            elif capital_amount > 0:
+                radar_value = "capital em USDT"
+            elif has_chain_state:
+                radar_value = "sem exposição detectável"
+            else:
+                radar_value = "leitura em sincronização"
 
     return [
         {
@@ -250,7 +265,7 @@ def build_brief_signals(
         },
         {
             "label": "Radar",
-            "value": f"{mover_count} live / {active_networks} nets" if mover_count > 0 else f"{active_networks} nets" if active_networks else "idle",
+            "value": radar_value,
         },
     ]
 
