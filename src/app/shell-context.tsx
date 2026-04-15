@@ -185,7 +185,7 @@ function buildTapeItems(
 
   if (pathname.startsWith('/swaps')) {
     pushUnique('route', {
-      label: auth.isAuthenticated && auth.address ? `Execucao pronta • ${formatAddress(auth.address)}` : 'Conecte uma wallet para executar',
+      label: auth.isAuthenticated && auth.address ? `Execução pronta • ${formatAddress(auth.address)}` : 'Conecte uma wallet para executar',
       tone: auth.isAuthenticated && auth.address ? 'success' : 'warning',
       href: '/swaps',
     });
@@ -311,9 +311,9 @@ function buildSidebarContext(
 
   if (pathname.startsWith('/swaps')) {
     return {
-      eyebrow: 'Execucao',
-      title: 'USDT execution',
-      summary: 'Superficie para mover, converter e usar USDT sem transformar Radar ou Vault em terminais de execucao.',
+      eyebrow: 'Execução',
+      title: 'Execução USDT',
+      summary: 'Superfície para mover, converter e usar USDT sem transformar Radar ou Vault em terminais de execução.',
       items: ['USDT-first', 'Multichain', 'Wallet conectada'],
       actionLabel: 'Abrir Radar',
       actionPath: '/radar',

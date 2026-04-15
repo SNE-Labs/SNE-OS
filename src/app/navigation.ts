@@ -23,10 +23,13 @@ export type NavigationGroup = {
   items: NavigationItem[];
 };
 
+export type SurfaceFamily = 'narrativa' | 'infraestrutura' | 'execucao' | 'segredo' | 'referencia';
+
 export type RouteMeta = {
   title: string;
   context: string;
   descriptor: string;
+  family: SurfaceFamily;
 };
 
 export const dockNavigationItems: NavigationItem[] = [
@@ -72,6 +75,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Home',
       context: 'Intel em primeiro plano',
       descriptor: 'Briefing operacional, memória de sessão e contexto para a próxima janela.',
+      family: 'narrativa',
     },
   },
   {
@@ -80,14 +84,16 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Radar',
       context: 'Mercado em foco',
       descriptor: 'Leitura direcional, liquidez e contexto de execução antes da decisão.',
+      family: 'narrativa',
     },
   },
   {
     match: (pathname) => pathname.startsWith('/swaps'),
     meta: {
       title: 'Swaps',
-      context: 'Execucao',
-      descriptor: 'Mover, converter e usar USDT quando a intencao ja esta definida.',
+      context: 'Execução',
+      descriptor: 'Mover, converter e usar USDT quando a intenção já está definida.',
+      family: 'execucao',
     },
   },
   {
@@ -95,7 +101,8 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     meta: {
       title: 'Passport',
       context: 'Identidade',
-      descriptor: 'Conta, wallets vinculadas e lookup publico persistente do OS.',
+      descriptor: 'Conta, wallets vinculadas e lookup público persistente do OS.',
+      family: 'infraestrutura',
     },
   },
   {
@@ -104,6 +111,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Vault',
       context: 'Capital',
       descriptor: 'Capital, postura de conta e readiness da carteira conectada.',
+      family: 'infraestrutura',
     },
   },
   {
@@ -112,6 +120,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Secrets',
       context: 'Camada cifrada',
       descriptor: 'Camada cifrada para composição, sync e material sensível do OS.',
+      family: 'segredo',
     },
   },
   {
@@ -120,6 +129,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Keys',
       context: 'Acesso',
       descriptor: 'Credenciais, chaves e superfícies de acesso do workspace.',
+      family: 'infraestrutura',
     },
   },
   {
@@ -128,6 +138,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Intel Brief',
       context: 'Contexto editorial',
       descriptor: 'Briefings e dossiês editoriais para contexto, mercado e operação.',
+      family: 'narrativa',
     },
   },
   {
@@ -136,6 +147,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Planos',
       context: 'Acesso',
       descriptor: 'Camadas de acesso, limites e postura comercial do OS.',
+      family: 'referencia',
     },
   },
   {
@@ -144,6 +156,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
       title: 'Docs',
       context: 'Referência',
       descriptor: 'Documentação, contexto de produto e leitura de suporte do OS.',
+      family: 'referencia',
     },
   },
 ];
@@ -153,5 +166,6 @@ export function resolveRouteMeta(pathname: string): RouteMeta {
     title: 'SNE OS',
     context: 'Workspace pessoal',
     descriptor: 'Camada operacional pessoal para mercado, identidade e capital.',
+    family: 'narrativa',
   };
 }

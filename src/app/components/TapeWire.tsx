@@ -27,9 +27,15 @@ const toneStyles = {
 } as const;
 
 export function TapeWire() {
-  const { tapeItems } = useShellContextData();
+  const { routeMeta, tapeItems } = useShellContextData();
+  const family = routeMeta.family;
+  const hidden = family === 'execucao' || family === 'segredo';
+  const compact = family === 'infraestrutura' || family === 'referencia';
+  const label = compact ? 'Estado' : 'Fluxo';
   const items = useMemo(() => {
-    if (tapeItems.length === 0) return [];
+    if (hidden || tapeItems.length === 0) return [];
+    if (compact) return tapeItems.slice(0, 3);
+
     const repeated: typeof tapeItems = [];
 
     while (repeated.length < Math.max(tapeItems.length * 3, 12)) {
@@ -37,7 +43,7 @@ export function TapeWire() {
     }
 
     return repeated;
-  }, [tapeItems]);
+  }, [compact, hidden, tapeItems]);
 
   if (items.length === 0) {
     return null;
@@ -47,16 +53,17 @@ export function TapeWire() {
     <div
       className="relative overflow-hidden border-b"
       style={{
-        borderColor: 'rgba(255,255,255,0.06)',
-        background:
-          'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)), rgba(6,8,12,0.9)',
+        borderColor: compact ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.06)',
+        background: compact
+          ? 'linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0)), rgba(6,8,12,0.72)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)), rgba(6,8,12,0.9)',
       }}
     >
       <div
         className="absolute left-6 top-1/2 z-20 hidden -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] lg:flex"
         style={{
-          borderColor: 'rgba(255,255,255,0.08)',
-          backgroundColor: 'rgba(8, 11, 16, 0.74)',
+          borderColor: compact ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.08)',
+          backgroundColor: compact ? 'rgba(8, 11, 16, 0.58)' : 'rgba(8, 11, 16, 0.74)',
           color: 'var(--text-3)',
           backdropFilter: 'blur(14px)',
           WebkitBackdropFilter: 'blur(14px)',
@@ -64,9 +71,12 @@ export function TapeWire() {
       >
         <span
           className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: 'var(--accent-orange)', boxShadow: '0 0 12px rgba(255,102,0,0.45)' }}
+          style={{
+            backgroundColor: compact ? 'var(--text-3)' : 'var(--accent-orange)',
+            boxShadow: compact ? 'none' : '0 0 12px rgba(255,102,0,0.45)',
+          }}
         />
-        Fluxo
+        {label}
       </div>
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20"
@@ -77,7 +87,7 @@ export function TapeWire() {
         style={{ background: 'linear-gradient(270deg, rgba(7,9,11,0.92), transparent)' }}
       />
 
-      <div className="shell-tape-track flex min-w-max items-center gap-3 py-3 pl-28 pr-8">
+      <div className={`${compact ? '' : 'shell-tape-track'} flex min-w-max items-center gap-3 ${compact ? 'py-2' : 'py-3'} pl-28 pr-8`}>
         {items.map((item, index) => (
           <div
             key={`${item.label}-${index}`}
@@ -86,23 +96,25 @@ export function TapeWire() {
             {item.href ? (
               <Link
                 to={item.href}
-                className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-opacity hover:opacity-80"
+                className={`rounded-full border px-3 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} uppercase tracking-[0.18em] transition-opacity hover:opacity-80`}
                 style={toneStyles[item.tone]}
               >
                 {item.label}
               </Link>
             ) : (
               <div
-                className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.18em]"
+                className={`rounded-full border px-3 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} uppercase tracking-[0.18em]`}
                 style={toneStyles[item.tone]}
               >
                 {item.label}
               </div>
             )}
-            <div
-              className="h-px w-6 shrink-0"
-              style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-            />
+            {!compact ? (
+              <div
+                className="h-px w-6 shrink-0"
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+              />
+            ) : null}
           </div>
         ))}
       </div>
