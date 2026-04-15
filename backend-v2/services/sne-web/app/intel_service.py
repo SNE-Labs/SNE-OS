@@ -674,8 +674,8 @@ def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) ->
         import json
         ordered = _prune_redundant_posts(posts)
         cached_at = _iso_now()
-        redis_client.setex(POST_CACHE_KEY, POST_CACHE_TTL_SECONDS, json.dumps(ordered))
-        redis_client.setex(
+        posts_stored = redis_client.setex(POST_CACHE_KEY, POST_CACHE_TTL_SECONDS, json.dumps(ordered))
+        meta_stored = redis_client.setex(
             POST_CACHE_META_KEY,
             POST_CACHE_TTL_SECONDS,
             json.dumps(
@@ -686,8 +686,15 @@ def _store_cached_posts(redis_client: SafeRedis, posts: List[Dict[str, Any]]) ->
                 }
             ),
         )
-    except Exception:
-        pass
+        if not posts_stored or not meta_stored:
+            logger.warning(
+                "Intel post cache store failed: posts_stored=%s meta_stored=%s count=%s",
+                posts_stored,
+                meta_stored,
+                len(ordered),
+            )
+    except Exception as exc:
+        logger.warning("Intel post cache store failed: %s", exc)
 
 
 def _blog_daily_count(redis_client: SafeRedis) -> int:

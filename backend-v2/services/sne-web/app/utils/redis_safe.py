@@ -5,6 +5,7 @@ Suporta tanto TCP Redis quanto REST API (Upstash)
 
 import os
 import logging
+import json
 from typing import Any, Optional
 
 # Try to import redis, fallback if not available
@@ -44,6 +45,23 @@ class UpstashRedis:
             self.available = False
             return None
 
+    def _post_command(self, command: list[Any]):
+        """Internal POST helper for commands with large values."""
+        if not self.available:
+            return None
+        try:
+            headers = {**self.headers, "Content-Type": "application/json"}
+            r = requests.post(self.url, headers=headers, data=json.dumps(command), timeout=10)
+            if r.status_code == 200:
+                return r.json().get("result")
+            command_name = str(command[0]) if command else "UNKNOWN"
+            logger.warning(f"Upstash {command_name} -> {r.status_code}: {r.text[:200]}")
+            return None
+        except Exception as e:
+            logger.warning(f"Upstash request error: {e}")
+            self.available = False
+            return None
+
     def ping(self) -> bool:
         """Test connection"""
         return self._get("ping") == "PONG"
@@ -54,31 +72,31 @@ class UpstashRedis:
         return self._get(f"get/{key}")
 
     def setex(self, key: str, time: int, value: Any) -> bool:
-        """Set with expiration - Upstash format: /setex/key/seconds/value"""
-        key = urllib.parse.quote(key, safe="")
-        val = urllib.parse.quote(str(value), safe="")
-        res = self._get(f"setex/{key}/{int(time)}/{val}")
+        """Set with expiration."""
+        res = self._post_command(["SETEX", key, int(time), str(value)])
+        return res == "OK"
+
+    def set(self, key: str, value: Any) -> bool:
+        """Set value without expiration."""
+        res = self._post_command(["SET", key, str(value)])
         return res == "OK"
 
     def delete(self, key: str) -> int:
-        """Delete key - Upstash format: /del/key"""
-        key = urllib.parse.quote(key, safe="")
-        res = self._get(f"del/{key}")
+        """Delete key."""
+        res = self._post_command(["DEL", key])
         try:
             return int(res or 0)
         except:
             return 0
 
     def incr(self, key: str) -> int:
-        """Increment counter - Upstash format: /incr/key"""
-        key = urllib.parse.quote(key, safe="")
-        res = self._get(f"incr/{key}")
+        """Increment counter."""
+        res = self._post_command(["INCR", key])
         return int(res or 1)
 
     def expire(self, key: str, time: int) -> bool:
-        """Set expiration - Upstash format: /expire/key/seconds"""
-        key = urllib.parse.quote(key, safe="")
-        res = self._get(f"expire/{key}/{int(time)}")
+        """Set expiration."""
+        res = self._post_command(["EXPIRE", key, int(time)])
         return res == 1 or res is True
 
 class SafeRedis:
@@ -158,7 +176,7 @@ class SafeRedis:
             return True  # Success in fallback mode
         try:
             if self.use_upstash:
-                return self.upstash.setex(key, 0, value)  # Upstash não tem set sem expiração
+                return self.upstash.set(key, value)
             else:
                 return self.redis.set(key, value)
         except Exception as e:
