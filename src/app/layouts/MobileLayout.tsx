@@ -1,18 +1,21 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Activity, ArrowLeftRight, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
 
-const MobileHome = lazy(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
-const MobileRadar = lazy(() => import('../pages/mobile/Radar').then((m) => ({ default: m.MobileRadar })));
-const MobileSwaps = lazy(() => import('../pages/mobile/Swaps').then((m) => ({ default: m.MobileSwaps })));
-const MobileVault = lazy(() => import('../pages/mobile/Vault').then((m) => ({ default: m.MobileVault })));
-const MobilePass = lazy(() => import('../pages/mobile/Pass').then((m) => ({ default: m.MobilePass })));
-const MobileKeys = lazy(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
-const MobileSecrets = lazy(() => import('../pages/mobile/Secrets').then((m) => ({ default: m.MobileSecrets })));
-const MobileDocs = lazy(() => import('../pages/mobile/Docs').then((m) => ({ default: m.MobileDocs })));
-const MobileBlog = lazy(() => import('../pages/mobile/Blog').then((m) => ({ default: m.MobileBlog })));
-const MobileBlogPost = lazy(() => import('../pages/mobile/BlogPost').then((m) => ({ default: m.MobileBlogPost })));
-const MobileStatus = lazy(() => import('../pages/mobile/Status').then((m) => ({ default: m.MobileStatus })));
+import { ChunkLoadBoundary } from '../components/ChunkLoadBoundary';
+import { lazyRoute } from '../utils/lazyRoute';
+
+const MobileHome = lazyRoute(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
+const MobileRadar = lazyRoute(() => import('../pages/mobile/Radar').then((m) => ({ default: m.MobileRadar })));
+const MobileSwaps = lazyRoute(() => import('../pages/mobile/Swaps').then((m) => ({ default: m.MobileSwaps })));
+const MobileVault = lazyRoute(() => import('../pages/mobile/Vault').then((m) => ({ default: m.MobileVault })));
+const MobilePass = lazyRoute(() => import('../pages/mobile/Pass').then((m) => ({ default: m.MobilePass })));
+const MobileKeys = lazyRoute(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
+const MobileSecrets = lazyRoute(() => import('../pages/mobile/Secrets').then((m) => ({ default: m.MobileSecrets })));
+const MobileDocs = lazyRoute(() => import('../pages/mobile/Docs').then((m) => ({ default: m.MobileDocs })));
+const MobileBlog = lazyRoute(() => import('../pages/mobile/Blog').then((m) => ({ default: m.MobileBlog })));
+const MobileBlogPost = lazyRoute(() => import('../pages/mobile/BlogPost').then((m) => ({ default: m.MobileBlogPost })));
+const MobileStatus = lazyRoute(() => import('../pages/mobile/Status').then((m) => ({ default: m.MobileStatus })));
 
 function MobileSkeleton() {
   return (
@@ -292,32 +295,34 @@ export function MobileLayout() {
   return (
     <div className="mobile-layout">
       <div className="mobile-content-area">
-        <Suspense fallback={<MobileSkeleton />}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            <Route path="/home" element={<MobileHome />} />
-            <Route path="/radar" element={<MobileRadar />} />
-            <Route path="/radar/:symbol" element={<MobileRadar />} />
-            <Route path="/swaps" element={<MobileSwaps />} />
-            <Route path="/intel" element={<MobileBlog />} />
-            <Route path="/intel/topic/:topic" element={<MobileBlog />} />
-            <Route path="/intel/chain/:chain" element={<MobileBlog />} />
-            <Route path="/intel/asset/:asset" element={<MobileBlog />} />
-            <Route path="/intel/:slug" element={<MobileBlogPost />} />
-            <Route path="/blog" element={<Navigate to="/intel" replace />} />
-            <Route path="/blog/topic/:topic" element={<MobileLegacyBlogRedirect />} />
-            <Route path="/blog/chain/:chain" element={<MobileLegacyBlogRedirect />} />
-            <Route path="/blog/asset/:asset" element={<MobileLegacyBlogRedirect />} />
-            <Route path="/blog/:slug" element={<MobileLegacyBlogRedirect />} />
-            <Route path="/vault" element={<MobileVault />} />
-            <Route path="/pass" element={<MobilePass />} />
-            <Route path="/keys" element={<MobileKeys />} />
-            <Route path="/secrets" element={<MobileSecrets />} />
-            <Route path="/docs" element={<MobileDocs />} />
-            <Route path="/status" element={<MobileStatus />} />
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </Suspense>
+        <ChunkLoadBoundary>
+          <Suspense fallback={<MobileSkeleton />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<MobileHome />} />
+              <Route path="/radar" element={<MobileRadar />} />
+              <Route path="/radar/:symbol" element={<MobileRadar />} />
+              <Route path="/swaps" element={<MobileSwaps />} />
+              <Route path="/intel" element={<MobileBlog />} />
+              <Route path="/intel/topic/:topic" element={<MobileBlog />} />
+              <Route path="/intel/chain/:chain" element={<MobileBlog />} />
+              <Route path="/intel/asset/:asset" element={<MobileBlog />} />
+              <Route path="/intel/:slug" element={<MobileBlogPost />} />
+              <Route path="/blog" element={<Navigate to="/intel" replace />} />
+              <Route path="/blog/topic/:topic" element={<MobileLegacyBlogRedirect />} />
+              <Route path="/blog/chain/:chain" element={<MobileLegacyBlogRedirect />} />
+              <Route path="/blog/asset/:asset" element={<MobileLegacyBlogRedirect />} />
+              <Route path="/blog/:slug" element={<MobileLegacyBlogRedirect />} />
+              <Route path="/vault" element={<MobileVault />} />
+              <Route path="/pass" element={<MobilePass />} />
+              <Route path="/keys" element={<MobileKeys />} />
+              <Route path="/secrets" element={<MobileSecrets />} />
+              <Route path="/docs" element={<MobileDocs />} />
+              <Route path="/status" element={<MobileStatus />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </Suspense>
+        </ChunkLoadBoundary>
       </div>
 
       {moreOpen && <button className="mobile-more-backdrop" aria-label="Fechar menu adicional" onClick={() => setMoreOpen(false)} />}

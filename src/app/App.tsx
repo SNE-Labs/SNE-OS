@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { arbitrum, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 // Desktop Components (carregados normalmente)
 import { Sidebar } from './components/Sidebar';
@@ -12,7 +12,9 @@ import { BottomDock } from './components/BottomDock';
 import { TapeWire } from './components/TapeWire';
 import { ShellCommandPalette } from './components/ShellCommandPalette';
 import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
+import { ChunkLoadBoundary } from './components/ChunkLoadBoundary';
 import { RouteSeo } from './RouteSeo';
+import { lazyRoute } from './utils/lazyRoute';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
@@ -23,18 +25,18 @@ import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
 
 // Desktop Pages (lazy loaded para performance)
-const DesktopRadar = lazy(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
-const DesktopSwaps = lazy(() => import('./pages/Swaps').then(m => ({ default: m.Swaps })));
-const DesktopVault = lazy(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
-const DesktopPass = lazy(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
-const DesktopKeys = lazy(() => import('./pages/Keys').then(m => ({ default: m.Keys })));
-const DesktopSecrets = lazy(() => import('./pages/Secrets').then(m => ({ default: m.Secrets })));
+const DesktopRadar = lazyRoute(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
+const DesktopSwaps = lazyRoute(() => import('./pages/Swaps').then(m => ({ default: m.Swaps })));
+const DesktopVault = lazyRoute(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
+const DesktopPass = lazyRoute(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
+const DesktopKeys = lazyRoute(() => import('./pages/Keys').then(m => ({ default: m.Keys })));
+const DesktopSecrets = lazyRoute(() => import('./pages/Secrets').then(m => ({ default: m.Secrets })));
 
 // Desktop Auth Page (lazy loaded, fullscreen outside main layout)
-const AuthDesktop = lazy(() => import('./pages/AuthDesktop').then(m => ({ default: m.AuthDesktop })));
+const AuthDesktop = lazyRoute(() => import('./pages/AuthDesktop').then(m => ({ default: m.AuthDesktop })));
 
 // Mobile components (lazy loaded only when needed)
-const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
+const MobileLayout = lazyRoute(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
@@ -81,10 +83,12 @@ function AppContent() {
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
     return (
-      <Suspense fallback={<MobileSkeleton />}>
-        <RouteSeo />
-        <MobileLayout />
-      </Suspense>
+      <ChunkLoadBoundary>
+        <Suspense fallback={<MobileSkeleton />}>
+          <RouteSeo />
+          <MobileLayout />
+        </Suspense>
+      </ChunkLoadBoundary>
     );
   }
 
@@ -123,32 +127,34 @@ function AppContent() {
           <TapeWire />
 
           <main className="overflow-y-auto pb-32">
-            <Suspense fallback={<DesktopSkeleton />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/home" replace />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/intel" element={<Blog />} />
-                <Route path="/intel/topic/:topic" element={<Blog />} />
-                <Route path="/intel/chain/:chain" element={<Blog />} />
-                <Route path="/intel/asset/:asset" element={<Blog />} />
-                <Route path="/intel/:slug" element={<BlogPost />} />
-                <Route path="/blog" element={<Navigate to="/intel" replace />} />
-                <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
-                <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
-                <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
-                <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
-                <Route path="/radar" element={<DesktopRadar />} />
-                <Route path="/radar/:symbol" element={<DesktopRadar />} />
-                <Route path="/swaps" element={<DesktopSwaps />} />
-                <Route path="/pass" element={<DesktopPass />} />
-                <Route path="/vault" element={<DesktopVault />} />
-                <Route path="/keys" element={<DesktopKeys />} />
-                <Route path="/secrets" element={<DesktopSecrets />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/status" element={<Status />} />
-                <Route path="/docs" element={<Docs />} />
-              </Routes>
-            </Suspense>
+            <ChunkLoadBoundary>
+              <Suspense fallback={<DesktopSkeleton />}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/home" replace />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/intel" element={<Blog />} />
+                  <Route path="/intel/topic/:topic" element={<Blog />} />
+                  <Route path="/intel/chain/:chain" element={<Blog />} />
+                  <Route path="/intel/asset/:asset" element={<Blog />} />
+                  <Route path="/intel/:slug" element={<BlogPost />} />
+                  <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                  <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
+                  <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
+                  <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
+                  <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
+                  <Route path="/radar" element={<DesktopRadar />} />
+                  <Route path="/radar/:symbol" element={<DesktopRadar />} />
+                  <Route path="/swaps" element={<DesktopSwaps />} />
+                  <Route path="/pass" element={<DesktopPass />} />
+                  <Route path="/vault" element={<DesktopVault />} />
+                  <Route path="/keys" element={<DesktopKeys />} />
+                  <Route path="/secrets" element={<DesktopSecrets />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/status" element={<Status />} />
+                  <Route path="/docs" element={<Docs />} />
+                </Routes>
+              </Suspense>
+            </ChunkLoadBoundary>
           </main>
         </div>
 
@@ -267,10 +273,12 @@ export default function App() {
               <Routes>
                 {/* Desktop Auth Route - Fullscreen outside main layout */}
                 <Route path="/auth" element={
-                  <Suspense fallback={<AuthSkeleton />}>
-                    <AuthSeo />
-                    <AuthDesktop />
-                  </Suspense>
+                  <ChunkLoadBoundary>
+                    <Suspense fallback={<AuthSkeleton />}>
+                      <AuthSeo />
+                      <AuthDesktop />
+                    </Suspense>
+                  </ChunkLoadBoundary>
                 } />
 
                 {/* Main App Routes */}
