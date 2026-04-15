@@ -6,6 +6,7 @@ import type { MarketSummary, RadarOverview, Signal, WatchlistResponse } from '..
 export function useRadarOverview(symbol: string, timeframe: string = '24H') {
   const snapshotKey = `sne:query:radar:${symbol}:${timeframe}`;
   const persistedSnapshot = readPersistedSnapshot<RadarOverview>(snapshotKey);
+  const hydratedSnapshot = persistedSnapshot?.data ? radarApi.hydrateOverview(persistedSnapshot.data) : undefined;
 
   return useQuery({
     queryKey: ['radar', 'overview', symbol, timeframe],
@@ -15,7 +16,7 @@ export function useRadarOverview(symbol: string, timeframe: string = '24H') {
       return payload;
     },
     enabled: !!symbol && !!timeframe,
-    initialData: persistedSnapshot?.data,
+    initialData: hydratedSnapshot,
     initialDataUpdatedAt: persistedSnapshot?.savedAt,
     placeholderData: (previousData) => previousData,
     staleTime: 30 * 1000,

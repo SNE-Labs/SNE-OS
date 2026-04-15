@@ -169,7 +169,7 @@ function normalizeSignal(signal: any): Signal | null {
   };
 }
 
-function normalizeRadarOverview(payload: any): RadarOverview {
+export function normalizeRadarOverview(payload: any): RadarOverview {
   const universe = Array.isArray(payload?.universe)
     ? payload.universe.map(normalizeMarketItem).filter(Boolean)
     : [];
@@ -272,6 +272,7 @@ export const radarApi = {
     normalizeRadarOverview(
       await apiGet(`/api/radar/overview?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`)
     ),
+  hydrateOverview: (payload: unknown): RadarOverview => normalizeRadarOverview(payload),
 
   // Market summary público (não requer auth)
   getMarketSummary: (): Promise<MarketSummary> =>

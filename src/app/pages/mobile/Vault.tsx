@@ -81,7 +81,7 @@ export function MobileVault() {
             ) : null}
 
             <div className="grid grid-cols-1 gap-3 mb-4">
-              {(overview?.hero.metrics ?? []).map((metric) => (
+          {(overview?.hero?.metrics ?? []).map((metric) => (
                 <div key={metric.label} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div className="text-[10px] uppercase text-[var(--text-3)]">{metric.label}</div>

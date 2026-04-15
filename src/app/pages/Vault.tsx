@@ -129,7 +129,7 @@ export function Vault() {
     data: overview,
   });
 
-  const heroMetrics = overview?.hero.metrics ?? [];
+  const heroMetrics = overview?.hero?.metrics ?? [];
   const actions = overview?.next_action.actions ?? [];
   const networks = overview?.by_network ?? [];
   const readinessItems = overview?.readiness.items ?? [];

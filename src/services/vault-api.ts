@@ -183,7 +183,7 @@ function normalizeByNetworkItem(item: any) {
   };
 }
 
-function normalizeVaultOverview(payload: any): VaultOverview {
+export function normalizeVaultOverview(payload: any): VaultOverview {
   return {
     connected: Boolean(payload?.connected),
     status: {
@@ -288,4 +288,5 @@ export const vaultApi = {
     const query = address ? `?address=${encodeURIComponent(address)}` : '';
     return normalizeVaultOverview(await apiGet(`/api/vault/overview${query}`));
   },
+  hydrateOverview: (payload: unknown): VaultOverview => normalizeVaultOverview(payload),
 };

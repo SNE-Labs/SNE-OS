@@ -9,6 +9,7 @@ export function getVaultSnapshotKey(address: string | null) {
 export function useVaultOverview(address: string | null) {
   const snapshotKey = getVaultSnapshotKey(address);
   const persistedSnapshot = readPersistedSnapshot(snapshotKey);
+  const hydratedSnapshot = persistedSnapshot?.data ? vaultApi.hydrateOverview(persistedSnapshot.data) : undefined;
 
   return useQuery({
     queryKey: ['vault', 'overview', address],
@@ -18,7 +19,7 @@ export function useVaultOverview(address: string | null) {
       return payload;
     },
     enabled: address == null || address.length > 0,
-    initialData: persistedSnapshot?.data,
+    initialData: hydratedSnapshot,
     initialDataUpdatedAt: persistedSnapshot?.savedAt,
     placeholderData: (previousData) => previousData,
     staleTime: 60 * 1000,
