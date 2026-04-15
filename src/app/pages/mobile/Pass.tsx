@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, BadgeCheck, Globe, Link2, Search, Shield, Wallet } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Globe, Link2, LogOut, Search, Shield, Wallet } from 'lucide-react';
 import { isAddress } from 'viem';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
@@ -33,8 +33,21 @@ function formatDate(value?: string | null) {
   return date.toLocaleString('pt-BR');
 }
 
+function formatPassportDisplayLabel(
+  profile?: { display_name?: string | null; handle?: string | null } | null,
+  fallbackAddress?: string | null
+) {
+  const displayName = `${profile?.display_name ?? ''}`.trim();
+  if (displayName) return displayName;
+
+  const handle = `${profile?.handle ?? ''}`.trim();
+  if (handle) return handle.startsWith('@') ? handle : `@${handle}`;
+
+  return fallbackAddress ? formatAddress(fallbackAddress) : 'Conecte sua wallet';
+}
+
 export function MobilePass() {
-  const { address, isAuthenticated } = useAuth();
+  const { address, authStatus, isAuthenticated, logout } = useAuth();
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -51,6 +64,12 @@ export function MobilePass() {
   const publicProfile = publicOverviewQuery.data?.profile as OverviewProfile | null;
   const linkedAccounts = connectedProfile?.linked_accounts ?? [];
   const publicPassport = publicProfile?.passport ?? null;
+  const sessionIdentityLabel = formatPassportDisplayLabel(identity?.profile, address);
+  const isAuthBusy =
+    authStatus === 'connecting' ||
+    authStatus === 'signing' ||
+    authStatus === 'verifying' ||
+    authStatus === 'restoring';
 
   useEffect(() => {
     if (!lookupTarget) return;
@@ -134,13 +153,18 @@ export function MobilePass() {
               </div>
               <div className="min-w-0">
                 <div className="text-[var(--text-1)] mb-1">
-                  {identity.primary_wallet ? formatAddress(identity.primary_wallet.address) : 'Sem wallet principal'}
+                  {sessionIdentityLabel}
                 </div>
                 <p className="text-sm text-[var(--text-2)]">
                   {identity.stats.wallets_total > 1
                     ? 'Qualquer wallet ativa deste Passport deve reabrir a mesma identidade.'
                     : 'Sua primeira wallet já está ancorada. Agora você pode vincular as próximas.'}
                 </p>
+                {address ? (
+                  <div className="mt-2 text-[10px] uppercase tracking-wide text-[var(--text-3)] break-all">
+                    Sessão atual • {formatAddress(address)}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -175,23 +199,21 @@ export function MobilePass() {
                 Consultar
               </MobileButton>
             </div>
+
+            <MobileButton variant="secondary" className="w-full mt-3" onClick={() => void logout()} disabled={isAuthBusy}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Trocar wallet / desconectar
+            </MobileButton>
           </SurfaceCard>
 
-          <PassportIdentityProfilePanel
-            profile={identity.profile}
-            identityId={identity.identity.id}
-            primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
-            walletsTotal={identity.stats.wallets_total}
-            editable
-            isSaving={updateProfileMutation.isPending}
-            errorMessage={profileSaveError}
-            title="Perfil publico"
-            subtitle="Personalize a camada publica do checkpoint sem perder a ancora do identity id."
-            onSave={handleProfileSave}
-          />
-
           {showLinkPanel ? (
-            <PassportWalletLinkPanel currentAddress={address} onLinked={() => identityQuery.refetch()} />
+            <PassportWalletLinkPanel
+              currentAddress={address}
+              onLinked={() => {
+                setShowLinkPanel(false);
+                identityQuery.refetch();
+              }}
+            />
           ) : null}
 
           <SurfaceCard>
@@ -332,6 +354,19 @@ export function MobilePass() {
               </div>
             </div>
           </SurfaceCard>
+
+          <PassportIdentityProfilePanel
+            profile={identity.profile}
+            identityId={identity.identity.id}
+            primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
+            walletsTotal={identity.stats.wallets_total}
+            editable
+            isSaving={updateProfileMutation.isPending}
+            errorMessage={profileSaveError}
+            title="Perfil publico"
+            subtitle="Personalize a camada publica do checkpoint sem perder a ancora do identity id."
+            onSave={handleProfileSave}
+          />
         </>
       )}
     </MobilePageShell>

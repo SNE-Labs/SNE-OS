@@ -179,7 +179,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
             Vincular nova carteira
           </div>
           <div className="text-sm max-w-2xl" style={{ color: 'var(--text-2)' }}>
-            O vínculo exige duas provas: a carteira atual aprova a entrada e a nova carteira confirma a posse dentro do mesmo Passport.
+            O vínculo não cria outro identity id. Ele adiciona uma nova wallet ao checkpoint atual depois de duas provas de posse.
           </div>
         </div>
         <button
@@ -206,8 +206,12 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               value={candidateAddress}
               onChange={(event) => {
                 setCandidateAddress(event.target.value);
-                setError(null);
-                setSuccessMessage(null);
+                if (linkRequest || currentWalletSignature || candidateWalletSignature || successMessage) {
+                  resetFlow();
+                } else {
+                  setError(null);
+                  setSuccessMessage(null);
+                }
               }}
               placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
               className="w-full rounded-lg px-4 py-3 font-mono text-sm"
@@ -224,7 +228,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
                 Gerar desafio
               </button>
               <div className="text-sm self-center" style={{ color: 'var(--text-3)' }}>
-                Use a carteira autenticada para aprovar, depois troque para a carteira nova.
+                Comece com a wallet autenticada. Depois troque a conta ativa na extensão para a wallet nova e assine a segunda prova.
               </div>
             </div>
           </div>
@@ -242,7 +246,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               </div>
               <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>1. Aprovar vínculo</div>
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Assine com {currentAddress ? formatAddress(currentAddress) : 'a carteira principal'}.
+                Assine com {currentAddress ? formatAddress(currentAddress) : 'a carteira atual do Passport'} para autorizar a entrada.
               </div>
             </button>
 
@@ -258,7 +262,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               </div>
               <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>2. Confirmar posse</div>
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Troque para {linkRequest ? formatAddress(linkRequest.candidate_address) : 'a carteira nova'} e assine.
+                Troque a conta ativa da extensão para {linkRequest ? formatAddress(linkRequest.candidate_address) : 'a carteira nova'} e assine.
               </div>
             </button>
 
@@ -273,7 +277,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               </div>
               <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>3. Fechar vínculo</div>
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                O backend valida as duas assinaturas e adiciona a nova wallet ao mesmo identity graph.
+                O backend valida as duas assinaturas. Se a wallet nova já estiver ligada a outro Passport, o vínculo é recusado.
               </div>
             </button>
           </div>
@@ -293,6 +297,31 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               {stepState === 'current-signed' && 'Aprovação da carteira atual registrada'}
               {stepState === 'candidate-signed' && 'Duas assinaturas coletadas'}
               {stepState === 'completed' && 'Carteira vinculada'}
+            </div>
+          </div>
+
+          <div
+            className="rounded-lg p-4 space-y-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}
+          >
+            <div>
+              <span className="block text-[11px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>
+                Wallet atual
+              </span>
+              {currentAddress ? formatAddress(currentAddress) : 'Sessão atual não resolvida'}
+            </div>
+            <div>
+              <span className="block text-[11px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-3)' }}>
+                Wallet candidata
+              </span>
+              {linkRequest
+                ? formatAddress(linkRequest.candidate_address)
+                : isAddress(candidateAddress.trim())
+                  ? formatAddress(candidateAddress.trim())
+                  : candidateAddress.trim() || 'Aguardando endereço'}
+            </div>
+            <div>
+              No mesmo navegador, troque a conta ativa dentro da wallet antes da etapa 2. Se a wallet nova estiver em outro dispositivo, faça essa segunda assinatura lá e volte para concluir.
             </div>
           </div>
 

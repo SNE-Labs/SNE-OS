@@ -70,6 +70,21 @@ function localizeStorageMode(value?: string | null) {
   return value || '--';
 }
 
+function formatPassportDisplayLabel(
+  passport?: { profile?: { display_name?: string | null; handle?: string | null }; primary_wallet?: { address?: string | null } } | null,
+  fallbackAddress?: string | null,
+  emptyLabel = 'Sem wallet'
+) {
+  const displayName = `${passport?.profile?.display_name ?? ''}`.trim();
+  if (displayName) return trimCopy(displayName, 28);
+
+  const handle = `${passport?.profile?.handle ?? ''}`.trim();
+  if (handle) return trimCopy(handle.startsWith('@') ? handle : `@${handle}`, 28);
+
+  const resolvedAddress = passport?.primary_wallet?.address ?? fallbackAddress;
+  return resolvedAddress ? formatAddress(resolvedAddress) : emptyLabel;
+}
+
 function buildTapeItems(
   pathname: string,
   auth: { isAuthenticated: boolean; address?: string; tier: 'free' | 'premium' | 'pro' },
@@ -241,7 +256,7 @@ function buildSidebarContext(
 
     return {
       eyebrow: 'Passport',
-      title: passport?.primary_wallet?.address ? formatAddress(passport.primary_wallet.address) : 'Lookup público ativo',
+      title: formatPassportDisplayLabel(passport, passport?.primary_wallet?.address, 'Lookup público ativo'),
       summary: trimCopy(
         hasAnchor
           ? `${walletsTotal || 1} wallet${walletsTotal === 1 ? '' : 's'} na identidade e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
@@ -386,10 +401,15 @@ export function useShellContextData() {
     }
 
     if (isAuthenticated && address) {
-      topbarChips.push({ label: `${localizeTier(tier)} • ${formatAddress(address)}`, tone: 'success' });
+      topbarChips.push({
+        label: `${localizeTier(tier)} • ${formatPassportDisplayLabel(passport, address)}`,
+        tone: 'success',
+      });
     } else {
       topbarChips.push({ label: 'Sessão anônima', tone: 'warning' });
     }
+
+    const sessionIdentityLabel = isAuthenticated && address ? formatPassportDisplayLabel(passport, address) : 'Sem wallet';
 
     return {
       routeMeta,
@@ -399,7 +419,7 @@ export function useShellContextData() {
       sidebarContext: buildSidebarContext(location.pathname, { home, radar, passport, vault }),
       sessionStats: [
         { label: 'Plano', value: localizeTier(tier) },
-        { label: 'Wallet', value: address ? formatAddress(address) : 'Sem wallet' },
+        { label: 'Wallet', value: sessionIdentityLabel },
         { label: 'Sessão', value: isAuthenticated ? 'Autenticada' : 'Anônima' },
         { label: 'Foco', value: routeMeta.context },
         { label: 'Modo', value: localizeStorageMode(vault?.surface?.mode || home?.secrets?.sync?.mode) },

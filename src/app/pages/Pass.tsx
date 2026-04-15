@@ -6,6 +6,7 @@ import {
   Clock3,
   Globe,
   Link2,
+  LogOut,
   Network,
   Search,
   Shield,
@@ -75,8 +76,21 @@ function formatDate(value?: string | null) {
   return date.toLocaleString('pt-BR');
 }
 
+function formatPassportDisplayLabel(
+  profile?: { display_name?: string | null; handle?: string | null } | null,
+  fallbackAddress?: string | null
+) {
+  const displayName = `${profile?.display_name ?? ''}`.trim();
+  if (displayName) return displayName;
+
+  const handle = `${profile?.handle ?? ''}`.trim();
+  if (handle) return handle.startsWith('@') ? handle : `@${handle}`;
+
+  return fallbackAddress ? formatAddress(fallbackAddress) : 'Conecte sua wallet';
+}
+
 export function Pass() {
-  const { address, isAuthenticated } = useAuth();
+  const { address, authStatus, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<PassportTab>('identity');
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
@@ -97,6 +111,12 @@ export function Pass() {
 
   const connectedLinkedAccounts = connectedProfile?.linked_accounts ?? [];
   const connectedNetworkScope = connectedProfile?.network_scope ?? [];
+  const sessionIdentityLabel = formatPassportDisplayLabel(identity?.profile, address);
+  const isAuthBusy =
+    authStatus === 'connecting' ||
+    authStatus === 'signing' ||
+    authStatus === 'verifying' ||
+    authStatus === 'restoring';
 
   useEffect(() => {
     writeRecentLookups(recentLookups);
@@ -227,13 +247,18 @@ export function Pass() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold mb-1 break-all" style={{ color: 'var(--text-1)' }}>
-                      {address ? formatAddress(address) : 'Conecte sua wallet'}
+                      {sessionIdentityLabel}
                     </div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                       {isAuthenticated
                         ? 'Use qualquer wallet vinculada para voltar à mesma identidade do OS.'
                         : 'Autentique a primeira wallet para criar a âncora do seu Passport.'}
                     </div>
+                    {isAuthenticated && address ? (
+                      <div className="mt-2 text-xs uppercase tracking-wide break-all" style={{ color: 'var(--text-3)' }}>
+                        Sessão atual • {formatAddress(address)}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -258,6 +283,17 @@ export function Pass() {
                     Consultar endereço público
                     <Search className="w-4 h-4" />
                   </button>
+                  {isAuthenticated ? (
+                    <button
+                      onClick={() => void logout()}
+                      disabled={isAuthBusy}
+                      className="w-full px-4 py-2 rounded-lg flex items-center justify-between gap-3 text-sm font-medium disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                    >
+                      Trocar wallet / desconectar
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -321,19 +357,6 @@ export function Pass() {
                 />
               ) : (
                 <>
-                  <PassportIdentityProfilePanel
-                    profile={identity.profile}
-                    identityId={identity.identity.id}
-                    primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
-                    walletsTotal={identity.stats.wallets_total}
-                    editable
-                    isSaving={updateProfileMutation.isPending}
-                    errorMessage={profileSaveError}
-                    title="Perfil customizavel"
-                    subtitle="O checkpoint continua sendo o identity id. O que muda aqui eh a camada publica e social exibida pelo Passport."
-                    onSave={handleProfileSave}
-                  />
-
                   <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
                     <div
                       className="rounded-xl p-5"
@@ -485,7 +508,13 @@ export function Pass() {
                   </section>
 
                   {showLinkPanel ? (
-                    <PassportWalletLinkPanel currentAddress={address} onLinked={() => identityQuery.refetch()} />
+                    <PassportWalletLinkPanel
+                      currentAddress={address}
+                      onLinked={() => {
+                        setShowLinkPanel(false);
+                        identityQuery.refetch();
+                      }}
+                    />
                   ) : null}
 
                   <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
@@ -550,6 +579,19 @@ export function Pass() {
                       </div>
                     </div>
                   </section>
+
+                  <PassportIdentityProfilePanel
+                    profile={identity.profile}
+                    identityId={identity.identity.id}
+                    primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
+                    walletsTotal={identity.stats.wallets_total}
+                    editable
+                    isSaving={updateProfileMutation.isPending}
+                    errorMessage={profileSaveError}
+                    title="Perfil customizavel"
+                    subtitle="O checkpoint continua sendo o identity id. O que muda aqui eh a camada publica e social exibida pelo Passport."
+                    onSave={handleProfileSave}
+                  />
                 </>
               )}
             </>
