@@ -212,17 +212,17 @@ export const radarApi = {
 
   // Análise completa (requer auth)
   analyzeSymbol: (symbol: string, timeframe: string, market: string = 'crypto') =>
-    apiPost('/api/radar/analyze', { symbol, timeframe, market }),
+    apiPost('/api/radar/analyze', { symbol, timeframe, market }, { credentials: 'include' }),
 
   // Watchlist do usuário (requer auth)
   getWatchlist: (): Promise<WatchlistResponse> =>
-    apiGet('/api/radar/watchlist'),
+    apiGet('/api/radar/watchlist', { credentials: 'include' }),
 
   addToWatchlist: (symbol: string, market: string = 'crypto'): Promise<{ success: boolean }> =>
-    apiPost('/api/radar/watchlist', { action: 'add', symbol, market }),
+    apiPost('/api/radar/watchlist', { action: 'add', symbol, market }, { credentials: 'include' }),
 
   removeFromWatchlist: (symbol: string, market: string = 'crypto'): Promise<{ success: boolean }> =>
-    apiPost('/api/radar/watchlist', { action: 'remove', symbol, market }),
+    apiPost('/api/radar/watchlist', { action: 'remove', symbol, market }, { credentials: 'include' }),
 
   // Markets disponíveis (público)
   getMarkets: () =>

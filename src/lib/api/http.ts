@@ -21,6 +21,7 @@ export class ApiError extends Error {
 
 type RequestOptions = {
   suppressErrorStatuses?: number[];
+  credentials?: RequestCredentials;
 };
 
 function withApiBase(path: string): string {
@@ -40,7 +41,7 @@ export async function apiGet<T>(path: string, options?: RequestOptions): Promise
 
     const res = await fetch(withApiBase(path), {
       method: "GET",
-      credentials: "include",
+      credentials: options?.credentials ?? (token ? "omit" : "same-origin"),
       headers,
     });
     if (!res.ok) {
@@ -65,7 +66,7 @@ export async function apiGet<T>(path: string, options?: RequestOptions): Promise
   }
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -77,7 +78,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 
     const res = await fetch(withApiBase(path), {
       method: "POST",
-      credentials: "include",
+      credentials: options?.credentials ?? (token ? "omit" : "same-origin"),
       headers,
       body: JSON.stringify(body),
     });
@@ -95,7 +96,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   }
 }
 
-export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+export async function apiPut<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -106,7 +107,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
 
     const res = await fetch(withApiBase(path), {
       method: "PUT",
-      credentials: "include",
+      credentials: options?.credentials ?? (token ? "omit" : "same-origin"),
       headers,
       body: JSON.stringify(body),
     });
@@ -124,7 +125,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   }
 }
 
-export async function apiDelete<T>(path: string): Promise<T> {
+export async function apiDelete<T>(path: string, options?: RequestOptions): Promise<T> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -136,7 +137,7 @@ export async function apiDelete<T>(path: string): Promise<T> {
 
     const res = await fetch(withApiBase(path), {
       method: "DELETE",
-      credentials: "include",
+      credentials: options?.credentials ?? (token ? "omit" : "same-origin"),
       headers,
     });
     if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
