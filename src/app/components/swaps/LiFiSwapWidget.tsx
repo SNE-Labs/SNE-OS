@@ -22,6 +22,141 @@ type LiFiSwapWidgetProps = {
 
 const LIFI_INTEGRATOR = 'sne-os';
 
+const SNE_LIFI_PT_BR = {
+  language: {
+    name: 'Português',
+    title: 'Idioma',
+  },
+  button: {
+    bridge: 'Transferir',
+    bridgeReview: 'Revisar transferência',
+    exchange: 'Mover USDT',
+    getGas: 'Adicionar gás',
+    startBridging: 'Iniciar transferência',
+    startSwapping: 'Iniciar execução',
+    swap: 'Converter',
+    swapReview: 'Revisar rota',
+  },
+  header: {
+    bridge: 'Transferência',
+    exchange: 'Mover USDT',
+    from: 'Origem',
+    sendToWallet: 'Enviar para carteira',
+    swap: 'Conversão',
+    to: 'Destino',
+    youGet: 'Você recebe',
+    youPay: 'Você envia',
+  },
+  info: {
+    message: {
+      autoRefuel:
+        'Você está com pouco gás na rede {{chainName}}. Ao continuar, o motor tenta obter gás suficiente para concluir a execução.',
+      emptyBridgesList: 'Não encontramos pontes compatíveis com a sua busca.',
+      emptyExchangesList: 'Não encontramos provedores de execução compatíveis com a sua busca.',
+      routeNotFound:
+        'A rota não está disponível. Possíveis causas: baixa liquidez, valor muito baixo, custo de gás elevado ou combinação de redes sem execução no momento.',
+    },
+    title: {
+      autoRefuel: 'Adicionar gás em {{chainName}}',
+      routeNotFound: 'Nenhuma rota disponível',
+    },
+  },
+  success: {
+    message: {
+      exchangePartiallySuccessful:
+        'Tentamos concluir a execução, mas {{tool}} não conseguiu continuar por slippage ou falta de liquidez para {{tokenSymbol}}.',
+    },
+    title: {
+      bridgePartiallySuccessful: 'Transferência parcialmente concluída',
+      bridgeSuccessful: 'Transferência concluída',
+      swapPartiallySuccessful: 'Conversão parcialmente concluída',
+      swapSuccessful: 'Conversão concluída',
+    },
+  },
+  warning: {
+    message: {
+      fundsLossPrevention:
+        'Confirme rede, endereço e tipo de conta antes de executar. Transferências diretas para endereços incorretos podem causar perda permanente.',
+      insufficientFunds: 'Saldo insuficiente na origem para concluir esta execução.',
+      insufficientGas: 'Gás insuficiente para concluir a execução. Adicione pelo menos:',
+      rateChanged: 'A cotação mudou. Ao continuar, você aceita a nova rota de execução.',
+      resetSettings: 'Isso redefinirá prioridade de rota, slippage, preço de gás, pontes e provedores ativos.',
+    },
+    title: {
+      insufficientGas: 'Gás insuficiente',
+      rateChanged: 'Cotação alterada',
+    },
+  },
+  error: {
+    message: {
+      allowanceRequired: 'O valor de {{tokenSymbol}} excede sua permissão atual. Aprove um novo limite e tente novamente.',
+      insufficientFunds: 'Você não tem saldo suficiente para cobrir valor e custos desta execução.',
+      remainInYourWallet: '{{amount, numberExt}} {{tokenSymbol}} em {{chainName}} permanece na sua carteira.',
+      signatureRejected:
+        'Sua assinatura é necessária para concluir a execução. {{amount, numberExt}} {{tokenSymbol}} em {{chainName}} permanece na sua carteira.',
+      slippageThreshold: 'O slippage excedeu o limite definido. Solicite uma nova cotação.',
+      transactionCanceled: 'A transação foi cancelada.',
+      transactionConflict:
+        'A transação conflita com outra transação pendente usando os mesmos fundos. Aguarde a confirmação ou revise o histórico antes de tentar novamente.',
+      transactionRejected: 'A transação foi rejeitada pela carteira. Tente novamente ou solicite uma nova cotação.',
+    },
+    title: {
+      allowanceRequired: 'Permissão insuficiente',
+      balanceIsTooLow: 'Saldo muito baixo',
+      chainSwitch: 'Troca de rede necessária',
+      exchangeRateUpdateCanceled: 'Atualização de cotação cancelada',
+      insufficientFunds: 'Saldo insuficiente',
+      signatureRejected: 'Assinatura necessária',
+      slippageNotMet: 'Slippage fora do limite',
+      transactionCanceled: 'Transação cancelada',
+      transactionConflict: 'Transação em conflito',
+      transactionRejected: 'Transação rejeitada',
+    },
+  },
+  main: {
+    bridgeStepDetails: 'Transferir de {{from}} para {{to}} via {{tool}}',
+    from: 'Origem',
+    process: {
+      bridge: {
+        actionRequired: 'Assinar transferência entre redes',
+        done: 'Transferência confirmada',
+        pending: 'Transferência entre redes pendente',
+        started: 'Preparando transferência',
+      },
+      receivingChain: {
+        done: 'Transferência concluída',
+        partial: 'Transferência parcialmente concluída',
+        pending: 'Aguardando rede de destino',
+        refunded: 'Transferência reembolsada',
+      },
+      swap: {
+        actionRequired: 'Assinar conversão',
+        done: 'Conversão concluída',
+        pending: 'Conversão pendente',
+        started: 'Preparando conversão',
+      },
+    },
+    searchBridges: 'Buscar ponte',
+    searchExchanges: 'Buscar provedor',
+    sending: 'Enviando',
+    stepBridge: 'Transferência',
+    stepSwap: 'Conversão',
+    stepSwapAndBridge: 'Converter e transferir',
+    swapStepDetails: 'Converter em {{chain}} via {{tool}}',
+    to: 'Destino',
+    valueLoss: 'Perda estimada',
+  },
+  settings: {
+    enabledBridges: 'Pontes',
+    enabledExchanges: 'Provedores',
+    gasPrice: {
+      title: 'Preço do gás',
+    },
+    routePriority: 'Prioridade da rota',
+    slippage: 'Slippage máximo',
+  },
+};
+
 export function LiFiSwapWidget({
   prefill,
   compact = false,
@@ -65,7 +200,14 @@ export function LiFiSwapWidget({
           allow: MAJOR_USDT_WIDGET_TOKENS,
         },
       },
-      hiddenUI: ['poweredBy', 'gasRefuelMessage'],
+      hiddenUI: ['poweredBy', 'gasRefuelMessage', 'language'],
+      languages: {
+        default: 'pt',
+        allow: ['pt'],
+      },
+      languageResources: {
+        pt: SNE_LIFI_PT_BR,
+      },
       walletConfig: {
         usePartialWalletManagement: true,
       },
