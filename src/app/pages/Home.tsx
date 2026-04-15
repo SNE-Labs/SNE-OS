@@ -721,75 +721,6 @@ export function Home() {
     <div className="flex flex-1">
       <div className="flex-1 px-6 py-4 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-4">
-          <section
-            className="rounded-[28px] border p-5 xl:p-6"
-            style={{
-              background:
-                'radial-gradient(circle at 8% 0%, rgba(255,140,66,0.12), transparent 26%), linear-gradient(135deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012))',
-              borderColor: 'rgba(255,255,255,0.075)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-            }}
-          >
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
-              <div className="min-w-0">
-                <div className="mb-3 text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
-                  Conta operacional USDT-first
-                </div>
-                <h1 className="max-w-4xl text-3xl font-semibold leading-tight tracking-[-0.035em] xl:text-4xl" style={{ color: 'var(--text-1)' }}>
-                  Seu dólar digital entra como base. O OS transforma isso em conta, contexto e execução.
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 xl:text-base" style={{ color: 'var(--text-2)' }}>
-                  Use USDT como saldo-base para guardar, mover e operar entre redes sem sair da auto custódia.
-                  Passport persiste a identidade, Vault lê a conta, Radar qualifica o momento e o rail de execução move o saldo.
-                </p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => navigate('/vault')}
-                    className="rounded-full px-4 py-2 text-sm font-medium"
-                    style={{ backgroundColor: 'var(--accent-orange)', color: '#080a10' }}
-                  >
-                    Ver saldo-base
-                  </button>
-                  <button
-                    onClick={() => navigate('/swaps')}
-                    className="rounded-full border px-4 py-2 text-sm font-medium"
-                    style={{ borderColor: 'rgba(255,255,255,0.10)', color: 'var(--text-1)' }}
-                  >
-                    Mover USDT
-                  </button>
-                </div>
-              </div>
-
-              <div
-                className="rounded-[24px] border p-4"
-                style={{ backgroundColor: 'rgba(8,12,20,0.32)', borderColor: 'rgba(255,255,255,0.07)' }}
-              >
-                <div className="mb-3 text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
-                  Modelo do OS
-                </div>
-                <div className="space-y-2">
-                  {[
-                    ['Pass', 'continuidade da conta'],
-                    ['Vault', 'leitura do saldo-base'],
-                    ['Radar', 'decisão antes da execução'],
-                    ['Intel', 'contexto operacional'],
-                    ['Execução', 'mover e rotacionar USDT'],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.035)' }}
-                    >
-                      <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{label}</span>
-                      <span className="text-sm" style={{ color: 'var(--text-2)' }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <section
             className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
@@ -1130,11 +1061,44 @@ export function Home() {
                       Desde a última sessão
                     </div>
                     <StatusBadge status={brief.badge_status}>{brief.badge}</StatusBadge>
+                    <StatusBadge status="active">USDT-first</StatusBadge>
                   </div>
                   <div className="text-2xl font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
                     {brief.headline}
                   </div>
                   <p className="text-sm xl:text-base" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
+
+                  <div
+                    className="mt-4 rounded-[20px] border p-4"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 0% 0%, rgba(255,140,66,0.10), transparent 28%), rgba(255,255,255,0.025)',
+                      borderColor: 'rgba(255,255,255,0.075)',
+                    }}
+                  >
+                    <div className="mb-1 text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
+                      Conta operacional
+                    </div>
+                    <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                      USDT é o saldo-base. Pass mantém a identidade, Vault lê a conta, Radar qualifica o momento e o rail de execução move o saldo.
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={() => navigate('/vault')}
+                        className="text-sm font-medium"
+                        style={{ color: 'var(--accent-orange)' }}
+                      >
+                        Ver saldo-base ↗
+                      </button>
+                      <button
+                        onClick={() => navigate('/swaps')}
+                        className="text-sm font-medium"
+                        style={{ color: 'var(--text-2)' }}
+                      >
+                        Mover USDT ↗
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {briefSignals.map((s) => (
