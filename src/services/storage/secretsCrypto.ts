@@ -180,7 +180,7 @@ export async function createEncryptedSecretEnvelope(bindingKey: string, draft: S
       login: draft.login?.trim() || undefined,
       url: draft.url?.trim() || undefined,
       has_note: Boolean(draft.note?.trim()),
-      address: normalizedAddress,
+      owner_key: normalizedBindingKey,
     },
     version: 1,
   };
