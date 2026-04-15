@@ -20,6 +20,7 @@ type LiFiSwapWidgetProps = {
 };
 
 const SUPPORTED_SWAP_CHAINS = [1, 42161, 10, 8453, 137, 534352];
+const LIFI_INTEGRATOR = 'sne-os';
 
 export function LiFiSwapWidget({
   prefill,
@@ -49,14 +50,14 @@ export function LiFiSwapWidget({
 
   const config = useMemo(
     () => ({
-      integrator: 'SNE OS',
+      integrator: LIFI_INTEGRATOR,
       variant: compact ? 'compact' : 'wide',
       appearance: 'dark',
       buildUrl: true,
       chains: {
         allow: SUPPORTED_SWAP_CHAINS,
       },
-      hiddenUI: compact ? ['poweredBy', 'gasRefuelMessage'] : ['gasRefuelMessage'],
+      hiddenUI: ['poweredBy', 'gasRefuelMessage'],
       walletConfig: {
         usePartialWalletManagement: true,
       },
@@ -144,7 +145,7 @@ export function LiFiSwapWidget({
 
   return (
     <div className={className}>
-      <WidgetComponent integrator="SNE OS" config={config} />
+      <WidgetComponent integrator={LIFI_INTEGRATOR} config={config} />
     </div>
   );
 }

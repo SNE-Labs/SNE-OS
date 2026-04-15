@@ -105,10 +105,10 @@ export function MobileSwaps() {
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="mb-1 flex items-center gap-2 text-[var(--text-1)]">
               <BadgeCheck className="h-4 w-4 text-[var(--accent-orange)]" />
-              <span>Deep-link ready</span>
+              <span>Antes de assinar</span>
             </div>
             <div className="text-sm text-[var(--text-2)]">
-              `fromChain`, `toChain`, `fromToken`, `toToken` e `toAddress` ja estao ligados nesta rota.
+              Confira rede, token, cotacao, slippage e endereco final no widget antes de confirmar na wallet.
             </div>
           </div>
         </div>

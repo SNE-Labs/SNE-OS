@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { ArrowLeftRight, ArrowUpRight, Sparkles, Wallet, Waves } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, Sparkles, Wallet } from 'lucide-react';
 
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { WalletConnect } from '../components/passport/WalletConnect';
@@ -207,12 +207,12 @@ export function Swaps() {
                     <div className="mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
                       <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                        Deep-link ready
+                        Execucao assistida
                       </div>
                     </div>
                     <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      Esta pagina ja aceita `fromChain`, `toChain`, `fromToken`, `toToken` e `toAddress` por query
-                      string para o passo seguinte de integracao com o Radar.
+                      Quando a rota vier do Radar, o ativo de destino pode chegar pre-selecionado. Antes de assinar,
+                      revise rede, token, cotacao, slippage e endereco final dentro do widget.
                     </div>
                   </div>
                 </div>
@@ -220,66 +220,9 @@ export function Swaps() {
             </div>
           </section>
 
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-            <div
-              className="rounded-[28px] p-4 md:p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-            >
+          <section className="grid grid-cols-1">
+            <div className="min-w-0">
               <LiFiSwapWidget prefill={prefill} />
-            </div>
-
-            <div className="space-y-5">
-              <div
-                className="rounded-[24px] p-4"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <Waves className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                    Fluxo correto
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      1. Intel
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Contexto, tese e briefing editorial.
-                    </div>
-                  </div>
-                  <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      2. Radar
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Liquidez, direcao e validacao do ativo.
-                    </div>
-                  </div>
-                  <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      3. Swaps
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Execucao e bridge na mesma superficie.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="rounded-[24px] p-4"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                  Parametros reconhecidos
-                </div>
-                <div className="space-y-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                  <div>`fromChain` e `toChain`: chain ids numericos.</div>
-                  <div>`fromToken` e `toToken`: endereco do token ou identificador aceito pela LI.FI.</div>
-                  <div>`toAddress`: destino final da execucao.</div>
-                </div>
-              </div>
             </div>
           </section>
         </div>
