@@ -3,12 +3,12 @@ Verificação SIWE (Sign-In with Ethereum)
 Implementação básica para SNE Radar
 """
 
-import hashlib
-import hmac
+from datetime import datetime, timedelta, timezone
 from eth_account.messages import encode_defunct
 from eth_account import Account
 from typing import Dict, Any
 import re
+from urllib.parse import urlparse
 
 def parse_siwe_message(message: str) -> Dict[str, Any]:
     """
@@ -34,6 +34,8 @@ def parse_siwe_message(message: str) -> Dict[str, Any]:
         line = line.strip()
         if line.startswith('URI:'):
             parsed['uri'] = line.replace('URI:', '').strip()
+        elif line.startswith('Version:'):
+            parsed['version'] = line.replace('Version:', '').strip()
         elif line.startswith('Web3 Token Version:'):
             parsed['version'] = line.replace('Web3 Token Version:', '').strip()
         elif line.startswith('Chain ID:'):
@@ -62,25 +64,73 @@ def parse_siwe_message(message: str) -> Dict[str, Any]:
 
     return parsed
 
-def verify_siwe(message: str, signature: str) -> bool:
+def _normalize_domain(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+def _normalize_origin(value: str | None) -> str:
+    parsed = urlparse((value or "").strip())
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        normalized = value.strip().replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+def verify_siwe(
+    message: str,
+    signature: str,
+    *,
+    expected_domain: str | None = None,
+    expected_origin: str | None = None,
+    expected_chain_id: int | str | None = None,
+    max_clock_skew: timedelta = timedelta(minutes=5),
+) -> bool:
     """
     Verifica assinatura SIWE
     """
     try:
-        # Parse message
         parsed = parse_siwe_message(message)
         address = parsed.get('address')
-
         if not address:
             return False
+        if parsed.get('version') != '1':
+            return False
+        if expected_domain and _normalize_domain(parsed.get('domain')) != _normalize_domain(expected_domain):
+            return False
+        if expected_origin and _normalize_origin(parsed.get('uri')) != _normalize_origin(expected_origin):
+            return False
+        if expected_chain_id is not None and str(parsed.get('chain_id')) != str(expected_chain_id):
+            return False
 
-        # Criar message hash
+        nonce = (parsed.get('nonce') or '').strip()
+        if not nonce or not re.match(r'^[A-Za-z0-9]{8,}$', nonce):
+            return False
+
+        now = datetime.now(timezone.utc)
+        issued_at = _parse_timestamp(parsed.get('issued_at'))
+        expiration_time = _parse_timestamp(parsed.get('expiration_time'))
+        not_before = _parse_timestamp(parsed.get('not_before'))
+
+        if issued_at is None or expiration_time is None:
+            return False
+        if issued_at - now > max_clock_skew:
+            return False
+        if now - max_clock_skew > expiration_time:
+            return False
+        if not_before and now + max_clock_skew < not_before:
+            return False
+
         message_hash = encode_defunct(text=message)
-
-        # Recuperar endereço da assinatura
         recovered_address = Account.recover_message(message_hash, signature=signature)
-
-        # Comparar endereços (case insensitive)
         return recovered_address.lower() == address.lower()
 
     except Exception as e:

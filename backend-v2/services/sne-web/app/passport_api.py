@@ -2,17 +2,14 @@
 Passport API - SNE Scroll Passport
 Wallet balance, transactions, and watchlist for Scroll Network
 """
-from flask import Blueprint, request, session, jsonify
-from functools import wraps
+from flask import Blueprint, request, jsonify, g
 import logging
 from datetime import datetime
 import os
 
-import jwt
+from .common.auth import get_auth_context, require_authenticated_user
 
 logger = logging.getLogger(__name__)
-JWT_SECRET = os.getenv('SECRET_KEY', 'gerar_automaticamente')
-JWT_ALGORITHM = 'HS256'
 
 # Local helpers to avoid import issues
 def ok(data=None, **meta):
@@ -25,49 +22,6 @@ def fail(code: str, message: str, status: int = 400, **details):
     """Standard error response"""
     payload = {"ok": False, "error": {"code": code, "message": message, "details": details or None}}
     return jsonify(payload), status
-
-def require_session(fn):
-    """Decorator to require authenticated session"""
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        addr = session.get("siwe_address")
-        if not addr:
-            return fail("UNAUTHENTICATED", "Connect wallet required", 401)
-        return fn(*args, **kwargs)
-    return wrapper
-
-
-def _auth_context():
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        token = auth_header.replace('Bearer ', '')
-        try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-            exp = datetime.fromtimestamp(payload['exp'])
-            if exp > datetime.utcnow():
-                return {
-                    'address': payload.get('address'),
-                    'identity_id': payload.get('identity_id'),
-                    'tier': payload.get('tier', 'free'),
-                }
-        except Exception:
-            pass
-
-    return {
-        'address': session.get('siwe_address'),
-        'identity_id': session.get('identity_id'),
-        'tier': session.get('tier', 'free'),
-    }
-
-
-def require_passport_auth(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        auth = _auth_context()
-        if not auth.get('address'):
-            return fail("UNAUTHENTICATED", "Connect wallet required", 401)
-        return fn(auth, *args, **kwargs)
-    return wrapper
 
 passport_bp = Blueprint("passport", __name__)
 
@@ -82,7 +36,7 @@ def overview():
     from .passport_service import build_passport_overview
 
     try:
-        address = request.args.get("address") or _auth_context().get("address")
+        address = request.args.get("address") or get_auth_context().get("address")
         network = request.args.get("network")
         return jsonify(build_passport_overview(address, network)), 200
     except Exception as e:
@@ -106,8 +60,8 @@ def overview():
 
 
 @passport_bp.get("/me")
-@require_passport_auth
-def me(auth):
+@require_authenticated_user
+def me():
     """
     Passport identity hub for the currently authenticated user.
     GET /api/passport/me
@@ -115,6 +69,7 @@ def me(auth):
     from .passport_identity_service import build_identity_checkpoint
 
     try:
+        auth = g.user
         checkpoint = build_identity_checkpoint(auth['address'])
         return jsonify({
             "connected": True,
@@ -147,8 +102,8 @@ def public_profile(identity_id):
 
 @passport_bp.put("/profile")
 @passport_bp.post("/profile")
-@require_passport_auth
-def update_profile(auth):
+@require_authenticated_user
+def update_profile():
     """
     Create or update the authenticated Passport profile.
     PUT/POST /api/passport/profile
@@ -156,6 +111,7 @@ def update_profile(auth):
     from .passport_identity_service import get_or_create_identity_for_address, update_identity_profile
 
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         identity = get_or_create_identity_for_address(auth['address'])
         payload = update_identity_profile(identity, auth['address'], body)
@@ -173,8 +129,8 @@ def update_profile(auth):
 
 
 @passport_bp.post("/link/init")
-@require_passport_auth
-def init_link(auth):
+@require_authenticated_user
+def init_link():
     """
     Start a wallet-link flow for the authenticated Passport identity.
     POST /api/passport/link/init
@@ -183,6 +139,7 @@ def init_link(auth):
     from .passport_identity_service import create_link_request, get_or_create_identity_for_address
 
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         candidate_address = body.get("candidateAddress") or body.get("address")
         if not candidate_address:
@@ -199,8 +156,8 @@ def init_link(auth):
 
 
 @passport_bp.post("/link/confirm")
-@require_passport_auth
-def confirm_link(auth):
+@require_authenticated_user
+def confirm_link():
     """
     Confirm a wallet-link flow with signatures from the current and candidate wallets.
     POST /api/passport/link/confirm
@@ -213,6 +170,7 @@ def confirm_link(auth):
     from .passport_identity_service import confirm_link_request, get_or_create_identity_for_address
 
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         request_id = body.get("requestId")
         current_wallet_signature = body.get("currentWalletSignature")
@@ -236,7 +194,7 @@ def confirm_link(auth):
         return fail("INTERNAL_ERROR", "Failed to confirm wallet link", 500)
 
 @passport_bp.get("/balance")
-@require_session
+@require_authenticated_user
 def balance():
     """
     Get ETH balance on Scroll Network
@@ -248,7 +206,7 @@ def balance():
     import time
     import json
 
-    addr = session["siwe_address"]
+    addr = g.user["address"]
     redis_client = SafeRedis()
 
     # Cache key para balance (30s TTL)
@@ -295,8 +253,8 @@ def balance():
         }
 
         # Cache por 30 segundos
-        redis_client.set(cache_key, json.dumps(balance_data), ex=30)
-        redis_client.set(f"passport:balance:updated:{addr}", str(int(time.time())), ex=30)
+        redis_client.setex(cache_key, 30, json.dumps(balance_data))
+        redis_client.setex(f"passport:balance:updated:{addr}", 30, str(int(time.time())))
 
         logger.info(f"Balance fetched for {addr}: {balance_eth} ETH")
         return ok(balance_data)
@@ -306,14 +264,14 @@ def balance():
         return fail("RPC_ERROR", "Failed to query Scroll network", 500)
 
 @passport_bp.get("/transactions")
-@require_session
+@require_authenticated_user
 def transactions():
     """
     Get transaction history on Scroll Network
     GET /api/passport/transactions?page=1&limit=20
     """
     try:
-        addr = session["siwe_address"]
+        addr = g.user["address"]
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 20))
 
@@ -335,7 +293,7 @@ def transactions():
         return fail("INTERNAL_ERROR", "Failed to fetch transactions", 500)
 
 @passport_bp.post("/watchlist")
-@require_session
+@require_authenticated_user
 def watchlist():
     """
     Manage user watchlist (addresses/tokens to monitor)
@@ -354,8 +312,9 @@ def watchlist():
         if action not in ("add", "remove") or not target_address:
             return fail("BAD_REQUEST", "Invalid action or missing address", 400)
 
-        addr = session["siwe_address"]
-        tier = session.get("tier", "free")
+        auth = g.user
+        addr = auth["address"]
+        tier = auth.get("tier", "free")
 
         # Validar formato do endereço (simples)
         if not target_address.startswith("0x") or len(target_address) != 42:
@@ -422,7 +381,7 @@ def watchlist():
         return fail("INTERNAL_ERROR", "Failed to update watchlist", 500)
 
 @passport_bp.get("/watchlist")
-@require_session
+@require_authenticated_user
 def get_watchlist():
     """
     Get user's watchlist
@@ -431,7 +390,8 @@ def get_watchlist():
     from app.models import WatchlistItem
 
     try:
-        addr = session["siwe_address"]
+        auth = g.user
+        addr = auth["address"]
 
         # Query database
         items = WatchlistItem.query.filter_by(
@@ -453,7 +413,7 @@ def get_watchlist():
             "user": addr,
             "items": watchlist_items,
             "count": len(watchlist_items),
-            "tier": session.get("tier", "free")
+            "tier": auth.get("tier", "free")
         }
 
         return ok(watchlist_data)

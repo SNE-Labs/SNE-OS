@@ -105,7 +105,7 @@ class Analysis(db.Model):
     """Tabela para armazenar análises realizadas"""
     __tablename__ = 'analyses'
 
-    id = db.Column(db.String(100), primary_key=True)
+    id = db.Column(db.String(100), primary_key=True, default=lambda: f"analysis_{uuid.uuid4().hex}")
     user_address = db.Column(db.String(42), nullable=False)  # Wallet address
     pair = db.Column(db.String(20), nullable=False)
     timeframe = db.Column(db.String(10), nullable=False)

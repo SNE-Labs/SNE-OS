@@ -3,8 +3,6 @@ import type {
   LookupResult,
   BalanceResponse,
   GasResponse,
-  ProductsResponse,
-  ErrorResponse,
   PassportOverviewIdentity,
   PassportIdentityCheckpoint,
   PassportLinkInitResponse,
@@ -45,51 +43,6 @@ async function rpcCall(method: string, params: any[] = []): Promise<any> {
   }
 
   return data.result;
-}
-
-/**
- * Retry strategy: 3 tentativas com exponential backoff
- */
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit = {},
-  maxRetries = 3
-): Promise<Response> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(url, options);
-
-      // Não retryar em erros client-side
-      if (response.status === 400 || response.status === 401 ||
-          response.status === 403 || response.status === 404) {
-        return response;
-      }
-
-      // Retryar em erros server-side e rate limits
-      if (response.ok || (response.status >= 500 && response.status < 600)) {
-        return response;
-      }
-
-      // Rate limit - respeitar Retry-After
-      if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
-        if (i < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-          continue;
-        }
-      }
-
-      return response;
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
-
-      // Exponential backoff: 1s, 2s, 4s
-      const delay = Math.pow(2, i) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-
-  throw new Error('Max retries exceeded');
 }
 
 /**
@@ -271,44 +224,6 @@ export async function getGasPrice(): Promise<GasResponse> {
       estimatedFee: '0.001',
       lastUpdated: new Date().toISOString(),
     };
-  }
-}
-
-/**
- * Busca produtos disponíveis
- */
-export async function getProducts(): Promise<ProductsResponse> {
-  const url = `${API_BASE}/sne/products`;
-
-  try {
-    const response = await fetchWithRetry(url);
-
-    if (!response.ok) {
-      // Tentar parsear erro, mas não falhar se não conseguir
-      try {
-        const error: ErrorResponse = await response.json();
-        throw new Error(error.message || error.error || `HTTP ${response.status}`);
-      } catch (parseError) {
-        throw new Error(`Erro ao buscar produtos: HTTP ${response.status}`);
-      }
-    }
-
-    const data = await response.json();
-
-    // Validar estrutura básica
-    if (!data || !Array.isArray(data.products)) {
-      throw new Error('Resposta da API em formato inválido');
-    }
-
-    return data;
-  } catch (error) {
-    // Log do erro para debugging (apenas em dev)
-    if (import.meta.env.DEV) {
-      console.error('[Passport API] Erro ao buscar produtos:', error);
-    }
-
-    // Re-throw para que o hook possa tratar
-    throw error;
   }
 }
 

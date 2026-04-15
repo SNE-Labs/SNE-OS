@@ -2,7 +2,7 @@
 Main application routes for SNE Web
 """
 from flask import jsonify
-from . import socketio
+from . import app, socketio
 import logging
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,6 @@ import {
   lookupAddress,
   getBalance,
   getGasPrice,
-  getProducts,
   checkLicense,
   getPassportOverview,
   getPassportIdentity,
@@ -194,24 +193,6 @@ export function useGasPrice() {
     staleTime: 30 * 1000, // 30 segundos
     gcTime: 2 * 60 * 1000, // 2 minutos
     refetchInterval: 30 * 1000, // Refetch a cada 30s
-  });
-}
-
-/**
- * Busca produtos disponíveis
- * TTL: 30 minutos (dados menos voláteis)
- */
-export function useProducts() {
-  return useQuery({
-    queryKey: ['products'],
-    queryFn: () => getProducts(),
-    staleTime: 30 * 60 * 1000, // 30 minutos
-    gcTime: 60 * 60 * 1000, // 1 hora
-    retry: 2, // Retry 2 vezes (total 3 tentativas)
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
-    // Não refetch automático em caso de erro persistente
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true, // Refetch quando conexão restabelecida
   });
 }
 

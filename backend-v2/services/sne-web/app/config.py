@@ -19,6 +19,8 @@ class Config:
     # SIWE Configuration
     SIWE_DOMAIN = os.getenv("SIWE_DOMAIN", "snelabs.space")
     SIWE_ORIGIN = os.getenv("SIWE_ORIGIN", "https://snelabs.space")
+    SIWE_CHAIN_ID = int(os.getenv("SIWE_CHAIN_ID", 534352))
+    SIWE_MAX_CLOCK_SKEW_SECONDS = int(os.getenv("SIWE_MAX_CLOCK_SKEW_SECONDS", 300))
 
     # Session configuration
     SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sne_session")

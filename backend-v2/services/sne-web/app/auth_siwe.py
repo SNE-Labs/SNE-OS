@@ -25,7 +25,7 @@ auth_bp = Blueprint('auth', __name__)
 from .config import Config
 SIWE_DOMAIN = Config.SIWE_DOMAIN
 SIWE_ORIGIN = Config.SIWE_ORIGIN
-JWT_SECRET = os.getenv('SECRET_KEY', 'gerar_automaticamente')  # Usa SECRET_KEY existente
+JWT_SECRET = Config.SECRET_KEY
 JWT_ALGORITHM = 'HS256'
 
 # Redis para nonces e cache de tier
@@ -175,7 +175,9 @@ def check_tier_limits(wallet_address: str, tier: str, action: str) -> bool:
         limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
         # Rate limiting por ação
-        action_key = f'rate_limit:{action}:{wallet_address.lower()}:{datetime.utcnow().strftime("%Y-%m-%d-%H")}'
+        bucket = datetime.utcnow().strftime("%Y-%m-%d") if action == 'analysis' else datetime.utcnow().strftime("%Y-%m-%d-%H")
+        ttl = 86400 if action == 'analysis' else 3600
+        action_key = f'rate_limit:{action}:{wallet_address.lower()}:{bucket}'
         action_count = redis_client.get(action_key) or 0
         action_count = int(action_count)
 
@@ -189,7 +191,7 @@ def check_tier_limits(wallet_address: str, tier: str, action: str) -> bool:
 
         # Incrementar contador
         redis_client.incr(action_key)
-        redis_client.expire(action_key, 3600)  # Expira em 1 hora
+        redis_client.expire(action_key, ttl)
 
         return True
 
@@ -259,7 +261,14 @@ def siwe_login():
             address = parsed_message['address'].lower()
 
             # Verificar assinatura
-            if not verify_siwe(message, signature):
+            if not verify_siwe(
+                message,
+                signature,
+                expected_domain=SIWE_DOMAIN,
+                expected_origin=SIWE_ORIGIN,
+                expected_chain_id=Config.SIWE_CHAIN_ID,
+                max_clock_skew=timedelta(seconds=Config.SIWE_MAX_CLOCK_SKEW_SECONDS),
+            ):
                 return jsonify({'error': 'Invalid signature'}), 401
 
             # Verificar nonce

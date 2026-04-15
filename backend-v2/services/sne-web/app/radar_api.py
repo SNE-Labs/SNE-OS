@@ -2,11 +2,11 @@
 Radar API - SNE Market Analysis and Signals
 Market data, signals, and analysis for SNE OS Radar
 """
-from flask import Blueprint, request, session, jsonify
-from functools import wraps
+from flask import Blueprint, request, jsonify, g
 import logging
 import time
 from datetime import datetime
+from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_service import build_radar_overview, derive_signal_from_ticker
 
@@ -23,16 +23,6 @@ def fail(code: str, message: str, status: int = 400, **details):
     """Standard error response"""
     payload = {"ok": False, "error": {"code": code, "message": message, "details": details or None}}
     return jsonify(payload), status
-
-def require_session(fn):
-    """Decorator to require authenticated session"""
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        addr = session.get("siwe_address")
-        if not addr:
-            return fail("UNAUTHENTICATED", "Connect wallet required", 401)
-        return fn(*args, **kwargs)
-    return wrapper
 
 radar_bp = Blueprint("radar", __name__)
 
@@ -77,10 +67,11 @@ def overview():
     GET /api/radar/overview?symbol=ETHUSDT&timeframe=24H
     """
     try:
+      auth = get_auth_context()
       active_symbol = request.args.get("symbol", "ETHUSDT").replace("/", "")
       timeframe = request.args.get("timeframe", "24H")
-      authenticated = bool(session.get("siwe_address"))
-      tier = session.get("tier", "free")
+      authenticated = bool(auth.get("address"))
+      tier = auth.get("tier", "free")
       has_access = tier in {"premium", "pro"}
 
       return jsonify(build_radar_overview(active_symbol, authenticated, has_access, timeframe)), 200
@@ -207,7 +198,7 @@ def signals_get():
         }
 
         # Cache por 10 segundos
-        redis_client.set(cache_key, json.dumps(signals_data), ex=10)
+        redis_client.setex(cache_key, 10, json.dumps(signals_data))
 
         return ok(signals_data)
 
@@ -220,7 +211,7 @@ def signals_get():
 # ============================================
 
 @radar_bp.post("/analyze")
-@require_session
+@require_authenticated_user
 def analyze():
     """
     Request market analysis for specific symbol using SNE motor
@@ -233,6 +224,7 @@ def analyze():
     import json
 
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         symbol = body.get("symbol")
         timeframe = body.get("timeframe", "15m")
@@ -241,8 +233,8 @@ def analyze():
         if not symbol:
             return fail("BAD_REQUEST", "Missing symbol", 400)
 
-        addr = session["siwe_address"]
-        tier = session.get("tier", "free")
+        addr = auth["address"]
+        tier = auth.get("tier", "free")
 
         # Verificar limites por tier
         if not check_tier_limits(addr, tier, 'analysis'):
@@ -251,7 +243,7 @@ def analyze():
         redis_client = SafeRedis()
 
         # Cache key para análise
-        cache_key = f"radar:analysis:{symbol}:{timeframe}"
+        cache_key = f"radar:analysis:{addr.lower()}:{symbol}:{timeframe}"
 
         # Verificar cache (5min para análises)
         cached_result = redis_client.get(cache_key)
@@ -284,7 +276,7 @@ def analyze():
             }
 
             # Cache por 5 minutos
-            redis_client.set(cache_key, json.dumps(analysis_data), ex=300)
+            redis_client.setex(cache_key, 300, json.dumps(analysis_data))
 
             logger.info(f"Analysis completed for {addr}: {symbol}")
             return ok(analysis_data)
@@ -298,7 +290,7 @@ def analyze():
         return fail("INTERNAL_ERROR", "Failed to request analysis", 500)
 
 @radar_bp.post("/watchlist")
-@require_session
+@require_authenticated_user
 def radar_watchlist():
     """
     Manage radar watchlist (symbols to monitor)
@@ -306,6 +298,7 @@ def radar_watchlist():
     Body: { "action": "add|remove", "symbol": "BTCUSDT", "market": "crypto" }
     """
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         action = body.get("action")  # add/remove
         symbol = body.get("symbol")
@@ -314,7 +307,7 @@ def radar_watchlist():
         if action not in ("add", "remove") or not symbol:
             return fail("BAD_REQUEST", "Invalid action or missing symbol", 400)
 
-        addr = session["siwe_address"]
+        addr = auth["address"]
 
         # TODO: Persist watchlist in database
         # TODO: Limit watchlist size per user (tier-based)
@@ -335,14 +328,15 @@ def radar_watchlist():
         return fail("INTERNAL_ERROR", "Failed to update radar watchlist", 500)
 
 @radar_bp.get("/watchlist")
-@require_session
+@require_authenticated_user
 def get_radar_watchlist():
     """
     Get user's radar watchlist
     GET /api/radar/watchlist
     """
     try:
-        addr = session["siwe_address"]
+        auth = g.user
+        addr = auth["address"]
 
         # TODO: Query database for user's radar watchlist
 

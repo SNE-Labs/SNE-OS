@@ -2,9 +2,9 @@
 Vault API - SNE Products and Licensing
 Products, checkout, and license management for SNE OS
 """
-from flask import Blueprint, request, session, jsonify
-from functools import wraps
+from flask import Blueprint, request, jsonify, g
 import logging
+from .common.auth import get_auth_context, require_authenticated_user
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +20,6 @@ def fail(code: str, message: str, status: int = 400, **details):
     payload = {"ok": False, "error": {"code": code, "message": message, "details": details or None}}
     return jsonify(payload), status
 
-def require_session(fn):
-    """Decorator to require authenticated session"""
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        addr = session.get("siwe_address")
-        if not addr:
-            return fail("UNAUTHENTICATED", "Connect wallet required", 401)
-        return fn(*args, **kwargs)
-    return wrapper
-
 vault_bp = Blueprint("vault", __name__)
 
 
@@ -43,7 +33,7 @@ def overview():
     from .vault_service import build_vault_overview
 
     try:
-        address = request.args.get("address") or session.get("siwe_address")
+        address = request.args.get("address") or get_auth_context().get("address")
         network = request.args.get("network")
         return jsonify(build_vault_overview(address, network)), 200
     except Exception as e:
@@ -120,7 +110,7 @@ def products():
             ]
 
         # Cache por 5 minutos
-        redis_client.set(cache_key, json.dumps(items), ex=300)
+        redis_client.setex(cache_key, 300, json.dumps(items))
 
         return ok(items)
 
@@ -129,7 +119,7 @@ def products():
         return fail("INTERNAL_ERROR", "Failed to fetch products", 500)
 
 @vault_bp.post("/checkout")
-@require_session
+@require_authenticated_user
 def checkout():
     """
     Create checkout intent for product purchase
@@ -137,6 +127,7 @@ def checkout():
     Body: { "sku": "sne_box", "paymentMethod": "crypto|stripe" }
     """
     try:
+        auth = g.user
         body = request.get_json(silent=True) or {}
         sku = body.get("sku")
         payment_method = body.get("paymentMethod", "crypto")
@@ -144,7 +135,7 @@ def checkout():
         if not sku:
             return fail("BAD_REQUEST", "Missing sku", 400)
 
-        addr = session["siwe_address"]
+        addr = auth["address"]
 
         # TODO: Integrate with payment processor (Stripe/crypto/onchain)
         # TODO: Create checkout intent and queue worker job
@@ -166,14 +157,15 @@ def checkout():
         return fail("INTERNAL_ERROR", "Failed to create checkout", 500)
 
 @vault_bp.get("/licenses")
-@require_session
+@require_authenticated_user
 def licenses():
     """
     Get user licenses and entitlements
     GET /api/vault/licenses
     """
     try:
-        addr = session["siwe_address"]
+        auth = g.user
+        addr = auth["address"]
 
         # TODO: Query database for user licenses
         # TODO: Check onchain NFT ownership
