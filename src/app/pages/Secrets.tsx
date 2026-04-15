@@ -26,7 +26,6 @@ import {
 import { usePassportIdentity } from '../../hooks/usePassportData';
 import { formatAddress } from '@/utils/format';
 import {
-  buildSecureNotePreview,
   createEncryptedSecretEnvelope,
   createEncryptedSecureNoteEnvelope,
   decryptSecretItem,
@@ -101,9 +100,8 @@ function localizeSyncMode(value?: string | null): string {
 }
 
 function notePreview(item: SecretItemSummary): string {
-  const preview = item.metadata?.preview;
-  return typeof preview === 'string' && preview.trim()
-    ? preview
+  return item.label === 'Locked note'
+    ? 'Conteúdo e título ficam ocultos até o unlock local.'
     : 'Nota segura pronta para abrir nesta identidade.';
 }
 
@@ -237,7 +235,6 @@ export function Secrets() {
         setNoteDraft((current) => ({
           ...current,
           id: saved.id,
-          title: saved.label,
         }));
         setSelectedNoteId(saved.id);
         setNoteDirty(false);
@@ -454,7 +451,12 @@ export function Secrets() {
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <WalletConnect showConnectButton connectButtonLabel="Abrir Secrets com SIWE" fullWidth />
+                  <WalletConnect
+                    showConnectButton
+                    showDisconnectButton
+                    connectButtonLabel="Abrir Secrets com SIWE"
+                    fullWidth
+                  />
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Storage</div>
@@ -667,7 +669,7 @@ export function Secrets() {
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-sm inline-flex items-center gap-2" style={{ color: 'var(--text-2)' }}>
                           <Save className="w-4 h-4" />
-                          {noteDraft.body ? `${buildSecureNotePreview(noteDraft.body).length} chars no preview público` : 'Sem conteúdo ainda'}
+                          {noteDraft.body ? 'Autosave cifra titulo e corpo antes de persistir' : 'Sem conteúdo ainda'}
                         </div>
                         <button
                           onClick={() => void handleDeleteSelectedNote()}

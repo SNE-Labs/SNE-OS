@@ -78,9 +78,8 @@ function prettyVaultLabel(vaultId: string): string {
 }
 
 function notePreview(item: SecretItemSummary): string {
-  const preview = item.metadata?.preview;
-  return typeof preview === 'string' && preview.trim()
-    ? preview
+  return item.label === 'Locked note'
+    ? 'Titulo e conteúdo ficam ocultos até o unlock local.'
     : 'Secure note pronta para abrir.';
 }
 
@@ -179,7 +178,7 @@ export function MobileSecrets() {
           ? await updateMutation.mutateAsync({ itemId: noteDraft.id, payload })
           : await createMutation.mutateAsync(payload);
 
-        setNoteDraft((current) => ({ ...current, id: saved.id, title: saved.label }));
+        setNoteDraft((current) => ({ ...current, id: saved.id }));
         setSelectedNoteId(saved.id);
         setNoteDirty(false);
       } catch (error) {
@@ -281,7 +280,12 @@ export function MobileSecrets() {
               </div>
             </div>
 
-            <WalletConnect showConnectButton connectButtonLabel="Abrir Secrets" fullWidth />
+            <WalletConnect
+              showConnectButton
+              showDisconnectButton
+              connectButtonLabel="Abrir Secrets"
+              fullWidth
+            />
           </SurfaceCard>
         </>
       ) : (

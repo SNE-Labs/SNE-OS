@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 SECRETS_STORAGE_TTL_SECONDS = int(os.getenv("SECRETS_STORAGE_TTL_SECONDS", str(60 * 60 * 24 * 365)))
+LOCKED_NOTE_LABEL = "Locked note"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -140,14 +141,7 @@ def _sort_items_by_recency(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def _build_recent_items(items: List[Dict[str, Any]], limit: int = 3) -> List[Dict[str, Any]]:
     recent: List[Dict[str, Any]] = []
     for item in _sort_items_by_recency(items)[:limit]:
-        recent.append({
-            "id": item.get("id"),
-            "vault_id": item.get("vault_id"),
-            "kind": item.get("kind"),
-            "label": item.get("label"),
-            "updated_at": item.get("updated_at") or item.get("created_at"),
-            "created_at": item.get("created_at"),
-        })
+        recent.append(_index_entry(item))
     return recent
 
 
@@ -195,6 +189,37 @@ def _write_index(redis_client: SafeRedis, owner_key: str, items: List[Dict[str, 
     return bool(redis_client.setex(_index_key(owner_key), SECRETS_STORAGE_TTL_SECONDS, json.dumps(items)))
 
 
+def _sanitize_metadata(_metadata: Any) -> Dict[str, Any]:
+    return {}
+
+
+def _summary_label(item: Dict[str, Any]) -> str:
+    if item.get("vault_id") == "secure_notes":
+        return LOCKED_NOTE_LABEL
+    return str(item.get("label") or "Untitled secret")
+
+
+def _index_entry(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": item.get("id"),
+        "vault_id": item.get("vault_id"),
+        "kind": item.get("kind"),
+        "label": _summary_label(item),
+        "algorithm": item.get("algorithm"),
+        "version": item.get("version"),
+        "metadata": _sanitize_metadata(item.get("metadata")),
+        "created_at": item.get("created_at"),
+        "updated_at": item.get("updated_at"),
+    }
+
+
+def _sanitize_item_response(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        **item,
+        "metadata": _sanitize_metadata(item.get("metadata")),
+    }
+
+
 def _normalize_vault_id(vault_id: str) -> str:
     allowed = {"passwords", "api_keys", "secure_notes", "recovery_material"}
     if vault_id not in allowed:
@@ -225,7 +250,7 @@ def _validate_envelope(payload: Dict[str, Any]) -> Dict[str, Any]:
         "iv": iv,
         "auth_tag": auth_tag,
         "aad": payload.get("aad"),
-        "metadata": payload.get("metadata") or {},
+        "metadata": _sanitize_metadata(payload.get("metadata")),
         "version": int(payload.get("version", 1)),
         "created_at": payload.get("created_at") or datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
@@ -243,7 +268,12 @@ def list_secret_items(owner_key: str, vault_id: Optional[str] = None) -> Dict[st
             "count": 0,
         }
 
-    items = _read_index(redis_client, owner_key)
+    full_index = _read_index(redis_client, owner_key)
+    sanitized_full_index = [_index_entry(item) for item in full_index]
+    if sanitized_full_index != full_index:
+        _write_index(redis_client, owner_key, sanitized_full_index)
+
+    items = sanitized_full_index
     if vault_id:
         vault_id = _normalize_vault_id(vault_id)
         items = [item for item in items if item.get("vault_id") == vault_id]
@@ -257,11 +287,18 @@ def list_secret_items(owner_key: str, vault_id: Optional[str] = None) -> Dict[st
 
 def get_secret_item(owner_key: str, item_id: str) -> Optional[Dict[str, Any]]:
     redis_client = SafeRedis()
-    raw = _decode_redis_value(redis_client.get(_item_key(owner_key, item_id)))
+    item_key = _item_key(owner_key, item_id)
+    raw = _decode_redis_value(redis_client.get(item_key))
     if not raw:
         return None
     try:
-        return json.loads(raw)
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            return None
+        sanitized = _sanitize_item_response(parsed)
+        if sanitized != parsed:
+            redis_client.setex(item_key, SECRETS_STORAGE_TTL_SECONDS, json.dumps(sanitized))
+        return sanitized
     except Exception:
         return None
 
@@ -280,19 +317,9 @@ def create_secret_item(owner_key: str, payload: Dict[str, Any]) -> Dict[str, Any
 
     index = _read_index(redis_client, owner_key)
     index = [existing for existing in index if existing.get("id") != item["id"]]
-    index.append({
-        "id": item["id"],
-        "vault_id": item["vault_id"],
-        "kind": item["kind"],
-        "label": item["label"],
-        "algorithm": item["algorithm"],
-        "version": item["version"],
-        "metadata": item["metadata"],
-        "created_at": item["created_at"],
-        "updated_at": item["updated_at"],
-    })
+    index.append(_index_entry(item))
     _write_index(redis_client, owner_key, index)
-    return item
+    return _sanitize_item_response(item)
 
 
 def update_secret_item(owner_key: str, item_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -319,19 +346,9 @@ def update_secret_item(owner_key: str, item_id: str, payload: Dict[str, Any]) ->
 
     index = _read_index(redis_client, owner_key)
     index = [existing_item for existing_item in index if existing_item.get("id") != item_id]
-    index.append({
-        "id": item["id"],
-        "vault_id": item["vault_id"],
-        "kind": item["kind"],
-        "label": item["label"],
-        "algorithm": item["algorithm"],
-        "version": item["version"],
-        "metadata": item["metadata"],
-        "created_at": item["created_at"],
-        "updated_at": item["updated_at"],
-    })
+    index.append(_index_entry(item))
     _write_index(redis_client, owner_key, index)
-    return item
+    return _sanitize_item_response(item)
 
 
 def delete_secret_item(owner_key: str, item_id: str) -> bool:

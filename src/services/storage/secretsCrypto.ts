@@ -14,6 +14,7 @@ export type SecretVaultId = 'passwords' | 'api_keys' | 'secure_notes' | 'recover
 export type SecretDraft = {
   vault_id: SecretVaultId;
   label: string;
+  title?: string;
   login?: string;
   url?: string;
   secret?: string;
@@ -22,6 +23,7 @@ export type SecretDraft = {
 };
 
 export type DecryptedSecret = {
+  title?: string;
   secret: string;
   login?: string;
   url?: string;
@@ -143,6 +145,7 @@ export async function createEncryptedSecretEnvelope(bindingKey: string, draft: S
   };
 
   const cleartext = {
+    title: draft.title?.trim() || undefined,
     secret: draft.secret?.trim() || '',
     login: draft.login?.trim() || undefined,
     url: draft.url?.trim() || undefined,
@@ -151,10 +154,9 @@ export async function createEncryptedSecretEnvelope(bindingKey: string, draft: S
   };
 
   const aadPayload = {
-    owner_key: normalizedBindingKey,
     vault_id: draft.vault_id,
     kind: kindFromVaultId(draft.vault_id),
-    label: draft.label.trim(),
+    version: 1,
   };
   const aad = encoder.encode(JSON.stringify(aadPayload));
 
@@ -176,12 +178,7 @@ export async function createEncryptedSecretEnvelope(bindingKey: string, draft: S
     iv: toBase64(iv),
     auth_tag: toBase64(encryptedSplit.authTag),
     aad: toBase64(aad),
-    metadata: {
-      login: draft.login?.trim() || undefined,
-      url: draft.url?.trim() || undefined,
-      has_note: Boolean(draft.note?.trim()),
-      owner_key: normalizedBindingKey,
-    },
+    metadata: {},
     version: 1,
   };
 }
@@ -245,19 +242,14 @@ export async function createEncryptedSecureNoteEnvelope(
 ) {
   return createEncryptedSecretEnvelope(bindingKey, {
     vault_id: 'secure_notes',
-    label: draft.title.trim() || 'Untitled note',
+    label: 'Locked note',
+    title: draft.title.trim() || 'Untitled note',
     note: draft.body,
     secret: '',
     passphrase: draft.passphrase,
   }).then((payload) => ({
     ...payload,
     id: draft.id,
-    metadata: {
-      ...(payload.metadata ?? {}),
-      preview: buildSecureNotePreview(draft.body),
-      note_type: 'apple-notes-style',
-      body_length: draft.body.length,
-    },
   }));
 }
 
@@ -269,7 +261,7 @@ export async function decryptSecureNote(
   const decrypted = await decryptSecretItem(bindingKey, passphrase, item);
   return {
     id: item.id,
-    title: item.label,
+    title: decrypted.title?.trim() || item.label,
     body: decrypted.note ?? decrypted.secret ?? '',
     created_at: decrypted.created_at,
   };
