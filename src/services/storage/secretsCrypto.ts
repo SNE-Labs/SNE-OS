@@ -16,7 +16,7 @@ export type SecretDraft = {
   label: string;
   login?: string;
   url?: string;
-  secret: string;
+  secret?: string;
   note?: string;
   passphrase: string;
 };
@@ -86,10 +86,10 @@ function kindFromVaultId(vaultId: SecretVaultId): string {
   return 'password';
 }
 
-async function deriveMasterKey(address: string, passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveMasterKey(bindingKey: string, passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const baseMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(`${address.toLowerCase()}:${passphrase}`),
+    encoder.encode(`${bindingKey.toLowerCase()}:${passphrase}`),
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
@@ -109,8 +109,8 @@ async function deriveMasterKey(address: string, passphrase: string, salt: Uint8A
   );
 }
 
-export async function createEncryptedSecretEnvelope(address: string, draft: SecretDraft) {
-  const normalizedAddress = address.toLowerCase();
+export async function createEncryptedSecretEnvelope(bindingKey: string, draft: SecretDraft) {
+  const normalizedBindingKey = bindingKey.toLowerCase();
   const itemKey = await crypto.subtle.generateKey(
     { name: AES_ALGORITHM, length: 256 },
     true,
@@ -119,7 +119,7 @@ export async function createEncryptedSecretEnvelope(address: string, draft: Secr
   const exportedItemKey = new Uint8Array(await crypto.subtle.exportKey('raw', itemKey));
 
   const salt = randomBytes(16);
-  const masterKey = await deriveMasterKey(normalizedAddress, draft.passphrase, salt);
+  const masterKey = await deriveMasterKey(normalizedBindingKey, draft.passphrase, salt);
 
   const wrapIv = randomBytes(IV_LENGTH);
   const wrappedKeyPayload = await crypto.subtle.encrypt(
@@ -143,7 +143,7 @@ export async function createEncryptedSecretEnvelope(address: string, draft: Secr
   };
 
   const cleartext = {
-    secret: draft.secret,
+    secret: draft.secret?.trim() || '',
     login: draft.login?.trim() || undefined,
     url: draft.url?.trim() || undefined,
     note: draft.note?.trim() || undefined,
@@ -151,7 +151,7 @@ export async function createEncryptedSecretEnvelope(address: string, draft: Secr
   };
 
   const aadPayload = {
-    address: normalizedAddress,
+    owner_key: normalizedBindingKey,
     vault_id: draft.vault_id,
     kind: kindFromVaultId(draft.vault_id),
     label: draft.label.trim(),
@@ -216,4 +216,61 @@ export async function decryptSecretItem(address: string, passphrase: string, ite
   );
 
   return JSON.parse(decoder.decode(new Uint8Array(decrypted))) as DecryptedSecret;
+}
+
+export type SecureNoteDraft = {
+  id?: string;
+  title: string;
+  body: string;
+  passphrase: string;
+};
+
+export type DecryptedSecureNote = {
+  id?: string;
+  title: string;
+  body: string;
+  created_at?: string;
+};
+
+export function buildSecureNotePreview(body: string): string {
+  return body
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+}
+
+export async function createEncryptedSecureNoteEnvelope(
+  bindingKey: string,
+  draft: SecureNoteDraft,
+) {
+  return createEncryptedSecretEnvelope(bindingKey, {
+    vault_id: 'secure_notes',
+    label: draft.title.trim() || 'Untitled note',
+    note: draft.body,
+    secret: '',
+    passphrase: draft.passphrase,
+  }).then((payload) => ({
+    ...payload,
+    id: draft.id,
+    metadata: {
+      ...(payload.metadata ?? {}),
+      preview: buildSecureNotePreview(draft.body),
+      note_type: 'apple-notes-style',
+      body_length: draft.body.length,
+    },
+  }));
+}
+
+export async function decryptSecureNote(
+  bindingKey: string,
+  passphrase: string,
+  item: SecretItem,
+): Promise<DecryptedSecureNote> {
+  const decrypted = await decryptSecretItem(bindingKey, passphrase, item);
+  return {
+    id: item.id,
+    title: item.label,
+    body: decrypted.note ?? decrypted.secret ?? '',
+    created_at: decrypted.created_at,
+  };
 }

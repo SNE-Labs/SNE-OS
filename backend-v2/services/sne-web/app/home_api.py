@@ -48,6 +48,7 @@ def _resolve_auth_context() -> dict:
                         return {
                             "authenticated": True,
                             "address": address.lower(),
+                            "identity_id": payload.get("identity_id"),
                             "source": "jwt",
                         }
             except jwt.ExpiredSignatureError:
@@ -61,6 +62,7 @@ def _resolve_auth_context() -> dict:
     return {
         "authenticated": bool(session_address),
         "address": session_address,
+        "identity_id": session.get("identity_id"),
         "source": "session" if session_address else "anonymous",
     }
 
@@ -117,12 +119,12 @@ def _safe_vault_overview(address: str | None, network_key: str | None) -> dict:
         return build_vault_overview(None, network_key)
 
 
-def _safe_secrets_overview(address: str | None, authenticated: bool) -> dict:
+def _safe_secrets_overview(address: str | None, authenticated: bool, identity_id: str | None) -> dict:
     try:
-        return build_secrets_overview(address, authenticated)
+        return build_secrets_overview(address, authenticated, identity_id or address)
     except Exception as exc:
         logger.warning(f"Home secrets overview failed: {exc}")
-        return build_secrets_overview(None, False)
+        return build_secrets_overview(None, False, None)
 
 
 @home_bp.get("/home")
@@ -135,7 +137,11 @@ def home():
     wallet = get_wallet_state(session_data["address"], network_key)
     passport_overview = _safe_passport_overview(session_data["address"], network_key)
     vault_overview = _safe_vault_overview(session_data["address"], network_key)
-    secrets_overview = _safe_secrets_overview(session_data["address"], session_data["authenticated"])
+    secrets_overview = _safe_secrets_overview(
+        session_data["address"],
+        session_data["authenticated"],
+        session_data.get("identity_id"),
+    )
     identity = build_identity_snapshot(passport_overview)
     capital = build_capital_snapshot(vault_overview)
     secrets = build_secrets_snapshot(secrets_overview)

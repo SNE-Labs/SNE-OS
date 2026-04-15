@@ -168,16 +168,20 @@ def _decode_redis_value(value: Any) -> Optional[str]:
     return str(value)
 
 
-def _index_key(address: str) -> str:
-    return f"secrets:index:{address.lower()}"
+def _normalize_owner_key(owner_key: str) -> str:
+    return owner_key.strip().lower()
 
 
-def _item_key(address: str, item_id: str) -> str:
-    return f"secrets:item:{address.lower()}:{item_id}"
+def _index_key(owner_key: str) -> str:
+    return f"secrets:index:{_normalize_owner_key(owner_key)}"
 
 
-def _read_index(redis_client: SafeRedis, address: str) -> List[Dict[str, Any]]:
-    raw = _decode_redis_value(redis_client.get(_index_key(address)))
+def _item_key(owner_key: str, item_id: str) -> str:
+    return f"secrets:item:{_normalize_owner_key(owner_key)}:{item_id}"
+
+
+def _read_index(redis_client: SafeRedis, owner_key: str) -> List[Dict[str, Any]]:
+    raw = _decode_redis_value(redis_client.get(_index_key(owner_key)))
     if not raw:
         return []
     try:
@@ -187,8 +191,8 @@ def _read_index(redis_client: SafeRedis, address: str) -> List[Dict[str, Any]]:
         return []
 
 
-def _write_index(redis_client: SafeRedis, address: str, items: List[Dict[str, Any]]) -> bool:
-    return bool(redis_client.setex(_index_key(address), SECRETS_STORAGE_TTL_SECONDS, json.dumps(items)))
+def _write_index(redis_client: SafeRedis, owner_key: str, items: List[Dict[str, Any]]) -> bool:
+    return bool(redis_client.setex(_index_key(owner_key), SECRETS_STORAGE_TTL_SECONDS, json.dumps(items)))
 
 
 def _normalize_vault_id(vault_id: str) -> str:
@@ -229,7 +233,7 @@ def _validate_envelope(payload: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
-def list_secret_items(address: str, vault_id: Optional[str] = None) -> Dict[str, Any]:
+def list_secret_items(owner_key: str, vault_id: Optional[str] = None) -> Dict[str, Any]:
     redis_client = SafeRedis()
     storage = _storage_surface()
     if not storage["configured"]:
@@ -239,7 +243,7 @@ def list_secret_items(address: str, vault_id: Optional[str] = None) -> Dict[str,
             "count": 0,
         }
 
-    items = _read_index(redis_client, address)
+    items = _read_index(redis_client, owner_key)
     if vault_id:
         vault_id = _normalize_vault_id(vault_id)
         items = [item for item in items if item.get("vault_id") == vault_id]
@@ -251,9 +255,9 @@ def list_secret_items(address: str, vault_id: Optional[str] = None) -> Dict[str,
     }
 
 
-def get_secret_item(address: str, item_id: str) -> Optional[Dict[str, Any]]:
+def get_secret_item(owner_key: str, item_id: str) -> Optional[Dict[str, Any]]:
     redis_client = SafeRedis()
-    raw = _decode_redis_value(redis_client.get(_item_key(address, item_id)))
+    raw = _decode_redis_value(redis_client.get(_item_key(owner_key, item_id)))
     if not raw:
         return None
     try:
@@ -262,19 +266,19 @@ def get_secret_item(address: str, item_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def create_secret_item(address: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_secret_item(owner_key: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     redis_client = SafeRedis()
     storage = _storage_surface()
     if not storage["configured"]:
         raise RuntimeError("Secrets storage not configured")
 
     item = _validate_envelope(payload)
-    item_key = _item_key(address, item["id"])
+    item_key = _item_key(owner_key, item["id"])
     persisted = redis_client.setex(item_key, SECRETS_STORAGE_TTL_SECONDS, json.dumps(item))
     if not persisted:
         raise RuntimeError("Failed to persist encrypted envelope")
 
-    index = _read_index(redis_client, address)
+    index = _read_index(redis_client, owner_key)
     index = [existing for existing in index if existing.get("id") != item["id"]]
     index.append({
         "id": item["id"],
@@ -287,27 +291,67 @@ def create_secret_item(address: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": item["created_at"],
         "updated_at": item["updated_at"],
     })
-    _write_index(redis_client, address, index)
+    _write_index(redis_client, owner_key, index)
     return item
 
 
-def delete_secret_item(address: str, item_id: str) -> bool:
+def update_secret_item(owner_key: str, item_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     redis_client = SafeRedis()
     storage = _storage_surface()
     if not storage["configured"]:
         raise RuntimeError("Secrets storage not configured")
 
-    redis_client.delete(_item_key(address, item_id))
-    index = _read_index(redis_client, address)
+    existing = get_secret_item(owner_key, item_id)
+    if not existing:
+        raise ValueError("Secret item not found")
+
+    item = _validate_envelope({
+        **existing,
+        **payload,
+        "id": item_id,
+        "created_at": existing.get("created_at"),
+    })
+    item["updated_at"] = datetime.utcnow().isoformat()
+
+    persisted = redis_client.setex(_item_key(owner_key, item_id), SECRETS_STORAGE_TTL_SECONDS, json.dumps(item))
+    if not persisted:
+        raise RuntimeError("Failed to persist encrypted envelope")
+
+    index = _read_index(redis_client, owner_key)
+    index = [existing_item for existing_item in index if existing_item.get("id") != item_id]
+    index.append({
+        "id": item["id"],
+        "vault_id": item["vault_id"],
+        "kind": item["kind"],
+        "label": item["label"],
+        "algorithm": item["algorithm"],
+        "version": item["version"],
+        "metadata": item["metadata"],
+        "created_at": item["created_at"],
+        "updated_at": item["updated_at"],
+    })
+    _write_index(redis_client, owner_key, index)
+    return item
+
+
+def delete_secret_item(owner_key: str, item_id: str) -> bool:
+    redis_client = SafeRedis()
+    storage = _storage_surface()
+    if not storage["configured"]:
+        raise RuntimeError("Secrets storage not configured")
+
+    redis_client.delete(_item_key(owner_key, item_id))
+    index = _read_index(redis_client, owner_key)
     next_index = [item for item in index if item.get("id") != item_id]
-    _write_index(redis_client, address, next_index)
+    _write_index(redis_client, owner_key, next_index)
     return len(next_index) != len(index)
 
 
-def build_secrets_overview(address: Optional[str], authenticated: bool) -> Dict[str, Any]:
+def build_secrets_overview(address: Optional[str], authenticated: bool, owner_key: Optional[str] = None) -> Dict[str, Any]:
     sync_surface = _sync_surface()
     storage_surface = _storage_surface()
     capabilities = _capabilities(sync_surface)
+    resolved_owner_key = owner_key or (address.lower() if address else None)
 
     if not address:
         return {
@@ -348,7 +392,7 @@ def build_secrets_overview(address: Optional[str], authenticated: bool) -> Dict[
         logger.warning("Secrets linked accounts failed for %s: %s", address, exc)
         linked_accounts = []
         status = {"label": "degraded", "tone": "warning"} if authenticated else {"label": "readonly", "tone": "warning"}
-    items_payload = list_secret_items(address) if storage_surface["configured"] else {"items": [], "count": 0}
+    items_payload = list_secret_items(resolved_owner_key) if storage_surface["configured"] and resolved_owner_key else {"items": [], "count": 0}
     items = items_payload["items"]
 
     return {
@@ -358,6 +402,10 @@ def build_secrets_overview(address: Optional[str], authenticated: bool) -> Dict[
             "address": address,
             "mode": "client-side-encrypted",
             "source": "session",
+        },
+        "owner": {
+            "key": resolved_owner_key,
+            "type": "identity" if resolved_owner_key and resolved_owner_key.startswith("pid_") else "wallet",
         },
         "capabilities": capabilities,
         "policy": {

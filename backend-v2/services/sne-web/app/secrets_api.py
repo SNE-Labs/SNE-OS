@@ -14,6 +14,7 @@ from .secrets_service import (
     delete_secret_item,
     get_secret_item,
     list_secret_items,
+    update_secret_item,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def _resolve_auth_context() -> dict:
                         return {
                             "authenticated": True,
                             "address": address.lower(),
+                            "identity_id": payload.get("identity_id"),
                             "source": "jwt",
                         }
             except jwt.ExpiredSignatureError:
@@ -48,16 +50,25 @@ def _resolve_auth_context() -> dict:
     return {
         "authenticated": bool(session_address),
         "address": session_address,
+        "identity_id": session.get("identity_id"),
         "source": "session" if session_address else "anonymous",
     }
 
 
-def _require_authenticated_address():
+def _resolve_owner_key(auth: dict) -> str | None:
+    return auth.get("identity_id") or auth.get("address")
+
+
+def _require_authenticated_owner():
     auth = _resolve_auth_context()
-    address = auth.get("address")
-    if not address:
+    owner_key = _resolve_owner_key(auth)
+    if not owner_key:
         return None, (jsonify({"error": {"code": "UNAUTHENTICATED", "message": "Connect wallet required"}}), 401)
-    return address, None
+    return {
+        "owner_key": owner_key,
+        "address": auth.get("address"),
+        "identity_id": auth.get("identity_id"),
+    }, None
 
 
 @secrets_bp.get("/overview")
@@ -69,30 +80,31 @@ def overview():
     try:
         auth = _resolve_auth_context()
         address = request.args.get("address") or auth.get("address")
-        return jsonify(build_secrets_overview(address, bool(auth.get("authenticated")))), 200
+        owner_key = _resolve_owner_key(auth) if auth.get("authenticated") else None
+        return jsonify(build_secrets_overview(address, bool(auth.get("authenticated")), owner_key)), 200
     except Exception as exc:
         logger.error(f"Secrets overview error: {exc}")
-        return jsonify(build_secrets_overview(None, False)), 200
+        return jsonify(build_secrets_overview(None, False, None)), 200
 
 
 @secrets_bp.get("/items")
 def items():
-    address, error = _require_authenticated_address()
+    owner, error = _require_authenticated_owner()
     if error:
         return error
 
     vault_id = request.args.get("vault_id")
-    result = list_secret_items(address, vault_id)
+    result = list_secret_items(owner["owner_key"], vault_id)
     return jsonify(result), 200
 
 
 @secrets_bp.get("/items/<item_id>")
 def item(item_id: str):
-    address, error = _require_authenticated_address()
+    owner, error = _require_authenticated_owner()
     if error:
         return error
 
-    result = get_secret_item(address, item_id)
+    result = get_secret_item(owner["owner_key"], item_id)
     if not result:
         return jsonify({"error": {"code": "NOT_FOUND", "message": "Secret item not found"}}), 404
     return jsonify(result), 200
@@ -100,13 +112,13 @@ def item(item_id: str):
 
 @secrets_bp.post("/items")
 def create():
-    address, error = _require_authenticated_address()
+    owner, error = _require_authenticated_owner()
     if error:
         return error
 
     try:
         payload = request.get_json(silent=True) or {}
-        item = create_secret_item(address, payload)
+        item = create_secret_item(owner["owner_key"], payload)
         return jsonify(item), 201
     except ValueError as exc:
         return jsonify({"error": {"code": "BAD_REQUEST", "message": str(exc)}}), 400
@@ -117,14 +129,35 @@ def create():
         return jsonify({"error": {"code": "INTERNAL_ERROR", "message": "Failed to create secret item"}}), 500
 
 
-@secrets_bp.delete("/items/<item_id>")
-def remove(item_id: str):
-    address, error = _require_authenticated_address()
+@secrets_bp.put("/items/<item_id>")
+def update(item_id: str):
+    owner, error = _require_authenticated_owner()
     if error:
         return error
 
     try:
-        deleted = delete_secret_item(address, item_id)
+        payload = request.get_json(silent=True) or {}
+        item = update_secret_item(owner["owner_key"], item_id, payload)
+        return jsonify(item), 200
+    except ValueError as exc:
+        if str(exc) == "Secret item not found":
+            return jsonify({"error": {"code": "NOT_FOUND", "message": str(exc)}}), 404
+        return jsonify({"error": {"code": "BAD_REQUEST", "message": str(exc)}}), 400
+    except RuntimeError as exc:
+        return jsonify({"error": {"code": "STORAGE_UNAVAILABLE", "message": str(exc)}}), 503
+    except Exception as exc:
+        logger.error(f"Secrets update error: {exc}")
+        return jsonify({"error": {"code": "INTERNAL_ERROR", "message": "Failed to update secret item"}}), 500
+
+
+@secrets_bp.delete("/items/<item_id>")
+def remove(item_id: str):
+    owner, error = _require_authenticated_owner()
+    if error:
+        return error
+
+    try:
+        deleted = delete_secret_item(owner["owner_key"], item_id)
         if not deleted:
             return jsonify({"error": {"code": "NOT_FOUND", "message": "Secret item not found"}}), 404
         return jsonify({"ok": True, "deleted": True, "id": item_id}), 200

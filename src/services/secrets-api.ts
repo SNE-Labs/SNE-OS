@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost } from '../lib/api/http';
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api/http';
 
 export type SecretsTone = 'active' | 'success' | 'warning' | 'pending';
 
@@ -37,6 +37,10 @@ export type SecretsOverview = {
     address: string | null;
     mode: string;
     source: string;
+  };
+  owner?: {
+    key: string | null;
+    type: string;
   };
   capabilities: {
     plaintext_server_side: boolean;
@@ -108,6 +112,7 @@ export type DeleteSecretResponse = {
 };
 
 export type CreateSecretPayload = {
+  id?: string;
   vault_id: string;
   kind: string;
   label: string;
@@ -132,5 +137,7 @@ export const secretsApi = {
   },
   getItem: (itemId: string): Promise<SecretItem> => apiGet(`/api/secrets/items/${encodeURIComponent(itemId)}`),
   createItem: (payload: CreateSecretPayload): Promise<SecretItem> => apiPost('/api/secrets/items', payload),
+  updateItem: (itemId: string, payload: CreateSecretPayload): Promise<SecretItem> =>
+    apiPut(`/api/secrets/items/${encodeURIComponent(itemId)}`, payload),
   deleteItem: (itemId: string): Promise<DeleteSecretResponse> => apiDelete(`/api/secrets/items/${encodeURIComponent(itemId)}`),
 };

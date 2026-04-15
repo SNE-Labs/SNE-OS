@@ -13,9 +13,9 @@ export function useSecretsOverview(address: string | null) {
   });
 }
 
-export function useSecretItems(enabled: boolean, vaultId?: string | null) {
+export function useSecretItems(enabled: boolean, vaultId?: string | null, scopeKey?: string | null) {
   return useQuery({
-    queryKey: ['secrets', 'items', vaultId ?? 'all'],
+    queryKey: ['secrets', 'items', scopeKey ?? 'anonymous', vaultId ?? 'all'],
     queryFn: () => secretsApi.getItems(vaultId),
     enabled,
     staleTime: 30 * 1000,
@@ -40,6 +40,18 @@ export function useCreateSecretItem() {
 
   return useMutation({
     mutationFn: (payload: CreateSecretPayload) => secretsApi.createItem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['secrets'] });
+    },
+  });
+}
+
+export function useUpdateSecretItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ itemId, payload }: { itemId: string; payload: CreateSecretPayload }) =>
+      secretsApi.updateItem(itemId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['secrets'] });
     },
