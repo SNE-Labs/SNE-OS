@@ -9,28 +9,12 @@ type TopbarProps = {
   sidebarPinned: boolean;
 };
 
-const chipStyles = {
-  accent: {
-    color: 'var(--accent-orange)',
-    backgroundColor: 'rgba(255, 102, 0, 0.08)',
-    borderColor: 'rgba(255, 102, 0, 0.18)',
-  },
-  success: {
-    color: 'var(--ok-green)',
-    backgroundColor: 'rgba(50, 213, 131, 0.08)',
-    borderColor: 'rgba(50, 213, 131, 0.16)',
-  },
-  warning: {
-    color: 'var(--warn-amber)',
-    backgroundColor: 'rgba(255, 176, 32, 0.08)',
-    borderColor: 'rgba(255, 176, 32, 0.16)',
-  },
-  neutral: {
-    color: 'var(--text-2)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-} as const;
+function accessLabel(plan: string) {
+  const normalized = plan.trim().toLowerCase();
+  if (normalized === 'pro') return 'acesso pro';
+  if (normalized === 'premium') return 'acesso premium';
+  return 'acesso free';
+}
 
 function resolveGlow(pathname: string) {
   if (pathname.startsWith('/radar')) {
@@ -38,7 +22,6 @@ function resolveGlow(pathname: string) {
       primary: 'rgba(77, 201, 144, 0.46)',
       secondary: 'rgba(255, 140, 66, 0.28)',
       wash: 'rgba(77, 201, 144, 0.08)',
-      label: 'Market live',
     };
   }
 
@@ -47,7 +30,6 @@ function resolveGlow(pathname: string) {
       primary: 'rgba(255, 140, 66, 0.52)',
       secondary: 'rgba(74, 144, 226, 0.28)',
       wash: 'rgba(255, 140, 66, 0.09)',
-      label: 'Intel layer',
     };
   }
 
@@ -56,7 +38,6 @@ function resolveGlow(pathname: string) {
       primary: 'rgba(74, 144, 226, 0.42)',
       secondary: 'rgba(77, 201, 144, 0.24)',
       wash: 'rgba(74, 144, 226, 0.08)',
-      label: 'Identity',
     };
   }
 
@@ -65,7 +46,6 @@ function resolveGlow(pathname: string) {
       primary: 'rgba(255, 176, 32, 0.42)',
       secondary: 'rgba(255, 102, 0, 0.26)',
       wash: 'rgba(255, 176, 32, 0.08)',
-      label: 'Capital',
     };
   }
 
@@ -74,7 +54,6 @@ function resolveGlow(pathname: string) {
       primary: 'rgba(224, 92, 67, 0.38)',
       secondary: 'rgba(255, 140, 66, 0.24)',
       wash: 'rgba(224, 92, 67, 0.07)',
-      label: 'Secure layer',
     };
   }
 
@@ -82,20 +61,15 @@ function resolveGlow(pathname: string) {
     primary: 'rgba(255, 140, 66, 0.46)',
     secondary: 'rgba(77, 201, 144, 0.20)',
     wash: 'rgba(255, 140, 66, 0.07)',
-    label: 'Workspace',
   };
 }
 
 export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned }: TopbarProps) {
-  const { routeMeta, topbarChips, sessionStats, pathname } = useShellContextData();
+  const { routeMeta, sessionStats, pathname } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
   const planLabel = sessionStats[0]?.value ?? 'FREE';
   const isWalletConnected = walletLabel !== 'Sem wallet';
-  const visibleChips = topbarChips.filter((chip) => {
-    const label = chip.label.toLowerCase();
-    return !label.includes('free') && !label.includes('premium') && !label.includes('pro') && !label.includes('sessão');
-  });
 
   return (
     <header
@@ -108,7 +82,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         WebkitBackdropFilter: 'blur(24px)',
       }}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-5">
+      <div className="grid grid-cols-[minmax(260px,1fr)_auto_minmax(260px,1fr)] items-center gap-5">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -123,50 +97,59 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
             <PanelLeft className="h-[18px] w-[18px]" />
           </button>
 
-          <div className="min-w-0">
-            <div className="truncate text-[1.05rem] font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-1)' }}>
-              {routeMeta.title}
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            className="group relative isolate flex min-w-0 items-center gap-3 rounded-[24px] border px-3 py-2.5 text-left transition-all duration-300 hover:-translate-y-0.5"
+            style={{
+              background:
+                `radial-gradient(circle at 16% 50%, ${glow.wash}, transparent 46%), linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018))`,
+              borderColor: 'rgba(255,255,255,0.08)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+            aria-label="Abrir comandos do SNE OS"
+          >
+            <div
+              className="absolute left-2 top-1/2 -z-10 h-16 w-24 -translate-y-1/2 rounded-full opacity-75 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+              style={{ background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 48%, transparent 74%)` }}
+            />
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[17px] border"
+              style={{
+                backgroundColor: 'rgba(6,8,12,0.68)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                boxShadow: `0 0 28px ${glow.primary}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+              }}
+            >
+              <img src="/favicon.ico" alt="" className="h-5 w-5 rounded-md transition-transform duration-300 group-hover:scale-110" />
             </div>
-            <div className="truncate text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-              {routeMeta.context}
+            <div className="min-w-0">
+              <div className="truncate text-[1rem] font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-1)' }}>
+                SNE OS
+              </div>
+              <div className="truncate text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                Camada operacional
+              </div>
             </div>
+          </button>
+        </div>
+
+        <div
+          className="hidden min-w-0 rounded-full border px-4 py-2 text-center lg:block"
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.025)',
+            borderColor: 'rgba(255,255,255,0.06)',
+          }}
+        >
+          <div className="truncate text-[12px] font-medium" style={{ color: 'var(--text-1)' }}>
+            {routeMeta.title}
+          </div>
+          <div className="truncate text-[10px] uppercase tracking-[0.15em]" style={{ color: 'var(--text-3)' }}>
+            {routeMeta.context}
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenCommandPalette}
-          className="group relative isolate flex h-12 w-12 items-center justify-center overflow-hidden rounded-[20px] border transition-all duration-300 hover:-translate-y-0.5"
-          style={{
-            background:
-              `radial-gradient(circle at 50% 50%, ${glow.wash}, transparent 48%), linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025))`,
-            borderColor: 'rgba(255,255,255,0.10)',
-            boxShadow: '0 18px 52px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.07)',
-          }}
-          aria-label="Abrir comandos"
-        >
-          <div
-            className="absolute inset-[-18px] -z-10 rounded-full opacity-80 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
-            style={{
-              background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 46%, transparent 72%)`,
-            }}
-          />
-          <img src="/favicon.ico" alt="" className="h-5 w-5 rounded-md transition-transform duration-300 group-hover:scale-110" />
-        </button>
-
         <div className="flex min-w-0 items-center justify-end gap-3">
-          <div className="hidden min-w-0 items-center justify-end gap-2 2xl:flex">
-            {visibleChips.slice(0, 2).map((chip) => (
-              <div
-                key={chip.label}
-                className="max-w-[180px] truncate rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.15em]"
-                style={chipStyles[chip.tone]}
-              >
-                {chip.label}
-              </div>
-            ))}
-          </div>
-
           {!isWalletConnected ? (
             <WalletConnect showConnectButton connectButtonLabel="Criar ID" />
           ) : (
@@ -188,19 +171,15 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
               >
                 <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">ID</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em]"
-                  style={{
-                    color: 'var(--text-3)',
-                    borderColor: 'rgba(255,255,255,0.08)',
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                  }}
-                >
-                  {planLabel}
-                </span>
-                <div className="max-w-[140px] truncate text-sm" style={{ color: 'var(--text-1)' }}>
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  ID operacional
+                </div>
+                <div className="max-w-[180px] truncate text-sm font-medium" style={{ color: 'var(--text-1)' }}>
                   {walletLabel}
+                </div>
+                <div className="truncate text-[10px] uppercase tracking-[0.13em]" style={{ color: 'var(--text-3)' }}>
+                  identidade vinculada · {accessLabel(planLabel)} · sessão ativa
                 </div>
               </div>
             </div>
