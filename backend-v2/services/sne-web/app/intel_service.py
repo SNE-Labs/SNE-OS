@@ -740,10 +740,6 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
         posts = list(existing)[:BLOG_TOTAL_LIMIT]
         existing_slugs = {post["slug"] for post in posts}
         daily_count = _blog_daily_post_count(posts)
-        counter_count = _blog_daily_count(redis_client)
-        if counter_count > daily_count:
-            # Recover from stale counters when the cache has fewer posts than expected.
-            daily_count = min(counter_count, BLOG_TOTAL_LIMIT) if len(posts) >= counter_count else daily_count
         if daily_count >= BLOG_DAILY_LIMIT and not cache_stale:
             return
         market_daily_count = _blog_daily_market_count(posts)
