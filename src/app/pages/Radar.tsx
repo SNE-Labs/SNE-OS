@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, ArrowUpRight, RefreshCw, ShieldAlert, Sparkles, Waves } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Activity, AlertTriangle, ArrowUpRight, RefreshCw, ShieldAlert, Waves } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
@@ -11,123 +12,34 @@ import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { buildSwapsHrefFromRadarSymbol } from '../components/swaps/radarSwapPrefill';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
+type Tone = 'active' | 'success' | 'warning' | 'pending';
 
-function formatPrice(value: number) {
-  if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
-}
+const formatPrice = (value: number) =>
+  value >= 1000
+    ? value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+    : value >= 1
+      ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+      : value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 
-function compact(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value);
-}
+const compact = (value: number) =>
+  new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
-function toEntitySymbol(symbol?: string | null) {
-  return (symbol ?? '').replace(/USDT$/i, '') || undefined;
-}
+const formatPercent = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(digits)}%`;
 
-function formatUpdatedAt(value?: string) {
+const formatUpdatedAt = (value?: string) => {
   if (!value) return '--';
   try {
-    return new Intl.DateTimeFormat('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-    }).format(new Date(value));
+    return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(value));
   } catch {
     return '--';
   }
-}
+};
 
-function toStatusBadge(status?: 'active' | 'success' | 'warning' | 'pending') {
-  if (status === 'success') return 'success';
-  if (status === 'warning') return 'warning';
-  if (status === 'active') return 'active';
-  return 'pending';
-}
-
-function toneStyles(tone?: 'active' | 'success' | 'warning' | 'pending') {
-  if (tone === 'success') {
-    return {
-      color: 'var(--ok-green)',
-      backgroundColor: 'rgba(34,197,94,0.10)',
-      borderColor: 'rgba(34,197,94,0.16)',
-    };
-  }
-  if (tone === 'warning') {
-    return {
-      color: 'var(--warn-amber)',
-      backgroundColor: 'rgba(255,176,32,0.10)',
-      borderColor: 'rgba(255,176,32,0.18)',
-    };
-  }
-  if (tone === 'active') {
-    return {
-      color: 'var(--accent-orange)',
-      backgroundColor: 'rgba(255,140,66,0.10)',
-      borderColor: 'rgba(255,140,66,0.18)',
-    };
-  }
-
-  return {
-    color: 'var(--text-3)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderColor: 'rgba(255,255,255,0.08)',
-  };
-}
-
-function actionStyles(tone: 'accent' | 'neutral', recommended: boolean) {
-  if (tone === 'accent') {
-    return {
-      backgroundColor: 'rgba(255,140,66,0.10)',
-      borderColor: 'rgba(255,140,66,0.18)',
-      color: 'var(--accent-orange)',
-      boxShadow: recommended ? 'inset 0 0 0 1px rgba(255,140,66,0.18)' : 'none',
-    };
-  }
-
-  return {
-    backgroundColor: 'var(--bg-3)',
-    borderColor: recommended ? 'rgba(255,255,255,0.14)' : 'var(--stroke-1)',
-    color: 'var(--text-1)',
-    boxShadow: 'none',
-  };
-}
-
-function ToneMetric({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-  tone?: 'active' | 'success' | 'warning' | 'pending';
-}) {
-  return (
-    <div
-      className="rounded-2xl p-3"
-      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-    >
-      <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-        {label}
-      </div>
-      <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
-        {value}
-      </div>
-      {detail ? (
-        <div className="text-sm leading-6" style={{ color: tone === 'warning' ? 'var(--text-2)' : 'var(--text-2)' }}>
-          {detail}
-        </div>
-      ) : null}
-    </div>
-  );
-}
+const toEntitySymbol = (symbol?: string | null) => (symbol ?? '').replace(/USDT$/i, '') || undefined;
+const toStatusBadge = (tone?: Tone) => (tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : tone === 'active' ? 'active' : 'pending');
+const toneColor = (tone?: Tone) => (tone === 'success' ? 'var(--ok-green)' : tone === 'warning' ? 'var(--warn-amber)' : tone === 'active' ? 'var(--accent-orange)' : 'var(--text-2)');
+const deriveState = (change24h: number, score: number) => (score >= 22 || change24h >= 0.025 ? { label: 'BUY', tone: 'success' as const } : score <= 8 || change24h <= -0.02 ? { label: 'AVOID', tone: 'warning' as const } : { label: 'HOLD', tone: 'pending' as const });
+const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2 ? 'forte' : rank >= 0 && rank < 5 ? 'media' : volume > 100_000_000 ? 'media' : 'leve');
 
 export function Radar() {
   const navigate = useNavigate();
@@ -135,9 +47,7 @@ export function Radar() {
   const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
   const [activeSymbol, setActiveSymbol] = useState(normalizedRouteSymbol);
 
-  useEffect(() => {
-    setActiveSymbol(normalizedRouteSymbol);
-  }, [normalizedRouteSymbol]);
+  useEffect(() => setActiveSymbol(normalizedRouteSymbol), [normalizedRouteSymbol]);
 
   const overviewQuery = useRadarOverview(activeSymbol, '24H');
   const overview = overviewQuery.data;
@@ -151,21 +61,15 @@ export function Radar() {
   });
 
   const movers = overview?.universe ?? [];
-  const regime = overview?.market_regime;
-  const hero = overview?.hero;
   const focusAsset = overview?.focus_asset;
+  const regime = overview?.market_regime;
   const signal = overview?.signal;
   const executionRisk = overview?.execution_risk;
   const nextAction = overview?.next_action;
+  const marketState = overview?.market_state;
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
-  const marketState = overview?.market_state;
-  const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({
-    symbol,
-    price: 0,
-    change24h: 0,
-    volume: 0,
-  }));
+  const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({ symbol, price: 0, change24h: 0, volume: 0 }));
 
   const radarTitleSymbol = focusAsset?.symbol ?? activeSymbol;
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
@@ -179,480 +83,232 @@ export function Radar() {
     canonicalPath: radarCanonicalPath,
     type: 'website',
     keywords: ['crypto radar', 'market intelligence', radarTitleSymbol, 'execution risk', 'market regime', 'liquidity'],
-    structuredData: {
-      '@context': 'https://schema.org',
-      '@type': 'Dataset',
-      name: `${radarTitleSymbol} Radar | SNE OS`,
-      description: radarDescription,
-      url: `https://snelabs.space${radarCanonicalPath}`,
-    },
+    structuredData: { '@context': 'https://schema.org', '@type': 'Dataset', name: `${radarTitleSymbol} Radar | SNE OS`, description: radarDescription, url: `https://snelabs.space${radarCanonicalPath}` },
   });
+
+  const rows = useMemo(() => {
+    const momentumMap = new Map(momentumRanking.map((entry) => [entry.symbol, entry]));
+    const liquidityMap = new Map(liquidityRanking.map((entry, index) => [entry.symbol, index]));
+    return quickSelection
+      .map((item) => {
+        const score = item.symbol === focusAsset?.symbol ? focusAsset.score : momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000));
+        const liquidityRank = liquidityMap.get(item.symbol) ?? -1;
+        return {
+          ...item,
+          score,
+          state: deriveState(item.change24h, score),
+          liquidityRank,
+          liquidityLabel: item.symbol === focusAsset?.symbol ? focusAsset.liquidity.label.toLowerCase() : deriveLiquidity(liquidityRank, Number(item.volume)),
+          swapsHref: buildSwapsHrefFromRadarSymbol(item.symbol),
+        };
+      })
+      .sort((left, right) => (right.score - left.score) || (Number(right.volume) - Number(left.volume)));
+  }, [focusAsset, liquidityRanking, momentumRanking, quickSelection]);
+
+  const activeRow = rows.find((row) => row.symbol === activeSymbol) ?? rows[0];
+  const headerStats = [
+    { label: 'Regime', value: regime?.label ?? 'sem dados', tone: regime?.tone },
+    { label: 'Janela', value: signal?.timeframe ?? '24H' },
+    { label: 'Update', value: formatUpdatedAt(overview?.last_updated) },
+    { label: 'Media', value: formatPercent(regime?.avg_change_24h ?? 0), tone: (regime?.avg_change_24h ?? 0) >= 0 ? 'success' : 'warning' },
+    { label: 'Execucao', value: marketState?.execution ?? 'intel-first', tone: overview?.execution.tone },
+  ];
+  const tape = rows.length > 0 ? [...rows.slice(0, 6), ...rows.slice(0, 6)] : [];
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 overflow-y-auto px-6 py-6 xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-5">
-          <section
-            className="overflow-hidden rounded-[28px] p-5"
-            style={{
-              background:
-                'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 32%), radial-gradient(circle at 85% 18%, rgba(255,255,255,0.07), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))',
-              backgroundColor: 'var(--bg-2)',
-              borderWidth: '1px',
-              borderColor: 'var(--stroke-1)',
-              boxShadow: 'var(--shadow-1)',
-            }}
-          >
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.18fr)_360px]">
+      <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
+        <div className="mx-auto max-w-[1520px] space-y-4">
+          <section className="overflow-hidden rounded-[24px] border" style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: 'var(--text-1)' }}>
+                  <Activity className="h-3.5 w-3.5" style={{ color: 'var(--accent-orange)' }} />
+                  Radar
+                </div>
+                {headerStats.map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    <span>{item.label}</span>
+                    <span className="font-semibold" style={{ color: toneColor(item.tone) }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  <span className={`inline-flex h-2.5 w-2.5 rounded-full ${overviewQuery.isFetching ? 'animate-pulse' : ''}`} style={{ backgroundColor: overviewQuery.isFetching ? 'var(--accent-orange)' : 'var(--ok-green)' }} />
+                  {overviewQuery.isFetching ? 'sync' : 'live'}
+                </div>
+                <button onClick={() => overviewQuery.refetch()} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors hover:bg-white/[0.04]" style={{ backgroundColor: 'rgba(255,255,255,0.02)', color: 'var(--text-1)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <RefreshCw className={`h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-hidden px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              {tape.length > 0 ? (
+                <div className="overflow-hidden">
+                  <motion.div className="flex min-w-max items-center gap-3" animate={{ x: ['0%', '-50%'] }} transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}>
+                    {tape.map((item, index) => (
+                      <div key={`${item.symbol}-${index}`} className="flex items-center gap-3 rounded-full border px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.08)', fontVariantNumeric: 'tabular-nums' }}>
+                        <span className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>{item.symbol}</span>
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>{formatPercent(item.change24h)}</span>
+                        <span className="text-sm" style={{ color: 'var(--text-2)' }}>score {item.score}</span>
+                        <span className="text-sm" style={{ color: 'var(--text-2)' }}>liq {item.liquidityLabel}</span>
+                      </div>
+                    ))}
+                  </motion.div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.35fr)_repeat(6,minmax(0,1fr))]">
               <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <div
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em]"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-3)' }}
-                  >
-                    <Activity className="h-3.5 w-3.5" />
-                    Radar
+                <div className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>foco atual</div>
+                <div className="flex items-center gap-3">
+                  <IntelEntityIcon symbol={toEntitySymbol(activeRow?.symbol)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-6 w-6" />
+                  <div className="min-w-0">
+                    <div className="truncate text-[28px] font-semibold leading-none" style={{ color: 'var(--text-1)' }}>{activeRow?.symbol ?? activeSymbol}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusBadge status={toStatusBadge(activeRow?.state.tone)}>{activeRow?.state.label ?? 'HOLD'}</StatusBadge>
+                      <StatusBadge status={toStatusBadge(regime?.tone)}>{regime?.label ?? 'sem dados'}</StatusBadge>
+                    </div>
                   </div>
-                  <StatusBadge status={toStatusBadge(regime?.tone)}>{regime?.label ?? 'sem dados'}</StatusBadge>
-                </div>
-
-                <h1 className="mb-2 text-3xl font-semibold leading-tight" style={{ color: 'var(--text-1)' }}>
-                  {hero?.headline ?? 'Regime sem ativo em foco.'}
-                </h1>
-                <p className="max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                  {hero?.summary ?? 'O Radar esta sincronizando o universo monitorado antes de sugerir uma decisao.'}
-                </p>
-
-                <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {(hero?.metrics ?? []).map((metric) => (
-                    <ToneMetric
-                      key={`${metric.label}-${metric.value}`}
-                      label={metric.label}
-                      value={metric.value}
-                      detail={metric.detail}
-                      tone={metric.tone}
-                    />
-                  ))}
                 </div>
               </div>
+              {[
+                ['Preco', `$${formatPrice(activeRow?.price ?? 0)}`, 'pending' as Tone],
+                ['24H', formatPercent(activeRow?.change24h ?? 0), (activeRow?.change24h ?? 0) >= 0 ? 'success' : 'warning'],
+                ['Volume', `$${compact(Number(activeRow?.volume ?? 0))}`, 'pending' as Tone],
+                ['Score', String(activeRow?.score ?? 0), activeRow?.state.tone ?? 'pending'],
+                ['Liquidez', activeRow?.liquidityLabel ?? '--', activeRow?.state.tone ?? 'pending'],
+                ['Risco', executionRisk?.label ?? '--', executionRisk?.tone ?? 'pending'],
+              ].map(([label, value, tone]) => (
+                <div key={label}>
+                  <div className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>{label}</div>
+                  <div className="truncate text-base font-semibold" style={{ color: toneColor(tone as Tone), fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </section>
 
-              <div
-                className="rounded-[24px] p-4"
-                style={{
-                  backgroundColor: 'rgba(8,10,16,0.28)',
-                  borderWidth: '1px',
-                  borderColor: 'rgba(255,255,255,0.06)',
-                }}
-              >
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="overflow-hidden rounded-[24px] border" style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}>
+              <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>{overview?.universe_summary.title ?? 'Universo monitorado'}</div>
+                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>{overview?.universe_summary.summary ?? 'Liquidez, score e rota em tempo operacional.'}</div>
+                </div>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{rows.length} ativos</div>
+              </div>
+
+              {moduleState !== 'ready' ? (
+                <div className="p-4">
+                  <ModuleStateCard
+                    tone={moduleState === 'loading' ? 'loading' : moduleState === 'error' ? 'error' : 'empty'}
+                    title={moduleState === 'loading' ? 'Carregando Radar' : moduleState === 'error' ? 'Falha ao carregar Radar' : 'Sem mercado disponivel'}
+                    description={moduleState === 'loading' ? 'Sincronizando regime, liquidez e score do universo.' : moduleState === 'error' ? 'Os dados de mercado nao responderam como esperado.' : 'O universo monitorado esta vazio nesta janela.'}
+                    actionLabel={moduleState === 'error' ? 'Atualizar' : undefined}
+                    onAction={moduleState === 'error' ? () => overviewQuery.refetch() : undefined}
+                    compact
+                  />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <thead>
+                      <tr className="text-left text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                        {['#', 'Ativo', 'Preco', '24H', 'Volume', 'Score', 'Liq', 'Estado', 'Acao'].map((label) => <th key={label} className="px-4 py-3 font-medium" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{label}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, index) => {
+                        const active = row.symbol === activeRow?.symbol;
+                        return (
+                          <motion.tr layout key={row.symbol} onClick={() => { setActiveSymbol(row.symbol); navigate(`/radar/${row.symbol.toLowerCase()}`); }} className="cursor-pointer transition-colors" style={{ backgroundColor: active ? 'rgba(255,140,66,0.08)' : 'transparent' }}>
+                            <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-3)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{String(index + 1).padStart(2, '0')}</td>
+                            <td className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <IntelEntityIcon symbol={toEntitySymbol(row.symbol)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} iconClassName="h-4.5 w-4.5" />
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{row.symbol}</div>
+                                  <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>{row.liquidityRank >= 0 ? <span>L#{row.liquidityRank + 1}</span> : null}{active ? <span>focus</span> : null}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-1)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>${formatPrice(row.price)}</td>
+                            <td className="px-4 py-3 text-sm font-medium" style={{ color: row.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{formatPercent(row.change24h)}</td>
+                            <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-2)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>${compact(Number(row.volume))}</td>
+                            <td className="px-4 py-3 text-sm font-semibold" style={{ color: toneColor(row.state.tone), borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.score}</td>
+                            <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-2)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.liquidityLabel}</td>
+                            <td className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}><StatusBadge status={toStatusBadge(row.state.tone)}>{row.state.label}</StatusBadge></td>
+                            <td className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <button onClick={(event) => { event.stopPropagation(); navigate(row.swapsHref); }} className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ borderColor: 'rgba(255,140,66,0.18)', color: 'var(--accent-orange)', backgroundColor: 'rgba(255,140,66,0.08)' }}>
+                                USDT
+                                <ArrowUpRight className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <aside className="overflow-hidden rounded-[24px] border" style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}>
+              <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                      Camada de decisao
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      Estado operacional antes de qualquer rota.
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => overviewQuery.refetch()}
-                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium"
-                    style={{
-                      backgroundColor: 'var(--bg-2)',
-                      color: 'var(--text-1)',
-                      borderWidth: '1px',
-                      borderColor: 'var(--stroke-1)',
-                    }}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
-                    Atualizar
+                  <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>proxima rota</div>
+                  <StatusBadge status={toStatusBadge(activeRow?.state.tone)}>{activeRow?.state.label ?? 'HOLD'}</StatusBadge>
+                </div>
+                <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>{activeRow?.symbol ?? activeSymbol}</div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <div><div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>score</div><div style={{ color: 'var(--text-1)' }}>{activeRow?.score ?? 0}</div></div>
+                  <div><div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>liq</div><div style={{ color: 'var(--text-1)' }}>{activeRow?.liquidityLabel ?? '--'}</div></div>
+                  <div><div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>risco</div><div style={{ color: toneColor(executionRisk?.tone) }}>{executionRisk?.label ?? '--'}</div></div>
+                  <div><div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>execucao</div><div style={{ color: 'var(--text-1)' }}>{marketState?.execution ?? 'intel-first'}</div></div>
+                </div>
+              </div>
+
+              <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                {(nextAction?.actions ?? []).map((action) => (
+                  <button key={`${action.label}-${action.href}`} onClick={() => navigate(action.href)} className="flex w-full items-center justify-between border-b px-4 py-3 text-left transition-colors hover:bg-white/[0.03]" style={{ borderColor: 'rgba(255,255,255,0.06)', color: action.recommended ? 'var(--text-1)' : 'var(--text-2)', backgroundColor: action.recommended ? 'rgba(255,140,66,0.06)' : 'transparent' }}>
+                    <span className="text-sm font-medium uppercase tracking-[0.16em]">{action.label}</span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0" />
                   </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <ToneMetric label="Acesso" value={marketState?.access ?? '--'} />
-                  <ToneMetric label="Execucao" value={marketState?.execution ?? '--'} />
-                  <ToneMetric label="Janela" value={signal?.timeframe ?? '24H'} />
-                  <ToneMetric label="Atualizado" value={formatUpdatedAt(overview?.last_updated)} />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.08fr)_400px]">
-            <div className="space-y-5">
-              <div
-                className="rounded-[28px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                      Risco de execucao
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-3)' }}>
-                      Este bloco qualifica o quanto a leitura atual suporta uma rota.
-                    </div>
-                  </div>
-                  <StatusBadge status={toStatusBadge(executionRisk?.tone)}>{executionRisk?.label ?? 'sem dados'}</StatusBadge>
-                </div>
-
-                {moduleState === 'loading' ? (
-                  <ModuleStateCard
-                    tone="loading"
-                    title="Carregando Radar"
-                    description="Buscando regime, ativo em foco e risco de execucao."
-                    compact
-                  />
-                ) : moduleState === 'error' ? (
-                  <ModuleStateCard
-                    tone="error"
-                    title="Falha ao carregar Radar"
-                    description="Os dados de mercado nao responderam como esperado."
-                    actionLabel="Atualizar"
-                    onAction={() => overviewQuery.refetch()}
-                    compact
-                  />
-                ) : moduleState === 'empty' ? (
-                  <ModuleStateCard
-                    tone="empty"
-                    title="Sem mercado disponivel"
-                    description="O universo monitorado esta vazio nesta janela."
-                    compact
-                  />
-                ) : (
-                  <div className="space-y-4">
-                    <div
-                      className="rounded-[24px] p-4"
-                      style={{ ...toneStyles(executionRisk?.tone), borderWidth: '1px' }}
-                    >
-                      <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                        <ShieldAlert className="h-4 w-4" />
-                        Risco {executionRisk?.label ?? 'sem dados'}
-                      </div>
-                      <div className="text-sm leading-6" style={{ color: 'inherit' }}>
-                        {executionRisk?.summary ?? 'Sem leitura suficiente para qualificar risco de execucao.'}
-                      </div>
-                      <div className="mt-3 text-xs uppercase tracking-[0.18em]" style={{ color: 'inherit' }}>
-                        score {executionRisk?.score ?? 0}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {(executionRisk?.blockers ?? []).map((blocker) => (
-                        <div
-                          key={blocker}
-                          className="rounded-2xl p-3"
-                          style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                        >
-                          <div className="flex items-start gap-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                            <AlertTriangle className="mt-1 h-4 w-4 shrink-0" style={{ color: 'var(--warn-amber)' }} />
-                            <span>{blocker}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                ))}
               </div>
 
-              <div
-                className="rounded-[28px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                      Ativo em foco
-                    </div>
-                    <div className="text-sm" style={{ color: 'var(--text-3)' }}>
-                      Evidencia principal que sustenta a leitura de regime.
-                    </div>
+              <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+                  <ShieldAlert className="h-4 w-4" style={{ color: toneColor(executionRisk?.tone) }} />
+                  Risco de execucao
+                </div>
+                <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>{executionRisk?.summary ?? 'Sem leitura suficiente para qualificar risco de execucao.'}</div>
+                {(executionRisk?.blockers ?? []).slice(0, 3).map((blocker) => (
+                  <div key={blocker} className="mt-2 flex items-start gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--warn-amber)' }} />
+                    <span>{blocker}</span>
                   </div>
-                  {signal ? <StatusBadge status={toStatusBadge(signal.signal === 'BUY' ? 'success' : signal.signal === 'SELL' ? 'warning' : 'pending')}>{signal.signal}</StatusBadge> : null}
-                </div>
-
-                {focusAsset ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                    <div
-                      className="rounded-[24px] p-4"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <IntelEntityIcon
-                            symbol={toEntitySymbol(focusAsset.symbol)}
-                            className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                            iconClassName="h-6 w-6"
-                          />
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                              ativo em foco
-                            </div>
-                            <div className="text-3xl font-semibold" style={{ color: 'var(--text-1)' }}>
-                              {focusAsset.symbol}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          className="rounded-full px-3 py-1 text-sm font-semibold"
-                          style={{
-                            color: focusAsset.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)',
-                            backgroundColor: focusAsset.change24h >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
-                          }}
-                        >
-                          {focusAsset.change24h >= 0 ? '+' : ''}
-                          {(focusAsset.change24h * 100).toFixed(2)}%
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <ToneMetric label="Preco" value={`$${formatPrice(focusAsset.price)}`} />
-                        <ToneMetric label="Volume" value={`$${compact(Number(focusAsset.volume))}`} />
-                        <ToneMetric label="Score" value={String(focusAsset.score)} />
-                        <ToneMetric label="Confianca" value={focusAsset.confidence.label} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div
-                        className="rounded-[24px] p-4"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                          Liquidez
-                        </div>
-                        <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                          {focusAsset.liquidity.label} dentro do universo monitorado.
-                        </div>
-                      </div>
-                      <div
-                        className="rounded-[24px] p-4"
-                        style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-                      >
-                        <div className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                          Sinal
-                        </div>
-                        <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                          {signal ? `${signal.change} na janela ${signal.timeframe}.` : 'Sem sinal direcional forte nesta janela.'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <ModuleStateCard
-                    tone="empty"
-                    title="Sem ativo em foco"
-                    description="O Radar nao retornou um ativo suficientemente liquido para esta janela."
-                    compact
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div
-                className="rounded-[28px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-4 flex items-center gap-2">
-                  <Waves className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                    Proxima acao
-                  </div>
-                </div>
-
-                <div className="mb-2 text-base font-semibold" style={{ color: 'var(--text-1)' }}>
-                  {nextAction?.title ?? 'Contexto antes da execucao.'}
-                </div>
-                <div className="mb-4 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                  {nextAction?.summary ?? 'Sem guidance state-based disponivel.'}
-                </div>
-
-                <div className="space-y-3">
-                  {(nextAction?.actions ?? []).map((action) => (
-                    <button
-                      key={`${action.label}-${action.href}`}
-                      onClick={() => navigate(action.href)}
-                      className="flex w-full items-center justify-between rounded-[22px] border px-4 py-3 text-left transition-all"
-                      style={actionStyles(action.tone, action.recommended)}
-                    >
-                      <div className="min-w-0">
-                        <div className="mb-1 text-sm font-semibold">{action.label}</div>
-                        <div className="text-sm leading-6" style={{ color: action.tone === 'accent' ? 'inherit' : 'var(--text-2)' }}>
-                          {action.kind === 'execute'
-                            ? `Abrir o rail de execucao com contexto vindo de ${focusAsset?.symbol ?? activeSymbol}.`
-                            : action.kind === 'intel'
-                              ? 'Abrir a camada editorial para ampliar o contexto antes da rota.'
-                              : action.kind === 'observe'
-                                ? 'Continuar monitorando o ativo em foco dentro do regime atual.'
-                                : 'Suspender a ideia de execucao ate o contexto melhorar.'}
-                        </div>
-                      </div>
-                      <ArrowUpRight className="h-4 w-4 shrink-0" />
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
 
-              <div
-                className="rounded-[28px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-              >
-                <div className="mb-4 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-                  <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                    Regime e foco
+              <div className="grid grid-cols-2 gap-3 px-4 py-4">
+                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                  <div className="mb-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>top liquidez</div>
+                  {(liquidityRanking.slice(0, 3)).map((entry, index) => <button key={entry.symbol} onClick={() => { setActiveSymbol(entry.symbol); navigate(`/radar/${entry.symbol.toLowerCase()}`); }} className="flex w-full items-center justify-between py-1 text-left text-sm" style={{ color: index === 0 ? 'var(--text-1)' : 'var(--text-2)' }}><span>{entry.symbol}</span><span>${compact(Number(entry.volume))}</span></button>)}
+                </div>
+                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                  <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                    <Waves className="h-3.5 w-3.5" />
+                    top momentum
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      Regime atual
-                    </div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {regime?.label ?? '--'}
-                    </div>
-                    <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      {regime?.summary ?? 'Sem leitura de regime disponivel.'}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      Ativo em foco
-                    </div>
-                    <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                      {focusAsset?.symbol ?? activeSymbol}
-                    </div>
-                    <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      {focusAsset
-                        ? `Score ${focusAsset.score}, confianca ${focusAsset.confidence.label} e liquidez ${focusAsset.liquidity.label}.`
-                        : 'Aguardando ativo em foco.'}
-                    </div>
-                  </div>
+                  {rows.slice(0, 3).map((entry, index) => <button key={entry.symbol} onClick={() => { setActiveSymbol(entry.symbol); navigate(`/radar/${entry.symbol.toLowerCase()}`); }} className="flex w-full items-center justify-between py-1 text-left text-sm" style={{ color: index === 0 ? 'var(--text-1)' : 'var(--text-2)' }}><span>{entry.symbol}</span><span>{formatPercent(entry.change24h)}</span></button>)}
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section
-            className="rounded-[28px] p-5"
-            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
-                  {overview?.universe_summary.title ?? 'Universo monitorado'}
-                </div>
-                <div className="text-sm" style={{ color: 'var(--text-3)' }}>
-                  {overview?.universe_summary.summary ?? 'Liquidez viva, regime relativo e selecao rapida do ativo em foco.'}
-                </div>
-              </div>
-              <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                {movers.length} ativos
-              </div>
-            </div>
-
-            {moduleState === 'ready' && quickSelection.length > 0 ? (
-              <div className="space-y-3">
-                {quickSelection.map((item) => {
-                  const active = (focusAsset?.symbol ?? activeSymbol) === item.symbol;
-                  const swapsHref = buildSwapsHrefFromRadarSymbol(item.symbol);
-                  const liquidityRank = liquidityRanking.findIndex((entry) => entry.symbol === item.symbol);
-                  const momentumRank = momentumRanking.findIndex((entry) => entry.symbol === item.symbol);
-
-                  return (
-                    <div
-                      key={item.symbol}
-                      className="rounded-[22px] p-4"
-                      style={{
-                        backgroundColor: active ? 'rgba(255,140,66,0.08)' : 'var(--bg-3)',
-                        borderWidth: '1px',
-                        borderColor: active ? 'rgba(255,140,66,0.18)' : 'var(--stroke-1)',
-                      }}
-                    >
-                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
-                        <button
-                          onClick={() => {
-                            setActiveSymbol(item.symbol);
-                            navigate(`/radar/${item.symbol.toLowerCase()}`);
-                          }}
-                          className="text-left"
-                        >
-                          <div className="mb-3 flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-start gap-3">
-                              <IntelEntityIcon
-                                symbol={toEntitySymbol(item.symbol)}
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-                                style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
-                                iconClassName="h-5 w-5"
-                              />
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                  {item.symbol}
-                                </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-2">
-                                  {momentumRank >= 0 ? <StatusBadge status="warning">M#{momentumRank + 1}</StatusBadge> : null}
-                                  {liquidityRank >= 0 ? <StatusBadge status="success">L#{liquidityRank + 1}</StatusBadge> : null}
-                                  {active ? <StatusBadge status="active">em foco</StatusBadge> : null}
-                                </div>
-                              </div>
-                            </div>
-                            <div
-                              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                              style={{
-                                color: item.change24h >= 0 ? 'var(--ok-green)' : 'var(--error-red)',
-                                backgroundColor: item.change24h >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
-                              }}
-                            >
-                              {item.change24h >= 0 ? '+' : ''}
-                              {(item.change24h * 100).toFixed(1)}%
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-1 text-sm md:grid-cols-3">
-                            <span style={{ color: 'var(--text-2)' }}>Preco ${formatPrice(item.price)}</span>
-                            <span style={{ color: 'var(--text-3)' }}>Vol. ${compact(Number(item.volume))}</span>
-                            <span style={{ color: 'var(--text-3)' }}>
-                              Rota {liquidityRank >= 0 && liquidityRank < 3 ? 'mais liquida' : 'em observacao'}
-                            </span>
-                          </div>
-                        </button>
-
-                        <div className="flex items-center">
-                          <button
-                            onClick={() => navigate(swapsHref)}
-                            className="flex w-full items-center justify-between rounded-[18px] border px-4 py-3 text-left"
-                            style={{
-                              backgroundColor: 'rgba(255,140,66,0.08)',
-                              borderColor: 'rgba(255,140,66,0.16)',
-                              color: 'var(--text-1)',
-                            }}
-                          >
-                            <div>
-                              <div className="mb-1 text-sm font-semibold">Executar com USDT</div>
-                              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                                Abrir o rail com origem Radar.
-                              </div>
-                            </div>
-                            <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <ModuleStateCard
-                tone={moduleState === 'error' ? 'error' : moduleState === 'loading' ? 'loading' : 'empty'}
-                title="Universo indisponivel"
-                description="O universo monitorado aparece quando o Radar consegue sincronizar liquidez e regime."
-                compact
-              />
-            )}
+            </aside>
           </section>
         </div>
       </div>

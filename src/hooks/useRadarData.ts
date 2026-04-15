@@ -19,11 +19,11 @@ export function useRadarOverview(symbol: string, timeframe: string = '24H') {
     initialData: hydratedSnapshot,
     initialDataUpdatedAt: persistedSnapshot?.savedAt,
     placeholderData: (previousData) => previousData,
-    staleTime: 30 * 1000,
+    staleTime: 10 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,
     refetchOnWindowFocus: false,
-    refetchInterval: 60 * 1000,
+    refetchInterval: 15 * 1000,
   });
 }
 

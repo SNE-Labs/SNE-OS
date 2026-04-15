@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowUpRight, RefreshCw, ShieldAlert, Waves } from 'lucide-react';
+import { Activity, ArrowUpRight, RefreshCw, ShieldAlert } from 'lucide-react';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
@@ -9,32 +9,33 @@ import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { buildSwapsHrefFromRadarSymbol } from '../../components/swaps/radarSwapPrefill';
 
 const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
+type Tone = 'active' | 'success' | 'warning' | 'pending';
 
-function formatPrice(value: number) {
-  if (value >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (value >= 1) return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  return value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
-}
+const formatPrice = (value: number) =>
+  value >= 1000
+    ? value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+    : value >= 1
+      ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+      : value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
 
-function compact(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value);
-}
+const compact = (value: number) =>
+  new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
-function toEntitySymbol(symbol?: string | null) {
-  return (symbol ?? '').replace(/USDT$/i, '') || undefined;
-}
+const formatPercent = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(digits)}%`;
 
-function toBadgeVariant(
-  tone?: 'active' | 'success' | 'warning' | 'pending'
-): 'success' | 'warning' | 'neutral' | 'orange' {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'active') return 'orange';
-  return 'neutral';
-}
+const formatUpdatedAt = (value?: string) => {
+  if (!value) return '--';
+  try {
+    return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(value));
+  } catch {
+    return '--';
+  }
+};
+
+const toEntitySymbol = (symbol?: string | null) => (symbol ?? '').replace(/USDT$/i, '') || undefined;
+const toBadgeVariant = (tone?: Tone): 'success' | 'warning' | 'neutral' | 'orange' => (tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : tone === 'active' ? 'orange' : 'neutral');
+const deriveState = (change24h: number, score: number) => (score >= 22 || change24h >= 0.025 ? { label: 'BUY', tone: 'success' as const } : score <= 8 || change24h <= -0.02 ? { label: 'AVOID', tone: 'warning' as const } : { label: 'HOLD', tone: 'pending' as const });
+const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2 ? 'forte' : rank >= 0 && rank < 5 ? 'media' : volume > 100_000_000 ? 'media' : 'leve');
 
 export function MobileRadar() {
   const navigate = useNavigate();
@@ -42,18 +43,20 @@ export function MobileRadar() {
   const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
   const [activeSymbol, setActiveSymbol] = useState(normalizedRouteSymbol);
 
-  useEffect(() => {
-    setActiveSymbol(normalizedRouteSymbol);
-  }, [normalizedRouteSymbol]);
+  useEffect(() => setActiveSymbol(normalizedRouteSymbol), [normalizedRouteSymbol]);
 
   const overviewQuery = useRadarOverview(activeSymbol, '24H');
   const overview = overviewQuery.data;
   const movers = overview?.universe ?? [];
   const focusAsset = overview?.focus_asset;
   const regime = overview?.market_regime;
-  const hero = overview?.hero;
   const executionRisk = overview?.execution_risk;
   const nextAction = overview?.next_action;
+  const marketState = overview?.market_state;
+  const momentumRanking = overview?.rankings?.momentum ?? [];
+  const liquidityRanking = overview?.rankings?.liquidity ?? [];
+  const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({ symbol, price: 0, change24h: 0, volume: 0 }));
+
   const radarTitleSymbol = focusAsset?.symbol ?? activeSymbol;
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
   const radarDescription = focusAsset
@@ -66,250 +69,160 @@ export function MobileRadar() {
     canonicalPath: radarCanonicalPath,
     type: 'website',
     keywords: ['crypto radar', 'market intelligence', radarTitleSymbol, 'execution risk', 'market regime', 'liquidity'],
-    structuredData: {
-      '@context': 'https://schema.org',
-      '@type': 'Dataset',
-      name: `${radarTitleSymbol} Radar | SNE OS`,
-      description: radarDescription,
-      url: `https://snelabs.space${radarCanonicalPath}`,
-    },
+    structuredData: { '@context': 'https://schema.org', '@type': 'Dataset', name: `${radarTitleSymbol} Radar | SNE OS`, description: radarDescription, url: `https://snelabs.space${radarCanonicalPath}` },
   });
 
+  const rows = useMemo(() => {
+    const momentumMap = new Map(momentumRanking.map((entry) => [entry.symbol, entry]));
+    const liquidityMap = new Map(liquidityRanking.map((entry, index) => [entry.symbol, index]));
+    return quickSelection
+      .map((item) => {
+        const score = item.symbol === focusAsset?.symbol ? focusAsset.score : momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000));
+        const liquidityRank = liquidityMap.get(item.symbol) ?? -1;
+        return {
+          ...item,
+          score,
+          state: deriveState(item.change24h, score),
+          liquidityLabel: item.symbol === focusAsset?.symbol ? focusAsset.liquidity.label.toLowerCase() : deriveLiquidity(liquidityRank, Number(item.volume)),
+          swapsHref: buildSwapsHrefFromRadarSymbol(item.symbol),
+        };
+      })
+      .sort((left, right) => (right.score - left.score) || (Number(right.volume) - Number(left.volume)));
+  }, [focusAsset, liquidityRanking, momentumRanking, quickSelection]);
+
+  const activeRow = rows.find((row) => row.symbol === activeSymbol) ?? rows[0];
+
   return (
-    <MobilePageShell
-      title="Radar"
-      subtitle="Camada de decisao antes da execucao."
-      showContext
-    >
+    <MobilePageShell title="Radar" subtitle="Regime, liquidez e rota em fluxo." showContext>
       <SurfaceCard variant="elevated">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div>
-            <div className="text-[var(--text-1)] mb-1">{hero?.headline ?? 'Regime sem ativo em foco.'}</div>
-            <div className="text-sm text-[var(--text-2)]">{hero?.summary ?? 'Sem leitura suficiente para decidir.'}</div>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-2">
+              <Activity className="w-3.5 h-3.5 text-[var(--accent-orange)]" />
+              <span>Radar</span>
+              <span className={`inline-flex h-2 w-2 rounded-full ${overviewQuery.isFetching ? 'animate-pulse' : ''}`} style={{ backgroundColor: overviewQuery.isFetching ? 'var(--accent-orange)' : 'var(--success)' }} />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-[0.16em] text-[var(--text-3)]">
+              <span>Regime <span className="text-[var(--text-1)]">{regime?.label ?? 'sem dados'}</span></span>
+              <span>24H</span>
+              <span>Update <span className="text-[var(--text-1)]">{formatUpdatedAt(overview?.last_updated)}</span></span>
+            </div>
           </div>
-          <button
-            onClick={() => overviewQuery.refetch()}
-            className="w-10 h-10 rounded-2xl border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)] flex items-center justify-center"
-          >
+          <button onClick={() => overviewQuery.refetch()} className="w-10 h-10 rounded-2xl border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)] flex items-center justify-center">
             <RefreshCw className={`w-4 h-4 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
-          {(hero?.metrics ?? []).slice(0, 4).map((metric) => (
-            <div key={`${metric.label}-${metric.value}`} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <div className="text-[10px] uppercase text-[var(--text-3)]">{metric.label}</div>
-                <Badge variant={toBadgeVariant(metric.tone)} size="sm">
-                  {metric.value}
-                </Badge>
-              </div>
-              {metric.detail ? <div className="text-sm text-[var(--text-2)]">{metric.detail}</div> : null}
-            </div>
-          ))}
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
-          <ShieldAlert className="w-4 h-4 text-[var(--accent-orange)]" />
-          <span>Risco de execucao</span>
-        </div>
-
-        {overviewQuery.isLoading && !overview ? (
-          <div className="text-sm text-[var(--text-2)]">Sincronizando risco de execucao...</div>
-        ) : (overviewQuery.isError || !overview) && !overview ? (
-          <ErrorState
-            title="Radar indisponivel"
-            description="Os dados de mercado nao carregaram agora."
-            onRetry={() => overviewQuery.refetch()}
-          />
-        ) : (
-          <>
-            <div className="rounded-xl border border-[var(--stroke-1)] p-3 mb-3" style={{ backgroundColor: 'rgba(255,140,66,0.08)' }}>
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="text-[var(--text-1)]">Risco {executionRisk?.label ?? 'sem dados'}</div>
-                <Badge variant={toBadgeVariant(executionRisk?.tone)} size="sm">
-                  {executionRisk?.score ?? 0}
-                </Badge>
-              </div>
-              <div className="text-sm text-[var(--text-2)]">{executionRisk?.summary ?? 'Sem leitura suficiente.'}</div>
-            </div>
-
-            <div className="space-y-2">
-              {(executionRisk?.blockers ?? []).map((blocker) => (
-                <div key={blocker} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3 text-sm text-[var(--text-2)]">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 mt-0.5 text-[var(--warning)] shrink-0" />
-                    <span>{blocker}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-[var(--text-1)]">Ativo em foco</h3>
-          <Badge variant={toBadgeVariant(regime?.tone)} size="sm">
-            {regime?.label ?? 'sem dados'}
-          </Badge>
-        </div>
-
-        {focusAsset ? (
-          <div className="space-y-3">
-            <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-4">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div className="flex items-start gap-3">
-                  <IntelEntityIcon
-                    symbol={toEntitySymbol(focusAsset.symbol)}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                    iconClassName="h-5 w-5"
-                  />
-                  <div>
-                    <div className="text-[var(--text-1)] mb-1">{focusAsset.symbol}</div>
-                    <div className="text-sm text-[var(--text-2)]">
-                      Score {focusAsset.score}, confianca {focusAsset.confidence.label}, liquidez {focusAsset.liquidity.label}.
-                    </div>
-                  </div>
-                </div>
-                <div className={focusAsset.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
-                  {focusAsset.change24h >= 0 ? '+' : ''}
-                  {(focusAsset.change24h * 100).toFixed(1)}%
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Preco</div>
-                  <div className="text-[var(--text-1)]">${formatPrice(focusAsset.price)}</div>
-                </div>
-                <div className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
-                  <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Volume</div>
-                  <div className="text-[var(--text-1)]">${compact(Number(focusAsset.volume))}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            title="Sem ativo em foco"
-            description="O Radar nao retornou um ativo suficientemente liquido nesta janela."
-          />
-        )}
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
-          <Waves className="w-4 h-4 text-[var(--accent-orange)]" />
-          <span>Proxima acao</span>
-        </div>
-
-        <div className="text-[var(--text-1)] mb-1">{nextAction?.title ?? 'Contexto antes da execucao.'}</div>
-        <div className="text-sm text-[var(--text-2)] mb-4">{nextAction?.summary ?? 'Sem guidance state-based.'}</div>
-
-        <div className="space-y-3">
-          {(nextAction?.actions ?? []).map((action) => (
-            <MobileButton
-              key={`${action.label}-${action.href}`}
-              variant={action.tone === 'accent' ? 'primary' : 'secondary'}
-              className="w-full justify-between"
-              onClick={() => navigate(action.href)}
-            >
-              <span>{action.label}</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </MobileButton>
-          ))}
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[var(--text-1)]">{overview?.universe_summary.title ?? 'Universo monitorado'}</h3>
-          <Badge variant="neutral" size="sm">{movers.length}</Badge>
-        </div>
-        <div className="text-sm text-[var(--text-2)] mb-3">
-          {overview?.universe_summary.summary ?? 'Liquidez viva, regime relativo e selecao rapida do ativo em foco.'}
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
-          {RADAR_SYMBOLS.map((symbol) => (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {(rows.length > 0 ? rows : quickSelection).slice(0, 6).map((item) => (
             <button
-              key={symbol}
-              onClick={() => navigate(`/radar/${symbol}`)}
-              className="flex-shrink-0 rounded-full px-3 py-2 border text-sm"
+              key={item.symbol}
+              onClick={() => {
+                setActiveSymbol(item.symbol);
+                navigate(`/radar/${item.symbol.toLowerCase()}`);
+              }}
+              className="flex-shrink-0 rounded-full px-3 py-2 border text-xs uppercase tracking-[0.14em]"
               style={{
-                backgroundColor: activeSymbol === symbol ? 'var(--accent-orange)' : 'var(--bg-2)',
-                color: activeSymbol === symbol ? '#FFFFFF' : 'var(--text-1)',
-                borderColor: activeSymbol === symbol ? 'var(--accent-orange)' : 'var(--stroke-1)',
+                backgroundColor: activeRow?.symbol === item.symbol ? 'rgba(255,140,66,0.10)' : 'var(--bg-2)',
+                color: activeRow?.symbol === item.symbol ? 'var(--accent-orange)' : 'var(--text-2)',
+                borderColor: activeRow?.symbol === item.symbol ? 'rgba(255,140,66,0.18)' : 'var(--stroke-1)',
               }}
             >
-              <span className="inline-flex items-center gap-2">
-                <IntelEntityIcon
-                  symbol={toEntitySymbol(symbol)}
-                  className="flex h-6 w-6 items-center justify-center rounded-full"
-                  style={{ backgroundColor: activeSymbol === symbol ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)' }}
-                  iconClassName="h-3.5 w-3.5"
-                />
-                {symbol}
-              </span>
+              {item.symbol}
             </button>
           ))}
         </div>
+      </SurfaceCard>
 
-        {movers.length === 0 ? (
-          <EmptyState
-            title="Sem mercados ao vivo"
-            description="O universo monitorado esta vazio agora."
-          />
-        ) : (
-          <div className="space-y-3">
-            {movers.map((item) => (
-              <div key={item.symbol} className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <button
-                  onClick={() => {
-                    setActiveSymbol(item.symbol);
-                    navigate(`/radar/${item.symbol.toLowerCase()}`);
-                  }}
-                  className="w-full text-left"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2">
-                      <IntelEntityIcon
-                        symbol={toEntitySymbol(item.symbol)}
-                        className="flex h-8 w-8 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                        iconClassName="h-4 w-4"
-                      />
-                      <div className="text-[var(--text-1)]">{item.symbol}</div>
-                    </div>
-                    <div className={item.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>
-                      {item.change24h >= 0 ? '+' : ''}
-                      {(item.change24h * 100).toFixed(1)}%
-                    </div>
+      {overviewQuery.isLoading && !overview ? (
+        <SurfaceCard><div className="text-sm text-[var(--text-2)]">Sincronizando superficie de mercado...</div></SurfaceCard>
+      ) : (overviewQuery.isError || !overview) && !overview ? (
+        <SurfaceCard><ErrorState title="Radar indisponivel" description="Os dados de mercado nao carregaram agora." onRetry={() => overviewQuery.refetch()} /></SurfaceCard>
+      ) : (
+        <>
+          <SurfaceCard>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start mb-4">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-3)] mb-2">foco atual</div>
+                <div className="flex items-center gap-3">
+                  <IntelEntityIcon symbol={toEntitySymbol(activeRow?.symbol)} className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-5 w-5" />
+                  <div className="min-w-0">
+                    <div className="text-lg text-[var(--text-1)] truncate">{activeRow?.symbol ?? activeSymbol}</div>
+                    <div className="text-sm text-[var(--text-2)]">${formatPrice(activeRow?.price ?? 0)}  {formatPercent(activeRow?.change24h ?? 0)}</div>
                   </div>
-                  <div className="flex items-center justify-between gap-3 text-sm text-[var(--text-2)]">
-                    <span>${formatPrice(item.price)}</span>
-                    <span>Vol ${compact(Number(item.volume))}</span>
-                  </div>
-                </button>
+                </div>
+              </div>
+              <Badge variant={toBadgeVariant(activeRow?.state.tone ?? executionRisk?.tone)} size="sm">{activeRow?.state.label ?? 'HOLD'}</Badge>
+            </div>
 
-                <MobileButton
-                  variant="secondary"
-                  className="w-full mt-3 justify-between"
-                  onClick={() => navigate(buildSwapsHrefFromRadarSymbol(item.symbol))}
-                >
-                  <span>Executar com USDT</span>
+            <div className="grid grid-cols-3 gap-3 text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <div><div className="text-[10px] uppercase text-[var(--text-3)] mb-1">score</div><div className="text-[var(--text-1)]">{activeRow?.score ?? focusAsset?.score ?? 0}</div></div>
+              <div><div className="text-[10px] uppercase text-[var(--text-3)] mb-1">liq</div><div className="text-[var(--text-1)]">{activeRow?.liquidityLabel ?? focusAsset?.liquidity.label?.toLowerCase() ?? '--'}</div></div>
+              <div><div className="text-[10px] uppercase text-[var(--text-3)] mb-1">volume</div><div className="text-[var(--text-1)]">${compact(Number(activeRow?.volume ?? focusAsset?.volume ?? 0))}</div></div>
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center gap-2 mb-3 text-[var(--text-1)]">
+              <ShieldAlert className="w-4 h-4 text-[var(--accent-orange)]" />
+              <span>Rota</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+              <div><div className="text-[10px] uppercase text-[var(--text-3)] mb-1">risco</div><div className="text-[var(--text-1)]">{executionRisk?.label ?? '--'}</div></div>
+              <div><div className="text-[10px] uppercase text-[var(--text-3)] mb-1">execucao</div><div className="text-[var(--text-1)]">{marketState?.execution ?? 'intel-first'}</div></div>
+            </div>
+            <div className="text-sm text-[var(--text-2)] mb-4">{executionRisk?.summary ?? 'Sem leitura suficiente.'}</div>
+            <div className="space-y-3">
+              {(nextAction?.actions ?? []).map((action) => (
+                <MobileButton key={`${action.label}-${action.href}`} variant={action.tone === 'accent' ? 'primary' : 'secondary'} className="w-full justify-between" onClick={() => navigate(action.href)}>
+                  <span>{action.label}</span>
                   <ArrowUpRight className="w-4 h-4" />
                 </MobileButton>
+              ))}
+            </div>
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[var(--text-1)]">Universo monitorado</h3>
+              <Badge variant="neutral" size="sm">{rows.length}</Badge>
+            </div>
+
+            {rows.length === 0 ? (
+              <EmptyState title="Sem mercados ao vivo" description="O universo monitorado esta vazio agora." />
+            ) : (
+              <div className="space-y-2">
+                {rows.map((row, index) => (
+                  <div key={row.symbol} className="rounded-xl border p-3" style={{ borderColor: row.symbol === activeRow?.symbol ? 'rgba(255,140,66,0.18)' : 'var(--stroke-1)', backgroundColor: row.symbol === activeRow?.symbol ? 'rgba(255,140,66,0.08)' : 'var(--bg-2)' }}>
+                    <button onClick={() => { setActiveSymbol(row.symbol); navigate(`/radar/${row.symbol.toLowerCase()}`); }} className="w-full text-left">
+                      <div className="grid grid-cols-[28px_minmax(0,1fr)_auto] gap-3 items-center mb-3" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--text-3)]">{String(index + 1).padStart(2, '0')}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <IntelEntityIcon symbol={toEntitySymbol(row.symbol)} className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-4 w-4" />
+                          <div className="min-w-0">
+                            <div className="truncate text-[var(--text-1)]">{row.symbol}</div>
+                            <div className="text-xs text-[var(--text-3)] uppercase tracking-[0.14em]">{row.liquidityLabel}  score {row.score}</div>
+                          </div>
+                        </div>
+                        <Badge variant={toBadgeVariant(row.state.tone)} size="sm">{row.state.label}</Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-sm text-[var(--text-2)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <span>${formatPrice(row.price)}</span>
+                        <span className={row.change24h >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{formatPercent(row.change24h)}</span>
+                        <span>Vol ${compact(Number(row.volume))}</span>
+                      </div>
+                    </button>
+                    <MobileButton variant="secondary" className="w-full mt-3 justify-between" onClick={() => navigate(row.swapsHref)}>
+                      <span>Executar com USDT</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </MobileButton>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </SurfaceCard>
+            )}
+          </SurfaceCard>
+        </>
+      )}
     </MobilePageShell>
   );
 }
