@@ -11,9 +11,9 @@ type TopbarProps = {
 
 function accessLabel(plan: string) {
   const normalized = plan.trim().toLowerCase();
-  if (normalized === 'pro') return 'acesso pro';
-  if (normalized === 'premium') return 'acesso premium';
-  return 'acesso free';
+  if (normalized === 'pro') return 'ACESSO PRO';
+  if (normalized === 'premium') return 'ACESSO PREMIUM';
+  return 'ACESSO FREE';
 }
 
 function resolveGlow(pathname: string) {
@@ -169,7 +169,25 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                   color: 'var(--text-1)',
                 }}
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">ID</span>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path
+                    d="M12 3.5 18.7 7.4v7.2L12 20.5l-6.7-5.9V7.4L12 3.5Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.45"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.2 9.2 12 7l3.8 2.2M8.2 14.8 12 17l3.8-2.2M12 7v10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.15"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity="0.72"
+                  />
+                  <circle cx="12" cy="12" r="2.05" fill="currentColor" />
+                </svg>
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
@@ -178,8 +196,15 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                 <div className="max-w-[180px] truncate text-sm font-medium" style={{ color: 'var(--text-1)' }}>
                   {walletLabel}
                 </div>
+                <div className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em]" style={{ color: 'var(--ok-green)' }}>
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: 'var(--ok-green)', boxShadow: '0 0 10px rgba(50,213,131,0.55)' }}
+                  />
+                  SESSÃO ATIVA
+                </div>
                 <div className="truncate text-[10px] uppercase tracking-[0.13em]" style={{ color: 'var(--text-3)' }}>
-                  identidade vinculada · {accessLabel(planLabel)} · sessão ativa
+                  IDENTIDADE VINCULADA · {accessLabel(planLabel)}
                 </div>
               </div>
             </div>
