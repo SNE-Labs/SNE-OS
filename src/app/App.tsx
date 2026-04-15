@@ -38,6 +38,7 @@ const MobileLayout = lazy(() => import('./layouts/MobileLayout').then(m => ({ de
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
+import { CHAIN_RPC_URLS } from '@/lib/rpcUrls';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -245,7 +246,14 @@ export default function App() {
             ]
           : []),
       ],
-      transports: Object.fromEntries(SUPPORTED_CHAINS.map((chain) => [chain.id, http()])) as Record<number, ReturnType<typeof http>>,
+      transports: {
+        [mainnet.id]: http(CHAIN_RPC_URLS.mainnet),
+        [arbitrum.id]: http(CHAIN_RPC_URLS.arbitrum),
+        [optimism.id]: http(CHAIN_RPC_URLS.optimism),
+        [base.id]: http(CHAIN_RPC_URLS.base),
+        [polygon.id]: http(CHAIN_RPC_URLS.polygon),
+        [scroll.id]: http(CHAIN_RPC_URLS.scroll),
+      },
       ssr: true,
     })
   );

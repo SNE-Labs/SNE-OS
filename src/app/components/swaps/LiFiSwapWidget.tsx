@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
+import { LIFI_RPC_URLS } from '@/lib/rpcUrls';
+
 type SwapPrefill = {
   fromChain?: number;
   toChain?: number;
@@ -54,9 +56,12 @@ export function LiFiSwapWidget({
       chains: {
         allow: SUPPORTED_SWAP_CHAINS,
       },
-      hiddenUI: compact ? ['poweredBy'] : [],
+      hiddenUI: compact ? ['poweredBy', 'gasRefuelMessage'] : ['gasRefuelMessage'],
       walletConfig: {
         usePartialWalletManagement: true,
+      },
+      sdkConfig: {
+        rpcUrls: LIFI_RPC_URLS,
       },
       theme: {
         container: {
