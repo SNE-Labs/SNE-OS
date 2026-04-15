@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -14,6 +15,7 @@ function intelEntity(post: { assets?: string[]; chains?: string[] }) {
 export function MobileBlog() {
   const navigate = useNavigate();
   const { topic, chain, asset } = useParams();
+  const [visibleCount, setVisibleCount] = useState(20);
   const postsQuery = useQuery({
     queryKey: ['intel-posts', 'mobile'],
     queryFn: intelApi.getPosts,
@@ -27,6 +29,8 @@ export function MobileBlog() {
     if (asset && !(post.assets ?? []).includes(asset)) return false;
     return true;
   });
+  const visiblePosts = filteredPosts.slice(0, visibleCount);
+  const hasMorePosts = filteredPosts.length > visiblePosts.length;
   const taxonomyLabel = topic ?? chain ?? asset ?? null;
   const taxonomyKind = topic ? 'tema' : chain ? 'chain' : asset ? 'asset' : null;
   const canonicalPath = topic
@@ -36,6 +40,10 @@ export function MobileBlog() {
       : asset
         ? `/intel/asset/${asset}`
         : '/intel';
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [topic, chain, asset]);
 
   useSeoMeta({
     title: taxonomyLabel ? `Intel Brief: ${taxonomyLabel} | SNE OS` : 'Intel Brief | SNE OS',
@@ -96,7 +104,13 @@ export function MobileBlog() {
         />
       ) : (
         <>
-          {filteredPosts.map((post) => (
+          <SurfaceCard>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[var(--text-1)]">Fluxo editorial</div>
+              <div className="text-xs text-[var(--text-3)]">{filteredPosts.length} peças na view</div>
+            </div>
+          </SurfaceCard>
+          {visiblePosts.map((post) => (
             <SurfaceCard key={post.id || post.slug}>
               <button type="button" className="w-full text-left" onClick={() => navigate(`/intel/${post.slug || post.id}`)}>
                 <div className="flex items-center justify-between gap-3 mb-3">
@@ -137,6 +151,11 @@ export function MobileBlog() {
               </button>
             </SurfaceCard>
           ))}
+          {hasMorePosts ? (
+            <MobileButton variant="secondary" className="w-full" onClick={() => setVisibleCount((current) => current + 20)}>
+              Carregar mais peças
+            </MobileButton>
+          ) : null}
         </>
       )}
     </MobilePageShell>

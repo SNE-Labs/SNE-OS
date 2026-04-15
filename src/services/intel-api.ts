@@ -78,8 +78,8 @@ export function intelOgImageUrl(slug: string) {
 }
 
 export const intelApi = {
-  getPosts: async (limit = 36): Promise<IntelPostsResponse> => {
-    const normalizedLimit = Math.max(1, Math.min(limit, 120));
+  getPosts: async (limit = 120): Promise<IntelPostsResponse> => {
+    const normalizedLimit = Math.max(1, Math.min(limit, 240));
     const response = await apiGet<IntelPostsResponse>(`/api/intel/posts?limit=${normalizedLimit}`);
     return {
       ...response,

@@ -33,6 +33,7 @@ export function Blog() {
   const [topicFilter, setTopicFilter] = useState(topic ?? 'all');
   const [chainFilter, setChainFilter] = useState(chain ?? 'all');
   const [assetFilter, setAssetFilter] = useState(asset ?? 'all');
+  const [visibleCount, setVisibleCount] = useState(24);
   const postsQuery = useQuery({
     queryKey: ['intel-posts'],
     queryFn: intelApi.getPosts,
@@ -70,7 +71,9 @@ export function Blog() {
   const hubAssetLinks = assetOptions.filter((value) => value !== 'all').slice(0, 8);
 
   const featured = filteredPosts[0];
-  const secondary = filteredPosts.slice(1);
+  const visiblePosts = filteredPosts.slice(0, visibleCount);
+  const secondary = visiblePosts.slice(1);
+  const hasMorePosts = filteredPosts.length > visiblePosts.length;
   const taxonomyLabel = topic ?? chain ?? asset ?? null;
   const taxonomyKind = topic ? 'tema' : chain ? 'chain' : asset ? 'asset' : null;
   const canonicalPath = topic
@@ -90,6 +93,9 @@ export function Blog() {
   useEffect(() => {
     setAssetFilter(asset ?? 'all');
   }, [asset]);
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [activeKind, assetFilter, chainFilter, topicFilter]);
 
   useSeoMeta({
     title: taxonomyLabel
@@ -287,6 +293,9 @@ export function Blog() {
                   <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Fluxo</div>
                   <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>Peças recentes</div>
                 </div>
+                <div className="text-sm" style={{ color: 'var(--text-3)' }}>
+                  {filteredPosts.length} peças na view
+                </div>
               </div>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {secondary.map((post) => (
@@ -329,6 +338,16 @@ export function Blog() {
                 </button>
               ))}
               </div>
+              {hasMorePosts ? (
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((current) => current + 24)}
+                  className="w-full rounded-2xl px-4 py-3 text-sm font-medium"
+                  style={{ backgroundColor: 'var(--bg-2)', color: 'var(--text-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                >
+                  Carregar mais peças
+                </button>
+              ) : null}
             </section>
           </>
         )}

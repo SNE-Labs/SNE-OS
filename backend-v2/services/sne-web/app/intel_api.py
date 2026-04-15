@@ -47,7 +47,7 @@ def intel_briefing():
 def intel_posts():
     try:
         limit = request.args.get("limit", default=24, type=int) or 24
-        normalized_limit = max(1, min(limit, 120))
+        normalized_limit = max(1, min(limit, 240))
         posts = fetch_intel_posts(limit=normalized_limit)
         return jsonify({
             "items": posts,
