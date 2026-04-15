@@ -53,13 +53,13 @@ const DEFAULT_VAULT_OVERVIEW: VaultOverview = {
   capital_cards: [],
   posture: [],
   protection: {
-    state: 'Visibilidade de capital indisponível.',
-    boundary: 'Chaves e Dispositivos continuam sendo a fronteira de proteção do Vault.',
+    state: 'A leitura USDT fica indisponivel ate a conexao de uma wallet.',
+    boundary: 'Chaves e Dispositivos continuam sendo a fronteira de protecao do Vault.',
   },
   readiness: {
-    custody: 'Não custodial. O capital permanece na carteira conectada.',
-    staking: 'Nenhuma rota de staking disponível para esta conta.',
-    provisioning: 'Provisionamento de hardware requer um dispositivo SNE Vault vinculado.',
+    custody: 'O Vault nao assina nem envia transacoes. O saldo permanece na wallet conectada.',
+    staking: 'Leia gas e presenca de saldo antes de abrir a superficie de execucao.',
+    provisioning: 'Movimento, conversao e uso de USDT acontecem apenas em Swaps.',
   },
   last_updated: '',
 };

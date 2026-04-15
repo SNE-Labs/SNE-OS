@@ -77,11 +77,11 @@ export function MobileVault() {
                 <div className="text-[var(--text-1)]">{aggregate?.total_value_display ?? '--'}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Networks</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Redes</div>
                 <div className="text-[var(--text-1)]">{aggregate?.active_networks ?? 0}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Source</div>
+                <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Fonte</div>
                 <div className="text-[var(--text-1)]">{overview.surface.source}</div>
               </div>
             </div>
@@ -149,7 +149,7 @@ export function MobileVault() {
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <div className="text-[var(--text-3)]">Balance</div>
+                        <div className="text-[var(--text-3)]">USDT</div>
                         <div className="text-[var(--text-1)]">{item.balance_formatted ?? '--'}</div>
                       </div>
                       <div>
@@ -174,11 +174,11 @@ export function MobileVault() {
 
             <div className="space-y-3 mb-4">
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">State</div>
+                <div className="text-[var(--text-1)] mb-1">Estado</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.protection.state}</div>
               </div>
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                <div className="text-[var(--text-1)] mb-1">Boundary</div>
+                <div className="text-[var(--text-1)] mb-1">Fronteira</div>
                 <div className="text-sm text-[var(--text-2)]">{overview.protection.boundary}</div>
               </div>
             </div>

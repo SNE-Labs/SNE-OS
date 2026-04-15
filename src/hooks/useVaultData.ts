@@ -3,7 +3,7 @@ import { readPersistedSnapshot, writePersistedSnapshot } from '../lib/querySnaps
 import { vaultApi } from '../services/vault-api';
 
 export function useVaultOverview(address: string | null) {
-  const snapshotKey = `sne:query:vault:${address ?? 'anonymous'}`;
+  const snapshotKey = `sne:query:vault:v2:${address ?? 'anonymous'}`;
   const persistedSnapshot = readPersistedSnapshot(snapshotKey);
 
   return useQuery({
