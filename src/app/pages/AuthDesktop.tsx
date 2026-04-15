@@ -174,7 +174,7 @@ export function AuthDesktop() {
                 machine_id,
                 state,
                 app: "desktop",
-            }, { credentials: 'include' });
+            });
 
             const { code, tier } = verifyRes;
 

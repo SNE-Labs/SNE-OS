@@ -260,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const authResponse = await apiPost<{
       token: string;
       tier: 'free' | 'premium' | 'pro';
-    }>("/api/auth/siwe", { message, signature }, { credentials: 'include' });
+    }>("/api/auth/siwe", { message, signature });
 
     localStorage.setItem('auth_token', authResponse.token);
     setSessionAddress(address);
@@ -340,7 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try {
-      await apiPost("/api/auth/logout", {}, { credentials: 'include' });
+      await apiPost("/api/auth/logout", {});
     } catch (error) {
       console.error("Logout error:", error);
     }
