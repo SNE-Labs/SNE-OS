@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 import logging
 import os
 import re
-import threading
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -805,8 +804,7 @@ def _trigger_enterprise_post_refresh() -> None:
     if not redis_client.setex(POST_REFRESH_LOCK_KEY, 120, "1"):
         return
 
-    worker = threading.Thread(target=_refresh_enterprise_posts, kwargs={"limit": BLOG_DAILY_LIMIT}, daemon=True)
-    worker.start()
+    _refresh_enterprise_posts(limit=BLOG_DAILY_LIMIT)
 
 
 def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog: bool = True) -> Dict[str, Any]:
@@ -823,6 +821,9 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
         blog_items = [_shape_blog_item(post) for post in curated_posts]
         if len(blog_posts) < BLOG_DAILY_LIMIT or _cached_posts_are_stale(redis_client, blog_posts):
             _trigger_enterprise_post_refresh()
+            blog_posts = _load_cached_posts(redis_client)
+            curated_posts = _curate_home_editorial_posts(blog_posts, max(limit, BLOG_SURFACE_LIMIT))
+            blog_items = [_shape_blog_item(post) for post in curated_posts]
         items = blog_items[:limit] if blog_items else raw_items[:limit]
 
     return {
@@ -848,6 +849,7 @@ def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
         or _needs_daily_backfill(posts)
     ):
         _trigger_enterprise_post_refresh()
+        posts = _load_cached_posts(redis_client)
     return posts[:limit]
 
 
