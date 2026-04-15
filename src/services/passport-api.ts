@@ -5,10 +5,12 @@ import type {
   GasResponse,
   ProductsResponse,
   ErrorResponse,
+  PassportOverviewIdentity,
   PassportIdentityCheckpoint,
   PassportLinkInitResponse,
+  PassportProfileInput,
 } from '../types/passport';
-import { apiGet, apiPost } from '@/lib/api/http';
+import { apiGet, apiPost, apiPut } from '@/lib/api/http';
 
 /**
  * Cliente para API do SNE Scroll Passport
@@ -327,6 +329,14 @@ export async function getPassportOverview(address?: string | null): Promise<{
 
 export async function getPassportIdentity(): Promise<PassportIdentityCheckpoint> {
   return apiGet('/api/passport/me');
+}
+
+export async function getPassportProfile(identityId: string): Promise<PassportOverviewIdentity> {
+  return apiGet(`/api/passport/profile/${encodeURIComponent(identityId)}`);
+}
+
+export async function updatePassportProfile(payload: PassportProfileInput): Promise<PassportIdentityCheckpoint> {
+  return apiPut('/api/passport/profile', payload);
 }
 
 export async function initPassportWalletLink(candidateAddress: string): Promise<PassportLinkInitResponse> {

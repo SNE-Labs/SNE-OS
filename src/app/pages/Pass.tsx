@@ -17,9 +17,11 @@ import { isAddress } from 'viem';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
+import { PassportIdentityProfilePanel } from '../components/passport/PassportIdentityProfilePanel';
 import { PassportWalletLinkPanel } from '../components/passport/PassportWalletLinkPanel';
-import { usePassportIdentity, usePassportOverview } from '../../hooks/usePassportData';
+import { usePassportIdentity, usePassportOverview, useUpdatePassportProfile } from '../../hooks/usePassportData';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import type { PassportOverviewIdentity, PassportProfileInput } from '@/types/passport';
 import { formatAddress } from '@/utils/format';
 
 type PassportTab = 'identity' | 'lookup' | 'social';
@@ -43,6 +45,7 @@ type OverviewProfile = {
   linked_accounts?: LinkedAccount[];
   network_scope?: NetworkScope[];
   identity?: { address?: string; accountType?: string; txCount?: number; balanceEth?: string; hasActivity?: boolean };
+  passport?: PassportOverviewIdentity | null;
   metadata?: { source?: string };
 };
 
@@ -78,16 +81,19 @@ export function Pass() {
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [recentLookups, setRecentLookups] = useState<string[]>(() => readRecentLookups());
 
   const identityQuery = usePassportIdentity(isAuthenticated);
   const connectedOverviewQuery = usePassportOverview(isAuthenticated && address ? address : null);
   const publicOverviewQuery = usePassportOverview(lookupTarget);
+  const updateProfileMutation = useUpdatePassportProfile();
 
   const identity = identityQuery.data;
   const connectedProfile = connectedOverviewQuery.data?.profile as OverviewProfile | null;
   const publicProfile = publicOverviewQuery.data?.profile as OverviewProfile | null;
+  const publicPassport = publicProfile?.passport ?? null;
 
   const connectedLinkedAccounts = connectedProfile?.linked_accounts ?? [];
   const connectedNetworkScope = connectedProfile?.network_scope ?? [];
@@ -139,6 +145,15 @@ export function Pass() {
     setLookupTarget(candidate);
     setLookupError(null);
     setActiveTab('lookup');
+  };
+
+  const handleProfileSave = async (payload: PassportProfileInput) => {
+    setProfileSaveError(null);
+    try {
+      await updateProfileMutation.mutateAsync(payload);
+    } catch (error) {
+      setProfileSaveError(error instanceof Error ? error.message : 'Falha ao salvar o perfil.');
+    }
   };
 
   const statCardStyle = {
@@ -306,6 +321,19 @@ export function Pass() {
                 />
               ) : (
                 <>
+                  <PassportIdentityProfilePanel
+                    profile={identity.profile}
+                    identityId={identity.identity.id}
+                    primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
+                    walletsTotal={identity.stats.wallets_total}
+                    editable
+                    isSaving={updateProfileMutation.isPending}
+                    errorMessage={profileSaveError}
+                    title="Perfil customizavel"
+                    subtitle="O checkpoint continua sendo o identity id. O que muda aqui eh a camada publica e social exibida pelo Passport."
+                    onSave={handleProfileSave}
+                  />
+
                   <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
                     <div
                       className="rounded-xl p-5"
@@ -628,12 +656,52 @@ export function Pass() {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {publicPassport ? (
+                      <PassportIdentityProfilePanel
+                        profile={publicPassport.profile}
+                        identityId={publicPassport.identity.id}
+                        primaryAddress={publicPassport.primary_wallet?.address ?? publicPassport.identity.anchor_address}
+                        walletsTotal={publicPassport.stats.wallets_total}
+                        title="Perfil publico Passport"
+                        subtitle="Este perfil foi resolvido a partir do checkpoint de identidade vinculado ao endereco consultado."
+                      />
+                    ) : null}
+
                     <div className="rounded-lg p-4" style={statCardStyle}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Address</div>
                       <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
                         {publicProfile.identity?.address ?? lookupTarget}
                       </div>
                     </div>
+
+                    {publicPassport ? (
+                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Identity ID</div>
+                          <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                            {publicPassport.identity.id}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Wallets</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {publicPassport.stats.wallets_total}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Anchor</div>
+                          <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                            {formatAddress(publicPassport.identity.anchor_address)}
+                          </div>
+                        </div>
+                        <div className="rounded-lg p-4" style={statCardStyle}>
+                          <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Perfil</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {publicPassport.profile.is_default ? 'default' : 'custom'}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                       <div className="rounded-lg p-4" style={statCardStyle}>

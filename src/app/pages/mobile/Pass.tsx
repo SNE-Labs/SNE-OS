@@ -3,10 +3,12 @@ import { ArrowUpRight, BadgeCheck, Globe, Link2, Search, Shield, Wallet } from '
 import { isAddress } from 'viem';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { PassportIdentityProfilePanel } from '../../components/passport/PassportIdentityProfilePanel';
 import { WalletConnect } from '../../components/passport/WalletConnect';
 import { PassportWalletLinkPanel } from '../../components/passport/PassportWalletLinkPanel';
-import { usePassportIdentity, usePassportOverview } from '../../../hooks/usePassportData';
+import { usePassportIdentity, usePassportOverview, useUpdatePassportProfile } from '../../../hooks/usePassportData';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import type { PassportOverviewIdentity, PassportProfileInput } from '@/types/passport';
 import { formatAddress } from '@/utils/format';
 
 type LinkedAccount = {
@@ -20,6 +22,7 @@ type OverviewProfile = {
   assertions?: Array<{ id: string; label: string; status: string; value?: string | null; source?: string }>;
   linked_accounts?: LinkedAccount[];
   identity?: { address?: string; accountType?: string; txCount?: number; balanceEth?: string };
+  passport?: PassportOverviewIdentity | null;
   metadata?: { source?: string };
 };
 
@@ -35,16 +38,19 @@ export function MobilePass() {
   const [lookupInput, setLookupInput] = useState('');
   const [lookupTarget, setLookupTarget] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
   const [showLinkPanel, setShowLinkPanel] = useState(false);
 
   const identityQuery = usePassportIdentity(isAuthenticated);
   const connectedOverviewQuery = usePassportOverview(isAuthenticated && address ? address : null);
   const publicOverviewQuery = usePassportOverview(lookupTarget);
+  const updateProfileMutation = useUpdatePassportProfile();
 
   const identity = identityQuery.data;
   const connectedProfile = connectedOverviewQuery.data?.profile as OverviewProfile | null;
   const publicProfile = publicOverviewQuery.data?.profile as OverviewProfile | null;
   const linkedAccounts = connectedProfile?.linked_accounts ?? [];
+  const publicPassport = publicProfile?.passport ?? null;
 
   useEffect(() => {
     if (!lookupTarget) return;
@@ -63,6 +69,15 @@ export function MobilePass() {
     }
     setLookupError(null);
     setLookupTarget(candidate);
+  };
+
+  const handleProfileSave = async (payload: PassportProfileInput) => {
+    setProfileSaveError(null);
+    try {
+      await updateProfileMutation.mutateAsync(payload);
+    } catch (error) {
+      setProfileSaveError(error instanceof Error ? error.message : 'Falha ao salvar o perfil.');
+    }
   };
 
   return (
@@ -162,6 +177,19 @@ export function MobilePass() {
             </div>
           </SurfaceCard>
 
+          <PassportIdentityProfilePanel
+            profile={identity.profile}
+            identityId={identity.identity.id}
+            primaryAddress={identity.primary_wallet?.address ?? identity.identity.anchor_address}
+            walletsTotal={identity.stats.wallets_total}
+            editable
+            isSaving={updateProfileMutation.isPending}
+            errorMessage={profileSaveError}
+            title="Perfil publico"
+            subtitle="Personalize a camada publica do checkpoint sem perder a ancora do identity id."
+            onSave={handleProfileSave}
+          />
+
           {showLinkPanel ? (
             <PassportWalletLinkPanel currentAddress={address} onLinked={() => identityQuery.refetch()} />
           ) : null}
@@ -244,33 +272,46 @@ export function MobilePass() {
               ) : (publicOverviewQuery.isError || !publicProfile) && !publicProfile ? (
                 <div className="text-sm text-[var(--danger-red)]">Falha ao resolver o perfil público.</div>
               ) : (
-                <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="text-[var(--text-1)]">{formatAddress(publicProfile.identity?.address ?? lookupTarget)}</div>
-                    <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Tipo</div>
-                      <div className="text-[var(--text-1)]">{publicProfile.identity?.accountType ?? '--'}</div>
+                <div className="space-y-3">
+                  {publicPassport ? (
+                    <PassportIdentityProfilePanel
+                      profile={publicPassport.profile}
+                      identityId={publicPassport.identity.id}
+                      primaryAddress={publicPassport.primary_wallet?.address ?? publicPassport.identity.anchor_address}
+                      walletsTotal={publicPassport.stats.wallets_total}
+                      title="Checkpoint publico"
+                      subtitle="Este endereco ja pertence a um checkpoint Passport com perfil proprio."
+                    />
+                  ) : null}
+
+                  <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="text-[var(--text-1)]">{formatAddress(publicProfile.identity?.address ?? lookupTarget)}</div>
+                      <ArrowUpRight className="w-4 h-4 text-[var(--text-3)]" />
                     </div>
-                    <div>
-                      <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Saldo</div>
-                      <div className="text-[var(--text-1)]">{publicProfile.identity?.balanceEth ? `${publicProfile.identity.balanceEth} ETH` : '--'}</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {(publicProfile.assertions ?? []).slice(0, 3).map((assertion) => (
-                      <div key={assertion.id} className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
-                        <div className="flex items-center justify-between gap-3 mb-1">
-                          <div className="text-[var(--text-1)]">{assertion.label}</div>
-                          <Badge variant={assertion.status === 'present' ? 'success' : assertion.status === 'inactive' ? 'warning' : 'neutral'} size="sm">
-                            {assertion.status}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-[var(--text-2)] break-words">{assertion.value ?? '--'}</div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Tipo</div>
+                        <div className="text-[var(--text-1)]">{publicProfile.identity?.accountType ?? '--'}</div>
                       </div>
-                    ))}
+                      <div>
+                        <div className="text-[10px] uppercase text-[var(--text-3)] mb-1">Saldo</div>
+                        <div className="text-[var(--text-1)]">{publicProfile.identity?.balanceEth ? `${publicProfile.identity.balanceEth} ETH` : '--'}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {(publicProfile.assertions ?? []).slice(0, 3).map((assertion) => (
+                        <div key={assertion.id} className="rounded-xl bg-[var(--bg-1)] border border-[var(--stroke-1)] p-3">
+                          <div className="flex items-center justify-between gap-3 mb-1">
+                            <div className="text-[var(--text-1)]">{assertion.label}</div>
+                            <Badge variant={assertion.status === 'present' ? 'success' : assertion.status === 'inactive' ? 'warning' : 'neutral'} size="sm">
+                              {assertion.status}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-[var(--text-2)] break-words">{assertion.value ?? '--'}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

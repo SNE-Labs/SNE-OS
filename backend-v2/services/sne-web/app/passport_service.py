@@ -13,6 +13,7 @@ from .networks import (
     normalize_evm_address,
     with_evm_provider,
 )
+from .passport_identity_service import get_identity_by_address, serialize_identity
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +199,14 @@ def build_passport_overview(address: Optional[str], network_key: Optional[str] =
         }
         identity = profile["identity"]
 
+    passport_identity = None
+    try:
+        identity_record = get_identity_by_address(address)
+        if identity_record:
+            passport_identity = serialize_identity(identity_record, include_events=False)
+    except Exception as exc:
+        logger.warning("Passport checkpoint resolution failed for %s: %s", address, exc)
+
     linked_accounts = build_linked_accounts(address, network["key"])
     active_accounts = sum(1 for account in linked_accounts if account["status"] == "active")
 
@@ -221,7 +230,10 @@ def build_passport_overview(address: Optional[str], network_key: Optional[str] =
     return {
         "connected": True,
         "status": status,
-        "profile": profile,
+        "profile": {
+            **profile,
+            "passport": passport_identity,
+        },
         "surface": {
             "address": address,
             "network": network["label"],

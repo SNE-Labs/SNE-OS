@@ -8,11 +8,12 @@ import {
   checkLicense,
   getPassportOverview,
   getPassportIdentity,
+  updatePassportProfile,
   initPassportWalletLink,
   confirmPassportWalletLink,
 } from '../services/passport-api';
 import { useAccount, useBalance as useWagmiBalance } from 'wagmi';
-import type { Address } from '../types/passport';
+import type { Address, PassportProfileInput } from '../types/passport';
 
 /**
  * Hooks para buscar dados do Passport API usando TanStack Query
@@ -83,6 +84,17 @@ export function useInitPassportWalletLink() {
     mutationFn: (candidateAddress: string) => initPassportWalletLink(candidateAddress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passport', 'identity'] });
+    },
+  });
+}
+
+export function useUpdatePassportProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PassportProfileInput) => updatePassportProfile(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['passport', 'identity'] });
+      queryClient.invalidateQueries({ queryKey: ['passport', 'overview'] });
     },
   });
 }

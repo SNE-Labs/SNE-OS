@@ -170,6 +170,24 @@ class PassportIdentityLinkRequest(db.Model):
     completed_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+class PassportIdentityProfile(db.Model):
+    """Perfil customizavel ancorado no checkpoint de identidade Passport."""
+    __tablename__ = 'passport_identity_profiles'
+
+    identity_id = db.Column(db.String(64), db.ForeignKey('passport_identities.id'), primary_key=True)
+    display_name = db.Column(db.String(80))
+    handle = db.Column(db.String(32), unique=True, index=True)
+    bio = db.Column(db.Text)
+    location = db.Column(db.String(80))
+    website_url = db.Column(db.String(255))
+    avatar_url = db.Column(db.String(512))
+    banner_url = db.Column(db.String(512))
+    accent_color = db.Column(db.String(7))
+    social_links = db.Column(JSONB, default=dict)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class UserTier(db.Model):
     """Tabela para armazenar tiers dos usuários"""
     __tablename__ = 'user_tiers'

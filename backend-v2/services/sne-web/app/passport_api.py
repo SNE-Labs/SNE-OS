@@ -127,6 +127,51 @@ def me(auth):
         return fail("INTERNAL_ERROR", "Failed to resolve Passport identity", 500)
 
 
+@passport_bp.get("/profile/<identity_id>")
+def public_profile(identity_id):
+    """
+    Public profile checkpoint lookup by identity id.
+    GET /api/passport/profile/<identity_id>
+    """
+    from .passport_identity_service import get_public_profile_checkpoint
+
+    try:
+        checkpoint = get_public_profile_checkpoint(identity_id)
+        if not checkpoint:
+            return fail("NOT_FOUND", "Passport profile not found", 404)
+        return jsonify(checkpoint), 200
+    except Exception as e:
+        logger.error(f"Passport public profile error: {e}")
+        return fail("INTERNAL_ERROR", "Failed to resolve Passport profile", 500)
+
+
+@passport_bp.put("/profile")
+@passport_bp.post("/profile")
+@require_passport_auth
+def update_profile(auth):
+    """
+    Create or update the authenticated Passport profile.
+    PUT/POST /api/passport/profile
+    """
+    from .passport_identity_service import get_or_create_identity_for_address, update_identity_profile
+
+    try:
+        body = request.get_json(silent=True) or {}
+        identity = get_or_create_identity_for_address(auth['address'])
+        payload = update_identity_profile(identity, auth['address'], body)
+        return jsonify({
+            "connected": True,
+            "address": auth['address'],
+            "identity_id": payload["identity"]["id"],
+            **payload,
+        }), 200
+    except ValueError as e:
+        return fail("BAD_REQUEST", str(e), 400)
+    except Exception as e:
+        logger.error(f"Passport profile update error: {e}")
+        return fail("INTERNAL_ERROR", "Failed to update Passport profile", 500)
+
+
 @passport_bp.post("/link/init")
 @require_passport_auth
 def init_link(auth):

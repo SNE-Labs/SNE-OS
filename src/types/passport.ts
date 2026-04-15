@@ -56,6 +56,7 @@ export type LookupResult = {
   keys: KeyRecord[];
   boxes: BoxRecord[];
   identity?: PassportIdentity;
+  passport?: PassportOverviewIdentity | null;
   assertions?: PassportAssertion[];
   pou?: { nodesPublic: number };
   metadata?: {
@@ -141,6 +142,55 @@ export type PassportIdentityEvent = {
   created_at: string | null;
 };
 
+export type PassportCustomProfile = {
+  identity_id: string;
+  display_name: string;
+  handle: string | null;
+  bio: string;
+  location: string;
+  website_url: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  accent_color: string;
+  social_links: Partial<Record<'x' | 'telegram' | 'github', string>>;
+  completion: number;
+  is_default: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type PassportProfileInput = {
+  display_name: string;
+  handle: string;
+  bio: string;
+  location: string;
+  website_url: string;
+  avatar_url: string;
+  banner_url: string;
+  accent_color: string;
+  social_links: Partial<Record<'x' | 'telegram' | 'github', string>>;
+};
+
+export type PassportOverviewIdentity = {
+  identity_id: string;
+  identity: {
+    id: string;
+    anchor_address: Address;
+    status: string;
+    created_at: string | null;
+    updated_at: string | null;
+  };
+  profile: PassportCustomProfile;
+  primary_wallet: PassportIdentityWallet | null;
+  wallets: PassportIdentityWallet[];
+  stats: {
+    wallets_total: number;
+    active_wallets: number;
+    pending_wallets: number;
+    revoked_wallets: number;
+  };
+};
+
 export type PassportIdentityCheckpoint = {
   connected: boolean;
   address: Address;
@@ -152,6 +202,7 @@ export type PassportIdentityCheckpoint = {
     created_at: string | null;
     updated_at: string | null;
   };
+  profile: PassportCustomProfile;
   primary_wallet: PassportIdentityWallet | null;
   wallets: PassportIdentityWallet[];
   events: PassportIdentityEvent[];

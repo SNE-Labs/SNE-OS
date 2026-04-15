@@ -95,6 +95,35 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   }
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(withApiBase(path), {
+      method: "PUT",
+      credentials: "include",
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`);
+
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error(`PUT ${path} returned non-JSON response: ${contentType}`);
+    }
+
+    return res.json() as Promise<T>;
+  } catch (error) {
+    console.warn(`API call failed: ${path}`, error);
+    throw error;
+  }
+}
+
 export async function apiDelete<T>(path: string): Promise<T> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
