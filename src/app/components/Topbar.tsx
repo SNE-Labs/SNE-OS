@@ -142,7 +142,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
             <WalletConnect showConnectButton connectButtonLabel="Criar ID" />
           ) : (
             <div
-              className="hidden items-center gap-3 rounded-[22px] border px-3 py-2 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
+              className="hidden items-center rounded-[22px] border px-4 py-2 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
               style={{
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02))',
                 borderColor: 'rgba(255,255,255,0.10)',
@@ -150,16 +150,6 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 34px rgba(0,0,0,0.16)',
               }}
             >
-              <div
-                className="h-9 w-9 shrink-0 rounded-[14px] border"
-                style={{
-                  background: `radial-gradient(circle at 30% 20%, ${glow.primary}, rgba(255,102,0,0.10))`,
-                  borderColor: 'rgba(255,255,255,0.10)',
-                  color: 'var(--text-1)',
-                  boxShadow: `0 0 22px ${glow.primary}, inset 0 1px 0 rgba(255,255,255,0.08)`,
-                }}
-                aria-hidden="true"
-              />
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
                   ID operacional
