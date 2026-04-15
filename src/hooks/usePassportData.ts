@@ -8,6 +8,7 @@ import {
   checkLicense,
   getPassportOverview,
   getPassportIdentity,
+  getPassportProfile,
   updatePassportProfile,
   initPassportWalletLink,
   confirmPassportWalletLink,
@@ -68,6 +69,28 @@ export function usePassportIdentity(enabled = true) {
       return payload;
     },
     enabled,
+    initialData: persistedSnapshot?.data,
+    initialDataUpdatedAt: persistedSnapshot?.savedAt,
+    placeholderData: (previousData) => previousData,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function usePassportPublicProfile(identityId: string | null) {
+  const snapshotKey = `sne:query:passport:profile:${identityId ?? 'anonymous'}`;
+  const persistedSnapshot = readPersistedSnapshot(snapshotKey);
+
+  return useQuery({
+    queryKey: ['passport', 'profile', identityId],
+    queryFn: async () => {
+      const payload = await getPassportProfile(identityId!);
+      writePersistedSnapshot(snapshotKey, payload);
+      return payload;
+    },
+    enabled: Boolean(identityId && identityId.length > 0),
     initialData: persistedSnapshot?.data,
     initialDataUpdatedAt: persistedSnapshot?.savedAt,
     placeholderData: (previousData) => previousData,

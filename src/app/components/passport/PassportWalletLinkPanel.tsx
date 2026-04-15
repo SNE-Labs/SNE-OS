@@ -179,7 +179,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
             Vincular nova carteira
           </div>
           <div className="text-sm max-w-2xl" style={{ color: 'var(--text-2)' }}>
-            O vínculo não cria outro identity id. Ele adiciona uma nova wallet ao checkpoint atual depois de duas provas de posse.
+            O vinculo nao cria outra conta. Ele adiciona uma nova wallet ao checkpoint atual depois de duas provas de posse.
           </div>
         </div>
         <button
@@ -246,7 +246,7 @@ export function PassportWalletLinkPanel({ currentAddress, onLinked }: PassportWa
               </div>
               <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>1. Aprovar vínculo</div>
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Assine com {currentAddress ? formatAddress(currentAddress) : 'a carteira atual do Passport'} para autorizar a entrada.
+                Assine com {currentAddress ? formatAddress(currentAddress) : 'a wallet atual da conta'} para autorizar a entrada.
               </div>
             </button>
 

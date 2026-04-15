@@ -45,7 +45,7 @@ function buildInitials(name?: string | null) {
 function profileIdentityLabel(profile?: PassportCustomProfile | null, primaryAddress?: string | null) {
   if (profile?.handle) return `@${profile.handle}`;
   if (primaryAddress) return formatAddress(primaryAddress);
-  return 'Checkpoint Passport';
+  return 'Conta Passport';
 }
 
 export function PassportIdentityProfilePanel({
@@ -56,7 +56,7 @@ export function PassportIdentityProfilePanel({
   editable = false,
   isSaving = false,
   errorMessage,
-  title = 'Perfil Passport',
+  title = 'Presenca publica',
   subtitle,
   onSave,
 }: PassportIdentityProfilePanelProps) {
@@ -126,7 +126,7 @@ export function PassportIdentityProfilePanel({
 
             {walletsTotal ? (
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                {walletsTotal} wallet{walletsTotal > 1 ? 's' : ''} no grafo
+                {walletsTotal} wallet{walletsTotal > 1 ? 's' : ''} na conta
               </div>
             ) : null}
           </div>
@@ -280,7 +280,7 @@ export function PassportIdentityProfilePanel({
             <textarea
               value={draft.bio}
               onChange={(event) => setDraft((current) => ({ ...current, bio: event.target.value }))}
-              placeholder="Operador, pesquisador ou builder. Este texto aparece no perfil publico do Passport."
+              placeholder="Operador, pesquisador ou builder. Este texto aparece no lookup publico da conta."
               rows={4}
               className="w-full rounded-lg px-3 py-3 text-sm resize-y"
               style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}

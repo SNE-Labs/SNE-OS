@@ -316,6 +316,18 @@ export async function getPassportOverview(address?: string | null): Promise<{
   connected: boolean;
   status: { label: string; tone: 'active' | 'success' | 'warning' | 'pending' };
   profile: LookupResult | null;
+  linked_accounts?: Array<{
+    network: { key?: string; label?: string; family?: string } | string;
+    address: string;
+    primary?: boolean;
+    status?: string;
+    account_type?: string;
+  }>;
+  network_scope?: Array<{
+    network: { key?: string; label?: string; family?: string } | string;
+    link_strategy?: string;
+    enabled?: boolean;
+  }>;
   surface: {
     address: string | null;
     capital: string;

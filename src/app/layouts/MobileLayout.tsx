@@ -216,7 +216,7 @@ const moreItems = [
     label: 'Passport',
     path: '/pass',
     icon: BadgeCheck,
-    copy: 'Identidade, acesso e vínculo de carteira.',
+    copy: 'Conta, wallets vinculadas e lookup publico.',
   },
   {
     label: 'Secrets',

@@ -264,17 +264,17 @@ function buildSidebarContext(
 
     return {
       eyebrow: 'Passport',
-      title: formatPassportDisplayLabel(passport, passport?.primary_wallet?.address, 'Lookup público ativo'),
+      title: formatPassportDisplayLabel(passport, passport?.primary_wallet?.address, 'Conta publica ativa'),
       summary: trimCopy(
         hasAnchor
-          ? `${walletsTotal || 1} wallet${walletsTotal === 1 ? '' : 's'} na identidade e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
-          : 'Checkpoint pronto para ancorar identidade e vincular novas wallets ao mesmo grafo.',
+          ? `${walletsTotal || 1} wallet${walletsTotal === 1 ? '' : 's'} na conta e ${eventsTotal} evento${eventsTotal === 1 ? '' : 's'} recente${eventsTotal === 1 ? '' : 's'}.`
+          : 'Checkpoint pronto para ancorar a conta e vincular novas wallets ao mesmo Passport.',
         104
       ),
       items: [
         walletsTotal ? `${walletsTotal} wallets` : 'Sem vínculos',
         eventsTotal ? `${eventsTotal} eventos` : 'Sem eventos',
-        hasAnchor ? 'Âncora resolvida' : 'Lookup público',
+        hasAnchor ? 'Ancora resolvida' : 'Lookup publico',
       ].filter(Boolean),
       actionLabel: 'Abrir Vault',
       actionPath: '/vault',

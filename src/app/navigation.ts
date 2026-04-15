@@ -95,7 +95,7 @@ const routeMetaMap: Array<{ match: (pathname: string) => boolean; meta: RouteMet
     meta: {
       title: 'Passport',
       context: 'Identidade',
-      descriptor: 'Identidade, vínculo e lookup público persistente do OS.',
+      descriptor: 'Conta, wallets vinculadas e lookup publico persistente do OS.',
     },
   },
   {
