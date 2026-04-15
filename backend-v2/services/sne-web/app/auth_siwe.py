@@ -264,9 +264,8 @@ def siwe_login():
             if not verify_siwe(
                 message,
                 signature,
-                expected_domain=SIWE_DOMAIN,
-                expected_origin=SIWE_ORIGIN,
-                expected_chain_id=Config.SIWE_CHAIN_ID,
+                expected_domain=Config.SIWE_ALLOWED_DOMAINS,
+                expected_origin=Config.SIWE_ALLOWED_ORIGINS,
                 max_clock_skew=timedelta(seconds=Config.SIWE_MAX_CLOCK_SKEW_SECONDS),
             ):
                 return jsonify({'error': 'Invalid signature'}), 401

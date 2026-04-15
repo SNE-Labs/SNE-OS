@@ -6,7 +6,7 @@ Implementação básica para SNE Radar
 from datetime import datetime, timedelta, timezone
 from eth_account.messages import encode_defunct
 from eth_account import Account
-from typing import Dict, Any
+from typing import Dict, Any, Iterable
 import re
 from urllib.parse import urlparse
 
@@ -73,6 +73,17 @@ def _normalize_origin(value: str | None) -> str:
         return ""
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
+def _matches_expected(value: str | None, expected: str | Iterable[str] | None, normalizer) -> bool:
+    if expected is None:
+        return True
+
+    normalized_value = normalizer(value)
+    if isinstance(expected, (list, tuple, set, frozenset)):
+        allowed_values = {normalizer(item) for item in expected if item}
+        return normalized_value in allowed_values
+
+    return normalized_value == normalizer(expected)
+
 def _parse_timestamp(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -91,7 +102,7 @@ def verify_siwe(
     *,
     expected_domain: str | None = None,
     expected_origin: str | None = None,
-    expected_chain_id: int | str | None = None,
+    expected_chain_id: int | str | Iterable[int | str] | None = None,
     max_clock_skew: timedelta = timedelta(minutes=5),
 ) -> bool:
     """
@@ -104,12 +115,17 @@ def verify_siwe(
             return False
         if parsed.get('version') != '1':
             return False
-        if expected_domain and _normalize_domain(parsed.get('domain')) != _normalize_domain(expected_domain):
+        if not _matches_expected(parsed.get('domain'), expected_domain, _normalize_domain):
             return False
-        if expected_origin and _normalize_origin(parsed.get('uri')) != _normalize_origin(expected_origin):
+        if not _matches_expected(parsed.get('uri'), expected_origin, _normalize_origin):
             return False
-        if expected_chain_id is not None and str(parsed.get('chain_id')) != str(expected_chain_id):
-            return False
+        if expected_chain_id is not None:
+            if isinstance(expected_chain_id, (list, tuple, set, frozenset)):
+                allowed_chain_ids = {str(item) for item in expected_chain_id}
+                if str(parsed.get('chain_id')) not in allowed_chain_ids:
+                    return False
+            elif str(parsed.get('chain_id')) != str(expected_chain_id):
+                return False
 
         nonce = (parsed.get('nonce') or '').strip()
         if not nonce or not re.match(r'^[A-Za-z0-9]{8,}$', nonce):
