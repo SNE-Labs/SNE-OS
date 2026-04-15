@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import { LIFI_RPC_URLS } from '@/lib/rpcUrls';
-import { TRON_CHAIN_ID } from '@/lib/usdt';
+import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, MAJOR_USDT_WIDGET_TOKENS, getUsdtTokenAddress } from '@/lib/usdt';
 
 type SwapPrefill = {
   fromChain?: number;
@@ -20,7 +20,6 @@ type LiFiSwapWidgetProps = {
   className?: string;
 };
 
-const SUPPORTED_SWAP_CHAINS = [1, 42161, 10, 8453, 137, 534352, TRON_CHAIN_ID];
 const LIFI_INTEGRATOR = 'sne-os';
 
 export function LiFiSwapWidget({
@@ -56,9 +55,17 @@ export function LiFiSwapWidget({
       appearance: 'dark',
       buildUrl: true,
       chains: {
-        allow: SUPPORTED_SWAP_CHAINS,
+        allow: MAJOR_USDT_WIDGET_CHAIN_IDS,
       },
-      hiddenUI: ['poweredBy', 'gasRefuelMessage'],
+      tokens: {
+        from: {
+          allow: MAJOR_USDT_WIDGET_TOKENS,
+        },
+        to: {
+          allow: MAJOR_USDT_WIDGET_TOKENS,
+        },
+      },
+      hiddenUI: ['poweredBy', 'gasRefuelMessage', 'fromToken', 'toToken', 'reverseTokensButton'],
       walletConfig: {
         usePartialWalletManagement: true,
       },
@@ -84,7 +91,11 @@ export function LiFiSwapWidget({
           },
         },
       },
-      ...prefill,
+      fromChain: prefill?.fromChain ?? DEFAULT_USDT_CHAIN_ID,
+      toChain: prefill?.toChain,
+      fromToken: getUsdtTokenAddress(prefill?.fromChain ?? DEFAULT_USDT_CHAIN_ID),
+      toToken: getUsdtTokenAddress(prefill?.toChain),
+      toAddress: prefill?.toAddress,
     }),
     [compact, prefill]
   );

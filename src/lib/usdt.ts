@@ -50,6 +50,15 @@ export const USDT_CHAINS: UsdtChainConfig[] = [
 
 export const DEFAULT_USDT_CHAIN_ID = 1;
 
+export const MAJOR_USDT_EVM_CHAINS = USDT_CHAINS.filter((chain) => chain.chainId !== TRON_CHAIN_ID);
+
+export const MAJOR_USDT_WIDGET_CHAIN_IDS = MAJOR_USDT_EVM_CHAINS.map((chain) => chain.chainId);
+
+export const MAJOR_USDT_WIDGET_TOKENS = MAJOR_USDT_EVM_CHAINS.map((chain) => ({
+  chainId: chain.chainId,
+  address: chain.tokenAddress,
+}));
+
 export function normalizeSwapMode(value: string | null | undefined): SwapMode {
   if (value === 'move' || value === 'to-usdt' || value === 'trade' || value === 'advanced') {
     return value;

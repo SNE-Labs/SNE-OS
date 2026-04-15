@@ -6,7 +6,7 @@ import { ArrowLeftRight, ArrowUpRight, BadgeCheck, Waves } from 'lucide-react';
 import { Badge, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { LiFiSwapWidget } from '../../components/swaps/LiFiSwapWidget';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { DEFAULT_USDT_CHAIN_ID, getUsdtChainName, getUsdtTokenAddress, normalizeSwapMode } from '@/lib/usdt';
+import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName, getUsdtTokenAddress } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
 
 function parseChainId(value: string | null) {
@@ -15,33 +15,29 @@ function parseChainId(value: string | null) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function parseToken(value: string | null) {
-  const normalized = `${value || ''}`.trim();
-  return normalized || undefined;
+function normalizeWidgetChain(value?: number) {
+  return value && MAJOR_USDT_WIDGET_CHAIN_IDS.includes(value) ? value : undefined;
 }
 
 export function MobileSwaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
-  const mode = normalizeSwapMode(searchParams.get('mode'));
 
   const prefill = useMemo(() => {
-    const explicitFromChain = parseChainId(searchParams.get('fromChain'));
-    const explicitToChain = parseChainId(searchParams.get('toChain'));
-    const fromChain = explicitFromChain ?? (mode === 'advanced' ? undefined : DEFAULT_USDT_CHAIN_ID);
+    const explicitFromChain = normalizeWidgetChain(parseChainId(searchParams.get('fromChain')));
+    const explicitToChain = normalizeWidgetChain(parseChainId(searchParams.get('toChain')));
+    const fromChain = explicitFromChain ?? DEFAULT_USDT_CHAIN_ID;
     const toChain = explicitToChain;
-    const fromUsdt = getUsdtTokenAddress(fromChain);
-    const toUsdt = getUsdtTokenAddress(toChain);
 
     return {
       fromChain,
       toChain,
-      fromToken: parseToken(searchParams.get('fromToken')) ?? (mode === 'to-usdt' ? undefined : fromUsdt),
-      toToken: parseToken(searchParams.get('toToken')) ?? (mode === 'move' || mode === 'to-usdt' ? toUsdt : undefined),
-      toAddress: address ?? parseToken(searchParams.get('toAddress')),
+      fromToken: getUsdtTokenAddress(fromChain),
+      toToken: getUsdtTokenAddress(toChain),
+      toAddress: address ?? searchParams.get('toAddress') ?? undefined,
     };
-  }, [address, mode, searchParams]);
+  }, [address, searchParams]);
 
   useSeoMeta({
     title: 'Swaps | SNE OS',
@@ -115,7 +111,7 @@ export function MobileSwaps() {
               <span>Antes de assinar</span>
             </div>
             <div className="text-sm text-[var(--text-2)]">
-              Confira rede, token, cotacao, slippage e endereco final antes de confirmar na wallet.
+              Confira rede, cotacao, slippage e endereco final antes de confirmar na wallet.
             </div>
           </div>
         </div>
