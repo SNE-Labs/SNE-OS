@@ -68,7 +68,7 @@ export function Swaps() {
   return (
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-5">
+        <div className="mx-auto max-w-[1600px] space-y-5">
           <header className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-2 text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -89,17 +89,17 @@ export function Swaps() {
             </div>
           </header>
 
-          <main className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <main className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_332px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <section
-              className="min-w-0 rounded-[32px] border p-4 lg:p-5"
+              className="min-w-0 rounded-[30px] border p-3 lg:p-4"
               style={{
                 background:
-                  'radial-gradient(circle at 18% 0%, rgba(255,140,66,0.13), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012))',
-                borderColor: 'rgba(255,255,255,0.08)',
-                boxShadow: '0 26px 90px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  'radial-gradient(circle at 14% -12%, rgba(255,140,66,0.07), transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.026), rgba(255,255,255,0.01))',
+                borderColor: 'rgba(255,255,255,0.075)',
+                boxShadow: '0 18px 70px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.04)',
               }}
             >
-              <div className="mb-4 flex items-center justify-between gap-3 px-1">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
                     Motor de execução
@@ -120,10 +120,10 @@ export function Swaps() {
                 </div>
               </div>
 
-              <LiFiSwapWidget prefill={prefill} className="min-h-[720px]" />
+              <LiFiSwapWidget prefill={prefill} className="min-h-[780px]" />
             </section>
 
-            <aside className="space-y-4">
+            <aside className="space-y-3">
               <Panel title="Sessão" icon={Wallet}>
                 <div className="space-y-3">
                   <div>
@@ -144,10 +144,10 @@ export function Swaps() {
               <Panel title="Rota" icon={CircleDot}>
                 <div className="grid grid-cols-2 gap-3">
                   <Metric label="Origem" value={getUsdtChainName(prefill.fromChain)} />
-                  <Metric label="Destino" value={getUsdtChainName(prefill.toChain)} />
+                  <Metric label="Rede alvo" value={getUsdtChainName(prefill.toChain)} />
                 </div>
                 <div className="mt-3">
-                  <Metric label="Destino padrão" value={prefill.toAddress ? formatAddress(prefill.toAddress) : 'Carteira conectada'} />
+                  <Metric label="Endereço alvo" value={prefill.toAddress ? formatAddress(prefill.toAddress) : 'Carteira conectada'} />
                 </div>
               </Panel>
 
@@ -156,21 +156,28 @@ export function Swaps() {
                   {checks.map((item) => (
                     <div
                       key={item.label}
-                      className="flex items-center gap-2 rounded-2xl border px-3 py-2.5"
+                      className="flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5"
                       style={{
-                        backgroundColor: item.ready ? 'rgba(50,213,131,0.055)' : 'rgba(255,255,255,0.025)',
-                        borderColor: item.ready ? 'rgba(50,213,131,0.12)' : 'rgba(255,255,255,0.07)',
-                        color: item.ready ? 'var(--ok-green)' : 'var(--text-2)',
+                        backgroundColor: item.ready ? 'rgba(50,213,131,0.045)' : 'rgba(255,140,66,0.085)',
+                        borderColor: item.ready ? 'rgba(50,213,131,0.11)' : 'rgba(255,140,66,0.24)',
+                        color: item.ready ? 'var(--ok-green)' : 'var(--accent-orange)',
                       }}
                     >
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span className="text-sm">{item.label}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span className="truncate text-sm">{item.label}</span>
+                      </div>
+                      {!item.ready ? (
+                        <span className="shrink-0 text-[9px] uppercase tracking-[0.16em]">
+                          Ação
+                        </span>
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </Panel>
 
-              <Panel title="Contexto" icon={ArrowUpRight}>
+              <Panel title="Origem da decisão" icon={ArrowUpRight} compact>
                 <button
                   onClick={() => navigate('/radar')}
                   className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
@@ -181,7 +188,7 @@ export function Swaps() {
                       Voltar para o Radar
                     </div>
                     <div className="text-sm leading-5" style={{ color: 'var(--text-2)' }}>
-                      Revalidar liquidez e regime antes de executar.
+                      Liquidez e regime revisados antes da execução.
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
@@ -226,14 +233,26 @@ function StatusToken({ label, tone }: { label: string; tone: 'accent' | 'success
   );
 }
 
-function Panel({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: ReactNode }) {
+function Panel({
+  title,
+  icon: Icon,
+  compact = false,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  compact?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section
-      className="rounded-[26px] border p-4"
+      className={`${compact ? 'rounded-[24px] p-3.5' : 'rounded-[26px] p-4'} border`}
       style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.014))',
-        borderColor: 'rgba(255,255,255,0.08)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        background: compact
+          ? 'linear-gradient(135deg, rgba(255,255,255,0.026), rgba(255,255,255,0.01))'
+          : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.014))',
+        borderColor: compact ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.08)',
+        boxShadow: compact ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       <div className="mb-4 flex items-center gap-2">
