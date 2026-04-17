@@ -767,6 +767,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             return
         market_daily_count = _blog_daily_market_count(posts)
         inserted_this_refresh = 0
+        inserted_slugs: List[str] = []
         refresh_insert_limit = max(1, min(limit, BLOG_REFRESH_INSERT_LIMIT))
 
         market_candidates: List[tuple[Dict[str, Any], str]] = []
@@ -815,11 +816,13 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             if category == "market":
                 market_daily_count += 1
             posts = _prune_redundant_posts(posts)[:BLOG_TOTAL_LIMIT]
-            _auto_publish_new_intel_post(post["slug"])
+            inserted_slugs.append(post["slug"])
 
         posts = posts[:BLOG_TOTAL_LIMIT]
 
         _store_cached_posts(redis_client, posts)
+        for slug in inserted_slugs:
+            _auto_publish_new_intel_post(slug)
     finally:
         redis_client.delete(POST_REFRESH_LOCK_KEY)
 
