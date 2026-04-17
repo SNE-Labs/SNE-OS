@@ -124,6 +124,81 @@ def _fit_excerpt(text: str, width: int = 38, max_lines: int = 2) -> list[str]:
     return lines
 
 
+def _wrap_text_to_pixel_width(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    max_width: int,
+    max_lines: int,
+) -> list[str]:
+    words = _normalize_text(text).split()
+    if not words:
+        return ["Intel Brief"]
+
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = f"{current} {word}"
+        bbox = draw.textbbox((0, 0), candidate, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            current = candidate
+            continue
+        lines.append(current)
+        current = word
+        if len(lines) >= max_lines:
+            break
+
+    if len(lines) < max_lines:
+        lines.append(current)
+
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+
+    remaining_words = words[len(" ".join(lines).split()):]
+    if remaining_words and lines:
+        lines[-1] = _truncate_text(f"{lines[-1]} {' '.join(remaining_words)}", max(12, len(lines[-1]) + 8))
+        while draw.textbbox((0, 0), lines[-1], font=font)[2] > max_width and len(lines[-1]) > 8:
+            lines[-1] = lines[-1][:-2].rstrip() + "…"
+
+    return lines or ["Intel Brief"]
+
+
+def _fit_title_layout(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    max_width: int,
+) -> tuple[ImageFont.FreeTypeFont | ImageFont.ImageFont, list[str], int]:
+    cleaned = _truncate_text(text, 144)
+    candidates = (
+        (54, 3),
+        (50, 3),
+        (47, 3),
+        (44, 4),
+        (41, 4),
+    )
+    best_font = _load_font(41, bold=True)
+    best_lines = _wrap_text_to_pixel_width(draw, cleaned, best_font, max_width, 4)
+    best_step = _s(50)
+    for font_size, max_lines in candidates:
+        font = _load_font(font_size, bold=True)
+        lines = _wrap_text_to_pixel_width(draw, cleaned, font, max_width, max_lines)
+        if len(lines) <= max_lines and all(draw.textbbox((0, 0), line, font=font)[2] <= max_width for line in lines):
+            step = _s(max(font_size + 6, 48))
+            return font, lines, step
+        best_font = font
+        best_lines = lines
+        best_step = _s(max(font_size + 6, 48))
+    return best_font, best_lines, best_step
+
+
+def _select_dek(subtitle: str, excerpt: str) -> str:
+    preferred = _normalize_text(subtitle)
+    fallback = _normalize_text(excerpt)
+    if preferred:
+        return _truncate_text(preferred, 112)
+    return _truncate_text(fallback, 124)
+
+
 def _stream_label(post: dict[str, Any]) -> str:
     stream = str(post.get("stream") or "").strip().lower()
     if stream == "institutional" or str(post.get("category") or "").strip().lower() == "institutional":
@@ -237,11 +312,11 @@ def _draw_tags(draw: ImageDraw.ImageDraw, tags: list[str], palette: dict[str, tu
         draw.rounded_rectangle(
             (x, y, x + pill_width, y + _s(34)),
             radius=_s(17),
-            fill=(255, 255, 255, 12),
-            outline=(*palette["tag"], 118),
+            fill=(14, 19, 30, 228),
+            outline=(*palette["tag"], 160),
             width=_s(1),
         )
-        draw.text((x + _s(15), y + _s(7)), label, font=font, fill=(*palette["tag"], 255))
+        draw.text((x + _s(15), y + _s(7)), label, font=font, fill=(244, 247, 251, 255))
         x += pill_width + _s(10)
 
 
@@ -252,12 +327,12 @@ def _draw_metric_rail(
     stream_label: str,
     editorial_kind: str,
 ) -> None:
-    caption_font = _load_font(16, bold=True)
-    value_font = _load_font(26, bold=True)
-    soft = (220, 228, 236, 162)
+    caption_font = _load_font(14, bold=True)
+    value_font = _load_font(22, bold=True)
+    soft = (220, 228, 236, 176)
     bright = (244, 247, 251, 255)
 
-    right_x = _s(878)
+    right_x = _s(922)
     draw.text((right_x, _s(106)), "SURFACE", font=caption_font, fill=soft)
     draw.text((right_x, _s(132)), stream_label, font=value_font, fill=bright)
 
@@ -306,8 +381,7 @@ def _render_cached(
     draw = ImageDraw.Draw(image)
 
     eyebrow_font = _load_font(18, bold=True)
-    title_font = _load_font(58, bold=True)
-    body_font = _load_font(26)
+    body_font = _load_font(26, bold=True)
     footer_font = _load_font(18, bold=True)
 
     kicker = f"INTEL / {stream_label}"
@@ -316,25 +390,26 @@ def _render_cached(
     draw.rounded_rectangle(
         (_s(88), _s(86), _s(88) + kicker_width + _s(34), _s(122)),
         radius=_s(18),
-        fill=(255, 255, 255, 12),
-        outline=(255, 255, 255, 24),
+        fill=(13, 18, 29, 226),
+        outline=(*palette["accent_soft"], 150),
         width=_s(1),
     )
-    draw.text((_s(106), _s(94)), kicker, font=eyebrow_font, fill=(221, 228, 236, 210))
+    draw.text((_s(106), _s(94)), kicker, font=eyebrow_font, fill=(244, 247, 251, 255))
 
+    title_max_width = _s(720)
     y = _s(150)
-    title_lines = _fit_title(_truncate_text(title, 96))
+    title_font, title_lines, title_step = _fit_title_layout(draw, title, title_max_width)
     for line in title_lines:
         draw.text((_s(88), y), line, font=title_font, fill=(246, 248, 252, 255))
-        y += _s(68)
+        y += title_step
 
-    insight = _truncate_text(excerpt or subtitle, 150)
-    excerpt_lines = _fit_excerpt(insight)
+    insight = _select_dek(subtitle, excerpt)
+    excerpt_lines = _fit_excerpt(insight, width=42, max_lines=2)
     if excerpt_lines:
-        y += _s(16)
+        y += _s(18)
         for line in excerpt_lines:
             draw.text((_s(88), y), line, font=body_font, fill=(214, 220, 230, 220))
-            y += _s(34)
+            y += _s(32)
 
     tags = _compact_tags(post_context)
     tags_y = min(max(y + _s(28), _s(478)), _s(504))
