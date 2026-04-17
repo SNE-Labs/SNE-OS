@@ -14,7 +14,10 @@ IMAGE_SIZE = (1200, 630)
 RENDER_SCALE = 2
 RENDER_SIZE = (IMAGE_SIZE[0] * RENDER_SCALE, IMAGE_SIZE[1] * RENDER_SCALE)
 CANVAS_WIDTH, CANVAS_HEIGHT = RENDER_SIZE
+APP_DIR = Path(__file__).resolve().parent
 FONT_CANDIDATES = (
+    str(APP_DIR / "assets" / "fonts" / "arialbd.ttf"),
+    str(APP_DIR / "assets" / "fonts" / "arial.ttf"),
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
