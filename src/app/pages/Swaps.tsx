@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { ArrowUpRight, CheckCircle2, CircleDot, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react';
 
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
+import { getRadarSwapContext } from '../components/swaps/radarSwapPrefill';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
@@ -32,6 +33,7 @@ export function Swaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
 
   const prefill = useMemo(() => {
     const explicitFromChain = normalizeWidgetChain(parseChainId(searchParams.get('fromChain')));
@@ -85,6 +87,8 @@ export function Swaps() {
             <div className="flex flex-wrap items-center gap-2">
               <StatusToken label={isConnected ? 'Carteira online' : 'Carteira pendente'} tone={isConnected ? 'success' : 'warning'} />
               <StatusToken label={getUsdtChainName(prefill.fromChain)} tone="neutral" />
+              {radarContext.fromRadar ? <StatusToken label="Origem Radar" tone="neutral" /> : null}
+              {radarContext.symbol ? <StatusToken label={radarContext.symbol} tone="accent" /> : null}
               <StatusToken label="Modo USDT-first" tone="accent" />
             </div>
           </header>
@@ -99,6 +103,39 @@ export function Swaps() {
                 boxShadow: '0 18px 70px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.04)',
               }}
             >
+              {radarContext.fromRadar ? (
+                <div
+                  className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border px-4 py-3"
+                  style={{
+                    backgroundColor: 'rgba(255,140,66,0.06)',
+                    borderColor: 'rgba(255,140,66,0.14)',
+                  }}
+                >
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--accent-orange)' }}>
+                      Leitura trazida do Radar
+                    </div>
+                    <div className="mt-1 text-sm" style={{ color: 'var(--text-1)' }}>
+                      {radarContext.symbol ? `${radarContext.symbol} entrou em foco antes da execução.` : 'O contexto veio do Radar antes da execução.'}
+                    </div>
+                    <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                      Mantenha a rota curta: revise cotação, rede e assinatura sem perder o ativo em leitura.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(radarContext.radarHref)}
+                    className="shrink-0 rounded-full border px-3 py-2 text-[11px] uppercase tracking-[0.16em] transition-transform duration-200 hover:-translate-y-0.5"
+                    style={{
+                      color: 'var(--accent-orange)',
+                      borderColor: 'rgba(255,140,66,0.18)',
+                      backgroundColor: 'rgba(255,140,66,0.08)',
+                    }}
+                  >
+                    Abrir Radar
+                  </button>
+                </div>
+              ) : null}
+
               <div className="mb-2 flex items-center justify-between gap-3 px-1">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
@@ -179,16 +216,18 @@ export function Swaps() {
 
               <Panel title="Origem da decisão" icon={ArrowUpRight} compact>
                 <button
-                  onClick={() => navigate('/radar')}
+                  onClick={() => navigate(radarContext.radarHref)}
                   className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
                   style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)' }}
                 >
                   <div>
                     <div className="mb-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                      Voltar para o Radar
+                      {radarContext.symbol ? `Voltar para ${radarContext.symbol} no Radar` : 'Voltar para o Radar'}
                     </div>
                     <div className="text-sm leading-5" style={{ color: 'var(--text-2)' }}>
-                      Liquidez e regime revisados antes da execução.
+                      {radarContext.fromRadar
+                        ? 'Retome a leitura do mesmo ativo com regime, liquidez e risco no mesmo trilho.'
+                        : 'Liquidez e regime revisados antes da execução.'}
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />

@@ -1,5 +1,14 @@
+function normalizeRadarSymbol(symbol?: string | null) {
+  return (symbol ?? '').replace('/', '').trim().toUpperCase();
+}
+
+export function buildRadarHrefFromSymbol(symbol?: string | null) {
+  const normalized = normalizeRadarSymbol(symbol);
+  return normalized ? `/radar/${normalized.toLowerCase()}` : '/radar';
+}
+
 export function buildSwapsHrefFromRadarSymbol(symbol?: string | null) {
-  const normalized = (symbol ?? '').replace('/', '').toUpperCase();
+  const normalized = normalizeRadarSymbol(symbol);
   const query = new URLSearchParams({
     mode: 'trade',
     origin: 'radar',
@@ -12,6 +21,18 @@ export function buildSwapsHrefFromRadarSymbol(symbol?: string | null) {
   return `/swaps?${query.toString()}`;
 }
 
+export function getRadarSwapContext(searchParams: URLSearchParams) {
+  const origin = (searchParams.get('origin') ?? '').toLowerCase();
+  const symbol = normalizeRadarSymbol(searchParams.get('symbol'));
+  const fromRadar = origin === 'radar';
+
+  return {
+    fromRadar,
+    symbol: symbol || undefined,
+    radarHref: buildRadarHrefFromSymbol(symbol),
+  };
+}
+
 export function hasRadarSwapPrefill(symbol?: string | null) {
-  return Boolean((symbol ?? '').replace('/', '').trim());
+  return Boolean(normalizeRadarSymbol(symbol));
 }

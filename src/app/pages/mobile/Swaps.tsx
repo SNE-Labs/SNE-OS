@@ -5,6 +5,7 @@ import { ArrowLeftRight, ArrowUpRight, BadgeCheck, Waves } from 'lucide-react';
 
 import { Badge, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { LiFiSwapWidget } from '../../components/swaps/LiFiSwapWidget';
+import { getRadarSwapContext } from '../../components/swaps/radarSwapPrefill';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
@@ -23,6 +24,7 @@ export function MobileSwaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
 
   const prefill = useMemo(() => {
     const explicitFromChain = normalizeWidgetChain(parseChainId(searchParams.get('fromChain')));
@@ -49,12 +51,33 @@ export function MobileSwaps() {
   return (
     <MobilePageShell
       title="Swaps"
-      subtitle="Execucao USDT-first para mover, converter ou usar dolar digital pela wallet."
+      subtitle={
+        radarContext.fromRadar
+          ? `Execucao USDT-first com ${radarContext.symbol ?? 'ativo em foco'} vindo do Radar.`
+          : 'Execucao USDT-first para mover, converter ou usar dolar digital pela wallet.'
+      }
       statusPill={{
-        label: isConnected ? 'wallet online' : 'wallet pending',
+        label: radarContext.fromRadar ? 'radar em origem' : isConnected ? 'wallet online' : 'wallet pending',
         variant: isConnected ? 'success' : 'orange',
       }}
     >
+      {radarContext.fromRadar ? (
+        <SurfaceCard>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--accent-orange)]">leitura trazida do radar</div>
+              <div className="mt-1 text-[var(--text-1)]">
+                {radarContext.symbol ? `${radarContext.symbol} segue em foco antes da assinatura.` : 'O contexto do Radar segue ativo antes da assinatura.'}
+              </div>
+            </div>
+            {radarContext.symbol ? <Badge variant="orange" size="sm">{radarContext.symbol}</Badge> : null}
+          </div>
+          <div className="text-sm text-[var(--text-2)]">
+            Revise rota, cotacao e endereco final sem perder o ativo que trouxe voce ate a execucao.
+          </div>
+        </SurfaceCard>
+      ) : null}
+
       <SurfaceCard variant="elevated">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
@@ -100,8 +123,14 @@ export function MobileSwaps() {
 
         <div className="space-y-3">
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
-            <div className="mb-1 text-[var(--text-1)]">Radar continua em leitura</div>
-            <div className="text-sm text-[var(--text-2)]">Use Radar para validar regime, liquidez e direcao antes da execucao.</div>
+            <div className="mb-1 text-[var(--text-1)]">
+              {radarContext.symbol ? `${radarContext.symbol} continua em leitura` : 'Radar continua em leitura'}
+            </div>
+            <div className="text-sm text-[var(--text-2)]">
+              {radarContext.fromRadar
+                ? 'Retorne ao mesmo ativo para revalidar regime, liquidez e direcao se a rota mudar.'
+                : 'Use Radar para validar regime, liquidez e direcao antes da execucao.'}
+            </div>
           </div>
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="mb-1 flex items-center gap-2 text-[var(--text-1)]">
@@ -115,9 +144,9 @@ export function MobileSwaps() {
         </div>
       </SurfaceCard>
 
-      <MobileButton variant="secondary" className="w-full" onClick={() => navigate('/radar')}>
+      <MobileButton variant="secondary" className="w-full" onClick={() => navigate(radarContext.radarHref)}>
         <ArrowUpRight className="mr-2 h-4 w-4" />
-        Abrir Radar
+        {radarContext.symbol ? `Voltar para ${radarContext.symbol}` : 'Abrir Radar'}
       </MobileButton>
     </MobilePageShell>
   );
