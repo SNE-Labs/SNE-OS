@@ -10,6 +10,7 @@ import os
 from flask import Blueprint, jsonify, request
 
 from .distribution_service import (
+    auto_publish_latest_posts,
     fetch_distribution_status,
     generate_distribution_assets,
     publish_distribution,
@@ -245,3 +246,14 @@ def distribution_publish(slug: str):
 @intel_bp.get("/distribution/status/<slug>")
 def distribution_status(slug: str):
     return jsonify(fetch_distribution_status(slug)), 200
+
+
+@intel_bp.post("/distribution/autopublish")
+def distribution_autopublish():
+    payload = request.get_json(silent=True) or {}
+    result = auto_publish_latest_posts(
+        stream=(payload.get("stream") or "external"),
+        channels=payload.get("channels"),
+        limit=payload.get("limit") or 3,
+    )
+    return jsonify(result), 200

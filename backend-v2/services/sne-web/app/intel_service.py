@@ -745,6 +745,14 @@ def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
     return count
 
 
+def _auto_publish_new_intel_post(slug: str) -> None:
+    try:
+        from .distribution_service import auto_publish_intel_post
+        auto_publish_intel_post(slug, ["telegram"])
+    except Exception as exc:
+        logger.warning("Intel auto publish failed for %s: %s", slug, exc)
+
+
 def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
     redis_client = SafeRedis()
     try:
@@ -807,6 +815,7 @@ def _refresh_enterprise_posts(limit: int = BLOG_DAILY_LIMIT) -> None:
             if category == "market":
                 market_daily_count += 1
             posts = _prune_redundant_posts(posts)[:BLOG_TOTAL_LIMIT]
+            _auto_publish_new_intel_post(post["slug"])
 
         posts = posts[:BLOG_TOTAL_LIMIT]
 

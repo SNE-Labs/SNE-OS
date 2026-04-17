@@ -54,6 +54,7 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `INTEL_INSTITUTIONAL_PROVIDER`: institutional editorial provider (`heuristic` or OpenAI-backed)
 - `INTEL_INSTITUTIONAL_MODEL`: model used for institutional post generation
 - `INTEL_DISTRIBUTION_MODEL`: model used for channel-specific copy generation
+- `INTEL_TELEGRAM_AUTO_PUBLISH`: enables automatic Telegram publish for newly generated Intel posts
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
@@ -78,6 +79,7 @@ export SCROLL_RPC_URLS=https://rpc.scroll.io,https://scroll-mainnet.public.blast
 - `GET /api/intel/institutional/posts` - List institutional posts
 - `POST /api/intel/distribution/preview/<slug>` - Generate channel previews
 - `POST /api/intel/distribution/publish/<slug>` - Publish to configured channels
+- `POST /api/intel/distribution/autopublish` - Publish latest Intel posts to configured channels
 
 ## WebSocket Events
 

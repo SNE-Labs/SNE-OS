@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 
 import requests
 
-from .institutional_service import fetch_combined_intel_post
+from .institutional_service import fetch_combined_intel_post, fetch_combined_intel_posts
 from .intel_enrichment import (
     _extract_json,
     _extract_response_text,
@@ -50,6 +50,13 @@ def _normalize_channels(value: Any) -> List[str]:
         ordered.append(channel)
         seen.add(channel)
     return ordered or ["telegram", "whatsapp", "x"]
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _normalize_string_list(value: Any) -> List[str]:
@@ -338,6 +345,9 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False)
 
     for asset in assets:
         channel = asset["channel"]
+        if not dry_run and asset.get("status") == "published" and asset.get("published_at"):
+            results.append({"channel": channel, "status": "skipped", "reason": "already_published"})
+            continue
         if dry_run:
             asset["status"] = "previewed"
             _write_json(redis_client, _asset_key(slug, channel), asset)
@@ -367,6 +377,53 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False)
         results.append({"channel": channel, "status": status, **({"error": error} if error else {})})
 
     return {"slug": slug, "results": results}
+
+
+def auto_publish_enabled() -> bool:
+    if not (os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")):
+        return False
+    return _env_flag("INTEL_TELEGRAM_AUTO_PUBLISH", default=True)
+
+
+def auto_publish_intel_post(slug: str, channels: Any = None) -> Dict[str, Any]:
+    selected_channels = _normalize_channels(channels or ["telegram"])
+    if not auto_publish_enabled():
+        return {
+            "slug": slug,
+            "results": [{"channel": channel, "status": "disabled"} for channel in selected_channels],
+        }
+    return publish_distribution(slug, selected_channels, dry_run=False)
+
+
+def auto_publish_latest_posts(
+    *,
+    stream: str = "external",
+    channels: Any = None,
+    limit: int = 3,
+) -> Dict[str, Any]:
+    selected_channels = _normalize_channels(channels or ["telegram"])
+    normalized_limit = max(1, min(int(limit or 1), 12))
+    posts = fetch_combined_intel_posts(limit=max(normalized_limit * 4, normalized_limit), stream=stream)
+    published: List[Dict[str, Any]] = []
+
+    for post in posts:
+        if len(published) >= normalized_limit:
+            break
+        result = publish_distribution(str(post.get("slug") or ""), selected_channels, dry_run=False)
+        statuses = [item.get("status") for item in result.get("results", [])]
+        if any(status in {"published", "skipped"} for status in statuses):
+            published.append({
+                "slug": post.get("slug"),
+                "title": post.get("title"),
+                "results": result.get("results", []),
+            })
+
+    return {
+        "stream": stream,
+        "channels": selected_channels,
+        "count": len(published),
+        "items": published,
+    }
 
 
 def fetch_distribution_status(slug: str) -> Dict[str, Any]:
