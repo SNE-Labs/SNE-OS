@@ -239,20 +239,34 @@ def _editorial_haystack(payload: Dict[str, Any]) -> str:
     ])) + " "
 
 
+def _country_matches_haystack(country: Dict[str, Any], haystack: str) -> bool:
+    terms = [country.get("label"), *country.get("aliases", [])]
+    for term in terms:
+        normalized = _normalize_key(term)
+        if len(normalized) >= 3 and f" {normalized} " in haystack:
+            return True
+    return False
+
+
 def infer_countries(payload: Dict[str, Any]) -> List[str]:
+    haystack = _editorial_haystack(payload)
     explicit = []
     for country in _normalize_list(payload.get("countries")):
         resolved = _resolve_entity(country)
         if resolved and resolved.get("kind") == "country":
-            explicit.append(str(resolved["id"]).replace("country-", ""))
+            if _country_matches_haystack(resolved, haystack):
+                explicit.append(str(resolved["id"]).replace("country-", ""))
         else:
             normalized = _normalize_key(country)
-            if normalized:
+            country_by_code = next((item for item in _COUNTRY_REGISTRY if str(item.get("country_id")) == normalized), None)
+            if country_by_code:
+                if _country_matches_haystack(country_by_code, haystack):
+                    explicit.append(str(country_by_code["country_id"]))
+            elif normalized:
                 explicit.append(normalized)
     if explicit:
         return list(dict.fromkeys(explicit))[:2]
 
-    haystack = _editorial_haystack(payload)
     if not haystack.strip():
         return []
 
