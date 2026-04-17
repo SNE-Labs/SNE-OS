@@ -31,6 +31,10 @@ VALID_CHANNELS = {"telegram", "whatsapp", "x"}
 ASSET_KEY_PREFIX = "intel:distribution:asset:"
 ASSET_INDEX_PREFIX = "intel:distribution:index:"
 URL_PATTERN = re.compile(r"https?://\S+")
+TRAILING_STOPWORDS = {
+    "a", "as", "ao", "aos", "com", "da", "das", "de", "do", "dos", "e",
+    "em", "na", "nas", "no", "nos", "o", "os", "para", "por", "sem", "um", "uma",
+}
 
 
 def _iso_now() -> str:
@@ -145,7 +149,12 @@ def _truncate_copy_line(text: str, limit: int) -> str:
     if len(cleaned) <= limit:
         return cleaned
     trimmed = cleaned[: max(1, limit - 1)].rsplit(" ", 1)[0].strip()
-    return (trimmed or cleaned[: max(1, limit - 1)]).rstrip(" .,;:-") + "…"
+    candidate = (trimmed or cleaned[: max(1, limit - 1)]).rstrip(" .,;:-")
+    parts = candidate.split()
+    while parts and parts[-1].lower() in TRAILING_STOPWORDS:
+        parts.pop()
+    candidate = " ".join(parts).rstrip(" .,;:-")
+    return (candidate or trimmed or cleaned[: max(1, limit - 1)]).rstrip(" .,;:-") + "…"
 
 
 def _effective_x_length(text: str) -> int:
@@ -180,16 +189,17 @@ def _compose_x_body(
     action_line: str,
 ) -> str:
     family = _x_family_label(post)
-    link_line = f"Dossie: {cta_url}"
+    family_prefix = f"{family}: "
+    link_line = cta_url
     budgets = {
-        "headline": 78,
-        "impact": 86,
-        "action": 82,
+        "headline": 72,
+        "impact": 74,
+        "action": 70,
     }
     minimums = {
-        "headline": 44,
-        "impact": 42,
-        "action": 36,
+        "headline": 38,
+        "impact": 32,
+        "action": 28,
     }
 
     def _render() -> tuple[str, Dict[str, str]]:
@@ -198,34 +208,42 @@ def _compose_x_body(
             "impact": _truncate_copy_line(impact_line, budgets["impact"]),
             "action": _truncate_copy_line(action_line, budgets["action"]),
         }
-        body = "\n".join(
-            [
-                family,
-                parts["headline"],
-                parts["impact"],
-                parts["action"],
-                link_line,
-            ]
-        ).strip()
+        sentences = [
+            f"{family_prefix}{parts['headline'].rstrip('.…')}.",
+            f"{parts['impact'].rstrip('.…')}.",
+            f"{parts['action'].rstrip('.…')}.",
+        ]
+        body = " ".join(sentences + [link_line]).strip()
         return body, parts
 
     body, parts = _render()
-    while _effective_x_length(body) > 278:
+    while _effective_x_length(body) > 270:
         adjustable = [
             key for key in ("impact", "action", "headline")
             if budgets[key] > minimums[key]
         ]
         if not adjustable:
-            body = "\n".join([family, parts["headline"], parts["impact"], link_line]).strip()
-            if _effective_x_length(body) <= 278:
+            body = " ".join(
+                [
+                    f"{family_prefix}{parts['headline'].rstrip('.…')}.",
+                    f"{parts['impact'].rstrip('.…')}.",
+                    link_line,
+                ]
+            ).strip()
+            if _effective_x_length(body) <= 270:
                 return body
-            body = "\n".join([family, parts["headline"], link_line]).strip()
-            if _effective_x_length(body) <= 278:
+            body = " ".join(
+                [
+                    f"{family_prefix}{parts['headline'].rstrip('.…')}.",
+                    link_line,
+                ]
+            ).strip()
+            if _effective_x_length(body) <= 270:
                 return body
-            body = "\n".join([parts["headline"], link_line]).strip()
+            body = " ".join([parts["headline"].rstrip(".…") + ".", link_line]).strip()
             return body
         longest = max(adjustable, key=lambda key: budgets[key])
-        budgets[longest] -= 8
+        budgets[longest] -= 10
         body, parts = _render()
     return body
 
