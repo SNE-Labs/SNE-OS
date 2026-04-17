@@ -124,7 +124,11 @@ def _load_visual_asset(icon_symbol: str) -> Image.Image | None:
     if not path or not path.exists():
         return None
     try:
-        return Image.open(path).convert("RGBA")
+        image = Image.open(path).convert("RGBA")
+        alpha_bbox = image.getchannel("A").getbbox()
+        if alpha_bbox:
+            image = image.crop(alpha_bbox)
+        return image
     except Exception:
         return None
 
@@ -445,16 +449,11 @@ def _draw_visual_assets(
     center_x = _s(980)
     center_y = _s(180)
     outer_radius = _s(80)
-    inner_radius = _s(64)
     draw.ellipse(
         (center_x - outer_radius, center_y - outer_radius, center_x + outer_radius, center_y + outer_radius),
         fill=(7, 10, 17, 232),
         outline=(*palette["accent_soft"], 180),
         width=_s(2),
-    )
-    draw.ellipse(
-        (center_x - inner_radius, center_y - inner_radius, center_x + inner_radius, center_y + inner_radius),
-        fill=(255, 255, 255, 18),
     )
     _paste_contained(
         image,
