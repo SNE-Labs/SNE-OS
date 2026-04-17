@@ -3,13 +3,27 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
+import { IntelVisualChip } from '../../components/IntelVisualChip';
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
-import { ChainBadge } from '../../components/ChainBadge';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { intelApi } from '@/services/intel-api';
 
-function intelEntity(post: { assets?: string[]; chains?: string[] }) {
-  return post.assets?.[0] || post.chains?.[0] || null;
+function intelEntity(post: { primary_visual_entity?: { iconSymbol?: string | null } | null; assets?: string[]; chains?: string[] }) {
+  return post.primary_visual_entity?.iconSymbol || post.assets?.[0] || post.chains?.[0] || null;
+}
+
+function topicOnlyTags(post: { topics?: string[]; assets?: string[]; chains?: string[]; visual_entities?: Array<{ id: string; label: string }> }, limit: number) {
+  const linked = new Set(
+    [
+      ...(post.assets ?? []),
+      ...(post.chains ?? []),
+      ...((post.visual_entities ?? []).flatMap((entity) => [entity.id, entity.label])),
+    ].map((value) => value.toLocaleLowerCase('pt-BR'))
+  );
+
+  return (post.topics ?? [])
+    .filter((topic) => !linked.has(topic.toLocaleLowerCase('pt-BR')))
+    .slice(0, limit);
 }
 
 export function MobileBlog() {
@@ -132,19 +146,16 @@ export function MobileBlog() {
                 <div className="text-[var(--text-1)] mb-2">{post.title || post.slug}</div>
                 <div className="text-sm text-[var(--text-2)] mb-4">{post.excerpt || post.subtitle}</div>
                 <div className="flex flex-wrap gap-2">
-                  {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                    <Link
-                      key={tag}
-                      to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {post.chains.includes(tag) ? (
-                        <ChainBadge chain={tag} size="sm" />
-                      ) : (
-                        <span className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]">
-                          {tag}
-                        </span>
-                      )}
+                  {(post.visual_entities ?? []).slice(0, 3).map((entity) => (
+                    <span key={`${post.id}-${entity.id}`} onClick={(event) => event.stopPropagation()}>
+                      <IntelVisualChip entity={entity} />
+                    </span>
+                  ))}
+                  {topicOnlyTags(post, 2).map((tag) => (
+                    <Link key={tag} to={`/intel/topic/${tag}`} onClick={(event) => event.stopPropagation()}>
+                      <span className="rounded-full px-3 py-2 text-xs border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]">
+                        {tag}
+                      </span>
                     </Link>
                   ))}
                 </div>

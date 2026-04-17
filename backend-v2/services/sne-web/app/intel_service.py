@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from .intel_enrichment import IntelEnricher
 from .intel_sources import fetch_multi_source_entries
+from .intel_visuals import apply_visual_entities
 from .market_service import build_home_market_payload
 from .utils.redis_safe import SafeRedis
 
@@ -328,7 +329,7 @@ def _clusters(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _shape_blog_item(post: Dict[str, Any]) -> Dict[str, Any]:
-    return {
+    shaped = {
         "id": f"blog:{post['slug']}",
         "title": post["title"],
         "title_original": post["title"],
@@ -357,6 +358,13 @@ def _shape_blog_item(post: Dict[str, Any]) -> Dict[str, Any]:
         "editorial_kind": post.get("editorial_kind", "dossier"),
         "category": post.get("category", "news"),
     }
+    if post.get("visual_entities"):
+        shaped["visual_entities"] = post.get("visual_entities", [])
+    if post.get("primary_visual_entity"):
+        shaped["primary_visual_entity"] = post.get("primary_visual_entity")
+    if post.get("countries"):
+        shaped["countries"] = post.get("countries", [])
+    return apply_visual_entities(shaped)
 
 
 def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
@@ -371,7 +379,7 @@ def _normalize_post(post: Dict[str, Any]) -> Dict[str, Any]:
         normalized["tldr"] = []
     normalized["editorial_kind"] = str(normalized.get("editorial_kind") or ("briefing" if normalized.get("category") == "market" else "dossier"))
     normalized["category"] = str(normalized.get("category") or "news")
-    return normalized
+    return apply_visual_entities(normalized)
 
 
 def _is_stale_fallback_post(post: Dict[str, Any]) -> bool:
@@ -856,7 +864,7 @@ def build_intel_briefing(limit: int = 6, limit_per_source: int = 4, include_blog
     raw_entries = fetch_multi_source_entries(limit_per_source=limit_per_source)
     curated_entries = _curate(raw_entries, limit=max(limit, 8))
     enricher = IntelEnricher()
-    raw_items = [enricher.enrich_item(entry) for entry in curated_entries[:limit]]
+    raw_items = [apply_visual_entities(enricher.enrich_item(entry)) for entry in curated_entries[:limit]]
     items = list(raw_items)
 
     if include_blog:

@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
+import { IntelVisualChip } from '../components/IntelVisualChip';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { ChainBadge } from '../components/ChainBadge';
@@ -22,8 +23,22 @@ function formatRelativeTimestamp(value?: string | null): string {
   return `${diffDays}d atrás`;
 }
 
-function intelEntity(post: { assets?: string[]; chains?: string[] }) {
-  return post.assets?.[0] || post.chains?.[0] || null;
+function intelEntity(post: { primary_visual_entity?: { iconSymbol?: string | null } | null; assets?: string[]; chains?: string[] }) {
+  return post.primary_visual_entity?.iconSymbol || post.assets?.[0] || post.chains?.[0] || null;
+}
+
+function textTags(post: { topics?: string[]; assets?: string[]; chains?: string[]; visual_entities?: Array<{ id: string; label: string }> }, limit: number) {
+  const linked = new Set(
+    [
+      ...(post.assets ?? []),
+      ...(post.chains ?? []),
+      ...((post.visual_entities ?? []).flatMap((entity) => [entity.id, entity.label])),
+    ].map((value) => value.toLocaleLowerCase('pt-BR'))
+  );
+
+  return (post.topics ?? [])
+    .filter((topic) => !linked.has(topic.toLocaleLowerCase('pt-BR')))
+    .slice(0, limit);
 }
 
 export function Blog() {
@@ -244,13 +259,14 @@ export function Blog() {
                   {featured.excerpt || 'Leitura editorial completa disponível nesta peça.'}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {(featured.assets.length > 0 ? featured.assets : featured.chains.length > 0 ? featured.chains : featured.topics).slice(0, 4).map((tag) => (
-                    <Link
-                      key={tag}
-                      to={featured.assets.includes(tag) ? `/intel/asset/${tag}` : featured.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {featured.chains.includes(tag) ? <ChainBadge chain={tag} size="sm" /> : <StatusBadge status="success">{tag}</StatusBadge>}
+                  {(featured.visual_entities ?? []).slice(0, 3).map((entity) => (
+                    <span key={`${featured.id}-${entity.id}`} onClick={(event) => event.stopPropagation()}>
+                      <IntelVisualChip entity={entity} size="md" />
+                    </span>
+                  ))}
+                  {textTags(featured, 2).map((topicTag) => (
+                    <Link key={topicTag} to={`/intel/topic/${topicTag}`} onClick={(event) => event.stopPropagation()}>
+                      <StatusBadge status="success">{topicTag}</StatusBadge>
                     </Link>
                   ))}
                 </div>
@@ -325,13 +341,14 @@ export function Blog() {
                   <div className="font-semibold mb-2 text-lg" style={{ color: 'var(--text-1)' }}>{post.title}</div>
                   <div className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
                   <div className="flex flex-wrap gap-2">
-                    {(post.assets.length > 0 ? post.assets : post.chains.length > 0 ? post.chains : post.topics).slice(0, 3).map((tag) => (
-                      <Link
-                        key={tag}
-                        to={post.assets.includes(tag) ? `/intel/asset/${tag}` : post.chains.includes(tag) ? `/intel/chain/${tag}` : `/intel/topic/${tag}`}
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {post.chains.includes(tag) ? <ChainBadge chain={tag} size="sm" /> : <StatusBadge status="success">{tag}</StatusBadge>}
+                    {(post.visual_entities ?? []).slice(0, 3).map((entity) => (
+                      <span key={`${post.id}-${entity.id}`} onClick={(event) => event.stopPropagation()}>
+                        <IntelVisualChip entity={entity} />
+                      </span>
+                    ))}
+                    {textTags(post, 2).map((topicTag) => (
+                      <Link key={topicTag} to={`/intel/topic/${topicTag}`} onClick={(event) => event.stopPropagation()}>
+                        <StatusBadge status="success">{topicTag}</StatusBadge>
                       </Link>
                     ))}
                   </div>

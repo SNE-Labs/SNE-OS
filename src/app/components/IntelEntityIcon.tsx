@@ -35,7 +35,12 @@ type SimpleSvgIcon = {
   viewBox?: string;
 };
 
-type EntityIcon = IconComponent | SimpleSvgIcon;
+type EmojiIcon = {
+  kind: 'emoji';
+  value: string;
+};
+
+type EntityIcon = IconComponent | SimpleSvgIcon | EmojiIcon;
 
 const ENTITY_ICONS: Record<string, EntityIcon> = {
   arbitrum: NetworkArbitrumOne,
@@ -81,6 +86,14 @@ const ENTITY_ICONS: Record<string, EntityIcon> = {
   sui: NetworkSui,
   xrp: NetworkXrp,
   ripple: NetworkXrp,
+  'country-us': { kind: 'emoji', value: '🇺🇸' },
+  'country-br': { kind: 'emoji', value: '🇧🇷' },
+  'country-ar': { kind: 'emoji', value: '🇦🇷' },
+  'country-cn': { kind: 'emoji', value: '🇨🇳' },
+  'country-eu': { kind: 'emoji', value: '🇪🇺' },
+  'country-uk': { kind: 'emoji', value: '🇬🇧' },
+  'country-jp': { kind: 'emoji', value: '🇯🇵' },
+  'country-sg': { kind: 'emoji', value: '🇸🇬' },
 };
 
 const SECTION_FALLBACK_ICONS: Record<HomeIntelSectionKey, typeof Activity> = {
@@ -113,6 +126,16 @@ export function IntelEntityIcon({ symbol, sectionKey = 'market', className, styl
           >
             <path d={Icon.path} />
           </svg>
+        </div>
+      );
+    }
+
+    if (typeof Icon === 'object' && 'kind' in Icon && Icon.kind === 'emoji') {
+      return (
+        <div className={className} style={style}>
+          <span aria-hidden="true" className={iconClassName} style={{ fontSize: '0.95em', lineHeight: 1 }}>
+            {Icon.value}
+          </span>
         </div>
       );
     }

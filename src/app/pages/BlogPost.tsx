@@ -5,9 +5,9 @@ import { ArrowLeft, ArrowUpRight, ExternalLink, Layers3, Share2 } from 'lucide-r
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
+import { IntelVisualChip } from '../components/IntelVisualChip';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
-import { ChainBadge } from '../components/ChainBadge';
 import { EditorialSnapshot } from '../components/blog/EditorialSnapshot';
 import { MarkdownArticle } from '../components/blog/MarkdownArticle';
 import { parseArticleMarkdown } from '../components/blog/articleParser';
@@ -69,8 +69,22 @@ function toneRailStyle(tone: 'default' | 'context' | 'watch' | 'action' | 'risk'
   };
 }
 
-function intelEntity(post?: { assets?: string[]; chains?: string[] } | null) {
-  return post?.assets?.[0] || post?.chains?.[0] || null;
+function intelEntity(post?: { primary_visual_entity?: { iconSymbol?: string | null } | null; assets?: string[]; chains?: string[] } | null) {
+  return post?.primary_visual_entity?.iconSymbol || post?.assets?.[0] || post?.chains?.[0] || null;
+}
+
+function topicOnlyTags(post: { topics?: string[]; assets?: string[]; chains?: string[]; visual_entities?: Array<{ id: string; label: string }> }, limit: number) {
+  const linked = new Set(
+    [
+      ...(post.assets ?? []),
+      ...(post.chains ?? []),
+      ...((post.visual_entities ?? []).flatMap((entity) => [entity.id, entity.label])),
+    ].map((value) => value.toLocaleLowerCase('pt-BR'))
+  );
+
+  return (post.topics ?? [])
+    .filter((topic) => !linked.has(topic.toLocaleLowerCase('pt-BR')))
+    .slice(0, limit);
 }
 
 export function BlogPost() {
@@ -483,19 +497,12 @@ export function BlogPost() {
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            {post.chains.map((chain) => (
-              <Link key={chain} to={`/intel/chain/${chain}`}>
-                <ChainBadge chain={chain} size="sm" />
-              </Link>
+            {(post.visual_entities ?? []).slice(0, 4).map((entity) => (
+              <IntelVisualChip key={`${post.id}-${entity.id}`} entity={entity} size="md" />
             ))}
-            {post.topics.map((topic) => (
+            {topicOnlyTags(post, 3).map((topic) => (
               <Link key={topic} to={`/intel/topic/${topic}`}>
                 <StatusBadge status="pending">{topic}</StatusBadge>
-              </Link>
-            ))}
-            {post.assets.map((asset) => (
-              <Link key={asset} to={`/intel/asset/${asset}`}>
-                <StatusBadge status="success">{asset}</StatusBadge>
               </Link>
             ))}
           </div>

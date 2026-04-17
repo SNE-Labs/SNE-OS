@@ -1,4 +1,5 @@
 import { apiGet } from '@/lib/api/http';
+import { buildIntelVisualEntities, getIntelPrimaryVisualEntity, type IntelVisualEntity } from './intel-visuals';
 
 const SITE_ORIGIN = 'https://snelabs.space';
 
@@ -20,6 +21,9 @@ export type IntelPost = {
   reading_time_minutes: number;
   editorial_kind: 'briefing' | 'dossier';
   category?: string;
+  countries?: string[];
+  visual_entities?: IntelVisualEntity[];
+  primary_visual_entity?: IntelVisualEntity | null;
 };
 
 type IntelPostsResponse = {
@@ -49,19 +53,26 @@ function normalizeSourceName(value: string) {
 function normalizePost(post: IntelPost): IntelPost {
   const category = post.category || 'news';
   const editorialKind = post.editorial_kind || (category === 'market' ? 'briefing' : 'dossier');
-  return {
+  const normalized = {
     ...post,
     tldr: normalizeStringArray(post.tldr),
     topics: normalizeStringArray(post.topics),
     chains: normalizeStringArray(post.chains),
     protocols: normalizeStringArray(post.protocols),
     assets: normalizeStringArray(post.assets),
+    countries: normalizeStringArray(post.countries),
     sources: (post.sources ?? []).map((source) => ({
       ...source,
       name: normalizeSourceName(source.name || ''),
     })),
     category,
     editorial_kind: editorialKind,
+  };
+
+  return {
+    ...normalized,
+    visual_entities: buildIntelVisualEntities(normalized),
+    primary_visual_entity: getIntelPrimaryVisualEntity(normalized),
   };
 }
 

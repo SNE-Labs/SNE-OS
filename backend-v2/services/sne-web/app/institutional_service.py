@@ -22,6 +22,7 @@ from .intel_enrichment import (
 )
 from .intel_service import fetch_intel_post as fetch_external_intel_post
 from .intel_service import fetch_intel_posts as fetch_external_intel_posts
+from .intel_visuals import apply_visual_entities
 from .utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
@@ -255,7 +256,7 @@ def _fallback_post(pack: Dict[str, Any]) -> Dict[str, Any]:
         tags = [pack.get("type", ""), *pack.get("products", [])]
     tags = [tag for tag in tags if tag]
 
-    return {
+    return apply_visual_entities({
         "id": f"institutional:{pack['source_id']}",
         "slug": slug,
         "title": headline,
@@ -285,7 +286,7 @@ def _fallback_post(pack: Dict[str, Any]) -> Dict[str, Any]:
             "summary_count": len(pack.get("summary", [])),
         },
         "distribution_ready": pack.get("visibility") == "public",
-    }
+    })
 
 
 def _llm_post(pack: Dict[str, Any]) -> Dict[str, Any] | None:
@@ -345,7 +346,7 @@ def _llm_post(pack: Dict[str, Any]) -> Dict[str, Any] | None:
         tags = _normalize_string_list(parsed.get("tags")) or _normalize_string_list(pack.get("tags"))
         tags = tags[:6]
 
-        return {
+        return apply_visual_entities({
             "id": f"institutional:{pack['source_id']}",
             "slug": slug,
             "title": title,
@@ -375,7 +376,7 @@ def _llm_post(pack: Dict[str, Any]) -> Dict[str, Any] | None:
                 "summary_count": len(pack.get("summary", [])),
             },
             "distribution_ready": pack.get("visibility") == "public",
-        }
+        })
     except requests.HTTPError as exc:
         response = exc.response
         logger.warning(
@@ -435,7 +436,7 @@ def fetch_institutional_post(slug: str) -> Dict[str, Any] | None:
         return None
     redis_client = SafeRedis()
     payload = _read_json(redis_client, f"{POST_KEY_PREFIX}{slug.strip()}")
-    return payload if isinstance(payload, dict) else None
+    return apply_visual_entities(payload) if isinstance(payload, dict) else None
 
 
 def fetch_institutional_posts(
@@ -458,7 +459,7 @@ def fetch_institutional_posts(
             continue
         if visibility and post.get("visibility") != visibility:
             continue
-        posts.append(post)
+        posts.append(apply_visual_entities(post))
     return _sort_posts(posts)[: max(1, min(limit, 240))]
 
 

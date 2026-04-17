@@ -54,6 +54,9 @@ type IntelItem = {
   chains?: string[];
   protocols?: string[];
   assets?: string[];
+  countries?: string[];
+  visual_entities?: Array<{ id: string; label: string; icon_symbol?: string; iconSymbol?: string }>;
+  primary_visual_entity?: { id: string; label: string; icon_symbol?: string; iconSymbol?: string } | null;
   why_it_matters?: string;
   watch_items?: string[];
 };
@@ -429,7 +432,13 @@ export function Home() {
   const intelTitle = (item: IntelItem) => item.title_pt || item.title || item.title_original || 'Leitura Intel';
   const intelSummary = (item: IntelItem) => item.summary_pt || item.summary || item.why_it_matters || item.agent_note;
   const intelMeta = (item: IntelItem) => item.chains?.[0] || item.topics?.[0] || item.assets?.[0] || item.module;
-  const intelEntity = (item: IntelItem) => item.assets?.[0] || item.chains?.[0] || extractIntelSymbols(item)[0] || null;
+  const intelEntity = (item: IntelItem) =>
+    item.primary_visual_entity?.iconSymbol ||
+    item.primary_visual_entity?.icon_symbol ||
+    item.assets?.[0] ||
+    item.chains?.[0] ||
+    extractIntelSymbols(item)[0] ||
+    null;
   const intelSectionTheme: Record<
     HomeIntelSectionKey,
     {

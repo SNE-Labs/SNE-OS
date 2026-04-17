@@ -215,10 +215,14 @@ def _kind_label(editorial_kind: str) -> str:
 
 def _compact_tags(post: dict[str, Any]) -> list[str]:
     tags: list[str] = []
+    primary_visual = post.get("primary_visual_entity") or {}
+    primary_label = str(primary_visual.get("label") or "").strip()
+    if primary_label:
+        tags.append(primary_label)
     category = str(post.get("category") or "").strip()
-    if category:
+    if category and category.lower() not in {existing.lower() for existing in tags}:
         tags.append(category)
-    for source in ("assets", "chains", "topics", "products"):
+    for source in ("countries", "assets", "chains", "topics", "products"):
         for item in post.get(source) or []:
             label = str(item).strip()
             if label and label.lower() not in {existing.lower() for existing in tags}:
@@ -365,6 +369,8 @@ def _render_cached(
     chain_key: str,
     asset_key: str,
     product_key: str,
+    country_key: str,
+    primary_visual_label: str,
     reading_time: str,
 ) -> bytes:
     post_context = {
@@ -374,6 +380,8 @@ def _render_cached(
         "chains": chain_key.split(",") if chain_key else [],
         "assets": asset_key.split(",") if asset_key else [],
         "products": product_key.split(",") if product_key else [],
+        "countries": country_key.split(",") if country_key else [],
+        "primary_visual_entity": {"label": primary_visual_label} if primary_visual_label else None,
         "reading_time_minutes": int(reading_time) if reading_time.isdigit() else None,
     }
     palette = _pick_palette(post_context)
@@ -441,6 +449,8 @@ def build_intel_og_image(post: dict[str, Any]) -> bytes:
         ",".join(str(item).strip() for item in post.get("chains") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("assets") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("products") or [] if str(item).strip()),
+        ",".join(str(item).strip() for item in post.get("countries") or [] if str(item).strip()),
+        str((post.get("primary_visual_entity") or {}).get("label") or ""),
         str(post.get("reading_time_minutes") or ""),
     )
 
