@@ -8,10 +8,10 @@ import { StatusBadge } from '../components/sne/StatusBadge';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { useRadarOverview } from '../../hooks/useRadarData';
 import { resolveModuleState } from '../../lib/moduleState';
+import { getRadarAssetBySymbol, mergeRadarUniverse } from '../../lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { buildSwapsHrefFromRadarSymbol } from '../components/swaps/radarSwapPrefill';
 
-const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 type Tone = 'active' | 'success' | 'warning' | 'pending';
 
 type RadarRow = {
@@ -24,21 +24,10 @@ type RadarRow = {
   liquidityLabel: string;
   confidenceLabel: string;
   confidenceTone: Tone;
+  swapAvailability: 'ready' | 'proxy';
+  executionHint: string;
   swapsHref: string;
 };
-
-const FIELD_PATTERN = [
-  { col: 'span 5', row: 'span 2' },
-  { col: 'span 4', row: 'span 2' },
-  { col: 'span 3', row: 'span 2' },
-  { col: 'span 4', row: 'span 2' },
-  { col: 'span 4', row: 'span 2' },
-  { col: 'span 4', row: 'span 2' },
-  { col: 'span 3', row: 'span 1' },
-  { col: 'span 3', row: 'span 1' },
-  { col: 'span 3', row: 'span 1' },
-  { col: 'span 3', row: 'span 1' },
-];
 
 const formatPrice = (value: number) =>
   value >= 1000
@@ -64,13 +53,28 @@ const formatUpdatedAt = (value?: string) => {
 const toEntitySymbol = (symbol?: string | null) => (symbol ?? '').replace(/USDT$/i, '') || undefined;
 const toStatusBadge = (tone?: Tone) => (tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : tone === 'active' ? 'active' : 'pending');
 const toneColor = (tone?: Tone) => (tone === 'success' ? 'var(--ok-green)' : tone === 'warning' ? 'var(--warn-amber)' : tone === 'active' ? 'var(--accent-orange)' : 'var(--text-2)');
-const scoreToWidth = (score?: number) => `${Math.max(12, Math.min(100, ((score ?? 0) / 30) * 100))}%`;
+const normalizeScore = (score?: number) => {
+  const value = Number(score ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return value <= 1 ? value * 100 : value;
+};
+const formatScore = (score?: number) => {
+  const normalized = normalizeScore(score);
+  if (normalized >= 10) return normalized.toFixed(0);
+  if (normalized > 0) return normalized.toFixed(1);
+  return '0';
+};
+const formatSignalStrength = (value?: string | null) => {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized.includes('moder')) return 'moderada';
+  if (normalized.includes('strong')) return 'forte';
+  if (normalized.includes('weak')) return 'fraca';
+  return value ?? undefined;
+};
+const scoreToWidth = (score?: number) => `${Math.max(12, Math.min(100, (normalizeScore(score) / 30) * 100))}%`;
 const deriveState = (change24h: number, score: number) => (score >= 22 || change24h >= 0.025 ? { label: 'BUY', tone: 'success' as const } : score <= 8 || change24h <= -0.02 ? { label: 'AVOID', tone: 'warning' as const } : { label: 'HOLD', tone: 'pending' as const });
 const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2 ? 'forte' : rank >= 0 && rank < 5 ? 'media' : volume > 100_000_000 ? 'media' : 'leve');
-
-function fieldSlot(index: number) {
-  return FIELD_PATTERN[index] ?? { col: 'span 3', row: 'span 1' };
-}
 
 export function Radar() {
   const navigate = useNavigate();
@@ -105,7 +109,10 @@ export function Radar() {
   const marketState = overview?.market_state;
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
-  const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({ symbol, price: 0, change24h: 0, volume: 0 }));
+  const quickSelection = useMemo(
+    () => mergeRadarUniverse(movers),
+    [movers]
+  );
 
   const radarTitleSymbol = pinnedSymbol || focusAsset?.symbol || querySymbol;
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
@@ -124,10 +131,12 @@ export function Radar() {
     const momentumMap = new Map(momentumRanking.map((entry) => [entry.symbol, entry]));
     const liquidityMap = new Map(liquidityRanking.map((entry, index) => [entry.symbol, index]));
     const rawRows: RadarRow[] = quickSelection.map((item) => {
-      const rankedScore = Number(momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000)));
+      const asset = getRadarAssetBySymbol(item.symbol);
+      const rankedScore = normalizeScore(momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000)));
       const focusConfidence = item.symbol === focusAsset?.symbol ? focusAsset.confidence : undefined;
       const focusLiquidity = item.symbol === focusAsset?.symbol ? focusAsset.liquidity : undefined;
-      const score = item.symbol === focusAsset?.symbol ? Math.max(rankedScore, Number(focusAsset.score ?? rankedScore)) : rankedScore;
+      const focusScore = normalizeScore(focusAsset?.score);
+      const score = item.symbol === focusAsset?.symbol ? Math.max(rankedScore, focusScore) : rankedScore;
       const state = deriveState(Number(item.change24h ?? 0), score);
       const liquidityRank = liquidityMap.get(item.symbol) ?? -1;
       const liquidityLabel = focusLiquidity?.label?.toLowerCase() ?? deriveLiquidity(liquidityRank, Number(item.volume));
@@ -141,6 +150,8 @@ export function Radar() {
         liquidityLabel,
         confidenceLabel,
         confidenceTone,
+        swapAvailability: asset?.swapAvailability ?? 'proxy',
+        executionHint: asset?.executionHint ?? 'Execucao via rota de swap em preparacao.',
         swapsHref: buildSwapsHrefFromRadarSymbol(item.symbol),
       };
     });
@@ -158,18 +169,15 @@ export function Radar() {
   const pinnedRow = rows.find((row) => row.symbol === pinnedSymbol) ?? rows[0];
   const hoveredRow = rows.find((row) => row.symbol === hoveredSymbol);
   const detailRow = hoveredRow ?? pinnedRow;
-  const selectionLane = rows.slice(0, 10);
   const fieldRows = rows.slice(0, 10);
   const momentumLane = [...rows].sort((left, right) => right.score - left.score).slice(0, 5);
   const liquidityLane = [...rows].sort((left, right) => Number(right.volume) - Number(left.volume)).slice(0, 5);
   const cautionLane = [...rows].filter((row) => row.state.label !== 'BUY').sort((left, right) => left.score - right.score).slice(0, 4);
-  const pointerMode = hoveredRow ? 'cursor' : 'pin';
-  const pointerLabel = hoveredRow ? 'cursor ativo' : 'ativo fixado';
   const routeActions = (nextAction?.actions ?? []).slice(0, 3);
   const detailMetrics = [
     { label: 'Preco', value: `$${formatPrice(detailRow?.price ?? 0)}`, tone: 'pending' as Tone },
     { label: '24h', value: formatPercent(detailRow?.change24h ?? 0), tone: (detailRow?.change24h ?? 0) >= 0 ? 'success' as Tone : 'warning' as Tone },
-    { label: 'Score', value: String(detailRow?.score ?? 0), tone: detailRow?.state.tone ?? 'pending' as Tone },
+    { label: 'Score', value: formatScore(detailRow?.score), tone: detailRow?.state.tone ?? 'pending' as Tone },
     { label: 'Liquidez', value: detailRow?.liquidityLabel ?? '--', tone: detailRow?.liquidityLabel === 'forte' ? 'success' as Tone : detailRow?.liquidityLabel === 'media' ? 'active' as Tone : 'pending' as Tone },
     { label: 'Confianca', value: detailRow?.confidenceLabel ?? '--', tone: detailRow?.confidenceTone ?? 'pending' as Tone },
     { label: 'Volume', value: `$${compact(Number(detailRow?.volume ?? 0))}`, tone: 'pending' as Tone },
@@ -215,34 +223,6 @@ export function Radar() {
               </button>
             </div>
 
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-              {selectionLane.map((row) => {
-                const active = row.symbol === pinnedRow?.symbol;
-                const preview = row.symbol === hoveredRow?.symbol;
-                return (
-                  <button
-                    key={row.symbol}
-                    onMouseEnter={() => previewSymbol(row.symbol)}
-                    onMouseLeave={() => previewSymbol(null)}
-                    onFocus={() => previewSymbol(row.symbol)}
-                    onBlur={() => previewSymbol(null)}
-                    onClick={() => pinSymbol(row.symbol)}
-                    className="shrink-0 rounded-full px-3 py-2 text-left text-[11px] uppercase tracking-[0.16em] transition-colors"
-                    style={{
-                      minWidth: '132px',
-                      color: active || preview ? 'var(--text-1)' : 'var(--text-2)',
-                      backgroundColor: active ? 'rgba(255,140,66,0.12)' : preview ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                      boxShadow: active ? 'inset 0 0 0 1px rgba(255,140,66,0.18)' : 'inset 0 0 0 1px rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold">{row.symbol}</span>
-                      <span style={{ color: toneColor(row.state.tone) }}>{row.state.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
           </section>
 
           {moduleState !== 'ready' ? (
@@ -272,19 +252,17 @@ export function Radar() {
                         campo
                       </div>
                       <div className="mt-2 text-[15px] leading-7" style={{ color: 'var(--text-2)' }}>
-                        O campo fica estavel. O cursor aproxima a leitura; o clique fixa o ativo na lateral.
+                        Visao geral do mercado com selecao direta de ativos.
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                       <span>{fieldRows.length} ativos em campo</span>
-                      <span>{pointerLabel}</span>
                       <span style={{ color: 'var(--accent-orange)' }}>{detailRow?.symbol ?? '--'}</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-12 auto-rows-[82px] gap-3">
+                  <div className="mt-5 grid grid-cols-12 auto-rows-[92px] gap-3">
                     {fieldRows.map((row, index) => {
-                      const slot = fieldSlot(index);
                       const pinned = row.symbol === pinnedRow?.symbol;
                       const preview = row.symbol === hoveredRow?.symbol;
                       return (
@@ -301,8 +279,8 @@ export function Radar() {
                           transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
                           className="group relative overflow-hidden rounded-[26px] px-4 py-4 text-left transition-transform duration-200 hover:-translate-y-0.5"
                           style={{
-                            gridColumn: slot.col,
-                            gridRow: slot.row,
+                            gridColumn: 'span 4',
+                            gridRow: 'span 2',
                             background: pinned
                               ? 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.03))'
                               : preview
@@ -322,13 +300,13 @@ export function Radar() {
                                     <div className="text-[16px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-1)' }}>
                                       {row.symbol}
                                     </div>
-                                    <div className="mt-1 text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                                  <div className="mt-1 text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                                       {row.liquidityLabel} · {row.confidenceLabel}
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                              {pinned ? <StatusBadge status="active">pin</StatusBadge> : preview ? <StatusBadge status="pending">cursor</StatusBadge> : <StatusBadge status={toStatusBadge(row.state.tone)}>{row.state.label}</StatusBadge>}
+                              <StatusBadge status={toStatusBadge(row.state.tone)}>{row.state.label}</StatusBadge>
                             </div>
 
                             <div className="flex items-end justify-between gap-3">
@@ -341,7 +319,7 @@ export function Radar() {
                                 </div>
                               </div>
                               <div className="text-right text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
-                                <div>score {row.score}</div>
+                                <div>score {formatScore(row.score)}</div>
                                 <div className="mt-1">vol ${compact(Number(row.volume))}</div>
                                 <div className="mt-2 h-1.5 w-20 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
                                   <div className="h-full rounded-full" style={{ width: scoreToWidth(row.score), backgroundColor: toneColor(row.state.tone) }} />
@@ -373,7 +351,7 @@ export function Radar() {
                     activeSymbol={detailRow?.symbol}
                     onPreview={previewSymbol}
                     onPin={pinSymbol}
-                    meta={(entry) => `score ${entry.score}`}
+                    meta={(entry) => `score ${formatScore(entry.score)}`}
                     value={(entry) => entry.state.label}
                   />
                   <StripList
@@ -383,7 +361,7 @@ export function Radar() {
                     activeSymbol={detailRow?.symbol}
                     onPreview={previewSymbol}
                     onPin={pinSymbol}
-                    meta={(entry) => `score ${entry.score} · liq ${entry.liquidityLabel}`}
+                    meta={(entry) => `score ${formatScore(entry.score)} · liq ${entry.liquidityLabel}`}
                     value={(entry) => entry.state.label}
                     emptyMessage="Nenhum ativo entrou em zona de cautela nesta janela."
                   />
@@ -393,16 +371,18 @@ export function Radar() {
               <aside className="space-y-5 xl:sticky xl:top-5">
                 <section
                   className="overflow-hidden rounded-[28px] px-5 py-5"
-                  style={{
-                    background: 'linear-gradient(180deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.01))',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                      style={{
+                    background: hoveredRow
+                      ? 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018) 44%, rgba(255,255,255,0.01))'
+                      : 'linear-gradient(180deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.01))',
+                    border: hoveredRow ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.08)',
                     boxShadow: 'var(--shadow-1)',
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
-                        {pointerMode === 'cursor' ? 'cursor ativo' : 'ativo fixado'}
+                        ativo em leitura
                       </div>
                       <div className="mt-3 flex items-center gap-3">
                         <IntelEntityIcon symbol={toEntitySymbol(detailRow?.symbol)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-6 w-6" />
@@ -412,7 +392,7 @@ export function Radar() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
                             <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{detailRow?.state.label ?? 'HOLD'}</StatusBadge>
-                            {signal?.strength ? <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{signal.strength}</StatusBadge> : null}
+                            {signal?.strength ? <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{formatSignalStrength(signal.strength)}</StatusBadge> : null}
                           </div>
                         </div>
                       </div>
@@ -423,15 +403,17 @@ export function Radar() {
                       className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em]"
                       style={{ color: 'var(--accent-orange)', backgroundColor: 'rgba(255,140,66,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.18)' }}
                     >
-                      Abrir swaps
+                      {detailRow?.swapAvailability === 'proxy' ? 'Abrir rota proxy' : 'Abrir swaps'}
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
                   <div className="mt-4 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    {pointerMode === 'cursor'
-                      ? `${detailRow?.symbol ?? '--'} esta sob cursor. Se fizer sentido, clique para fixar e abrir a leitura detalhada.`
-                      : `${detailRow?.symbol ?? '--'} esta fixado na leitura. O campo continua estavel enquanto voce compara liquidez, score e friccao.`}
+                    Preco, variacao, score, liquidez e volume do ativo selecionado.
+                  </div>
+
+                  <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-3)' }}>
+                    {detailRow?.executionHint ?? 'Execucao em rota de swap suportada.'}
                   </div>
 
                   <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">

@@ -22,6 +22,27 @@ type LiFiSwapWidgetProps = {
 
 const LIFI_INTEGRATOR = 'sne-os';
 
+function mergeAllowedTokens(
+  baseTokens: Array<{ chainId: number; address: string }>,
+  extraTokens: Array<{ chainId?: number; address?: string }>
+) {
+  const deduped = new Map<string, { chainId: number; address: string }>();
+
+  for (const token of baseTokens) {
+    deduped.set(`${token.chainId}:${token.address.toLowerCase()}`, token);
+  }
+
+  for (const token of extraTokens) {
+    if (!token.chainId || !token.address) continue;
+    deduped.set(`${token.chainId}:${token.address.toLowerCase()}`, {
+      chainId: token.chainId,
+      address: token.address,
+    });
+  }
+
+  return [...deduped.values()];
+}
+
 const SNE_LIFI_PT_BR = {
   language: {
     name: 'Português',
@@ -184,59 +205,70 @@ export function LiFiSwapWidget({
   }, []);
 
   const config = useMemo(
-    () => ({
-      integrator: LIFI_INTEGRATOR,
-      variant: compact ? 'compact' : 'wide',
-      appearance: 'dark',
-      buildUrl: true,
-      chains: {
-        allow: MAJOR_USDT_WIDGET_CHAIN_IDS,
-      },
-      tokens: {
-        from: {
-          allow: MAJOR_USDT_WIDGET_TOKENS,
+    () => {
+      const fromChain = prefill?.fromChain ?? DEFAULT_USDT_CHAIN_ID;
+      const toChain = prefill?.toChain;
+      const allowedTokens = mergeAllowedTokens(MAJOR_USDT_WIDGET_TOKENS, [
+        { chainId: fromChain, address: prefill?.fromToken },
+        { chainId: toChain, address: prefill?.toToken },
+      ]);
+
+      return {
+        integrator: LIFI_INTEGRATOR,
+        variant: compact ? 'compact' : 'wide',
+        appearance: 'dark',
+        buildUrl: true,
+        chains: {
+          allow: MAJOR_USDT_WIDGET_CHAIN_IDS,
         },
-        to: {
-          allow: MAJOR_USDT_WIDGET_TOKENS,
-        },
-      },
-      hiddenUI: ['poweredBy', 'gasRefuelMessage', 'language'],
-      languages: {
-        default: 'pt',
-        allow: ['pt'],
-      },
-      languageResources: {
-        pt: SNE_LIFI_PT_BR,
-      },
-      walletConfig: {
-        usePartialWalletManagement: true,
-      },
-      sdkConfig: {
-        rpcUrls: LIFI_RPC_URLS,
-      },
-      theme: {
-        container: {
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: compact ? '20px' : '28px',
-          boxShadow: 'none',
-        },
-        palette: {
-          primary: { main: '#ff8c42' },
-          secondary: { main: '#9fb1c7' },
-          background: {
-            default: '#060913',
-            paper: '#0b1018',
+        tokens: {
+          from: {
+            allow: allowedTokens,
           },
-          text: {
-            primary: '#f3f6fb',
-            secondary: '#9fb1c7',
+          to: {
+            allow: allowedTokens,
           },
         },
-      },
-      fromChain: prefill?.fromChain ?? DEFAULT_USDT_CHAIN_ID,
-      toChain: prefill?.toChain,
-      toAddress: prefill?.toAddress,
-    }),
+        hiddenUI: ['poweredBy', 'gasRefuelMessage', 'language'],
+        languages: {
+          default: 'pt',
+          allow: ['pt'],
+        },
+        languageResources: {
+          pt: SNE_LIFI_PT_BR,
+        },
+        walletConfig: {
+          usePartialWalletManagement: true,
+        },
+        sdkConfig: {
+          rpcUrls: LIFI_RPC_URLS,
+        },
+        theme: {
+          container: {
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: compact ? '20px' : '28px',
+            boxShadow: 'none',
+          },
+          palette: {
+            primary: { main: '#ff8c42' },
+            secondary: { main: '#9fb1c7' },
+            background: {
+              default: '#060913',
+              paper: '#0b1018',
+            },
+            text: {
+              primary: '#f3f6fb',
+              secondary: '#9fb1c7',
+            },
+          },
+        },
+        fromChain,
+        toChain,
+        fromToken: prefill?.fromToken,
+        toToken: prefill?.toToken,
+        toAddress: prefill?.toAddress,
+      };
+    },
     [compact, prefill]
   );
 

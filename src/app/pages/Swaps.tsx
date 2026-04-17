@@ -6,6 +6,7 @@ import { ArrowUpRight, CheckCircle2, CircleDot, ShieldCheck, Wallet, type Lucide
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { getRadarSwapContext } from '../components/swaps/radarSwapPrefill';
 import { WalletConnect } from '../components/passport/WalletConnect';
+import { getPreferredExecutionTarget, getRadarAssetByKey, getRadarAssetBySymbol } from '@/lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
 import { formatAddress } from '@/utils/format';
@@ -20,11 +21,11 @@ function normalizeWidgetChain(value?: number) {
   return value && MAJOR_USDT_WIDGET_CHAIN_IDS.includes(value) ? value : undefined;
 }
 
-function reviewItems(isConnected: boolean) {
+function reviewItems(isConnected: boolean, executionMode?: string) {
   return [
     { label: isConnected ? 'Carteira online' : 'Carteira pendente', ready: isConnected },
     { label: 'Rede confirmada no motor', ready: true },
-    { label: 'Modo USDT-first ativo', ready: true },
+    { label: executionMode ?? 'Modo USDT-first ativo', ready: true },
     { label: 'Revisar slippage e endereço', ready: false },
   ];
 }
@@ -34,19 +35,32 @@ export function Swaps() {
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
   const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
+  const radarAsset = useMemo(
+    () => getRadarAssetByKey(radarContext.assetKey) ?? getRadarAssetBySymbol(radarContext.symbol),
+    [radarContext.assetKey, radarContext.symbol]
+  );
+  const executionTarget = useMemo(() => getPreferredExecutionTarget(radarAsset), [radarAsset]);
 
   const prefill = useMemo(() => {
     const explicitFromChain = normalizeWidgetChain(parseChainId(searchParams.get('fromChain')));
     const explicitToChain = normalizeWidgetChain(parseChainId(searchParams.get('toChain')));
     const fromChain = explicitFromChain ?? DEFAULT_USDT_CHAIN_ID;
-    const toChain = explicitToChain;
+    const toChain = explicitToChain ?? normalizeWidgetChain(executionTarget?.chainId);
 
     return {
       fromChain,
       toChain,
+      fromToken: searchParams.get('fromToken') ?? undefined,
+      toToken: searchParams.get('toToken') ?? executionTarget?.address,
       toAddress: address ?? searchParams.get('toAddress') ?? undefined,
     };
-  }, [address, searchParams]);
+  }, [address, executionTarget?.address, executionTarget?.chainId, searchParams]);
+
+  const executionModeLabel =
+    radarAsset?.swapAvailability === 'proxy' ? 'Rota proxy preparada' : 'Execução direta pronta';
+  const executionSurfaceLabel = radarAsset
+    ? `${radarAsset.displaySymbol} em ${getUsdtChainName(prefill.toChain ?? executionTarget?.chainId)}`
+    : getUsdtChainName(prefill.toChain);
 
   useSeoMeta({
     title: 'Mover USDT | SNE OS',
@@ -65,7 +79,7 @@ export function Swaps() {
     },
   });
 
-  const checks = reviewItems(isConnected);
+  const checks = reviewItems(isConnected, executionModeLabel);
 
   return (
     <div className="flex flex-1">
@@ -77,10 +91,12 @@ export function Swaps() {
                 Rail de execução
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.035em]" style={{ color: 'var(--text-1)' }}>
-                Mover USDT
+                {radarAsset ? `Executar ${radarAsset.displaySymbol}` : 'Mover USDT'}
               </h1>
               <p className="mt-1 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                Use seu saldo-base para converter, mover ou rotacionar entre redes e ativos sem sair da auto custódia.
+                {radarAsset
+                  ? `${radarAsset.executionHint} O motor usa USDT como base e abre a melhor rota de execução para ${radarAsset.displayName}.`
+                  : 'Use seu saldo-base para converter, mover ou rotacionar entre redes e ativos sem sair da auto custódia.'}
               </p>
             </div>
 
@@ -88,8 +104,8 @@ export function Swaps() {
               <StatusToken label={isConnected ? 'Carteira online' : 'Carteira pendente'} tone={isConnected ? 'success' : 'warning'} />
               <StatusToken label={getUsdtChainName(prefill.fromChain)} tone="neutral" />
               {radarContext.fromRadar ? <StatusToken label="Origem Radar" tone="neutral" /> : null}
-              {radarContext.symbol ? <StatusToken label={radarContext.symbol} tone="accent" /> : null}
-              <StatusToken label="Modo USDT-first" tone="accent" />
+              {radarAsset ? <StatusToken label={radarAsset.displaySymbol} tone="accent" /> : null}
+              <StatusToken label={executionModeLabel} tone="accent" />
             </div>
           </header>
 
@@ -116,10 +132,14 @@ export function Swaps() {
                       Leitura trazida do Radar
                     </div>
                     <div className="mt-1 text-sm" style={{ color: 'var(--text-1)' }}>
-                      {radarContext.symbol ? `${radarContext.symbol} entrou em foco antes da execução.` : 'O contexto veio do Radar antes da execução.'}
+                      {radarAsset
+                        ? `${radarAsset.displayName} entrou em foco antes da execução.`
+                        : radarContext.symbol
+                          ? `${radarContext.symbol} entrou em foco antes da execução.`
+                          : 'O contexto veio do Radar antes da execução.'}
                     </div>
                     <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      Mantenha a rota curta: revise cotação, rede e assinatura sem perder o ativo em leitura.
+                      {radarAsset?.executionHint ?? 'Mantenha a rota curta: revise cotação, rede e assinatura sem perder o ativo em leitura.'}
                     </div>
                   </div>
                   <button
@@ -142,7 +162,9 @@ export function Swaps() {
                     Motor de execução
                   </div>
                   <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
-                    USDT entra como unidade operacional. O motor transforma saldo em execução.
+                    {radarAsset
+                      ? `USDT entra como unidade operacional. O motor converte saldo em ${radarAsset.displaySymbol} pela rota compatível.`
+                      : 'USDT entra como unidade operacional. O motor transforma saldo em execução.'}
                   </div>
                 </div>
                 <div
@@ -186,6 +208,17 @@ export function Swaps() {
                 <div className="mt-3">
                   <Metric label="Endereço alvo" value={prefill.toAddress ? formatAddress(prefill.toAddress) : 'Carteira conectada'} />
                 </div>
+                {radarAsset ? (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <Metric label="Ativo alvo" value={radarAsset.displaySymbol} />
+                    <Metric label="Execução" value={executionSurfaceLabel} />
+                  </div>
+                ) : null}
+                {radarAsset?.executionHint ? (
+                  <div className="mt-3 rounded-2xl border px-3 py-3 text-sm leading-6" style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}>
+                    {radarAsset.executionHint}
+                  </div>
+                ) : null}
               </Panel>
 
               <Panel title="Revisão" icon={ShieldCheck}>
@@ -222,7 +255,11 @@ export function Swaps() {
                 >
                   <div>
                     <div className="mb-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                      {radarContext.symbol ? `Voltar para ${radarContext.symbol} no Radar` : 'Voltar para o Radar'}
+                      {radarAsset
+                        ? `Voltar para ${radarAsset.displaySymbol} no Radar`
+                        : radarContext.symbol
+                          ? `Voltar para ${radarContext.symbol} no Radar`
+                          : 'Voltar para o Radar'}
                     </div>
                     <div className="text-sm leading-5" style={{ color: 'var(--text-2)' }}>
                       {radarContext.fromRadar

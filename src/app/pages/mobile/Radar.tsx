@@ -5,10 +5,10 @@ import { Activity, AlertTriangle, ArrowUpRight, MoveRight, RefreshCw, ShieldAler
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { useRadarOverview } from '../../../hooks/useRadarData';
+import { getRadarAssetBySymbol, mergeRadarUniverse } from '../../../lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { buildSwapsHrefFromRadarSymbol } from '../../components/swaps/radarSwapPrefill';
 
-const RADAR_SYMBOLS = ['ETHUSDT', 'BTCUSDT', 'SOLUSDT', 'LINKUSDT', 'AAVEUSDT', 'UNIUSDT'];
 type Tone = 'active' | 'success' | 'warning' | 'pending';
 
 type RadarRow = {
@@ -21,6 +21,8 @@ type RadarRow = {
   liquidityLabel: string;
   confidenceLabel: string;
   confidenceTone: Tone;
+  swapAvailability: 'ready' | 'proxy';
+  executionHint: string;
   swapsHref: string;
 };
 
@@ -48,7 +50,26 @@ const formatUpdatedAt = (value?: string) => {
 const toEntitySymbol = (symbol?: string | null) => (symbol ?? '').replace(/USDT$/i, '') || undefined;
 const toBadgeVariant = (tone?: Tone): 'success' | 'warning' | 'neutral' | 'orange' => (tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : tone === 'active' ? 'orange' : 'neutral');
 const toneColor = (tone?: Tone) => (tone === 'success' ? 'var(--success)' : tone === 'warning' ? 'var(--warn-amber)' : tone === 'active' ? 'var(--accent-orange)' : 'var(--text-2)');
-const scoreToWidth = (score?: number) => `${Math.max(12, Math.min(100, ((score ?? 0) / 30) * 100))}%`;
+const normalizeScore = (score?: number) => {
+  const value = Number(score ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return value <= 1 ? value * 100 : value;
+};
+const formatScore = (score?: number) => {
+  const normalized = normalizeScore(score);
+  if (normalized >= 10) return normalized.toFixed(0);
+  if (normalized > 0) return normalized.toFixed(1);
+  return '0';
+};
+const formatSignalStrength = (value?: string | null) => {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized.includes('moder')) return 'moderada';
+  if (normalized.includes('strong')) return 'forte';
+  if (normalized.includes('weak')) return 'fraca';
+  return value ?? undefined;
+};
+const scoreToWidth = (score?: number) => `${Math.max(12, Math.min(100, (normalizeScore(score) / 30) * 100))}%`;
 const deriveState = (change24h: number, score: number) => (score >= 22 || change24h >= 0.025 ? { label: 'BUY', tone: 'success' as const } : score <= 8 || change24h <= -0.02 ? { label: 'AVOID', tone: 'warning' as const } : { label: 'HOLD', tone: 'pending' as const });
 const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2 ? 'forte' : rank >= 0 && rank < 5 ? 'media' : volume > 100_000_000 ? 'media' : 'leve');
 
@@ -75,7 +96,10 @@ export function MobileRadar() {
   const marketState = overview?.market_state;
   const momentumRanking = overview?.rankings?.momentum ?? [];
   const liquidityRanking = overview?.rankings?.liquidity ?? [];
-  const quickSelection = movers.length > 0 ? movers : RADAR_SYMBOLS.map((symbol) => ({ symbol, price: 0, change24h: 0, volume: 0 }));
+  const quickSelection = useMemo(
+    () => mergeRadarUniverse(movers),
+    [movers]
+  );
 
   const radarTitleSymbol = pinnedSymbol || querySymbol;
   const radarCanonicalPath = radarTitleSymbol ? `/radar/${radarTitleSymbol.toLowerCase()}` : '/radar';
@@ -93,10 +117,12 @@ export function MobileRadar() {
     const momentumMap = new Map(momentumRanking.map((entry) => [entry.symbol, entry]));
     const liquidityMap = new Map(liquidityRanking.map((entry, index) => [entry.symbol, index]));
     const rawRows: RadarRow[] = quickSelection.map((item) => {
-      const rankedScore = Number(momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000)));
+      const asset = getRadarAssetBySymbol(item.symbol);
+      const rankedScore = normalizeScore(momentumMap.get(item.symbol)?.score ?? Math.max(0, Math.round(Math.abs(item.change24h) * 1000)));
       const focusConfidence = item.symbol === focusAsset?.symbol ? focusAsset.confidence : undefined;
       const focusLiquidity = item.symbol === focusAsset?.symbol ? focusAsset.liquidity : undefined;
-      const score = item.symbol === focusAsset?.symbol ? Math.max(rankedScore, Number(focusAsset.score ?? rankedScore)) : rankedScore;
+      const focusScore = normalizeScore(focusAsset?.score);
+      const score = item.symbol === focusAsset?.symbol ? Math.max(rankedScore, focusScore) : rankedScore;
       const state = deriveState(Number(item.change24h ?? 0), score);
       const liquidityRank = liquidityMap.get(item.symbol) ?? -1;
       const liquidityLabel = focusLiquidity?.label?.toLowerCase() ?? deriveLiquidity(liquidityRank, Number(item.volume));
@@ -110,6 +136,8 @@ export function MobileRadar() {
         liquidityLabel,
         confidenceLabel,
         confidenceTone,
+        swapAvailability: asset?.swapAvailability ?? 'proxy',
+        executionHint: asset?.executionHint ?? 'Execucao via rota de swap em preparacao.',
         swapsHref: buildSwapsHrefFromRadarSymbol(item.symbol),
       };
     });
@@ -125,7 +153,6 @@ export function MobileRadar() {
   }, [focusAsset, liquidityRanking, momentumRanking, quickSelection]);
 
   const pinnedRow = rows.find((row) => row.symbol === pinnedSymbol) ?? rows[0];
-  const selectionLane = rows.slice(0, 8);
   const fieldRows = rows.slice(0, 8);
   const liquidityLane = [...rows].sort((left, right) => Number(right.volume) - Number(left.volume)).slice(0, 4);
   const momentumLane = [...rows].sort((left, right) => right.score - left.score).slice(0, 4);
@@ -152,7 +179,7 @@ export function MobileRadar() {
               Leia o campo antes de puxar um ativo para perto.
             </div>
             <div className="mt-2 text-sm leading-6 text-[var(--text-2)]">
-              O campo nao reordena quando voce troca o foco. O clique fixa o ativo; o resto continua estavel.
+              Visao geral do mercado com selecao direta de ativos.
             </div>
           </div>
           <button onClick={() => overviewQuery.refetch()} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--stroke-1)] bg-[var(--bg-2)] text-[var(--text-2)]">
@@ -167,22 +194,6 @@ export function MobileRadar() {
           <Badge variant="neutral" size="sm">{marketState?.execution ?? 'intel-first'}</Badge>
         </div>
 
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {selectionLane.map((row) => (
-            <button
-              key={row.symbol}
-              onClick={() => pinSymbol(row.symbol)}
-              className="shrink-0 rounded-full px-3 py-2 text-xs uppercase tracking-[0.14em]"
-              style={{
-                color: row.symbol === pinnedRow?.symbol ? 'var(--text-1)' : 'var(--text-2)',
-                backgroundColor: row.symbol === pinnedRow?.symbol ? 'rgba(255,140,66,0.12)' : 'var(--bg-2)',
-                boxShadow: row.symbol === pinnedRow?.symbol ? 'inset 0 0 0 1px rgba(255,140,66,0.18)' : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
-              }}
-            >
-              {row.symbol}
-            </button>
-          ))}
-        </div>
       </SurfaceCard>
 
       {overviewQuery.isLoading && !overview ? (
@@ -210,7 +221,7 @@ export function MobileRadar() {
               <EmptyState title="Sem mercados ao vivo" description="O universo monitorado esta vazio agora." />
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-1">
-                {fieldRows.map((row, index) => {
+                {fieldRows.map((row) => {
                   const pinned = row.symbol === pinnedRow?.symbol;
                   return (
                     <button
@@ -218,7 +229,7 @@ export function MobileRadar() {
                       onClick={() => pinSymbol(row.symbol)}
                       className="shrink-0 rounded-[22px] p-3 text-left"
                       style={{
-                        width: `${pinned ? 204 : 176 + (index % 2) * 10}px`,
+                        width: '188px',
                         background: pinned ? 'linear-gradient(135deg, rgba(255,140,66,0.12), rgba(255,255,255,0.03))' : 'var(--bg-2)',
                         boxShadow: pinned ? 'inset 0 0 0 1px rgba(255,140,66,0.18)' : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
                       }}
@@ -233,7 +244,7 @@ export function MobileRadar() {
                             </div>
                           </div>
                         </div>
-                        <Badge variant={toBadgeVariant(row.state.tone)} size="sm">{pinned ? 'pin' : row.state.label}</Badge>
+                        <Badge variant={toBadgeVariant(row.state.tone)} size="sm">{row.state.label}</Badge>
                       </div>
 
                       <div className="text-base text-[var(--text-1)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -243,7 +254,7 @@ export function MobileRadar() {
                         ${formatPrice(row.price)}
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.14em] text-[var(--text-3)]">
-                        <span>score {row.score}</span>
+                        <span>score {formatScore(row.score)}</span>
                         <span>vol ${compact(Number(row.volume))}</span>
                       </div>
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
@@ -257,7 +268,7 @@ export function MobileRadar() {
           </SurfaceCard>
 
           <SurfaceCard variant="elevated" className="overflow-hidden">
-            <div className="mb-3 text-[10px] uppercase tracking-[0.24em] text-[var(--text-3)]">ativo fixado</div>
+            <div className="mb-3 text-[10px] uppercase tracking-[0.24em] text-[var(--text-3)]">ativo em leitura</div>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
@@ -286,12 +297,16 @@ export function MobileRadar() {
               </div>
               <div>
                 <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">score</div>
-                <div className="text-[var(--text-1)]">{pinnedRow?.score ?? 0}</div>
+                <div className="text-[var(--text-1)]">{formatScore(pinnedRow?.score)}</div>
               </div>
             </div>
 
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full" style={{ width: scoreToWidth(pinnedRow?.score), backgroundColor: toneColor(pinnedRow?.state.tone) }} />
+            </div>
+
+            <div className="mt-4 text-sm leading-6 text-[var(--text-2)]">
+              Preco, variacao, score, liquidez e volume do ativo selecionado.
             </div>
 
             <div className="mt-4 space-y-3">
@@ -302,15 +317,19 @@ export function MobileRadar() {
                 </MobileButton>
               ))}
               <MobileButton variant="primary" className="w-full justify-between" onClick={() => navigate(pinnedRow?.swapsHref ?? buildSwapsHrefFromRadarSymbol(pinnedRow?.symbol))}>
-                <span>Executar com USDT</span>
+                <span>{pinnedRow?.swapAvailability === 'proxy' ? 'Abrir rota proxy' : 'Executar com USDT'}</span>
                 <ArrowUpRight className="h-4 w-4" />
               </MobileButton>
             </div>
 
+            <div className="mt-4 text-sm leading-6 text-[var(--text-3)]">
+              {pinnedRow?.executionHint ?? 'Execucao em rota de swap suportada.'}
+            </div>
+
             <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <Lane title="fluxo mais liquido" icon={Activity} entries={liquidityLane} activeSymbol={pinnedRow?.symbol} onPin={pinSymbol} rightValue={(entry) => `$${compact(Number(entry.volume))}`} meta={(entry) => entry.liquidityLabel} />
-              <Lane title="pulso de momentum" icon={Waves} entries={momentumLane} activeSymbol={pinnedRow?.symbol} onPin={pinSymbol} rightValue={(entry) => formatPercent(entry.change24h)} meta={(entry) => `score ${entry.score}`} />
-              <Lane title="zona de cautela" icon={ShieldAlert} entries={cautionLane} activeSymbol={pinnedRow?.symbol} onPin={pinSymbol} rightValue={(entry) => entry.state.label} meta={(entry) => `score ${entry.score}`} emptyMessage="Sem ativos em zona de cautela." />
+              <Lane title="pulso de momentum" icon={Waves} entries={momentumLane} activeSymbol={pinnedRow?.symbol} onPin={pinSymbol} rightValue={(entry) => formatPercent(entry.change24h)} meta={(entry) => `score ${formatScore(entry.score)}`} />
+              <Lane title="zona de cautela" icon={ShieldAlert} entries={cautionLane} activeSymbol={pinnedRow?.symbol} onPin={pinSymbol} rightValue={(entry) => entry.state.label} meta={(entry) => `score ${formatScore(entry.score)}`} emptyMessage="Sem ativos em zona de cautela." />
             </div>
 
             <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
@@ -332,7 +351,7 @@ export function MobileRadar() {
 
               {signal?.symbol ? (
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant={toBadgeVariant(pinnedRow?.state.tone)} size="sm">{signal.signal}</Badge>
+                  <Badge variant={toBadgeVariant(pinnedRow?.state.tone)} size="sm">{formatSignalStrength(signal.signal) ?? signal.signal}</Badge>
                   <Badge variant="neutral" size="sm">{signal.symbol}</Badge>
                   <Badge variant="neutral" size="sm">{marketState?.access ?? '--'}</Badge>
                 </div>
