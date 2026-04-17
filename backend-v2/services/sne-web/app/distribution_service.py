@@ -5,6 +5,7 @@ Distribution asset generation and controlled publishing for Intel institutional 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 import html
 import json
 import logging
@@ -117,8 +118,9 @@ def _asset_key(slug: str, channel: str) -> str:
 def _channel_instruction(channel: str) -> str:
     if channel == "telegram":
         return (
-            "Crie uma peça para Telegram em pt-BR com headline forte, um bloco curto de contexto, "
-            "até 900 caracteres e um CTA final."
+            "Crie uma peça para Telegram em pt-BR com voz editorial viva, sem cara de template serializado. "
+            "Varie entre brief curto, tese operacional, nota de operador e dossie completo. "
+            "Evite marcadores fixos como impacto, acao e dossie completo em toda peca."
         )
     if channel == "whatsapp":
         return (
@@ -192,6 +194,19 @@ def _telegram_family_label(post: Dict[str, Any]) -> str:
     return "INTEL | Mercado"
 
 
+def _telegram_mode(post: Dict[str, Any]) -> str:
+    slug = str(post.get("slug") or post.get("id") or post.get("title") or "").strip().lower()
+    digest = hashlib.sha1(slug.encode("utf-8")).hexdigest()
+    bucket = int(digest[:2], 16) % 9
+    if bucket <= 4:
+        return "brief"
+    if bucket <= 6:
+        return "thesis"
+    if bucket == 7:
+        return "operator"
+    return "dossier"
+
+
 def _first_meaningful_line(*values: Any, limit: int = 150) -> str:
     for value in values:
         cleaned = _normalize_copy_line(value)
@@ -210,27 +225,82 @@ def _telegram_action_line(post: Dict[str, Any]) -> str:
     return "revisar rotas, risco operacional e janelas de execucao."
 
 
-def _compose_telegram_body(post: Dict[str, Any], cta_url: str) -> str:
-    family = _telegram_family_label(post)
+def _telegram_secondary_line(post: Dict[str, Any]) -> str:
+    tldr = _normalize_string_list(post.get("tldr"))
+    if len(tldr) >= 2:
+        return _truncate_copy_line(tldr[1], 132)
+    excerpt = _normalize_copy_line(post.get("excerpt"))
+    subtitle = _normalize_copy_line(post.get("subtitle"))
+    title = _normalize_copy_line(post.get("title"))
+    for candidate in (excerpt, subtitle, title):
+        if candidate:
+            return _truncate_copy_line(candidate, 132)
+    return ""
+
+
+def _telegram_cta_label(post: Dict[str, Any]) -> str:
+    options = ["Leia o dossie:", "Leitura completa:", "Peca completa:"]
+    slug = str(post.get("slug") or post.get("id") or "").strip().lower()
+    if not slug:
+        return options[0]
+    digest = hashlib.sha1(f"cta:{slug}".encode("utf-8")).hexdigest()
+    return options[int(digest[:2], 16) % len(options)]
+
+
+def _telegram_body_lines(post: Dict[str, Any], mode: str, cta_url: str) -> List[str]:
     insight = _first_meaningful_line(
         post.get("subtitle"),
         post.get("excerpt"),
-        limit=160,
+        limit=190,
     )
-    impact = _first_meaningful_line(
+    operational = _first_meaningful_line(
         post.get("excerpt"),
         post.get("subtitle"),
-        limit=94,
+        _telegram_action_line(post),
+        limit=170,
     )
-    action = _telegram_action_line(post)
-    lines: List[str] = [family]
-    if insight:
-        lines.extend(["", insight])
-    detail_lines = [line for line in [f"- impacto: {impact}" if impact else "", f"- acao: {action}" if action else ""] if line]
-    if detail_lines:
-        lines.extend(["", *detail_lines])
-    lines.extend(["", "Dossie completo:", cta_url, "", "SNE Labs Intel"])
-    return "\n".join(lines).strip()
+    secondary = _telegram_secondary_line(post)
+    cta_label = _telegram_cta_label(post)
+
+    if mode == "brief":
+        lines: List[str] = []
+        if insight:
+            lines.append(insight)
+        if operational and operational.lower() != insight.lower():
+            lines.extend(["", operational])
+        lines.extend(["", cta_label, cta_url])
+        return lines
+
+    if mode == "thesis":
+        thesis = _truncate_copy_line(insight or operational, 200)
+        consequence = _truncate_copy_line(secondary or operational, 170)
+        lines = [thesis] if thesis else []
+        if consequence and consequence.lower() != thesis.lower():
+            lines.extend(["", consequence])
+        lines.append("")
+        lines.append(cta_url)
+        return lines
+
+    if mode == "operator":
+        primary = _truncate_copy_line(insight or operational, 180)
+        note = _truncate_copy_line(secondary or _telegram_action_line(post), 170)
+        lines = [primary] if primary else []
+        if note and note.lower() != primary.lower():
+            lines.extend(["", note])
+        return lines
+
+    lead = _truncate_copy_line(insight or operational, 190)
+    support = _truncate_copy_line(secondary or operational, 170)
+    lines = [lead] if lead else []
+    if support and support.lower() != lead.lower():
+        lines.extend(["", support])
+    lines.extend(["", cta_label, cta_url])
+    return lines
+
+
+def _compose_telegram_body(post: Dict[str, Any], cta_url: str) -> str:
+    mode = _telegram_mode(post)
+    return "\n".join(line for line in _telegram_body_lines(post, mode, cta_url) if line is not None).strip()
 
 
 def _compose_x_body(
@@ -385,7 +455,7 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
                     **post,
                     "subtitle": parsed.get("subtitle") or post.get("subtitle"),
                     "excerpt": impact_line or post.get("excerpt"),
-                    "tldr": [action_line],
+                    "tldr": [action_line, *(_normalize_string_list(post.get("tldr"))[:1])],
                 },
                 cta_url,
             )
