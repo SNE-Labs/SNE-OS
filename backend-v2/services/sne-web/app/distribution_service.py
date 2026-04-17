@@ -22,7 +22,7 @@ from .intel_enrichment import (
     _openai_responses_payload,
     _truncate_response_body,
 )
-from .og_image_service import build_intel_share_url
+from .og_image_service import build_intel_og_image_url, build_intel_share_url
 from .telegram_delivery import send_telegram_text
 from .utils.redis_safe import SafeRedis
 from .x_api_service import x_official_configured, x_post_text
@@ -33,6 +33,8 @@ VALID_CHANNELS = {"telegram", "whatsapp", "x"}
 ASSET_KEY_PREFIX = "intel:distribution:asset:"
 ASSET_INDEX_PREFIX = "intel:distribution:index:"
 URL_PATTERN = re.compile(r"https?://\S+")
+X_PREVIEW_TIMEOUT_SECONDS = 8
+DISTRIBUTION_FORMAT_VERSION = 2
 TRAILING_STOPWORDS = {
     "a", "as", "ao", "aos", "com", "da", "das", "de", "do", "dos", "e",
     "em", "na", "nas", "no", "nos", "o", "os", "para", "por", "sem", "um", "uma",
@@ -164,6 +166,44 @@ def _effective_x_length(text: str) -> int:
     return len(URL_PATTERN.sub("x" * 23, text))
 
 
+def _configured_for_channel(channel: str) -> bool:
+    if channel == "telegram":
+        return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
+    if channel == "whatsapp":
+        return bool(
+            os.getenv("WHATSAPP_ACCESS_TOKEN")
+            and os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+            and os.getenv("WHATSAPP_TO")
+        )
+    if channel == "x":
+        return x_official_configured() or bool((os.getenv("X_PUBLISH_WEBHOOK_URL") or "").strip())
+    return False
+
+
+def _configured_auto_channels() -> List[str]:
+    channels: List[str] = []
+    if _configured_for_channel("telegram") and _env_flag("INTEL_TELEGRAM_AUTO_PUBLISH", default=True):
+        channels.append("telegram")
+    if _env_flag("INTEL_X_AUTO_PUBLISH", default=False) and _configured_for_channel("x"):
+        channels.append("x")
+    return channels
+
+
+def _default_auto_channels() -> List[str]:
+    return _configured_auto_channels() or ["telegram"]
+
+
+def _x_mode(post: Dict[str, Any]) -> str:
+    slug = str(post.get("slug") or post.get("id") or post.get("title") or "").strip().lower()
+    digest = hashlib.sha1(f"x:{slug}".encode("utf-8")).hexdigest()
+    bucket = int(digest[:2], 16) % 6
+    if bucket <= 2:
+        return "thesis"
+    if bucket <= 4:
+        return "operator"
+    return "dossier"
+
+
 def _x_family_label(post: Dict[str, Any]) -> str:
     stream = str(post.get("stream") or "").strip().lower()
     institutional_type = str(post.get("institutional_type") or post.get("type") or "").strip().lower()
@@ -182,6 +222,35 @@ def _x_default_action_line(post: Dict[str, Any]) -> str:
     if category == "institutional":
         return "Ajuste produto, rollout e comunicacao a partir deste movimento."
     return "Revise execucao, liquidez e risco operacional a partir daqui."
+
+
+def _x_auto_publish_gate(post: Dict[str, Any]) -> tuple[bool, str | None]:
+    if not _env_flag("INTEL_X_AUTO_PUBLISH", default=False):
+        return False, "x_auto_publish_disabled"
+    if not _configured_for_channel("x"):
+        return False, "x_not_configured"
+    if _env_flag("INTEL_X_AUTO_PUBLISH_ALL", default=False):
+        return True, None
+
+    stream = str(post.get("stream") or "").strip().lower()
+    category = str(post.get("category") or "").strip().lower()
+    editorial_kind = str(post.get("editorial_kind") or "").strip().lower()
+    institutional_type = str(post.get("institutional_type") or post.get("type") or "").strip().lower()
+    title = _normalize_copy_line(post.get("title"))
+    subtitle = _normalize_copy_line(post.get("subtitle") or post.get("excerpt"))
+    if len(title) < 24 or len(subtitle) < 36:
+        return False, "x_copy_too_thin"
+
+    if stream == "institutional" or category == "institutional":
+        if institutional_type in {"product-update", "release-note", "dev-log", "platform-note"}:
+            return True, None
+        return False, "x_institutional_not_priority"
+
+    if category == "market":
+        return True, None
+    if editorial_kind in {"dossier", "analysis", "research-note"}:
+        return True, None
+    return False, "x_not_priority"
 
 
 def _telegram_family_label(post: Dict[str, Any]) -> str:
@@ -310,19 +379,23 @@ def _compose_x_body(
     impact_line: str,
     action_line: str,
 ) -> str:
-    family = _x_family_label(post)
-    family_prefix = f"{family}: "
-    link_line = cta_url
+    mode = _x_mode(post)
     budgets = {
-        "headline": 72,
-        "impact": 74,
-        "action": 70,
+        "headline": 92 if mode == "dossier" else 86,
+        "impact": 96 if mode != "operator" else 112,
+        "action": 76,
     }
     minimums = {
-        "headline": 38,
-        "impact": 32,
+        "headline": 42,
+        "impact": 36,
         "action": 28,
     }
+
+    def _sentence(value: str) -> str:
+        cleaned = value.strip().rstrip(".…")
+        if not cleaned:
+            return ""
+        return f"{cleaned}."
 
     def _render() -> tuple[str, Dict[str, str]]:
         parts = {
@@ -330,12 +403,22 @@ def _compose_x_body(
             "impact": _truncate_copy_line(impact_line, budgets["impact"]),
             "action": _truncate_copy_line(action_line, budgets["action"]),
         }
-        sentences = [
-            f"{family_prefix}{parts['headline'].rstrip('.…')}.",
-            f"{parts['impact'].rstrip('.…')}.",
-            f"{parts['action'].rstrip('.…')}.",
-        ]
-        body = " ".join(sentences + [link_line]).strip()
+        lines: List[str] = []
+        if mode == "operator":
+            lines = [_sentence(parts["headline"]), "", _sentence(parts["impact"]), "", cta_url]
+        elif mode == "dossier":
+            lines = [_sentence(parts["headline"]), "", _sentence(parts["impact"]), "", "Leia o dossie:", cta_url]
+        else:
+            lines = [
+                _sentence(parts["headline"]),
+                "",
+                _sentence(parts["impact"]),
+                "",
+                _sentence(parts["action"]),
+                "",
+                cta_url,
+            ]
+        body = "\n".join(line for line in lines if line is not None).strip()
         return body, parts
 
     body, parts = _render()
@@ -345,24 +428,13 @@ def _compose_x_body(
             if budgets[key] > minimums[key]
         ]
         if not adjustable:
-            body = " ".join(
-                [
-                    f"{family_prefix}{parts['headline'].rstrip('.…')}.",
-                    f"{parts['impact'].rstrip('.…')}.",
-                    link_line,
-                ]
-            ).strip()
+            body = "\n\n".join([_sentence(parts["headline"]), _sentence(parts["impact"]), cta_url]).strip()
             if _effective_x_length(body) <= 270:
                 return body
-            body = " ".join(
-                [
-                    f"{family_prefix}{parts['headline'].rstrip('.…')}.",
-                    link_line,
-                ]
-            ).strip()
+            body = "\n\n".join([_sentence(parts["headline"]), cta_url]).strip()
             if _effective_x_length(body) <= 270:
                 return body
-            body = " ".join([parts["headline"].rstrip(".…") + ".", link_line]).strip()
+            body = "\n\n".join([_sentence(_truncate_copy_line(headline, 80)), cta_url]).strip()
             return body
         longest = max(adjustable, key=lambda key: budgets[key])
         budgets[longest] -= 10
@@ -418,7 +490,8 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
         model,
         (
             "Voce adapta conteudo institucional da SNELabs para distribuicao multicanal. "
-            "Nao invente fatos novos e responda em JSON com headline e body."
+            "Nao invente fatos novos. Para X, responda em JSON com headline, impact_line e action_line. "
+            "Para outros canais, responda em JSON com headline e body."
         ),
         json.dumps(prompt, ensure_ascii=False),
         1200,
@@ -494,6 +567,7 @@ def _build_asset(post: Dict[str, Any], channel: str) -> Dict[str, Any]:
         "dedupe_key": f"{post.get('id')}:{channel}",
         "published_at": None,
         "generated_at": _iso_now(),
+        "format_version": DISTRIBUTION_FORMAT_VERSION,
     }
 
 
@@ -521,8 +595,11 @@ def generate_distribution_assets(slug: str, channels: Any = None, force: bool = 
     for channel in selected_channels:
         existing = _read_json(redis_client, _asset_key(slug, channel))
         if isinstance(existing, dict) and not force:
-            assets.append(existing)
-            continue
+            already_published = existing.get("status") == "published" and existing.get("published_at")
+            current_format = existing.get("format_version") == DISTRIBUTION_FORMAT_VERSION
+            if already_published or current_format:
+                assets.append(existing)
+                continue
         asset = _build_asset(post, channel)
         _write_json(redis_client, _asset_key(slug, channel), asset)
         assets.append(asset)
@@ -568,7 +645,42 @@ def _publish_to_whatsapp(asset: Dict[str, Any]) -> tuple[str, str | None]:
     return "published", None
 
 
+def _validate_x_preview(asset: Dict[str, Any]) -> tuple[bool, str | None]:
+    if not _env_flag("INTEL_X_VALIDATE_PREVIEW", default=True):
+        return True, None
+
+    slug = str(asset.get("slug") or "").strip()
+    cta_url = str(asset.get("cta_url") or "").strip()
+    if not slug or not cta_url:
+        return False, "x_preview_missing_slug_or_url"
+
+    image_url = build_intel_og_image_url(slug)
+    try:
+        share_response = requests.get(cta_url, timeout=X_PREVIEW_TIMEOUT_SECONDS)
+        if share_response.status_code != 200:
+            return False, f"x_share_unavailable:{share_response.status_code}"
+        share_html = share_response.text or ""
+        if "twitter:image" not in share_html and "og:image" not in share_html:
+            return False, "x_share_missing_preview_meta"
+
+        image_response = requests.get(image_url, timeout=X_PREVIEW_TIMEOUT_SECONDS)
+        if image_response.status_code != 200:
+            return False, f"x_og_unavailable:{image_response.status_code}"
+        content_type = (image_response.headers.get("content-type") or "").lower()
+        if content_type and not content_type.startswith("image/"):
+            return False, f"x_og_invalid_content_type:{content_type[:40]}"
+        if len(image_response.content or b"") < 1024:
+            return False, "x_og_empty_image"
+    except requests.RequestException as exc:
+        return False, f"x_preview_validation_failed:{exc}"
+    return True, None
+
+
 def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
+    preview_ok, preview_error = _validate_x_preview(asset)
+    if not preview_ok:
+        return "publish_failed", preview_error
+
     if x_official_configured():
         sent, payload, error = x_post_text(asset["body"])
         if sent:
@@ -603,7 +715,7 @@ def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
     return "published", None
 
 
-def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False) -> Dict[str, Any]:
+def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False, auto: bool = False) -> Dict[str, Any]:
     post = fetch_combined_intel_post(slug)
     if not post:
         return {"slug": slug, "results": [], "error": "Intel post not found"}
@@ -612,10 +724,20 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False)
     if not post.get("distribution_ready", True):
         return {"slug": slug, "results": [], "error": "Post is not distribution ready"}
 
-    preview = generate_distribution_assets(slug, channels)
+    selected_channels = _normalize_channels(channels)
+    results: List[Dict[str, Any]] = []
+    if auto and "x" in selected_channels:
+        allowed, reason = _x_auto_publish_gate(post)
+        if not allowed:
+            selected_channels = [channel for channel in selected_channels if channel != "x"]
+            results.append({"channel": "x", "status": "skipped", "reason": reason or "x_not_eligible"})
+
+    if not selected_channels:
+        return {"slug": slug, "results": results}
+
+    preview = generate_distribution_assets(slug, selected_channels)
     assets = preview.get("assets", [])
     redis_client = SafeRedis()
-    results: List[Dict[str, Any]] = []
 
     for asset in assets:
         channel = asset["channel"]
@@ -654,19 +776,17 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False)
 
 
 def auto_publish_enabled() -> bool:
-    if not (os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")):
-        return False
-    return _env_flag("INTEL_TELEGRAM_AUTO_PUBLISH", default=True)
+    return bool(_configured_auto_channels())
 
 
 def auto_publish_intel_post(slug: str, channels: Any = None) -> Dict[str, Any]:
-    selected_channels = _normalize_channels(channels or ["telegram"])
+    selected_channels = _normalize_channels(channels or _default_auto_channels())
     if not auto_publish_enabled():
         return {
             "slug": slug,
             "results": [{"channel": channel, "status": "disabled"} for channel in selected_channels],
         }
-    return publish_distribution(slug, selected_channels, dry_run=False)
+    return publish_distribution(slug, selected_channels, dry_run=False, auto=True)
 
 
 def auto_publish_latest_posts(
@@ -675,17 +795,29 @@ def auto_publish_latest_posts(
     channels: Any = None,
     limit: int = 3,
 ) -> Dict[str, Any]:
-    selected_channels = _normalize_channels(channels or ["telegram"])
+    selected_channels = _normalize_channels(channels or _default_auto_channels())
     normalized_limit = max(1, min(int(limit or 1), 12))
+    if not auto_publish_enabled():
+        return {
+            "stream": stream,
+            "channels": selected_channels,
+            "count": 0,
+            "items": [],
+            "disabled": True,
+        }
     posts = fetch_combined_intel_posts(limit=max(normalized_limit * 4, normalized_limit), stream=stream)
     published: List[Dict[str, Any]] = []
 
     for post in posts:
         if len(published) >= normalized_limit:
             break
-        result = publish_distribution(str(post.get("slug") or ""), selected_channels, dry_run=False)
-        statuses = [item.get("status") for item in result.get("results", [])]
-        if any(status in {"published", "skipped"} for status in statuses):
+        result = publish_distribution(str(post.get("slug") or ""), selected_channels, dry_run=False, auto=True)
+        delivered = any(
+            item.get("status") == "published"
+            or (item.get("status") == "skipped" and item.get("reason") == "already_published")
+            for item in result.get("results", [])
+        )
+        if delivered:
             published.append({
                 "slug": post.get("slug"),
                 "title": post.get("title"),

@@ -756,7 +756,7 @@ def _increment_blog_daily_count(redis_client: SafeRedis) -> int:
 def _auto_publish_new_intel_post(slug: str) -> None:
     try:
         from .distribution_service import auto_publish_intel_post
-        auto_publish_intel_post(slug, ["telegram"])
+        auto_publish_intel_post(slug)
     except Exception as exc:
         logger.warning("Intel auto publish failed for %s: %s", slug, exc)
 
