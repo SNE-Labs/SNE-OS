@@ -27,6 +27,38 @@ FONT_CANDIDATES = (
     "C:/Windows/Fonts/arialbd.ttf",
     "C:/Windows/Fonts/arial.ttf",
 )
+INTEL_ASSET_DIR = APP_DIR / "assets" / "intel"
+VISUAL_ASSET_FILES = {
+    "bitcoin": INTEL_ASSET_DIR / "tokens" / "bitcoin.png",
+    "btc": INTEL_ASSET_DIR / "tokens" / "bitcoin.png",
+    "ethereum": INTEL_ASSET_DIR / "tokens" / "ethereum.png",
+    "eth": INTEL_ASSET_DIR / "tokens" / "ethereum.png",
+    "solana": INTEL_ASSET_DIR / "tokens" / "solana.png",
+    "sol": INTEL_ASSET_DIR / "tokens" / "solana.png",
+    "usd-coin": INTEL_ASSET_DIR / "tokens" / "usd-coin.png",
+    "usdc": INTEL_ASSET_DIR / "tokens" / "usd-coin.png",
+    "tether": INTEL_ASSET_DIR / "tokens" / "tether.png",
+    "usdt": INTEL_ASSET_DIR / "tokens" / "tether.png",
+    "polygon": INTEL_ASSET_DIR / "tokens" / "polygon.png",
+    "matic": INTEL_ASSET_DIR / "tokens" / "polygon.png",
+    "avalanche": INTEL_ASSET_DIR / "tokens" / "avalanche.png",
+    "avax": INTEL_ASSET_DIR / "tokens" / "avalanche.png",
+    "cardano": INTEL_ASSET_DIR / "tokens" / "cardano.png",
+    "ada": INTEL_ASSET_DIR / "tokens" / "cardano.png",
+    "xrp": INTEL_ASSET_DIR / "tokens" / "xrp.png",
+    "dogecoin": INTEL_ASSET_DIR / "tokens" / "dogecoin.png",
+    "doge": INTEL_ASSET_DIR / "tokens" / "dogecoin.png",
+    "chainlink": INTEL_ASSET_DIR / "tokens" / "chainlink.png",
+    "link": INTEL_ASSET_DIR / "tokens" / "chainlink.png",
+    "country-us": INTEL_ASSET_DIR / "flags" / "us.png",
+    "country-br": INTEL_ASSET_DIR / "flags" / "br.png",
+    "country-ar": INTEL_ASSET_DIR / "flags" / "ar.png",
+    "country-cn": INTEL_ASSET_DIR / "flags" / "cn.png",
+    "country-eu": INTEL_ASSET_DIR / "flags" / "eu.png",
+    "country-uk": INTEL_ASSET_DIR / "flags" / "uk.png",
+    "country-jp": INTEL_ASSET_DIR / "flags" / "jp.png",
+    "country-sg": INTEL_ASSET_DIR / "flags" / "sg.png",
+}
 
 PALETTES = {
     "market": {
@@ -84,6 +116,17 @@ def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageF
         except Exception:
             continue
     return ImageFont.load_default()
+
+
+@lru_cache(maxsize=64)
+def _load_visual_asset(icon_symbol: str) -> Image.Image | None:
+    path = VISUAL_ASSET_FILES.get(str(icon_symbol or "").strip().lower())
+    if not path or not path.exists():
+        return None
+    try:
+        return Image.open(path).convert("RGBA")
+    except Exception:
+        return None
 
 
 def _normalize_text(text: str) -> str:
@@ -340,20 +383,115 @@ def _draw_metric_rail(
     bright = (244, 247, 251, 255)
 
     right_x = _s(922)
-    draw.text((right_x, _s(106)), "SURFACE", font=caption_font, fill=soft)
-    draw.text((right_x, _s(132)), stream_label, font=value_font, fill=bright)
+    primary_visual = post.get("primary_visual_entity") or {}
+    primary_label = str(primary_visual.get("label") or "").strip()
+    if primary_label:
+        primary_label = _truncate_text(primary_label.upper(), 18)
+    draw.text((right_x, _s(286)), "ASSET", font=caption_font, fill=soft)
+    draw.text((right_x, _s(312)), primary_label or stream_label, font=value_font, fill=bright)
 
-    draw.text((right_x, _s(210)), "FORMAT", font=caption_font, fill=soft)
-    draw.text((right_x, _s(236)), _kind_label(editorial_kind), font=value_font, fill=bright)
+    draw.text((right_x, _s(374)), "FORMAT", font=caption_font, fill=soft)
+    draw.text((right_x, _s(400)), _kind_label(editorial_kind), font=value_font, fill=bright)
 
     category = str(post.get("category") or "news").strip().upper()
-    draw.text((right_x, _s(314)), "CATEGORY", font=caption_font, fill=soft)
-    draw.text((right_x, _s(340)), category, font=value_font, fill=bright)
+    draw.text((right_x, _s(482)), "CATEGORY", font=caption_font, fill=soft)
+    draw.text((right_x, _s(506)), category, font=value_font, fill=(*palette["accent_soft"], 255))
 
-    reading_time = post.get("reading_time_minutes")
-    reading_label = f"{reading_time} MIN" if reading_time else "LIVE"
-    draw.text((right_x, _s(482)), "SNE LABS", font=caption_font, fill=soft)
-    draw.text((right_x, _s(506)), reading_label, font=value_font, fill=(*palette["accent_soft"], 255))
+
+def _paste_contained(
+    image: Image.Image,
+    asset: Image.Image,
+    box: tuple[int, int, int, int],
+    *,
+    rounded: bool = False,
+) -> None:
+    left, top, right, bottom = box
+    max_width = max(1, right - left)
+    max_height = max(1, bottom - top)
+    source = asset.copy()
+    source.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+    x = left + (max_width - source.width) // 2
+    y = top + (max_height - source.height) // 2
+
+    if rounded:
+        mask = Image.new("L", source.size, 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.rounded_rectangle((0, 0, source.width, source.height), radius=max(8, min(source.size) // 7), fill=255)
+        alpha = source.getchannel("A")
+        alpha = Image.composite(alpha, Image.new("L", source.size, 0), mask)
+        source.putalpha(alpha)
+
+    image.alpha_composite(source, (x, y))
+
+
+def _draw_visual_assets(
+    image: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    post: dict[str, Any],
+    palette: dict[str, tuple[int, int, int]],
+) -> None:
+    visual_entities = [entity for entity in post.get("visual_entities") or [] if isinstance(entity, dict)]
+    primary = post.get("primary_visual_entity") if isinstance(post.get("primary_visual_entity"), dict) else None
+    if not primary and visual_entities:
+        primary = visual_entities[0]
+    if not primary:
+        return
+
+    primary_icon = str(primary.get("icon_symbol") or primary.get("iconSymbol") or primary.get("id") or "").strip()
+    primary_asset = _load_visual_asset(primary_icon)
+    if not primary_asset:
+        return
+
+    center_x = _s(980)
+    center_y = _s(180)
+    outer_radius = _s(80)
+    inner_radius = _s(64)
+    draw.ellipse(
+        (center_x - outer_radius, center_y - outer_radius, center_x + outer_radius, center_y + outer_radius),
+        fill=(7, 10, 17, 232),
+        outline=(*palette["accent_soft"], 180),
+        width=_s(2),
+    )
+    draw.ellipse(
+        (center_x - inner_radius, center_y - inner_radius, center_x + inner_radius, center_y + inner_radius),
+        fill=(255, 255, 255, 18),
+    )
+    _paste_contained(
+        image,
+        primary_asset,
+        (center_x - _s(54), center_y - _s(54), center_x + _s(54), center_y + _s(54)),
+    )
+
+    country = next(
+        (
+            entity
+            for entity in visual_entities
+            if str(entity.get("kind") or "").strip().lower() == "country"
+            and str(entity.get("id") or "") != str(primary.get("id") or "")
+        ),
+        None,
+    )
+    if not country:
+        return
+    country_icon = str(country.get("icon_symbol") or country.get("iconSymbol") or country.get("id") or "").strip()
+    country_asset = _load_visual_asset(country_icon)
+    if not country_asset:
+        return
+
+    flag_box = (_s(1018), _s(224), _s(1102), _s(276))
+    draw.rounded_rectangle(
+        flag_box,
+        radius=_s(14),
+        fill=(8, 10, 16, 238),
+        outline=(255, 255, 255, 72),
+        width=_s(2),
+    )
+    _paste_contained(
+        image,
+        country_asset,
+        (_s(1026), _s(231), _s(1094), _s(269)),
+        rounded=True,
+    )
 
 
 @lru_cache(maxsize=256)
@@ -371,6 +509,9 @@ def _render_cached(
     product_key: str,
     country_key: str,
     primary_visual_label: str,
+    primary_visual_icon: str,
+    country_visual_icon: str,
+    visual_key: str,
     reading_time: str,
 ) -> bytes:
     post_context = {
@@ -381,7 +522,10 @@ def _render_cached(
         "assets": asset_key.split(",") if asset_key else [],
         "products": product_key.split(",") if product_key else [],
         "countries": country_key.split(",") if country_key else [],
-        "primary_visual_entity": {"label": primary_visual_label} if primary_visual_label else None,
+        "primary_visual_entity": {"label": primary_visual_label, "icon_symbol": primary_visual_icon} if primary_visual_label or primary_visual_icon else None,
+        "visual_entities": [
+            {"kind": "asset", "label": primary_visual_label, "icon_symbol": primary_visual_icon, "id": primary_visual_icon}
+        ] + ([{"kind": "country", "icon_symbol": country_visual_icon, "id": country_visual_icon}] if country_visual_icon else []),
         "reading_time_minutes": int(reading_time) if reading_time.isdigit() else None,
     }
     palette = _pick_palette(post_context)
@@ -390,6 +534,7 @@ def _render_cached(
     image = Image.new("RGBA", RENDER_SIZE, (5, 8, 12, 255))
     _draw_background(image, palette, stream_label)
     draw = ImageDraw.Draw(image)
+    _draw_visual_assets(image, draw, post_context, palette)
 
     eyebrow_font = _load_font(18, bold=True)
     body_font = _load_font(26, bold=True)
@@ -437,6 +582,26 @@ def _render_cached(
 
 
 def build_intel_og_image(post: dict[str, Any]) -> bytes:
+    visual_entities = [entity for entity in post.get("visual_entities") or [] if isinstance(entity, dict)]
+    primary_visual = post.get("primary_visual_entity") if isinstance(post.get("primary_visual_entity"), dict) else None
+    if not primary_visual and visual_entities:
+        primary_visual = visual_entities[0]
+    country_visual = next(
+        (
+            entity
+            for entity in visual_entities
+            if str(entity.get("kind") or "").strip().lower() == "country"
+            and str(entity.get("id") or "") != str((primary_visual or {}).get("id") or "")
+        ),
+        None,
+    )
+    primary_icon = str((primary_visual or {}).get("icon_symbol") or (primary_visual or {}).get("iconSymbol") or "")
+    country_icon = str((country_visual or {}).get("icon_symbol") or (country_visual or {}).get("iconSymbol") or "")
+    visual_key = ",".join(
+        str(entity.get("id") or entity.get("icon_symbol") or "").strip()
+        for entity in visual_entities
+        if str(entity.get("id") or entity.get("icon_symbol") or "").strip()
+    )
     return _render_cached(
         str(post.get("slug") or ""),
         str(post.get("title") or "Intel Brief"),
@@ -450,7 +615,10 @@ def build_intel_og_image(post: dict[str, Any]) -> bytes:
         ",".join(str(item).strip() for item in post.get("assets") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("products") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("countries") or [] if str(item).strip()),
-        str((post.get("primary_visual_entity") or {}).get("label") or ""),
+        str((primary_visual or {}).get("label") or ""),
+        primary_icon,
+        country_icon,
+        visual_key,
         str(post.get("reading_time_minutes") or ""),
     )
 
