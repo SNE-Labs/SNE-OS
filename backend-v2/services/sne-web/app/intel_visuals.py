@@ -86,12 +86,106 @@ _COUNTRY_REGISTRY = [
         "label": "Singapura",
         "kind": "country",
         "icon_symbol": "country-sg",
-        "aliases": ["singapura", "singapore", "mas"],
+        "aliases": ["singapura", "singapore"],
+    },
+]
+
+_ORGANIZATION_REGISTRY = [
+    {
+        "id": "world",
+        "label": "World",
+        "kind": "organization",
+        "icon_symbol": "world",
+        "aliases": ["world de sam altman", "worldcoin", "world id", "world app", "world chain", "tools for humanity"],
+    },
+    {
+        "id": "openai",
+        "label": "OpenAI",
+        "kind": "organization",
+        "icon_symbol": "openai",
+        "aliases": ["openai", "chatgpt", "sam altman"],
+    },
+    {
+        "id": "coinbase",
+        "label": "Coinbase",
+        "kind": "organization",
+        "icon_symbol": "coinbase",
+        "aliases": ["coinbase"],
+    },
+    {
+        "id": "circle",
+        "label": "Circle",
+        "kind": "organization",
+        "icon_symbol": "circle",
+        "aliases": ["circle", "circle internet", "circle internet group"],
+    },
+    {
+        "id": "tether-company",
+        "label": "Tether",
+        "kind": "organization",
+        "icon_symbol": "tether-company",
+        "aliases": ["tether holdings", "tether limited"],
+    },
+    {
+        "id": "blackrock",
+        "label": "BlackRock",
+        "kind": "organization",
+        "icon_symbol": "blackrock",
+        "aliases": ["blackrock", "ishares"],
+    },
+    {
+        "id": "microstrategy",
+        "label": "MicroStrategy",
+        "kind": "organization",
+        "icon_symbol": "microstrategy",
+        "aliases": ["microstrategy", "strategy", "mstr"],
+    },
+    {
+        "id": "anthropic",
+        "label": "Anthropic",
+        "kind": "organization",
+        "icon_symbol": "anthropic",
+        "aliases": ["anthropic", "claude"],
+    },
+    {
+        "id": "xai",
+        "label": "xAI",
+        "kind": "organization",
+        "icon_symbol": "xai",
+        "aliases": ["xai", "x.ai", "grok"],
+    },
+    {
+        "id": "google",
+        "label": "Google",
+        "kind": "organization",
+        "icon_symbol": "google",
+        "aliases": ["google", "alphabet", "gemini"],
+    },
+    {
+        "id": "apple",
+        "label": "Apple",
+        "kind": "organization",
+        "icon_symbol": "apple",
+        "aliases": ["apple"],
+    },
+    {
+        "id": "microsoft",
+        "label": "Microsoft",
+        "kind": "organization",
+        "icon_symbol": "microsoft",
+        "aliases": ["microsoft", "azure"],
+    },
+    {
+        "id": "binance",
+        "label": "Binance",
+        "kind": "organization",
+        "icon_symbol": "binance",
+        "aliases": ["binance", "bnb"],
     },
 ]
 
 _ENTITY_INDEX: Dict[str, Dict[str, Any]] = {}
-for entity in [*_ENTITY_REGISTRY, *_COUNTRY_REGISTRY]:
+for entity in [*_ENTITY_REGISTRY, *_COUNTRY_REGISTRY, *_ORGANIZATION_REGISTRY]:
     for key in [entity["id"], entity["label"], *entity["aliases"]]:
         normalized = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9:/._ -]+", " ", str(key).lower())).strip()
         if normalized:
@@ -101,6 +195,7 @@ _SOURCE_PRIORITY = {
     "asset": 400,
     "chain": 340,
     "protocol": 300,
+    "organization": 280,
     "country": 220,
 }
 
@@ -133,6 +228,17 @@ def _candidate_score(source: str, inferred: bool = False) -> int:
     return int(_SOURCE_PRIORITY.get(source, 0)) - (15 if inferred else 0)
 
 
+def _editorial_haystack(payload: Dict[str, Any]) -> str:
+    return " " + _normalize_key(" ".join([
+        str(payload.get("title") or ""),
+        str(payload.get("title_pt") or ""),
+        str(payload.get("subtitle") or ""),
+        str(payload.get("excerpt") or ""),
+        str(payload.get("summary") or ""),
+        str(payload.get("summary_pt") or ""),
+    ])) + " "
+
+
 def infer_countries(payload: Dict[str, Any]) -> List[str]:
     explicit = []
     for country in _normalize_list(payload.get("countries")):
@@ -146,15 +252,7 @@ def infer_countries(payload: Dict[str, Any]) -> List[str]:
     if explicit:
         return list(dict.fromkeys(explicit))[:2]
 
-    haystack = " " + _normalize_key(" ".join([
-        str(payload.get("title") or ""),
-        str(payload.get("title_pt") or ""),
-        str(payload.get("subtitle") or ""),
-        str(payload.get("excerpt") or ""),
-        str(payload.get("summary") or ""),
-        str(payload.get("summary_pt") or ""),
-        str(payload.get("body_markdown") or ""),
-    ])) + " "
+    haystack = _editorial_haystack(payload)
     if not haystack.strip():
         return []
 
@@ -165,10 +263,43 @@ def infer_countries(payload: Dict[str, Any]) -> List[str]:
     return list(dict.fromkeys(matches))[:2]
 
 
+def infer_organizations(payload: Dict[str, Any]) -> List[str]:
+    explicit = []
+    for field in ("organizations", "companies", "projects"):
+        for value in _normalize_list(payload.get(field)):
+            resolved = _resolve_entity(value)
+            if resolved and resolved.get("kind") == "organization":
+                explicit.append(str(resolved["id"]))
+    if explicit:
+        return list(dict.fromkeys(explicit))[:3]
+
+    haystack = _editorial_haystack(payload)
+    if not haystack.strip():
+        return []
+
+    matches: List[tuple[int, str]] = []
+    for organization in _ORGANIZATION_REGISTRY:
+        positions = []
+        for alias in organization["aliases"]:
+            normalized = _normalize_key(alias)
+            if len(normalized) < 3:
+                continue
+            position = haystack.find(f" {normalized} ")
+            if position >= 0:
+                positions.append(position)
+        if positions:
+            matches.append((min(positions), str(organization["id"])))
+
+    ordered = [entity_id for _, entity_id in sorted(matches, key=lambda item: item[0])]
+    return list(dict.fromkeys(ordered))[:3]
+
+
 def build_visual_entities(payload: Dict[str, Any], limit: int = 4) -> List[IntelVisualEntity]:
     candidates: Dict[str, Dict[str, Any]] = {}
+    order = 0
 
     def add(raw_value: str, source: str, route: Dict[str, str] | None = None, inferred: bool = False) -> None:
+        nonlocal order
         entity = _resolve_entity(raw_value)
         if not entity:
             return
@@ -185,7 +316,9 @@ def build_visual_entities(payload: Dict[str, Any], limit: int = 4) -> List[Intel
             "route": route,
             "inferred": inferred,
             "_score": score,
+            "_order": order,
         }
+        order += 1
 
     for asset in _normalize_list(payload.get("assets")):
         add(asset, "asset", {"kind": "asset", "value": asset})
@@ -193,14 +326,18 @@ def build_visual_entities(payload: Dict[str, Any], limit: int = 4) -> List[Intel
         add(chain, "chain", {"kind": "chain", "value": chain})
     for protocol in _normalize_list(payload.get("protocols")):
         add(protocol, "protocol")
+    has_explicit_organizations = any(_normalize_list(payload.get(field)) for field in ("organizations", "companies", "projects"))
+    for organization in infer_organizations(payload):
+        add(f"{organization}", "organization", {"kind": "organization", "value": organization}, inferred=not has_explicit_organizations)
     for country in infer_countries(payload):
         add(f"country-{country}", "country", inferred=not bool(_normalize_list(payload.get("countries"))))
 
-    ordered = sorted(candidates.values(), key=lambda item: (-item["_score"], str(item["label"])))
+    ordered = sorted(candidates.values(), key=lambda item: (-item["_score"], int(item["_order"]), str(item["label"])))
     trimmed = []
     for item in ordered[: max(1, min(limit, 6))]:
         item = dict(item)
         item.pop("_score", None)
+        item.pop("_order", None)
         trimmed.append(item)
     return trimmed
 
@@ -208,6 +345,7 @@ def build_visual_entities(payload: Dict[str, Any], limit: int = 4) -> List[Intel
 def apply_visual_entities(payload: Dict[str, Any], limit: int = 4) -> Dict[str, Any]:
     normalized = dict(payload)
     normalized["countries"] = infer_countries(normalized)
+    normalized["organizations"] = infer_organizations(normalized)
     visual_entities = build_visual_entities(normalized, limit=limit)
     normalized["visual_entities"] = visual_entities
     normalized["primary_visual_entity"] = visual_entities[0] if visual_entities else None

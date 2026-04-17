@@ -50,6 +50,19 @@ VISUAL_ASSET_FILES = {
     "doge": INTEL_ASSET_DIR / "tokens" / "dogecoin.png",
     "chainlink": INTEL_ASSET_DIR / "tokens" / "chainlink.png",
     "link": INTEL_ASSET_DIR / "tokens" / "chainlink.png",
+    "openai": INTEL_ASSET_DIR / "orgs" / "openai.png",
+    "world": INTEL_ASSET_DIR / "orgs" / "world.png",
+    "coinbase": INTEL_ASSET_DIR / "orgs" / "coinbase.png",
+    "circle": INTEL_ASSET_DIR / "orgs" / "circle.png",
+    "tether-company": INTEL_ASSET_DIR / "orgs" / "tether-company.png",
+    "blackrock": INTEL_ASSET_DIR / "orgs" / "blackrock.png",
+    "microstrategy": INTEL_ASSET_DIR / "orgs" / "microstrategy.png",
+    "anthropic": INTEL_ASSET_DIR / "orgs" / "anthropic.png",
+    "xai": INTEL_ASSET_DIR / "orgs" / "xai.png",
+    "google": INTEL_ASSET_DIR / "orgs" / "google.png",
+    "apple": INTEL_ASSET_DIR / "orgs" / "apple.png",
+    "microsoft": INTEL_ASSET_DIR / "orgs" / "microsoft.png",
+    "binance": INTEL_ASSET_DIR / "orgs" / "binance.png",
     "country-us": INTEL_ASSET_DIR / "flags" / "us.png",
     "country-br": INTEL_ASSET_DIR / "flags" / "br.png",
     "country-ar": INTEL_ASSET_DIR / "flags" / "ar.png",
@@ -269,7 +282,7 @@ def _compact_tags(post: dict[str, Any]) -> list[str]:
     category = str(post.get("category") or "").strip()
     if category and category.lower() not in {existing.lower() for existing in tags}:
         tags.append(category)
-    for source in ("countries", "assets", "chains", "topics", "products"):
+    for source in ("organizations", "countries", "assets", "chains", "topics", "products"):
         for item in post.get(source) or []:
             label = str(item).strip()
             if label and label.lower() not in {existing.lower() for existing in tags}:
@@ -391,7 +404,9 @@ def _draw_metric_rail(
     primary_label = str(primary_visual.get("label") or "").strip()
     if primary_label:
         primary_label = _truncate_text(primary_label.upper(), 18)
-    draw.text((right_x, _s(286)), "ASSET", font=caption_font, fill=soft)
+    primary_kind = str(primary_visual.get("kind") or "").strip().upper()
+    entity_caption = "ORG" if primary_kind == "ORGANIZATION" else "ASSET"
+    draw.text((right_x, _s(286)), entity_caption, font=caption_font, fill=soft)
     draw.text((right_x, _s(312)), primary_label or stream_label, font=value_font, fill=bright)
 
     draw.text((right_x, _s(374)), "FORMAT", font=caption_font, fill=soft)
@@ -470,16 +485,26 @@ def _draw_visual_assets(
         ),
         None,
     )
-    if not country:
+    secondary = country or next(
+        (
+            entity
+            for entity in visual_entities
+            if str(entity.get("kind") or "").strip().lower() == "organization"
+            and str(entity.get("id") or "") != str(primary.get("id") or "")
+        ),
+        None,
+    )
+    if not secondary:
         return
-    country_icon = str(country.get("icon_symbol") or country.get("iconSymbol") or country.get("id") or "").strip()
-    country_asset = _load_visual_asset(country_icon)
-    if not country_asset:
+    secondary_icon = str(secondary.get("icon_symbol") or secondary.get("iconSymbol") or secondary.get("id") or "").strip()
+    secondary_asset = _load_visual_asset(secondary_icon)
+    if not secondary_asset:
         return
 
-    flag_box = (_s(1018), _s(224), _s(1102), _s(276))
+    secondary_kind = str(secondary.get("kind") or "").strip().lower()
+    badge_box = (_s(1018), _s(224), _s(1102), _s(276))
     draw.rounded_rectangle(
-        flag_box,
+        badge_box,
         radius=_s(14),
         fill=(8, 10, 16, 238),
         outline=(255, 255, 255, 72),
@@ -487,9 +512,9 @@ def _draw_visual_assets(
     )
     _paste_contained(
         image,
-        country_asset,
+        secondary_asset,
         (_s(1026), _s(231), _s(1094), _s(269)),
-        rounded=True,
+        rounded=secondary_kind == "country",
     )
 
 
@@ -506,10 +531,13 @@ def _render_cached(
     chain_key: str,
     asset_key: str,
     product_key: str,
+    organization_key: str,
     country_key: str,
     primary_visual_label: str,
+    primary_visual_kind: str,
     primary_visual_icon: str,
-    country_visual_icon: str,
+    secondary_visual_kind: str,
+    secondary_visual_icon: str,
     visual_key: str,
     reading_time: str,
 ) -> bytes:
@@ -520,11 +548,12 @@ def _render_cached(
         "chains": chain_key.split(",") if chain_key else [],
         "assets": asset_key.split(",") if asset_key else [],
         "products": product_key.split(",") if product_key else [],
+        "organizations": organization_key.split(",") if organization_key else [],
         "countries": country_key.split(",") if country_key else [],
-        "primary_visual_entity": {"label": primary_visual_label, "icon_symbol": primary_visual_icon} if primary_visual_label or primary_visual_icon else None,
+        "primary_visual_entity": {"id": primary_visual_icon, "kind": primary_visual_kind, "label": primary_visual_label, "icon_symbol": primary_visual_icon} if primary_visual_label or primary_visual_icon else None,
         "visual_entities": [
-            {"kind": "asset", "label": primary_visual_label, "icon_symbol": primary_visual_icon, "id": primary_visual_icon}
-        ] + ([{"kind": "country", "icon_symbol": country_visual_icon, "id": country_visual_icon}] if country_visual_icon else []),
+            {"kind": primary_visual_kind or "asset", "label": primary_visual_label, "icon_symbol": primary_visual_icon, "id": primary_visual_icon}
+        ] + ([{"kind": secondary_visual_kind or "asset", "icon_symbol": secondary_visual_icon, "id": secondary_visual_icon}] if secondary_visual_icon else []),
         "reading_time_minutes": int(reading_time) if reading_time.isdigit() else None,
     }
     palette = _pick_palette(post_context)
@@ -594,8 +623,19 @@ def build_intel_og_image(post: dict[str, Any]) -> bytes:
         ),
         None,
     )
+    secondary_visual = country_visual or next(
+        (
+            entity
+            for entity in visual_entities
+            if str(entity.get("kind") or "").strip().lower() == "organization"
+            and str(entity.get("id") or "") != str((primary_visual or {}).get("id") or "")
+        ),
+        None,
+    )
     primary_icon = str((primary_visual or {}).get("icon_symbol") or (primary_visual or {}).get("iconSymbol") or "")
-    country_icon = str((country_visual or {}).get("icon_symbol") or (country_visual or {}).get("iconSymbol") or "")
+    primary_kind = str((primary_visual or {}).get("kind") or "")
+    secondary_icon = str((secondary_visual or {}).get("icon_symbol") or (secondary_visual or {}).get("iconSymbol") or "")
+    secondary_kind = str((secondary_visual or {}).get("kind") or "")
     visual_key = ",".join(
         str(entity.get("id") or entity.get("icon_symbol") or "").strip()
         for entity in visual_entities
@@ -613,10 +653,13 @@ def build_intel_og_image(post: dict[str, Any]) -> bytes:
         ",".join(str(item).strip() for item in post.get("chains") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("assets") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("products") or [] if str(item).strip()),
+        ",".join(str(item).strip() for item in post.get("organizations") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("countries") or [] if str(item).strip()),
         str((primary_visual or {}).get("label") or ""),
+        primary_kind,
         primary_icon,
-        country_icon,
+        secondary_kind,
+        secondary_icon,
         visual_key,
         str(post.get("reading_time_minutes") or ""),
     )
