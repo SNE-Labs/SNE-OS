@@ -15,6 +15,7 @@ from .distribution_service import (
     generate_distribution_assets,
     publish_distribution,
 )
+from .x_api_service import x_get_authenticated_user, x_official_configured
 from .institutional_service import (
     fetch_combined_intel_post,
     fetch_combined_intel_posts,
@@ -257,3 +258,16 @@ def distribution_autopublish():
         limit=payload.get("limit") or 3,
     )
     return jsonify(result), 200
+
+
+@intel_bp.get("/distribution/x/account")
+def distribution_x_account():
+    if not x_official_configured():
+        return jsonify({"configured": False, "error": "X official API is not configured"}), 200
+    try:
+        payload = x_get_authenticated_user(force=True)
+        if not payload:
+            return jsonify({"configured": True, "error": "Unable to fetch authenticated X user"}), 503
+        return jsonify({"configured": True, "account": payload}), 200
+    except Exception as exc:
+        return jsonify({"configured": True, "error": str(exc)}), 503

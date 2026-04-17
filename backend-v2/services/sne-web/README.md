@@ -57,6 +57,9 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `INTEL_TELEGRAM_AUTO_PUBLISH`: enables automatic Telegram publish for newly generated Intel posts
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
+- `X_CLIENT_ID` / `X_CLIENT_SECRET`: X OAuth app credentials
+- `X_ACCESS_TOKEN` / `X_REFRESH_TOKEN`: X user-context tokens for `@SNELabs`
+- `X_TOKEN_SCOPE`: expected X scopes such as `tweet.read tweet.write users.read offline.access`
 - `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
 - `ETHEREUM_RPC_URLS`: comma-separated fallback RPC list for Ethereum
 - `POLYGON_RPC_URLS`: comma-separated fallback RPC list for Polygon
@@ -80,6 +83,7 @@ export SCROLL_RPC_URLS=https://rpc.scroll.io,https://scroll-mainnet.public.blast
 - `POST /api/intel/distribution/preview/<slug>` - Generate channel previews
 - `POST /api/intel/distribution/publish/<slug>` - Publish to configured channels
 - `POST /api/intel/distribution/autopublish` - Publish latest Intel posts to configured channels
+- `GET /api/intel/distribution/x/account` - Validate the authenticated X account in the official API flow
 
 ## WebSocket Events
 

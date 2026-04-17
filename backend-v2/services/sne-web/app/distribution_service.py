@@ -21,6 +21,7 @@ from .intel_enrichment import (
 )
 from .telegram_delivery import send_telegram_text
 from .utils.redis_safe import SafeRedis
+from .x_api_service import x_official_configured, x_post_text
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +306,16 @@ def _publish_to_whatsapp(asset: Dict[str, Any]) -> tuple[str, str | None]:
 
 
 def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
+    if x_official_configured():
+        sent, payload, error = x_post_text(asset["body"])
+        if sent:
+            if isinstance(payload, dict):
+                data = payload.get("data")
+                if isinstance(data, dict) and data.get("id"):
+                    asset["external_id"] = data["id"]
+            return "published", None
+        return "publish_failed", error
+
     webhook_url = (os.getenv("X_PUBLISH_WEBHOOK_URL") or "").strip()
     if not webhook_url:
         return "publish_failed", "x_not_configured"
