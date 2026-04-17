@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import os
+import re
 from typing import Any, Dict, List
 
 import requests
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 VALID_CHANNELS = {"telegram", "whatsapp", "x"}
 ASSET_KEY_PREFIX = "intel:distribution:asset:"
 ASSET_INDEX_PREFIX = "intel:distribution:index:"
+URL_PATTERN = re.compile(r"https?://\S+")
 
 
 def _iso_now() -> str:
@@ -119,8 +121,11 @@ def _channel_instruction(channel: str) -> str:
             "curta o suficiente para boletim e feche com um link."
         )
     return (
-        "Crie um post para X em pt-BR com no maximo 260 caracteres, angulo unico, "
-        "sem parecer press release generico."
+        "Crie copy para X em pt-BR com estrutura seca e escaneavel. "
+        "Responda em JSON com headline, impact_line e action_line. "
+        "headline = tese curta; impact_line = consequencia operacional; "
+        "action_line = o que muda na pratica. "
+        "Nao inclua URL nas linhas e nao soe como press release generico."
     )
 
 
@@ -129,6 +134,100 @@ def _channel_cta_url(post: Dict[str, Any], channel: str) -> str:
     if channel == "x":
         return build_intel_share_url(slug)
     return f"https://snelabs.space/intel/{slug}"
+
+
+def _normalize_copy_line(text: str) -> str:
+    return " ".join(str(text or "").strip().split())
+
+
+def _truncate_copy_line(text: str, limit: int) -> str:
+    cleaned = _normalize_copy_line(text)
+    if len(cleaned) <= limit:
+        return cleaned
+    trimmed = cleaned[: max(1, limit - 1)].rsplit(" ", 1)[0].strip()
+    return (trimmed or cleaned[: max(1, limit - 1)]).rstrip(" .,;:-") + "…"
+
+
+def _effective_x_length(text: str) -> int:
+    return len(URL_PATTERN.sub("x" * 23, text))
+
+
+def _x_family_label(post: Dict[str, Any]) -> str:
+    stream = str(post.get("stream") or "").strip().lower()
+    institutional_type = str(post.get("institutional_type") or post.get("type") or "").strip().lower()
+    if stream == "institutional":
+        if institutional_type in {"product-update", "release-note", "dev-log"}:
+            return "Produto / SNE OS"
+        return "Intel / Institucional"
+    return "Intel / Mercado"
+
+
+def _x_default_action_line(post: Dict[str, Any]) -> str:
+    tldr = _normalize_string_list(post.get("tldr"))
+    if tldr:
+        return tldr[0]
+    category = str(post.get("category") or "").strip().lower()
+    if category == "institutional":
+        return "Ajuste produto, rollout e comunicacao a partir deste movimento."
+    return "Revise execucao, liquidez e risco operacional a partir daqui."
+
+
+def _compose_x_body(
+    post: Dict[str, Any],
+    cta_url: str,
+    headline: str,
+    impact_line: str,
+    action_line: str,
+) -> str:
+    family = _x_family_label(post)
+    link_line = f"Dossie: {cta_url}"
+    budgets = {
+        "headline": 78,
+        "impact": 86,
+        "action": 82,
+    }
+    minimums = {
+        "headline": 44,
+        "impact": 42,
+        "action": 36,
+    }
+
+    def _render() -> tuple[str, Dict[str, str]]:
+        parts = {
+            "headline": _truncate_copy_line(headline, budgets["headline"]),
+            "impact": _truncate_copy_line(impact_line, budgets["impact"]),
+            "action": _truncate_copy_line(action_line, budgets["action"]),
+        }
+        body = "\n".join(
+            [
+                family,
+                parts["headline"],
+                parts["impact"],
+                parts["action"],
+                link_line,
+            ]
+        ).strip()
+        return body, parts
+
+    body, parts = _render()
+    while _effective_x_length(body) > 278:
+        adjustable = [
+            key for key in ("impact", "action", "headline")
+            if budgets[key] > minimums[key]
+        ]
+        if not adjustable:
+            body = "\n".join([family, parts["headline"], parts["impact"], link_line]).strip()
+            if _effective_x_length(body) <= 278:
+                return body
+            body = "\n".join([family, parts["headline"], link_line]).strip()
+            if _effective_x_length(body) <= 278:
+                return body
+            body = "\n".join([parts["headline"], link_line]).strip()
+            return body
+        longest = max(adjustable, key=lambda key: budgets[key])
+        budgets[longest] -= 8
+        body, parts = _render()
+    return body
 
 
 def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
@@ -152,9 +251,10 @@ def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
             parts.append(tldr[0])
         parts.append(cta_url)
         return "\n".join(parts).strip()
-    base = subtitle or (tldr[0] if tldr else title)
-    text = f"{title}. {base} {cta_url}".strip()
-    return text[:260].rstrip()
+    headline = title
+    impact_line = subtitle or str(post.get("excerpt") or "").strip() or headline
+    action_line = tldr[0] if tldr else _x_default_action_line(post)
+    return _compose_x_body(post, cta_url, headline, impact_line, action_line)
 
 
 def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, str] | None:
@@ -174,6 +274,9 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
             "institutional_type": post.get("institutional_type"),
             "products": post.get("products"),
             "stage": post.get("stage"),
+            "stream": post.get("stream"),
+            "category": post.get("category"),
+            "editorial_family": _x_family_label(post) if channel == "x" else None,
         },
         "instruction": _channel_instruction(channel),
         "cta_url": cta_url,
@@ -207,7 +310,12 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
         if not isinstance(parsed, dict):
             return None
         headline = str(parsed.get("headline") or post.get("title") or "SNELabs").strip()
-        body = str(parsed.get("body") or "").strip()
+        if channel == "x":
+            impact_line = str(parsed.get("impact_line") or post.get("subtitle") or post.get("excerpt") or headline).strip()
+            action_line = str(parsed.get("action_line") or _x_default_action_line(post)).strip()
+            body = _compose_x_body(post, cta_url, headline, impact_line, action_line)
+        else:
+            body = str(parsed.get("body") or "").strip()
         if not body:
             return None
         return {"headline": headline, "body": body}
