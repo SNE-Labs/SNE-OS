@@ -5,6 +5,7 @@ Distribution asset generation and controlled publishing for Intel institutional 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import html
 import json
 import logging
 import os
@@ -181,6 +182,57 @@ def _x_default_action_line(post: Dict[str, Any]) -> str:
     return "Revise execucao, liquidez e risco operacional a partir daqui."
 
 
+def _telegram_family_label(post: Dict[str, Any]) -> str:
+    stream = str(post.get("stream") or "").strip().lower()
+    institutional_type = str(post.get("institutional_type") or post.get("type") or "").strip().lower()
+    if stream == "institutional":
+        if institutional_type in {"product-update", "release-note", "dev-log"}:
+            return "SNE OS | Produto"
+        return "INTEL | Institucional"
+    return "INTEL | Mercado"
+
+
+def _first_meaningful_line(*values: Any, limit: int = 150) -> str:
+    for value in values:
+        cleaned = _normalize_copy_line(value)
+        if cleaned:
+            return _truncate_copy_line(cleaned, limit)
+    return ""
+
+
+def _telegram_action_line(post: Dict[str, Any]) -> str:
+    tldr = _normalize_string_list(post.get("tldr"))
+    if tldr:
+        return _truncate_copy_line(tldr[0], 88)
+    category = str(post.get("category") or "").strip().lower()
+    if category == "institutional":
+        return "traduzir a mudanca em rollout, uso e comunicacao."
+    return "revisar rotas, risco operacional e janelas de execucao."
+
+
+def _compose_telegram_body(post: Dict[str, Any], cta_url: str) -> str:
+    family = _telegram_family_label(post)
+    insight = _first_meaningful_line(
+        post.get("subtitle"),
+        post.get("excerpt"),
+        limit=160,
+    )
+    impact = _first_meaningful_line(
+        post.get("excerpt"),
+        post.get("subtitle"),
+        limit=94,
+    )
+    action = _telegram_action_line(post)
+    lines: List[str] = [family]
+    if insight:
+        lines.extend(["", insight])
+    detail_lines = [line for line in [f"- impacto: {impact}" if impact else "", f"- acao: {action}" if action else ""] if line]
+    if detail_lines:
+        lines.extend(["", *detail_lines])
+    lines.extend(["", "Dossie completo:", cta_url, "", "SNE Labs Intel"])
+    return "\n".join(lines).strip()
+
+
 def _compose_x_body(
     post: Dict[str, Any],
     cta_url: str,
@@ -253,14 +305,7 @@ def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
     subtitle = str(post.get("subtitle") or post.get("excerpt") or "").strip()
     tldr = _normalize_string_list(post.get("tldr"))[:2]
     if channel == "telegram":
-        lines = [title]
-        if subtitle:
-            lines.append("")
-            lines.append(subtitle)
-        for item in tldr:
-            lines.append(f"- {item}")
-        lines.extend(["", cta_url])
-        return "\n".join(lines).strip()
+        return _compose_telegram_body(post, cta_url)
     if channel == "whatsapp":
         parts = [title]
         if subtitle:
@@ -332,6 +377,18 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
             impact_line = str(parsed.get("impact_line") or post.get("subtitle") or post.get("excerpt") or headline).strip()
             action_line = str(parsed.get("action_line") or _x_default_action_line(post)).strip()
             body = _compose_x_body(post, cta_url, headline, impact_line, action_line)
+        elif channel == "telegram":
+            impact_line = str(parsed.get("impact_line") or post.get("excerpt") or post.get("subtitle") or "").strip()
+            action_line = str(parsed.get("action_line") or _telegram_action_line(post)).strip()
+            body = _compose_telegram_body(
+                {
+                    **post,
+                    "subtitle": parsed.get("subtitle") or post.get("subtitle"),
+                    "excerpt": impact_line or post.get("excerpt"),
+                    "tldr": [action_line],
+                },
+                cta_url,
+            )
         else:
             body = str(parsed.get("body") or "").strip()
         if not body:
@@ -407,9 +464,11 @@ def generate_distribution_assets(slug: str, channels: Any = None, force: bool = 
 
 
 def _publish_to_telegram(asset: Dict[str, Any]) -> tuple[str, str | None]:
+    message = f"<b>{html.escape(str(asset['headline']), quote=False)}</b>\n\n{html.escape(str(asset['body']), quote=False)}"
     sent, error = send_telegram_text(
-        f"{asset['headline']}\n\n{asset['body']}",
+        message,
         disable_web_page_preview=False,
+        sanitize=False,
     )
     return ("published", None) if sent else ("publish_failed", error)
 

@@ -69,6 +69,7 @@ def send_telegram_text(
     chat_id: str | None = None,
     retry_count: int = 3,
     disable_web_page_preview: bool = False,
+    sanitize: bool = True,
 ) -> Tuple[bool, str | None]:
     token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
     resolved_chat_id = (chat_id or os.getenv("TELEGRAM_CHAT_ID") or "").strip()
@@ -77,7 +78,7 @@ def send_telegram_text(
     if not resolved_chat_id:
         return False, "telegram_chat_not_configured"
 
-    message_parts = split_message(sanitize_html(text))
+    message_parts = split_message(sanitize_html(text) if sanitize else (text or "").strip())
     if not message_parts:
         return False, "telegram_message_empty"
 
