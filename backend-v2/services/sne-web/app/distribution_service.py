@@ -19,6 +19,7 @@ from .intel_enrichment import (
     _openai_responses_payload,
     _truncate_response_body,
 )
+from .og_image_service import build_intel_share_url
 from .telegram_delivery import send_telegram_text
 from .utils.redis_safe import SafeRedis
 from .x_api_service import x_official_configured, x_post_text
@@ -123,6 +124,13 @@ def _channel_instruction(channel: str) -> str:
     )
 
 
+def _channel_cta_url(post: Dict[str, Any], channel: str) -> str:
+    slug = str(post.get("slug") or "").strip()
+    if channel == "x":
+        return build_intel_share_url(slug)
+    return f"https://snelabs.space/intel/{slug}"
+
+
 def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
     title = str(post.get("title") or "SNELabs").strip()
     subtitle = str(post.get("subtitle") or post.get("excerpt") or "").strip()
@@ -218,7 +226,7 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
 
 
 def _build_asset(post: Dict[str, Any], channel: str) -> Dict[str, Any]:
-    cta_url = f"https://snelabs.space/intel/{post['slug']}"
+    cta_url = _channel_cta_url(post, channel)
     generated = _llm_asset(post, channel, cta_url)
     headline = generated["headline"] if generated else str(post.get("title") or "SNELabs").strip()
     body = generated["body"] if generated else _fallback_body(post, channel, cta_url)
