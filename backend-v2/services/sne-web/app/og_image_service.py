@@ -11,12 +11,18 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SITE_ORIGIN = "https://snelabs.space"
 IMAGE_SIZE = (1200, 630)
-CANVAS_WIDTH, CANVAS_HEIGHT = IMAGE_SIZE
+RENDER_SCALE = 2
+RENDER_SIZE = (IMAGE_SIZE[0] * RENDER_SCALE, IMAGE_SIZE[1] * RENDER_SCALE)
+CANVAS_WIDTH, CANVAS_HEIGHT = RENDER_SIZE
 FONT_CANDIDATES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "C:/Windows/Fonts/segoeuib.ttf",
+    "C:/Windows/Fonts/segoeui.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+    "C:/Windows/Fonts/arial.ttf",
 )
 
 PALETTES = {
@@ -47,6 +53,10 @@ PALETTES = {
 }
 
 
+def _s(value: int) -> int:
+    return int(value * RENDER_SCALE)
+
+
 def _pick_palette(post: dict[str, Any]) -> dict[str, tuple[int, int, int]]:
     category = str(post.get("category") or "").strip().lower()
     topics = {str(item).strip().lower() for item in post.get("topics") or []}
@@ -67,23 +77,35 @@ def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageF
     for candidate in preferred:
         try:
             if Path(candidate).exists():
-                return ImageFont.truetype(candidate, size=size)
+                return ImageFont.truetype(candidate, size=_s(size))
         except Exception:
             continue
     return ImageFont.load_default()
 
 
-def _fit_title(text: str, width: int = 28, max_lines: int = 4) -> list[str]:
+def _normalize_text(text: str) -> str:
+    return " ".join((text or "").split())
+
+
+def _truncate_text(text: str, limit: int) -> str:
+    cleaned = _normalize_text(text)
+    if len(cleaned) <= limit:
+        return cleaned
+    trimmed = cleaned[: limit - 1].rsplit(" ", 1)[0].strip()
+    return (trimmed or cleaned[: limit - 1]).rstrip(" .,;:-") + "…"
+
+
+def _fit_title(text: str, width: int = 18, max_lines: int = 4) -> list[str]:
     cleaned = " ".join((text or "").split())
     if not cleaned:
         return ["Intel Brief"]
 
-    for wrap in range(width, 18, -2):
+    for wrap in range(width, 12, -1):
         lines = textwrap.wrap(cleaned, width=wrap)
         if len(lines) <= max_lines:
             return lines
 
-    lines = textwrap.wrap(cleaned, width=18)[:max_lines]
+    lines = textwrap.wrap(cleaned, width=12)[:max_lines]
     if lines:
         last = lines[-1]
         if len(last) > 3:
@@ -91,7 +113,7 @@ def _fit_title(text: str, width: int = 28, max_lines: int = 4) -> list[str]:
     return lines or ["Intel Brief"]
 
 
-def _fit_excerpt(text: str, width: int = 48, max_lines: int = 3) -> list[str]:
+def _fit_excerpt(text: str, width: int = 38, max_lines: int = 2) -> list[str]:
     cleaned = " ".join((text or "").split())
     if not cleaned:
         return []
@@ -102,95 +124,228 @@ def _fit_excerpt(text: str, width: int = 48, max_lines: int = 3) -> list[str]:
     return lines
 
 
-def _draw_background(canvas: Image.Image, palette: dict[str, tuple[int, int, int]]) -> None:
+def _stream_label(post: dict[str, Any]) -> str:
+    stream = str(post.get("stream") or "").strip().lower()
+    if stream == "institutional" or str(post.get("category") or "").strip().lower() == "institutional":
+        return "SNELABS"
+    return "EXTERNAL"
+
+
+def _kind_label(editorial_kind: str) -> str:
+    return "DOSSIER" if editorial_kind == "dossier" else "BRIEFING"
+
+
+def _compact_tags(post: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+    category = str(post.get("category") or "").strip()
+    if category:
+        tags.append(category)
+    for source in ("assets", "chains", "topics", "products"):
+        for item in post.get(source) or []:
+            label = str(item).strip()
+            if label and label.lower() not in {existing.lower() for existing in tags}:
+                tags.append(label)
+            if len(tags) >= 3:
+                return tags[:3]
+    return tags[:3]
+
+
+def _draw_background(canvas: Image.Image, palette: dict[str, tuple[int, int, int]], stream_label: str) -> None:
     draw = ImageDraw.Draw(canvas)
     for y in range(CANVAS_HEIGHT):
-        depth = int(12 + (y / CANVAS_HEIGHT) * 10)
-        draw.line([(0, y), (CANVAS_WIDTH, y)], fill=(6, 8, depth))
+        blend = y / CANVAS_HEIGHT
+        red = int(4 + blend * 8)
+        green = int(6 + blend * 12)
+        blue = int(14 + blend * 18)
+        draw.line([(0, y), (CANVAS_WIDTH, y)], fill=(red, green, blue))
 
-    glow = Image.new("RGBA", IMAGE_SIZE, (0, 0, 0, 0))
+    glow = Image.new("RGBA", RENDER_SIZE, (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse((-120, -40, 480, 460), fill=(*palette["accent"], 82))
-    glow_draw.ellipse((640, 80, 1320, 640), fill=(*palette["cool"], 92))
-    glow_draw.ellipse((860, -120, 1260, 220), fill=(255, 255, 255, 24))
-    glow = glow.filter(ImageFilter.GaussianBlur(70))
+    glow_draw.ellipse((_s(-120), _s(-20), _s(420), _s(440)), fill=(*palette["accent"], 105))
+    glow_draw.ellipse((_s(720), _s(40), _s(1460), _s(720)), fill=(*palette["cool"], 112))
+    glow_draw.ellipse((_s(1650), _s(-90), _s(2320), _s(260)), fill=(255, 255, 255, 20))
+    glow = glow.filter(ImageFilter.GaussianBlur(_s(48)))
     canvas.alpha_composite(glow)
 
-    panel = Image.new("RGBA", IMAGE_SIZE, (0, 0, 0, 0))
+    panel = Image.new("RGBA", RENDER_SIZE, (0, 0, 0, 0))
     panel_draw = ImageDraw.Draw(panel)
-    panel_draw.rounded_rectangle((56, 52, 1144, 574), radius=34, fill=(11, 14, 21, 210), outline=(255, 255, 255, 26), width=2)
-    panel_draw.rounded_rectangle((84, 438, 1116, 538), radius=24, fill=(255, 255, 255, 10))
-    panel = panel.filter(ImageFilter.GaussianBlur(0.4))
+    panel_draw.rounded_rectangle(
+        (_s(38), _s(36), _s(1162), _s(594)),
+        radius=_s(28),
+        fill=(8, 10, 16, 208),
+        outline=(255, 255, 255, 24),
+        width=_s(1),
+    )
+    panel_draw.rounded_rectangle(
+        (_s(78), _s(76), _s(802), _s(554)),
+        radius=_s(20),
+        fill=(255, 255, 255, 8),
+    )
+    panel_draw.rounded_rectangle(
+        (_s(840), _s(76), _s(1122), _s(554)),
+        radius=_s(26),
+        fill=(255, 255, 255, 8),
+    )
+    panel = panel.filter(ImageFilter.GaussianBlur(_s(0)))
     canvas.alpha_composite(panel)
 
+    accent = Image.new("RGBA", RENDER_SIZE, (0, 0, 0, 0))
+    accent_draw = ImageDraw.Draw(accent)
+    accent_draw.rounded_rectangle(
+        (_s(880), _s(114), _s(1080), _s(502)),
+        radius=_s(34),
+        fill=(*palette["accent"], 34),
+        outline=(*palette["accent_soft"], 92),
+        width=_s(1),
+    )
+    accent_draw.ellipse((_s(900), _s(130), _s(1185), _s(415)), fill=(*palette["accent"], 78))
+    accent_draw.ellipse((_s(958), _s(212), _s(1260), _s(520)), fill=(255, 255, 255, 18))
+    for offset in range(0, _s(360), _s(32)):
+        accent_draw.line(
+            [(_s(854), _s(196) + offset), (_s(1120), _s(30) + offset)],
+            fill=(255, 255, 255, 18),
+            width=_s(2),
+        )
+    accent = accent.filter(ImageFilter.GaussianBlur(_s(10)))
+    canvas.alpha_composite(accent)
+
+    guide = ImageDraw.Draw(canvas)
+    guide.line([(_s(826), _s(98)), (_s(826), _s(528))], fill=(255, 255, 255, 26), width=_s(1))
+    if stream_label == "SNELABS":
+        guide.rounded_rectangle(
+            (_s(860), _s(442), _s(1100), _s(524)),
+            radius=_s(20),
+            fill=(255, 255, 255, 10),
+            outline=(255, 255, 255, 24),
+            width=_s(1),
+        )
 
 def _draw_tags(draw: ImageDraw.ImageDraw, tags: list[str], palette: dict[str, tuple[int, int, int]], start_y: int) -> None:
     if not tags:
         return
 
-    font = _load_font(22)
-    x = 92
+    font = _load_font(20, bold=True)
+    x = _s(88)
     y = start_y
-    for tag in tags[:4]:
+    for tag in tags[:3]:
         label = tag.upper()
         bbox = draw.textbbox((0, 0), label, font=font)
         width = bbox[2] - bbox[0]
-        pill_width = width + 34
-        if x + pill_width > 1080:
-            y += 44
-            x = 92
-        draw.rounded_rectangle((x, y, x + pill_width, y + 34), radius=17, fill=(255, 255, 255, 14), outline=(*palette["tag"], 110), width=1)
-        draw.text((x + 17, y + 8), label, font=font, fill=(*palette["tag"], 255))
-        x += pill_width + 10
+        pill_width = width + _s(30)
+        if x + pill_width > _s(760):
+            break
+        draw.rounded_rectangle(
+            (x, y, x + pill_width, y + _s(34)),
+            radius=_s(17),
+            fill=(255, 255, 255, 12),
+            outline=(*palette["tag"], 118),
+            width=_s(1),
+        )
+        draw.text((x + _s(15), y + _s(7)), label, font=font, fill=(*palette["tag"], 255))
+        x += pill_width + _s(10)
+
+
+def _draw_metric_rail(
+    draw: ImageDraw.ImageDraw,
+    post: dict[str, Any],
+    palette: dict[str, tuple[int, int, int]],
+    stream_label: str,
+    editorial_kind: str,
+) -> None:
+    caption_font = _load_font(16, bold=True)
+    value_font = _load_font(26, bold=True)
+    soft = (220, 228, 236, 162)
+    bright = (244, 247, 251, 255)
+
+    right_x = _s(878)
+    draw.text((right_x, _s(106)), "SURFACE", font=caption_font, fill=soft)
+    draw.text((right_x, _s(132)), stream_label, font=value_font, fill=bright)
+
+    draw.text((right_x, _s(210)), "FORMAT", font=caption_font, fill=soft)
+    draw.text((right_x, _s(236)), _kind_label(editorial_kind), font=value_font, fill=bright)
+
+    category = str(post.get("category") or "news").strip().upper()
+    draw.text((right_x, _s(314)), "CATEGORY", font=caption_font, fill=soft)
+    draw.text((right_x, _s(340)), category, font=value_font, fill=bright)
+
+    reading_time = post.get("reading_time_minutes")
+    reading_label = f"{reading_time} MIN" if reading_time else "LIVE"
+    draw.text((right_x, _s(482)), "SNE LABS", font=caption_font, fill=soft)
+    draw.text((right_x, _s(506)), reading_label, font=value_font, fill=(*palette["accent_soft"], 255))
 
 
 @lru_cache(maxsize=256)
-def _render_cached(slug: str, title: str, subtitle: str, excerpt: str, editorial_kind: str, category: str, topic_key: str, chain_key: str, asset_key: str) -> bytes:
-    palette = _pick_palette(
-        {
-            "category": category,
-            "topics": topic_key.split(",") if topic_key else [],
-            "chains": chain_key.split(",") if chain_key else [],
-            "assets": asset_key.split(",") if asset_key else [],
-        }
-    )
+def _render_cached(
+    slug: str,
+    title: str,
+    subtitle: str,
+    excerpt: str,
+    editorial_kind: str,
+    category: str,
+    stream: str,
+    topic_key: str,
+    chain_key: str,
+    asset_key: str,
+    product_key: str,
+    reading_time: str,
+) -> bytes:
+    post_context = {
+        "category": category,
+        "stream": stream,
+        "topics": topic_key.split(",") if topic_key else [],
+        "chains": chain_key.split(",") if chain_key else [],
+        "assets": asset_key.split(",") if asset_key else [],
+        "products": product_key.split(",") if product_key else [],
+        "reading_time_minutes": int(reading_time) if reading_time.isdigit() else None,
+    }
+    palette = _pick_palette(post_context)
+    stream_label = _stream_label(post_context)
 
-    image = Image.new("RGBA", IMAGE_SIZE, (5, 8, 12, 255))
-    _draw_background(image, palette)
+    image = Image.new("RGBA", RENDER_SIZE, (5, 8, 12, 255))
+    _draw_background(image, palette, stream_label)
     draw = ImageDraw.Draw(image)
 
-    eyebrow_font = _load_font(22, bold=True)
-    title_font = _load_font(54, bold=True)
-    body_font = _load_font(28)
-    footer_font = _load_font(22, bold=True)
+    eyebrow_font = _load_font(18, bold=True)
+    title_font = _load_font(58, bold=True)
+    body_font = _load_font(26)
+    footer_font = _load_font(18, bold=True)
 
-    draw.text((92, 92), "INTEL BRIEF", font=eyebrow_font, fill=(214, 220, 230, 190))
+    kicker = f"INTEL / {stream_label}"
+    kicker_bbox = draw.textbbox((0, 0), kicker, font=eyebrow_font)
+    kicker_width = kicker_bbox[2] - kicker_bbox[0]
+    draw.rounded_rectangle(
+        (_s(88), _s(86), _s(88) + kicker_width + _s(34), _s(122)),
+        radius=_s(18),
+        fill=(255, 255, 255, 12),
+        outline=(255, 255, 255, 24),
+        width=_s(1),
+    )
+    draw.text((_s(106), _s(94)), kicker, font=eyebrow_font, fill=(221, 228, 236, 210))
 
-    kind_label = "DOSSIÊ" if editorial_kind == "dossier" else "BRIEFING"
-    kind_bbox = draw.textbbox((0, 0), kind_label, font=eyebrow_font)
-    kind_width = kind_bbox[2] - kind_bbox[0]
-    draw.rounded_rectangle((920, 86, 920 + kind_width + 36, 122), radius=18, fill=(*palette["accent"], 38), outline=(*palette["accent_soft"], 145), width=1)
-    draw.text((938, 94), kind_label, font=eyebrow_font, fill=(*palette["accent_soft"], 255))
+    y = _s(150)
+    title_lines = _fit_title(_truncate_text(title, 96))
+    for line in title_lines:
+        draw.text((_s(88), y), line, font=title_font, fill=(246, 248, 252, 255))
+        y += _s(68)
 
-    y = 154
-    for line in _fit_title(title):
-        draw.text((92, y), line, font=title_font, fill=(246, 248, 252, 255))
-        y += 64
-
-    excerpt_lines = _fit_excerpt(excerpt or subtitle)
+    insight = _truncate_text(excerpt or subtitle, 150)
+    excerpt_lines = _fit_excerpt(insight)
     if excerpt_lines:
-        y += 8
+        y += _s(16)
         for line in excerpt_lines:
-            draw.text((92, y), line, font=body_font, fill=(214, 220, 230, 215))
-            y += 36
+            draw.text((_s(88), y), line, font=body_font, fill=(214, 220, 230, 220))
+            y += _s(34)
 
-    tags = [tag for tag in [*(asset_key.split(",") if asset_key else []), *(chain_key.split(",") if chain_key else []), *(topic_key.split(",") if topic_key else [])] if tag]
-    _draw_tags(draw, tags, palette, 456)
+    tags = _compact_tags(post_context)
+    tags_y = min(max(y + _s(28), _s(478)), _s(504))
+    _draw_tags(draw, tags, palette, tags_y)
+    _draw_metric_rail(draw, post_context, palette, stream_label, editorial_kind)
 
-    draw.text((92, 554), "snelabs.space", font=footer_font, fill=(214, 220, 230, 176))
-    draw.text((1024, 554), f"/intel/{slug}", font=footer_font, fill=(214, 220, 230, 120), anchor="ra")
+    draw.text((_s(88), _s(546)), "snelabs.space", font=footer_font, fill=(214, 220, 230, 178))
+    draw.text((_s(762), _s(546)), "intel brief", font=footer_font, fill=(214, 220, 230, 132), anchor="ra")
 
     output = io.BytesIO()
+    image = image.resize(IMAGE_SIZE, Image.Resampling.LANCZOS)
     image.convert("RGB").save(output, format="PNG", optimize=True)
     return output.getvalue()
 
@@ -203,9 +358,12 @@ def build_intel_og_image(post: dict[str, Any]) -> bytes:
         str(post.get("excerpt") or ""),
         str(post.get("editorial_kind") or "briefing"),
         str(post.get("category") or "news"),
+        str(post.get("stream") or ""),
         ",".join(str(item).strip() for item in post.get("topics") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("chains") or [] if str(item).strip()),
         ",".join(str(item).strip() for item in post.get("assets") or [] if str(item).strip()),
+        ",".join(str(item).strip() for item in post.get("products") or [] if str(item).strip()),
+        str(post.get("reading_time_minutes") or ""),
     )
 
 
