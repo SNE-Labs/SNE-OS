@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Blueprint, Response, abort, request
 
-from .intel_service import fetch_intel_post
+from .institutional_service import fetch_combined_intel_post
 from .og_image_service import build_intel_og_image, build_intel_share_html, build_static_share_html
 
 SITE_ORIGIN = "https://snelabs.space"
@@ -36,7 +36,7 @@ share_bp = Blueprint("share", __name__)
 
 @share_bp.get("/share/intel/<slug>")
 def share_intel_post(slug: str):
-    post = fetch_intel_post(slug)
+    post = fetch_combined_intel_post(slug)
     if not post:
         abort(404)
     surface = request.args.get("surface", "share").strip().lower()
@@ -59,7 +59,7 @@ def share_static_page(name: str):
 
 @share_bp.get("/og/intel/<slug>.png")
 def intel_post_og_image(slug: str):
-    post = fetch_intel_post(slug)
+    post = fetch_combined_intel_post(slug)
     if not post:
         abort(404)
     image = build_intel_og_image(post)

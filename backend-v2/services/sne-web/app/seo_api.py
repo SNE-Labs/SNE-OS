@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, Response
 
 from .collector_client import RADAR_MARKET_UNIVERSE
-from .intel_service import fetch_intel_posts
+from .institutional_service import fetch_combined_intel_posts
 
 seo_bp = Blueprint("seo", __name__)
 
@@ -55,7 +55,7 @@ def sitemap_index():
 
 @seo_bp.get("/core-sitemap.xml")
 def core_sitemap():
-    posts = fetch_intel_posts(limit=120)
+    posts = fetch_combined_intel_posts(limit=120)
     static_urls = [
         (f"{SITE_ORIGIN}/home", "daily", "1.0"),
         (f"{SITE_ORIGIN}/radar", "daily", "0.9"),
@@ -93,7 +93,7 @@ def core_sitemap():
 
 @seo_bp.get("/intel-sitemap.xml")
 def intel_sitemap():
-    posts = fetch_intel_posts(limit=120)
+    posts = fetch_combined_intel_posts(limit=120)
     rows = []
     for post in posts:
         slug = post.get("slug")

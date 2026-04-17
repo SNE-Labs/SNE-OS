@@ -38,12 +38,20 @@ PALETTES = {
         "cool": (25, 71, 110),
         "tag": (132, 189, 255),
     },
+    "institutional": {
+        "accent": (99, 208, 166),
+        "accent_soft": (157, 230, 202),
+        "cool": (25, 95, 84),
+        "tag": (126, 219, 182),
+    },
 }
 
 
 def _pick_palette(post: dict[str, Any]) -> dict[str, tuple[int, int, int]]:
     category = str(post.get("category") or "").strip().lower()
     topics = {str(item).strip().lower() for item in post.get("topics") or []}
+    if category == "institutional":
+        return PALETTES["institutional"]
     if "infra" in topics or "seguranca" in topics or "identidade" in topics:
         return PALETTES["infra"]
     if category == "market":

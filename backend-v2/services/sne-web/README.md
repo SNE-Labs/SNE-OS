@@ -49,6 +49,14 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `SECRET_KEY`: Flask secret key
 - `PORT`: Server port (default: 8080)
 - `INTEL_REFRESH_SECRET`: shared secret required by `POST /api/intel/refresh` for Railway cron/manual refresh
+- `INTEL_INSTITUTIONAL_SECRET`: optional shared secret for institutional ingest/generate endpoints
+- `INTEL_DISTRIBUTION_SECRET`: optional shared secret for controlled publish endpoints
+- `INTEL_INSTITUTIONAL_PROVIDER`: institutional editorial provider (`heuristic` or OpenAI-backed)
+- `INTEL_INSTITUTIONAL_MODEL`: model used for institutional post generation
+- `INTEL_DISTRIBUTION_MODEL`: model used for channel-specific copy generation
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
+- `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
+- `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
 - `ETHEREUM_RPC_URLS`: comma-separated fallback RPC list for Ethereum
 - `POLYGON_RPC_URLS`: comma-separated fallback RPC list for Polygon
 - `SCROLL_RPC_URLS`: comma-separated fallback RPC list for Scroll
@@ -65,6 +73,11 @@ export SCROLL_RPC_URLS=https://rpc.scroll.io,https://scroll-mainnet.public.blast
 - `GET /health` - Health check
 - `POST /api/analyze` - Analyze symbol/timeframe
 - `GET /api/signal` - Get latest signal
+- `POST /api/intel/institutional/ingest` - Ingest institutional fact pack
+- `POST /api/intel/institutional/generate` - Generate institutional SNELabs post
+- `GET /api/intel/institutional/posts` - List institutional posts
+- `POST /api/intel/distribution/preview/<slug>` - Generate channel previews
+- `POST /api/intel/distribution/publish/<slug>` - Publish to configured channels
 
 ## WebSocket Events
 

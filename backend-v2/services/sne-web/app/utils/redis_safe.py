@@ -6,6 +6,8 @@ Suporta tanto TCP Redis quanto REST API (Upstash)
 import os
 import logging
 import json
+import time
+import threading
 from typing import Any, Optional
 
 # Try to import redis, fallback if not available
@@ -21,6 +23,8 @@ import requests
 import urllib.parse
 
 logger = logging.getLogger(__name__)
+_FALLBACK_STORE: dict[str, tuple[Any, float | None]] = {}
+_FALLBACK_LOCK = threading.RLock()
 
 class UpstashRedis:
     """Upstash Redis REST API client - Correct URL format"""
@@ -117,6 +121,48 @@ class SafeRedis:
 
         self._connect()
 
+    def _fallback_get(self, key: str) -> Optional[Any]:
+        with _FALLBACK_LOCK:
+            entry = _FALLBACK_STORE.get(key)
+            if not entry:
+                return None
+            value, expires_at = entry
+            if expires_at is not None and expires_at <= time.time():
+                _FALLBACK_STORE.pop(key, None)
+                return None
+            return value
+
+    def _fallback_set(self, key: str, value: Any, ttl_seconds: int | None = None) -> bool:
+        expires_at = (time.time() + max(1, int(ttl_seconds))) if ttl_seconds else None
+        with _FALLBACK_LOCK:
+            _FALLBACK_STORE[key] = (value, expires_at)
+        return True
+
+    def _fallback_delete(self, key: str) -> int:
+        with _FALLBACK_LOCK:
+            existed = key in _FALLBACK_STORE
+            _FALLBACK_STORE.pop(key, None)
+        return 1 if existed else 0
+
+    def _fallback_incr(self, key: str) -> int:
+        with _FALLBACK_LOCK:
+            current = self._fallback_get(key)
+            try:
+                next_value = int(current or 0) + 1
+            except Exception:
+                next_value = 1
+            expires_at = _FALLBACK_STORE.get(key, (None, None))[1]
+            _FALLBACK_STORE[key] = (str(next_value), expires_at)
+        return next_value
+
+    def _fallback_expire(self, key: str, ttl_seconds: int) -> bool:
+        with _FALLBACK_LOCK:
+            current = self._fallback_get(key)
+            if current is None:
+                return False
+            _FALLBACK_STORE[key] = (current, time.time() + max(1, int(ttl_seconds)))
+        return True
+
     def _connect(self):
         """Tenta conectar ao Redis (Upstash REST ou TCP)"""
         # Primeiro tenta Upstash REST API
@@ -160,12 +206,18 @@ class SafeRedis:
     def get(self, key: str) -> Optional[str]:
         """Get com fallback"""
         if not self.available:
-            return None
+            value = self._fallback_get(key)
+            if value is None:
+                return None
+            return value if isinstance(value, str) else str(value)
         try:
             if self.use_upstash:
-                return self.upstash.get(key)
+                value = self.upstash.get(key)
             else:
-                return self.redis.get(key)
+                value = self.redis.get(key)
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+            return value
         except Exception as e:
             logger.warning(f"Redis get error: {str(e)}")
             return None
@@ -173,7 +225,7 @@ class SafeRedis:
     def set(self, key: str, value: Any) -> bool:
         """Set com fallback"""
         if not self.available:
-            return True  # Success in fallback mode
+            return self._fallback_set(key, value)
         try:
             if self.use_upstash:
                 return self.upstash.set(key, value)
@@ -186,7 +238,7 @@ class SafeRedis:
     def setex(self, key: str, time: int, value: Any) -> bool:
         """Set with expiration com fallback"""
         if not self.available:
-            return True  # Success in fallback mode
+            return self._fallback_set(key, value, ttl_seconds=time)
         try:
             if self.use_upstash:
                 return self.upstash.setex(key, time, value)
@@ -199,7 +251,7 @@ class SafeRedis:
     def delete(self, key: str) -> int:
         """Delete com fallback"""
         if not self.available:
-            return 1  # Success in fallback mode
+            return self._fallback_delete(key)
         try:
             if self.use_upstash:
                 return self.upstash.delete(key)
@@ -212,7 +264,7 @@ class SafeRedis:
     def incr(self, key: str) -> int:
         """Increment com fallback"""
         if not self.available:
-            return 1  # Sempre retorna 1 no fallback
+            return self._fallback_incr(key)
         try:
             if self.use_upstash:
                 return self.upstash.incr(key)
@@ -225,7 +277,7 @@ class SafeRedis:
     def expire(self, key: str, time: int) -> bool:
         """Expire com fallback"""
         if not self.available:
-            return True  # Success in fallback mode
+            return self._fallback_expire(key, time)
         try:
             if self.use_upstash:
                 return self.upstash.expire(key, time)
