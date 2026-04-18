@@ -15,7 +15,7 @@ import {
   NetworkXrp,
 } from '@web3icons/react';
 import { Activity, Shield, Waves, Zap } from 'lucide-react';
-import { siAave, siChainlink, siDogecoin, siUniswap } from 'simple-icons';
+import { siChainlink, siDogecoin } from 'simple-icons';
 
 import type { CSSProperties } from 'react';
 import type { HomeIntelSectionKey } from '@/services/home-intel';
@@ -40,7 +40,13 @@ type EmojiIcon = {
   value: string;
 };
 
-type EntityIcon = IconComponent | SimpleSvgIcon | EmojiIcon;
+type MonogramIcon = {
+  kind: 'monogram';
+  value: string;
+  color: string;
+};
+
+type EntityIcon = IconComponent | SimpleSvgIcon | EmojiIcon | MonogramIcon;
 
 const ENTITY_ICONS: Record<string, EntityIcon> = {
   arbitrum: NetworkArbitrumOne,
@@ -71,21 +77,9 @@ const ENTITY_ICONS: Record<string, EntityIcon> = {
     path: siChainlink.path,
     color: `#${siChainlink.hex}`,
   },
-  aave: {
-    kind: 'simple',
-    path: siAave.path,
-    color: `#${siAave.hex}`,
-  },
-  uni: {
-    kind: 'simple',
-    path: siUniswap.path,
-    color: `#${siUniswap.hex}`,
-  },
-  uniswap: {
-    kind: 'simple',
-    path: siUniswap.path,
-    color: `#${siUniswap.hex}`,
-  },
+  aave: { kind: 'monogram', value: 'A', color: '#B6509E' },
+  uni: { kind: 'monogram', value: 'U', color: '#FF007A' },
+  uniswap: { kind: 'monogram', value: 'U', color: '#FF007A' },
   dogecoin: {
     kind: 'simple',
     path: siDogecoin.path,
@@ -149,6 +143,20 @@ export function IntelEntityIcon({ symbol, sectionKey = 'market', className, styl
       return (
         <div className={className} style={style}>
           <span aria-hidden="true" className={iconClassName} style={{ fontSize: '0.95em', lineHeight: 1 }}>
+            {Icon.value}
+          </span>
+        </div>
+      );
+    }
+
+    if (typeof Icon === 'object' && 'kind' in Icon && Icon.kind === 'monogram') {
+      return (
+        <div className={className} style={style}>
+          <span
+            aria-hidden="true"
+            className={iconClassName}
+            style={{ color: Icon.color, fontWeight: 700, fontSize: '0.95em', lineHeight: 1 }}
+          >
             {Icon.value}
           </span>
         </div>
