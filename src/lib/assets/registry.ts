@@ -204,7 +204,7 @@ export const RADAR_ASSET_REGISTRY: AssetRegistryItem[] = [
     displayName: 'Aave',
     iconSymbol: 'aave',
     essential: false,
-    radarEnabled: true,
+    radarEnabled: false,
     swapEnabled: true,
     swapAvailability: 'ready',
     executionHint: 'Execucao direta em rotas EVM suportadas.',
@@ -287,19 +287,22 @@ export function listRadarFallbackSymbols() {
 
 export function mergeRadarUniverse<T extends RadarMarketLike>(universe: T[]) {
   const normalizedUniverse = Array.isArray(universe) ? universe : [];
+  const enabledAssets = listRadarEnabledAssets();
+  const enabledSet = new Set(enabledAssets.map((item) => item.radarSymbol));
   const lookup = new Map(normalizedUniverse.map((item) => [normalizeRadarSymbol(item.symbol), item]));
   const seen = new Set<string>();
-  const merged: RadarMarketLike[] = [];
+  const merged: T[] = [];
 
-  for (const asset of listRadarEnabledAssets()) {
+  for (const asset of enabledAssets) {
     const existing = lookup.get(asset.radarSymbol);
-    merged.push(existing ?? { symbol: asset.radarSymbol, price: 0, change24h: 0, volume: 0 });
+    if (!existing) continue;
+    merged.push(existing);
     seen.add(asset.radarSymbol);
   }
 
   for (const item of normalizedUniverse) {
     const normalized = normalizeRadarSymbol(item.symbol);
-    if (!seen.has(normalized)) {
+    if (!seen.has(normalized) && !enabledSet.has(normalized)) {
       merged.push(item);
       seen.add(normalized);
     }

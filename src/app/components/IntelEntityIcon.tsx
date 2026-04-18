@@ -15,7 +15,7 @@ import {
   NetworkXrp,
 } from '@web3icons/react';
 import { Activity, Shield, Waves, Zap } from 'lucide-react';
-import { siChainlink, siDogecoin } from 'simple-icons';
+import { siAave, siChainlink, siDogecoin, siUniswap } from 'simple-icons';
 
 import type { CSSProperties } from 'react';
 import type { HomeIntelSectionKey } from '@/services/home-intel';
@@ -70,6 +70,21 @@ const ENTITY_ICONS: Record<string, EntityIcon> = {
     kind: 'simple',
     path: siChainlink.path,
     color: `#${siChainlink.hex}`,
+  },
+  aave: {
+    kind: 'simple',
+    path: siAave.path,
+    color: `#${siAave.hex}`,
+  },
+  uni: {
+    kind: 'simple',
+    path: siUniswap.path,
+    color: `#${siUniswap.hex}`,
+  },
+  uniswap: {
+    kind: 'simple',
+    path: siUniswap.path,
+    color: `#${siUniswap.hex}`,
   },
   dogecoin: {
     kind: 'simple',
