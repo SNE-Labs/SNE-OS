@@ -1,7 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpRight,
-  BadgeCheck,
   CheckCircle2,
   Coins,
   Copy,
@@ -242,13 +240,6 @@ function stageSignal(flowStage: FlowStage, order?: CheckoutOrder | null) {
   return 'session bootstrap';
 }
 
-function supportMode(order?: CheckoutOrder | null) {
-  if (!order) return 'guided';
-  if (order.paymentTxHash) return 'tracked';
-  if (order.status === 'awaiting_payment' || order.status === 'payment_seen') return 'hybrid';
-  return 'guided';
-}
-
 function stageCopy(flowStage: FlowStage, order?: CheckoutOrder | null) {
   if (flowStage === 'auth') {
     return {
@@ -347,32 +338,32 @@ function StepCard({ step }: StepCardProps) {
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl px-3 py-3 transition-all duration-300"
+      className="group relative overflow-hidden rounded-2xl px-3 py-3 transition-all duration-300 min-h-[88px]"
       style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
     >
       <div
         className="absolute inset-x-0 top-0 h-px opacity-80"
         style={{ background: `linear-gradient(90deg, transparent, ${tone.color}, transparent)` }}
       />
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: tone.color }}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-3.5 h-3.5" />
           </div>
-          <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: tone.color }}>
+          <div className="min-w-0 pr-1">
+            <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: tone.color }}>
               {step.label}
             </div>
-            <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+            <div className="mt-1 text-[0.95rem] font-medium leading-5 break-words" style={{ color: 'var(--text-1)' }}>
               {step.detail}
             </div>
           </div>
         </div>
         <div
-          className="h-2.5 w-2.5 rounded-full"
+          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 6px ${tone.bg}` : 'none' }}
         />
       </div>
@@ -673,7 +664,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
-  const rightRail = (
+  const sidePanel = (
     <div className="space-y-3">
       <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="flex items-center gap-2 mb-3">
@@ -691,15 +682,15 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
       <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
         <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
-          Rail design
+          Split de rede
         </div>
         <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-          Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key. O modal separa cada uma dessas superfícies para reduzir ruído operacional.
+          Tron liquida o pagamento em `USDT`. Arbitrum entrega o entitlement final. Este painel serve só como referência rápida, não como fluxo principal.
         </div>
       </div>
 
       {hasTrackedOrder ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <StageActionButton onClick={() => void orderQuery.refetch()}>
             Atualizar ordem
           </StageActionButton>
@@ -1069,7 +1060,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mt-5">
             {steps.map((step) => (
               <StepCard key={step.id} step={step} />
             ))}
@@ -1077,7 +1068,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_360px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_300px]">
         <div className="overflow-y-auto px-5 py-5 lg:px-6 lg:py-6">
           {stageContent}
 
@@ -1102,7 +1093,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         </div>
 
         <div
-          className="overflow-y-auto border-t lg:border-l lg:border-t-0 px-5 py-5 lg:px-6 lg:py-6"
+          className="overflow-y-auto border-t xl:border-l xl:border-t-0 px-5 py-5 lg:px-6 lg:py-6"
           style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
         >
           {orderQuery.isLoading && trackedOrderId ? (
@@ -1111,7 +1102,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               Carregando ActivationOrder...
             </div>
           ) : (
-            rightRail
+            sidePanel
           )}
         </div>
       </div>
@@ -1132,15 +1123,15 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
+          <div className="max-w-2xl">
             <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
               Operator Checkout
             </div>
             <div className="text-xl font-semibold leading-tight mb-2" style={{ color: 'var(--text-1)' }}>
-              Fluxo premium para pagamento em Tron e ativação em Arbitrum.
+              Checkout premium para ativar o Operator Key.
             </div>
             <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              Em vez de despejar tudo num card só, o checkout agora abre uma superfície dedicada com telas separadas para sessão, ordem, payment rail e ativação.
+              A página mostra só o estado da sessão e um launcher. O fluxo completo acontece dentro do modal.
             </div>
           </div>
 
@@ -1152,77 +1143,26 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_360px] gap-4 mt-5">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              {steps.map((step) => (
-                <StepCard key={step.id} step={step} />
-              ))}
-            </div>
-
-            <div
-              className="overflow-hidden rounded-2xl"
-              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                  Premium rail
-                </div>
-                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
-                  {stageSignal(flowStage, order)}
-                </div>
+        <div
+          className="mt-5 rounded-2xl p-4"
+          style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
+                {effectiveAccess ? 'Entitlement ativo' : 'Checkout guiado por modal'}
               </div>
-              <div className="px-4 pb-4 pt-3">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                      Completion
-                    </div>
-                    <div className="text-3xl font-semibold tracking-[-0.04em]" style={{ color: 'var(--text-1)' }}>
-                      {flowProgress}%
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-right text-[11px] uppercase tracking-[0.16em]">
-                    <div style={{ color: 'var(--text-3)' }}>Tron</div>
-                    <div style={{ color: 'var(--text-3)' }}>Bind</div>
-                    <div style={{ color: 'var(--text-3)' }}>Mint</div>
-                  </div>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${flowProgress}%`,
-                      background: 'linear-gradient(90deg, rgba(255,140,66,0.78), rgba(50,213,131,0.78))',
-                    }}
-                  />
-                </div>
+              <div className="text-sm max-w-2xl" style={{ color: 'var(--text-2)' }}>
+                {synopsis}
               </div>
-            </div>
-
-            <div
-              className="rounded-2xl p-4"
-              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: 'rgba(255,140,66,0.10)', color: 'var(--accent-orange)' }}
-                >
-                  {effectiveAccess ? <BadgeCheck className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+              {order ? (
+                <div className="flex flex-wrap gap-3 mt-3 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                  <span>Target {shortValue(order.targetArbitrumAddress)}</span>
+                  <span>Order {shortValue(order.id)}</span>
+                  <span>{stageSignal(flowStage, order)}</span>
                 </div>
-                <div className="min-w-0">
-                  <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
-                    {effectiveAccess ? 'Entitlement ativo' : 'Checkout guiado por etapas'}
-                  </div>
-                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                    {synopsis}
-                  </div>
-                </div>
-              </div>
+              ) : null}
             </div>
-
-            {feedbackSurface}
 
             <div className="flex flex-wrap gap-2">
               <StageActionButton onClick={() => setIsFlowOpen(true)}>
@@ -1235,54 +1175,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               ) : null}
             </div>
           </div>
-
-          <div className="space-y-3">
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Resumo vivo</div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
-                <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
-                <DetailRow label="Order" value={shortValue(order?.id)} />
-                <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
-              </div>
-            </div>
-
-            <div
-              className="rounded-2xl p-4"
-              style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}
-            >
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
-                Superfície
-              </div>
-              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key. O modal separa esses dois mundos e reduz a carga cognitiva do usuário.
-              </div>
-            </div>
-
-            <div
-              className="rounded-2xl p-4"
-              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Settlement</div>
-                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Tron</div>
-                </div>
-                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Entitlement</div>
-                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Arbitrum</div>
-                </div>
-                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Mode</div>
-                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{supportMode(order)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
+
+        {feedbackSurface ? <div className="mt-4">{feedbackSurface}</div> : null}
       </div>
 
       {isMobile ? (
