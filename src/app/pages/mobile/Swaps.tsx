@@ -28,6 +28,14 @@ export function MobileSwaps() {
   const { address, isConnected } = useAccount();
   const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
   const entitlement = entitlementQuery.data;
+  const isOwnerSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.ownerWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.ownerWallet!.toLowerCase();
+  const isDelegateSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.delegateWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.delegateWallet!.toLowerCase();
   const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
   const radarAsset = useMemo(
     () => getRadarAssetByKey(radarContext.assetKey) ?? getRadarAssetBySymbol(radarContext.symbol),
@@ -57,8 +65,10 @@ export function MobileSwaps() {
   const accessNarrative = !isConnected
     ? 'Conecte a wallet para resolver a classe de acesso soberana antes da execução.'
     : operatorActive
-      ? entitlement?.delegateWallet
+      ? isDelegateSession
         ? 'Fee operator ativa por delegação válida do Key.'
+        : isOwnerSession && entitlement?.delegateWallet
+          ? `Fee operator ativa por posse direta. Delegate configurada para ${formatAddress(entitlement.delegateWallet)}.`
         : 'Fee operator ativa por posse direta do Key.'
       : 'Sem Operator Key efetivo. O rail continua disponível com fee padrão.';
 

@@ -426,14 +426,14 @@ export function useShellContextData() {
 
     if (isAuthenticated && address) {
       topbarChips.push({
-        label: `${localizeTier(tier)} • ${formatPassportDisplayLabel(passport, address)}`,
+        label: `${localizeTier(tier)} • ${formatAddress(address)}`,
         tone: 'success',
       });
     } else {
       topbarChips.push({ label: 'Sessão anônima', tone: 'warning' });
     }
 
-    const sessionIdentityLabel = isAuthenticated && address ? formatPassportDisplayLabel(passport, address) : 'Sem carteira';
+    const sessionIdentityLabel = isAuthenticated && address ? formatAddress(address) : 'Sem carteira';
 
     return {
       routeMeta,

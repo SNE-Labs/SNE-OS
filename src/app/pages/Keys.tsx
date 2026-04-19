@@ -14,6 +14,14 @@ export function Keys() {
   const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
   const overview = overviewQuery.data;
   const entitlement = entitlementQuery.data;
+  const isOwnerSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.ownerWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.ownerWallet!.toLowerCase();
+  const isDelegateSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.delegateWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.delegateWallet!.toLowerCase();
   const moduleState = resolveModuleState({
     isConnected,
     isLoading: overviewQuery.isLoading,
@@ -29,8 +37,10 @@ export function Keys() {
     : entitlementQuery.isLoading
       ? 'Resolvendo entitlement soberano para esta carteira.'
       : entitlement?.effectiveAccess
-        ? entitlement.delegateWallet
+        ? isDelegateSession
           ? `Classe Operator ativa por delegação de ${formatAddress(entitlement.ownerWallet)}.`
+          : isOwnerSession && entitlement.delegateWallet
+            ? `Classe Operator ativa por posse direta do Key. Delegate ativa para ${formatAddress(entitlement.delegateWallet)}.`
           : 'Classe Operator ativa por posse direta do Key.'
         : 'Sem Operator Key efetivo nesta sessão. O modo web continua em discovery.';
 
@@ -237,9 +247,11 @@ export function Keys() {
                   </div>
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Devices</div>
-                    <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {entitlement?.delegateWallet
+                      <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                      {isDelegateSession
                         ? 'A wallet operacional delegada usa a classe Operator enquanto a owner wallet continuar segurando o Key.'
+                        : isOwnerSession && entitlement?.delegateWallet
+                          ? `Esta owner wallet mantém a posse do Key e delega operação para ${formatAddress(entitlement.delegateWallet)}.`
                         : overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
                     </div>
                   </div>

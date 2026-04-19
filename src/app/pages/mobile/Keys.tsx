@@ -14,6 +14,14 @@ export function MobileKeys() {
   const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
   const overview = overviewQuery.data;
   const entitlement = entitlementQuery.data;
+  const isOwnerSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.ownerWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.ownerWallet!.toLowerCase();
+  const isDelegateSession =
+    Boolean(entitlement?.wallet) &&
+    Boolean(entitlement?.delegateWallet) &&
+    entitlement!.wallet!.toLowerCase() === entitlement!.delegateWallet!.toLowerCase();
   const accessLevel = entitlement?.accessClass === 'operator' ? 'Operator' : isConnected ? 'Discovery' : '--';
   const sourceLabel = entitlement?.source ?? overview?.surface.source ?? '--';
   const feePolicyLabel = entitlement?.feePolicy?.label ?? (entitlement?.feeTier === 'operator_discount' ? 'Operator discount' : 'Standard');
@@ -22,8 +30,10 @@ export function MobileKeys() {
     : entitlementQuery.isLoading
       ? 'Resolvendo entitlement soberano para esta carteira.'
       : entitlement?.effectiveAccess
-        ? entitlement.delegateWallet
+        ? isDelegateSession
           ? `Operator ativo por delegação de ${formatAddress(entitlement.ownerWallet)}.`
+          : isOwnerSession && entitlement.delegateWallet
+            ? `Operator ativo por posse direta. Delegate ativa para ${formatAddress(entitlement.delegateWallet)}.`
           : 'Operator ativo por posse direta.'
         : 'Sem Operator Key efetivo nesta sessão.';
 
@@ -180,8 +190,10 @@ export function MobileKeys() {
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
             <div className="text-[var(--text-1)] mb-1">Devices</div>
             <div className="text-sm text-[var(--text-2)]">
-              {entitlement?.delegateWallet
+              {isDelegateSession
                 ? 'A wallet operacional delegada usa a classe Operator enquanto a owner wallet continuar segurando o Key.'
+                : isOwnerSession && entitlement?.delegateWallet
+                  ? `Esta owner wallet mantém a posse do Key e delega operação para ${formatAddress(entitlement.delegateWallet)}.`
                 : overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
             </div>
           </div>
