@@ -125,6 +125,17 @@ function shortValue(value?: string | null) {
   return `${value.slice(0, 10)}...${value.slice(-6)}`;
 }
 
+function explainInvalidTronWalletAddress(address: string, connector: SupportedTronAdapterName) {
+  const candidate = address.trim();
+  if (candidate.startsWith('0x')) {
+    return connector === 'WalletConnect'
+      ? `O WalletConnect retornou ${candidate}, que é um address EVM. Abra uma wallet Tron compatível no QR, não uma wallet EVM.`
+      : `A ${connector} retornou ${candidate}, que não é um address Tron base58 iniciado em T.`;
+  }
+
+  return `O conector ${connector} nao retornou um address Tron valido. Recebi ${candidate}.`;
+}
+
 function resolveFlowStage({
   effectiveAccess,
   isAuthenticated,
@@ -611,7 +622,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
     }
     if (!isTronAddress(nextAddress)) {
-      throw new Error(`O conector ${adapterName} nao retornou um address Tron valido. Recebi ${nextAddress}.`);
+      throw new Error(explainInvalidTronWalletAddress(nextAddress, adapterName));
     }
 
     return {

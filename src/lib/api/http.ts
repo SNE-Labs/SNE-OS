@@ -10,12 +10,16 @@ export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
 export class ApiError extends Error {
   status: number;
   body?: string;
+  code?: string;
+  details?: unknown;
 
-  constructor(message: string, status: number, body?: string) {
+  constructor(message: string, status: number, body?: string, code?: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -26,6 +30,28 @@ type RequestOptions = {
 function withApiBase(path: string): string {
   if (!API_BASE) return path;
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function buildApiError(path: string, method: string, status: number, body: string): ApiError {
+  if (body) {
+    try {
+      const parsed = JSON.parse(body) as {
+        error?: {
+          code?: string;
+          message?: string;
+          details?: unknown;
+        };
+      };
+      const message = parsed.error?.message?.trim();
+      if (message) {
+        return new ApiError(message, status, body, parsed.error?.code, parsed.error?.details);
+      }
+    } catch {
+      // Fall through to the generic HTTP error below when the body is not JSON.
+    }
+  }
+
+  return new ApiError(`${method} ${path} failed: ${status}`, status, body);
 }
 
 export async function apiGet<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -45,7 +71,7 @@ export async function apiGet<T>(path: string, options?: RequestOptions): Promise
     });
     if (!res.ok) {
       const errorBody = await res.text().catch(() => "");
-      throw new ApiError(`GET ${path} failed: ${res.status}`, res.status, errorBody);
+      throw buildApiError(path, "GET", res.status, errorBody);
     }
 
     const contentType = res.headers.get("content-type");
@@ -81,7 +107,10 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
       headers,
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => "");
+      throw buildApiError(path, "POST", res.status, errorBody);
+    }
 
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -110,7 +139,10 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
       headers,
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`);
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => "");
+      throw buildApiError(path, "PUT", res.status, errorBody);
+    }
 
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -139,7 +171,10 @@ export async function apiDelete<T>(path: string): Promise<T> {
       credentials: "include",
       headers,
     });
-    if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => "");
+      throw buildApiError(path, "DELETE", res.status, errorBody);
+    }
 
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
