@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Trash2,
   Wallet,
+  X,
 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -775,8 +776,8 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
     if (flowStage === 'bind') {
       return (
-        <div className="space-y-4">
-          <div>
+        <div className="relative space-y-4">
+          <div className="max-w-[640px]">
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
@@ -790,7 +791,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <StageActionButton onClick={() => setShowBuyerAddressConfig((current) => !current)} tone="secondary">
-                {showBuyerAddressConfig ? 'Ocultar buyer address' : 'Configurar buyer address'}
+                {showBuyerAddressConfig ? 'Fechar painel lateral' : 'Configurar buyer address'}
               </StageActionButton>
               {buyerTronAddress ? (
                 <span className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
@@ -798,38 +799,65 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 </span>
               ) : null}
             </div>
-
-            {showBuyerAddressConfig ? (
-              <div className="mt-4">
-                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-                  Buyer Tron Address
-                </div>
-                <input
-                  value={buyerTronAddress}
-                  onChange={(event) => setBuyerTronAddress(event.target.value)}
-                  placeholder="T..."
-                  className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                />
-                <div className="mt-3 text-sm" style={{ color: 'var(--text-2)' }}>
-                  Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                Resumo operacional
-              </div>
-              <div className="space-y-2 text-sm">
-                <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
-                <DetailRow label="Order" value={shortValue(order?.id)} />
-                <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
-                <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
-                <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
-              </div>
-            </div>
           </div>
+
+          {showBuyerAddressConfig ? (
+            <>
+              <div className="absolute inset-0 z-10 hidden bg-black/20 xl:block" onClick={() => setShowBuyerAddressConfig(false)} />
+              <div
+                className="fixed inset-x-3 bottom-3 top-auto z-20 rounded-2xl p-4 xl:absolute xl:inset-x-auto xl:bottom-0 xl:right-0 xl:top-0 xl:w-[360px]"
+                style={{
+                  backgroundColor: 'var(--bg-2)',
+                  borderWidth: '1px',
+                  borderColor: 'rgba(255,255,255,0.10)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
+                      Painel lateral
+                    </div>
+                    <div className="mt-1 font-semibold" style={{ color: 'var(--text-1)' }}>
+                      Buyer + resumo
+                    </div>
+                  </div>
+                  <button onClick={() => setShowBuyerAddressConfig(false)} style={{ color: 'var(--text-3)' }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                    Buyer Tron Address
+                  </div>
+                  <input
+                    value={buyerTronAddress}
+                    onChange={(event) => setBuyerTronAddress(event.target.value)}
+                    placeholder="T..."
+                    className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+                  />
+                  <div className="mt-3 text-sm" style={{ color: 'var(--text-2)' }}>
+                    Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                    Resumo operacional
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
+                    <DetailRow label="Order" value={shortValue(order?.id)} />
+                    <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
+                    <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
+                    <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           {feedbackSurface}
         </div>
