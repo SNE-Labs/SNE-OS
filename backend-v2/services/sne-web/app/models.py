@@ -89,6 +89,32 @@ class Checkout(db.Model):
     expires_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ActivationOrder(db.Model):
+    """Ordem operacional para checkout Tron -> ativacao Arbitrum."""
+    __tablename__ = 'activation_orders'
+
+    id = db.Column(db.String(64), primary_key=True, default=lambda: f"aord_{uuid.uuid4().hex}")
+    created_by_address = db.Column(db.String(42), nullable=False, index=True)
+    product_code = db.Column(db.String(50), nullable=False, index=True)
+    status = db.Column(db.String(32), nullable=False, default='created', index=True)
+    buyer_tron_address = db.Column(db.String(64), index=True)
+    target_arbitrum_address = db.Column(db.String(42), nullable=False, index=True)
+    payment_chain = db.Column(db.String(20), nullable=False, default='tron')
+    payment_asset = db.Column(db.String(20), nullable=False, default='usdt')
+    expected_amount = db.Column(db.Numeric(20, 6), nullable=False)
+    received_amount = db.Column(db.Numeric(20, 6))
+    payment_tx_hash = db.Column(db.String(128), index=True)
+    payment_confirmed_at = db.Column(db.DateTime)
+    activation_chain = db.Column(db.String(20), nullable=False, default='arbitrum')
+    activation_tx_hash = db.Column(db.String(128), index=True)
+    activation_attempts = db.Column(db.Integer, nullable=False, default=0)
+    idempotency_key = db.Column(db.String(120), nullable=False, unique=True, index=True)
+    error_code = db.Column(db.String(64))
+    error_message = db.Column(db.Text)
+    session_metadata = db.Column(db.JSON, default=dict)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
 class WatchlistItem(db.Model):
     """Tabela de itens da watchlist (addresses/symbols)"""
     __tablename__ = 'watchlist_items'
@@ -212,10 +238,10 @@ def init_db():
         with db.session.begin():
             # Criar todas as tabelas
             db.create_all()
-        print("✅ Database tables created successfully")
+        print("Database tables created successfully")
         return True
     except Exception as e:
-        print(f"❌ Error creating database tables: {str(e)}")
+        print(f"Error creating database tables: {str(e)}")
         return False
 
 def init_db_auto():
@@ -229,20 +255,20 @@ def init_db_auto():
         required_tables = set(db.metadata.tables.keys())
         missing_tables = sorted(required_tables - existing_tables)
 
-        print(f"📊 Existing tables: {sorted(existing_tables)}")
+        print(f"Existing tables: {sorted(existing_tables)}")
         if missing_tables:
-            print(f"🧩 Missing tables detected: {missing_tables}")
-            print("🚀 Creating database tables automatically...")
+            print(f"Missing tables detected: {missing_tables}")
+            print("Creating database tables automatically...")
             success = init_db()
             if success:
-                print("🎉 Database initialized successfully!")
+                print("Database initialized successfully")
             else:
-                print("❌ Failed to initialize database")
+                print("Failed to initialize database")
         else:
-            print("✅ Database already initialized")
+            print("Database already initialized")
 
     except Exception as e:
-        print(f"⚠️ Could not check database status: {str(e)}")
+        print(f"Could not check database status: {str(e)}")
         # Tentar criar tabelas mesmo assim
         init_db()
 

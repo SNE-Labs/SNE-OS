@@ -7,6 +7,7 @@ import { useKeysOverview } from '../../hooks/useKeysData';
 import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { resolveModuleState } from '../../lib/moduleState';
 import { formatAddress } from '@/utils/format';
+import { OperatorCheckoutCard } from '../components/keys/OperatorCheckoutCard';
 
 export function Keys() {
   const { address, isConnected } = useAccount();
@@ -229,6 +230,8 @@ export function Keys() {
             </div>
 
             <div className="space-y-5">
+              <OperatorCheckoutCard effectiveAccess={Boolean(entitlement?.effectiveAccess)} />
+
               <div
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}

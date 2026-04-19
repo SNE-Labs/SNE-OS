@@ -6,6 +6,7 @@ import { MobileButton, MobilePageShell, SurfaceCard, Badge } from '../../compone
 import { useKeysOverview } from '../../../hooks/useKeysData';
 import { useKeysEntitlement } from '../../../hooks/useKeysEntitlement';
 import { formatAddress } from '@/utils/format';
+import { OperatorCheckoutCard } from '../../components/keys/OperatorCheckoutCard';
 
 export function MobileKeys() {
   const navigate = useNavigate();
@@ -168,6 +169,10 @@ export function MobileKeys() {
             </div>
           </div>
         </div>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <OperatorCheckoutCard effectiveAccess={Boolean(entitlement?.effectiveAccess)} />
       </SurfaceCard>
 
       <SurfaceCard>
