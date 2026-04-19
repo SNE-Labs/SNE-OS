@@ -338,32 +338,32 @@ function StepCard({ step }: StepCardProps) {
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl px-3 py-3 transition-all duration-300 min-h-[88px]"
+      className="group relative overflow-hidden rounded-2xl px-3 py-3 transition-all duration-300"
       style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
     >
       <div
         className="absolute inset-x-0 top-0 h-px opacity-80"
         style={{ background: `linear-gradient(90deg, transparent, ${tone.color}, transparent)` }}
       />
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: tone.color }}
           >
             <Icon className="w-3.5 h-3.5" />
           </div>
-          <div className="min-w-0 pr-1">
-            <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: tone.color }}>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.16em] leading-none" style={{ color: tone.color }}>
               {step.label}
             </div>
-            <div className="mt-1 text-[0.95rem] font-medium leading-5 break-words" style={{ color: 'var(--text-1)' }}>
+            <div className="mt-1 text-sm font-medium leading-5" style={{ color: 'var(--text-1)' }}>
               {step.detail}
             </div>
           </div>
         </div>
         <div
-          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 6px ${tone.bg}` : 'none' }}
         />
       </div>
@@ -383,7 +383,7 @@ function StageActionButton({ children, onClick, disabled, tone = 'primary' }: St
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:transform-none"
+      className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:transform-none"
       style={{ borderWidth: '1px', ...style }}
     >
       {children}
@@ -393,10 +393,12 @@ function StageActionButton({ children, onClick, disabled, tone = 'primary' }: St
 
 function DetailRow({ label, value, onCopy }: DetailRowProps) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span style={{ color: 'var(--text-3)' }}>{label}</span>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <span className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+        {label}
+      </span>
+      <div className="flex min-w-0 items-center gap-2 sm:max-w-[65%]">
+        <span className="break-all text-left sm:text-right" style={{ color: 'var(--text-1)' }}>
           {value || '--'}
         </span>
         {onCopy ? (
@@ -494,6 +496,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
   const completedSteps = countCompletedSteps(steps);
   const flowProgress = progressPercent(steps);
+  const bottomSignalTone = stepStyles(flowStage === 'activation' && order?.status === 'activation_failed' ? 'error' : flowStage === 'success' ? 'complete' : 'current');
 
   async function handleAuthenticate() {
     try {
@@ -664,46 +667,75 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
+  const headerTopAction =
+    flowStage === 'bind' ? (
+      <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron}>
+        {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
+      </StageActionButton>
+    ) : flowStage === 'payment' ? (
+      <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling}>
+        {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
+      </StageActionButton>
+    ) : flowStage === 'activation' ? (
+      order?.status === 'activation_failed' ? (
+        <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
+          {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
+        </StageActionButton>
+      ) : (
+        <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
+          {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
+        </StageActionButton>
+      )
+    ) : null;
+
   const sidePanel = (
-    <div className="space-y-3">
-      <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="flex items-center gap-2 mb-3">
-          <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Snapshot da ordem</div>
-        </div>
-        <div className="space-y-2 text-sm">
-          <DetailRow label="Status" value={order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : '--'} />
-          <DetailRow label="Order" value={shortValue(order?.id)} onCopy={order?.id ? () => void copyValue(order.id, 'Order') : undefined} />
-          <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} onCopy={() => void copyValue(order?.targetArbitrumAddress || targetArbitrumAddress, 'Target')} />
-          <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} onCopy={order?.buyerTronAddress || buyerTronAddress ? () => void copyValue(order?.buyerTronAddress || buyerTronAddress, 'Buyer') : undefined} />
-          <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} onCopy={order?.payment.expectedAmount ? () => void copyValue(order.payment.expectedAmount, 'Valor') : undefined} />
+    <div
+      className="rounded-2xl p-4"
+      style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+    >
+      <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--text-3)' }}>
+        Resumo operacional
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+          Snapshot da ordem
         </div>
       </div>
+      <div className="space-y-2 text-sm">
+        <DetailRow label="Status" value={order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : '--'} />
+        <DetailRow label="Order" value={shortValue(order?.id)} onCopy={order?.id ? () => void copyValue(order.id, 'Order') : undefined} />
+        <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} onCopy={() => void copyValue(order?.targetArbitrumAddress || targetArbitrumAddress, 'Target')} />
+        <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} onCopy={order?.buyerTronAddress || buyerTronAddress ? () => void copyValue(order?.buyerTronAddress || buyerTronAddress, 'Buyer') : undefined} />
+        <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} onCopy={order?.payment.expectedAmount ? () => void copyValue(order.payment.expectedAmount, 'Valor') : undefined} />
+      </div>
 
-      <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
-        <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
-          Split de rede
-        </div>
-        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-          Tron liquida o pagamento em `USDT`. Arbitrum entrega o entitlement final. Este painel serve só como referência rápida, não como fluxo principal.
-        </div>
+      <div className="my-4 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+
+      <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+        Split de rede
+      </div>
+      <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+        Tron liquida o pagamento em USDT. Arbitrum entrega o entitlement final. Este painel serve só como referência rápida.
       </div>
 
       {hasTrackedOrder ? (
-        <div className="grid grid-cols-1 gap-2">
-          <StageActionButton onClick={() => void orderQuery.refetch()}>
-            Atualizar ordem
-          </StageActionButton>
-          {order && !FINAL_ORDER_STATUSES.has(order.status) ? (
-            <StageActionButton onClick={() => void handleCancelOrder()} disabled={isCancelling} tone="danger">
-              {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
-            </StageActionButton>
-          ) : (
-            <StageActionButton onClick={clearTrackedOrder}>
-              Limpar rastreamento
-            </StageActionButton>
-          )}
-        </div>
+        <>
+          <div className="my-4 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--text-3)' }}>
+            Ações da ordem
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            <StageActionButton onClick={() => void orderQuery.refetch()}>Atualizar ordem</StageActionButton>
+            {order && !FINAL_ORDER_STATUSES.has(order.status) ? (
+              <StageActionButton onClick={() => void handleCancelOrder()} disabled={isCancelling} tone="danger">
+                {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
+              </StageActionButton>
+            ) : (
+              <StageActionButton onClick={clearTrackedOrder}>Limpar rastreamento</StageActionButton>
+            )}
+          </div>
+        </>
       ) : null}
     </div>
   );
@@ -805,8 +837,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       return (
         <div className="space-y-4">
           <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-              Buyer Tron Address
+            <div className="flex items-center gap-2 mb-3">
+              <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                Buyer Tron Address
+              </div>
             </div>
             <input
               value={buyerTronAddress}
@@ -815,28 +850,13 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               className="w-full rounded-xl px-3 py-3 text-sm outline-none"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
             />
-            <div className="text-sm mt-3" style={{ color: 'var(--text-2)' }}>
-              Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
-            </div>
-          </div>
-
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Vínculo de sessão Tron</div>
-            </div>
-            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              Esta etapa não envia USDT ainda. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.
+            <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-2)' }}>
+              <p>Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.</p>
+              <p>Esta etapa ainda não envia USDT. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.</p>
             </div>
           </div>
 
           {feedbackSurface}
-
-          <div className="flex flex-wrap gap-2">
-            <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron}>
-              {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
-            </StageActionButton>
-          </div>
         </div>
       );
     }
@@ -891,12 +911,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
 
           {feedbackSurface}
-
-          <div className="flex flex-wrap gap-2">
-            <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling}>
-              {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
-            </StageActionButton>
-          </div>
         </div>
       );
     }
@@ -932,18 +946,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
 
           {feedbackSurface}
-
-          <div className="flex flex-wrap gap-2">
-            {order?.status === 'activation_failed' ? (
-              <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
-                {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
-              </StageActionButton>
-            ) : (
-              <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
-                {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
-              </StageActionButton>
-            )}
-          </div>
         </div>
       );
     }
@@ -1003,64 +1005,31 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             'radial-gradient(circle at top left, rgba(255,140,66,0.22), transparent 34%), radial-gradient(circle at top right, rgba(50,213,131,0.10), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
         }}
       >
-        <div className="relative px-5 py-5 lg:px-6 lg:py-6">
+        <div className="relative px-5 py-4 lg:px-6 lg:py-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
                 {stageMeta.eyebrow}
               </div>
-              <div className="text-2xl font-semibold leading-tight mb-2" style={{ color: 'var(--text-1)' }}>
+              <div className="mb-2 text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] lg:text-[1.82rem]" style={{ color: 'var(--text-1)' }}>
                 {stageMeta.title}
               </div>
-              <div className="text-sm max-w-2xl" style={{ color: 'var(--text-2)' }}>
+              <div className="max-w-[760px] text-sm leading-6" style={{ color: 'var(--text-2)' }}>
                 {stageMeta.description}
               </div>
             </div>
-            <div className="min-w-[220px] rounded-[24px] p-4" style={{ backgroundColor: 'rgba(9,10,11,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(14px)' }}>
-              <div className="flex items-center justify-between gap-3">
-                <div
-                  className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
-                  style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
-                >
-                  {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
-                </div>
-                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                  {stageSignal(flowStage, order)}
-                </div>
+            <div className="flex flex-col items-end gap-3">
+              <div
+                className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
+                style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
+              >
+                {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
               </div>
-
-              <div className="mt-4 flex items-end justify-between gap-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                    Progresso
-                  </div>
-                  <div className="text-2xl font-semibold tracking-[-0.03em]" style={{ color: 'var(--text-1)' }}>
-                    {completedSteps}/{steps.length}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                    Rail split
-                  </div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                    Tron / Arbitrum
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${flowProgress}%`,
-                    background: 'linear-gradient(90deg, rgba(255,140,66,0.75), rgba(50,213,131,0.8))',
-                  }}
-                />
-              </div>
+              {headerTopAction ? <div className="flex flex-wrap justify-end gap-2">{headerTopAction}</div> : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mt-5">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {steps.map((step) => (
               <StepCard key={step.id} step={step} />
             ))}
@@ -1068,8 +1037,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_300px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1.62fr)_320px]">
         <div className="overflow-y-auto px-5 py-5 lg:px-6 lg:py-6">
+          <div className="max-w-[780px]">
           {stageContent}
 
           {orderQuery.isError ? (
@@ -1090,10 +1060,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
             </div>
           ) : null}
+          </div>
         </div>
 
         <div
-          className="overflow-y-auto border-t xl:border-l xl:border-t-0 px-5 py-5 lg:px-6 lg:py-6"
+          className="overflow-y-auto border-t px-5 py-5 xl:border-l xl:border-t-0 lg:px-6 lg:py-6"
           style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
         >
           {orderQuery.isLoading && trackedOrderId ? (
@@ -1104,6 +1075,38 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           ) : (
             sidePanel
           )}
+        </div>
+      </div>
+
+      <div
+        className="border-t px-5 py-3 lg:px-6"
+        style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="rounded-full px-2.5 py-1 uppercase tracking-[0.16em]"
+              style={{ backgroundColor: bottomSignalTone.bg, borderWidth: '1px', borderColor: bottomSignalTone.border, color: bottomSignalTone.color }}
+            >
+              {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
+            </span>
+            <span style={{ color: 'var(--text-3)' }}>{stageSignal(flowStage, order)}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
+            <span>Progresso {completedSteps}/{steps.length}</span>
+            <span>Rail split Tron / Arbitrum</span>
+          </div>
+
+          <div className="h-1.5 w-full overflow-hidden rounded-full xl:max-w-[220px]" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${flowProgress}%`,
+                background: 'linear-gradient(90deg, rgba(255,140,66,0.75), rgba(50,213,131,0.8))',
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>
