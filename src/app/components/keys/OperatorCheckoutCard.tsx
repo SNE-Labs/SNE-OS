@@ -24,6 +24,7 @@ import {
   buildUsdtTransferTransaction,
   decimalToUnits,
   isTronAddress,
+  normalizeTronAddress,
 } from '@/lib/tron/tron';
 import {
   useCancelCheckoutOrder,
@@ -129,7 +130,7 @@ function explainInvalidTronWalletAddress(address: string, connector: SupportedTr
   const candidate = address.trim();
   if (candidate.startsWith('0x')) {
     return connector === 'WalletConnect'
-      ? `O WalletConnect retornou ${candidate}, que é um address EVM. Abra uma wallet Tron compatível no QR, não uma wallet EVM.`
+      ? `O WalletConnect retornou ${candidate}. Vou aceitar isso quando ele mapear para a mesma conta Tron, mas este valor isolado ainda precisa resolver para um address Tron base58 iniciado em T.`
       : `A ${connector} retornou ${candidate}, que não é um address Tron base58 iniciado em T.`;
   }
 
@@ -542,7 +543,8 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
   const walletConnectAvailable = Boolean(walletConnectWallet);
   const hasConnectedTronAddress = Boolean(connectedTronAddress);
-  const connectedTronAddressValid = isTronAddress(connectedTronAddress);
+  const normalizedConnectedTronAddress = normalizeTronAddress(connectedTronAddress);
+  const connectedTronAddressValid = Boolean(normalizedConnectedTronAddress);
   const tronWalletStatusLabel = connectedTronAddress
     ? connectedTronAddressValid
       ? 'Wallet conectada'
@@ -621,12 +623,13 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (!nextAddress) {
       throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
     }
-    if (!isTronAddress(nextAddress)) {
+    const normalizedNextAddress = normalizeTronAddress(nextAddress);
+    if (!normalizedNextAddress) {
       throw new Error(explainInvalidTronWalletAddress(nextAddress, adapterName));
     }
 
     return {
-      buyerAddress: nextAddress,
+      buyerAddress: normalizedNextAddress,
       connector: adapterName,
       adapter: targetWallet.adapter,
     };
@@ -640,13 +643,13 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
     if (
       connectedTronAddress &&
+      normalizedConnectedTronAddress &&
       selectedTronWallet?.adapter &&
-      isTronAddress(connectedTronAddress) &&
       selectedTronWallet?.adapter.name &&
       (selectedTronWallet.adapter.name === 'TronLink' || selectedTronWallet.adapter.name === 'WalletConnect')
     ) {
       return {
-        buyerAddress: connectedTronAddress,
+        buyerAddress: normalizedConnectedTronAddress,
         connector: selectedTronWallet.adapter.name,
         adapter: selectedTronWallet.adapter,
       };
@@ -663,7 +666,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           : 'Abrindo TronLink para conectar a wallet pagadora...'
       );
       const { buyerAddress: nextAddress } = await connectTronAdapter(adapterName);
-      setBuyerTronAddress((current) => current.trim() || nextAddress);
+      setBuyerTronAddress((current) => normalizeTronAddress(current) || nextAddress);
       setFeedback(`${adapterName} conectada com ${shortValue(nextAddress)}.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao conectar a wallet Tron.');
@@ -675,8 +678,8 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     try {
       setFeedback(null);
       const { buyerAddress: connectedTronAddress, connector } = await ensureConnectedTronWallet();
-      const resolvedBuyerAddress = buyerTronAddress.trim() || connectedTronAddress;
-      if (!isTronAddress(resolvedBuyerAddress)) {
+      const resolvedBuyerAddress = normalizeTronAddress(buyerTronAddress) || connectedTronAddress;
+      if (!resolvedBuyerAddress || !isTronAddress(resolvedBuyerAddress)) {
         throw new Error('Buyer Tron Address invalido. Use um endereco Tron base58 iniciado em T.');
       }
       if (resolvedBuyerAddress !== connectedTronAddress) {

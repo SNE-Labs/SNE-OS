@@ -2,6 +2,9 @@ import { TronWeb } from 'tronweb';
 
 import type { SignedTransaction, Transaction } from '@tronweb3/tronwallet-abstract-adapter';
 
+const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const TRON_HEX_ADDRESS_RE = /^41[a-fA-F0-9]{40}$/;
+
 function normalizeTxHash(value: string): string {
   const candidate = value.trim();
   return candidate.startsWith('0x') ? candidate.slice(2) : candidate;
@@ -17,6 +20,25 @@ export function isTronAddress(address?: string | null): boolean {
   const candidate = address?.trim();
   if (!candidate) return false;
   return TronWeb.isAddress(candidate);
+}
+
+export function normalizeTronAddress(address?: string | null): string | null {
+  const candidate = address?.trim();
+  if (!candidate) return null;
+
+  if (candidate.startsWith('T') && TronWeb.isAddress(candidate)) {
+    return candidate;
+  }
+
+  if (TRON_HEX_ADDRESS_RE.test(candidate)) {
+    return TronWeb.address.fromHex(candidate);
+  }
+
+  if (EVM_ADDRESS_RE.test(candidate)) {
+    return TronWeb.address.fromHex(`41${candidate.slice(2)}`);
+  }
+
+  return null;
 }
 
 export function decimalToUnits(value: string, decimals: number): string {
