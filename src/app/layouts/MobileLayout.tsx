@@ -3,19 +3,19 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import { Activity, ArrowLeftRight, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
 
 import { ChunkLoadBoundary } from '../components/ChunkLoadBoundary';
-import { lazyRoute } from '../utils/lazyRoute';
+import { lazyRoute, pickLazyExport } from '../utils/lazyRoute';
 
-const MobileHome = lazyRoute(() => import('../pages/mobile/Home').then((m) => ({ default: m.MobileHome })));
-const MobileRadar = lazyRoute(() => import('../pages/mobile/Radar').then((m) => ({ default: m.MobileRadar })));
-const MobileSwaps = lazyRoute(() => import('../pages/mobile/Swaps').then((m) => ({ default: m.MobileSwaps })));
-const MobileVault = lazyRoute(() => import('../pages/mobile/Vault').then((m) => ({ default: m.MobileVault })));
-const MobilePass = lazyRoute(() => import('../pages/mobile/Pass').then((m) => ({ default: m.MobilePass })));
-const MobileKeys = lazyRoute(() => import('../pages/mobile/Keys').then((m) => ({ default: m.MobileKeys })));
-const MobileSecrets = lazyRoute(() => import('../pages/mobile/Secrets').then((m) => ({ default: m.MobileSecrets })));
-const MobileDocs = lazyRoute(() => import('../pages/mobile/Docs').then((m) => ({ default: m.MobileDocs })));
-const MobileBlog = lazyRoute(() => import('../pages/mobile/Blog').then((m) => ({ default: m.MobileBlog })));
-const MobileBlogPost = lazyRoute(() => import('../pages/mobile/BlogPost').then((m) => ({ default: m.MobileBlogPost })));
-const MobileStatus = lazyRoute(() => import('../pages/mobile/Status').then((m) => ({ default: m.MobileStatus })));
+const MobileHome = lazyRoute(() => import('../pages/mobile/Home').then((m) => pickLazyExport(m, 'MobileHome')));
+const MobileRadar = lazyRoute(() => import('../pages/mobile/Radar').then((m) => pickLazyExport(m, 'MobileRadar')));
+const MobileSwaps = lazyRoute(() => import('../pages/mobile/Swaps').then((m) => pickLazyExport(m, 'MobileSwaps')));
+const MobileVault = lazyRoute(() => import('../pages/mobile/Vault').then((m) => pickLazyExport(m, 'MobileVault')));
+const MobilePass = lazyRoute(() => import('../pages/mobile/Pass').then((m) => pickLazyExport(m, 'MobilePass')));
+const MobileKeys = lazyRoute(() => import('../pages/mobile/Keys').then((m) => pickLazyExport(m, 'MobileKeys')));
+const MobileSecrets = lazyRoute(() => import('../pages/mobile/Secrets').then((m) => pickLazyExport(m, 'MobileSecrets')));
+const MobileDocs = lazyRoute(() => import('../pages/mobile/Docs').then((m) => pickLazyExport(m, 'MobileDocs')));
+const MobileBlog = lazyRoute(() => import('../pages/mobile/Blog').then((m) => pickLazyExport(m, 'MobileBlog')));
+const MobileBlogPost = lazyRoute(() => import('../pages/mobile/BlogPost').then((m) => pickLazyExport(m, 'MobileBlogPost')));
+const MobileStatus = lazyRoute(() => import('../pages/mobile/Status').then((m) => pickLazyExport(m, 'MobileStatus')));
 
 function MobileSkeleton() {
   return (

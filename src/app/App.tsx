@@ -14,7 +14,7 @@ import { ShellCommandPalette } from './components/ShellCommandPalette';
 import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
 import { ChunkLoadBoundary } from './components/ChunkLoadBoundary';
 import { RouteSeo } from './RouteSeo';
-import { lazyRoute } from './utils/lazyRoute';
+import { lazyRoute, pickLazyExport } from './utils/lazyRoute';
 
 // Desktop Pages (carregadas normalmente)
 import { Home } from './pages/Home';
@@ -25,18 +25,18 @@ import { Status } from './pages/Status';
 import { Docs } from './pages/Docs';
 
 // Desktop Pages (lazy loaded para performance)
-const DesktopRadar = lazyRoute(() => import('./pages/Radar').then(m => ({ default: m.Radar })));
-const DesktopSwaps = lazyRoute(() => import('./pages/Swaps').then(m => ({ default: m.Swaps })));
-const DesktopVault = lazyRoute(() => import('./pages/Vault').then(m => ({ default: m.Vault })));
-const DesktopPass = lazyRoute(() => import('./pages/Pass').then(m => ({ default: m.Pass })));
-const DesktopKeys = lazyRoute(() => import('./pages/Keys').then(m => ({ default: m.Keys })));
-const DesktopSecrets = lazyRoute(() => import('./pages/Secrets').then(m => ({ default: m.Secrets })));
+const DesktopRadar = lazyRoute(() => import('./pages/Radar').then((m) => pickLazyExport(m, 'Radar')));
+const DesktopSwaps = lazyRoute(() => import('./pages/Swaps').then((m) => pickLazyExport(m, 'Swaps')));
+const DesktopVault = lazyRoute(() => import('./pages/Vault').then((m) => pickLazyExport(m, 'Vault')));
+const DesktopPass = lazyRoute(() => import('./pages/Pass').then((m) => pickLazyExport(m, 'Pass')));
+const DesktopKeys = lazyRoute(() => import('./pages/Keys').then((m) => pickLazyExport(m, 'Keys')));
+const DesktopSecrets = lazyRoute(() => import('./pages/Secrets').then((m) => pickLazyExport(m, 'Secrets')));
 
 // Desktop Auth Page (lazy loaded, fullscreen outside main layout)
-const AuthDesktop = lazyRoute(() => import('./pages/AuthDesktop').then(m => ({ default: m.AuthDesktop })));
+const AuthDesktop = lazyRoute(() => import('./pages/AuthDesktop').then((m) => pickLazyExport(m, 'AuthDesktop')));
 
 // Mobile components (lazy loaded only when needed)
-const MobileLayout = lazyRoute(() => import('./layouts/MobileLayout').then(m => ({ default: m.MobileLayout })));
+const MobileLayout = lazyRoute(() => import('./layouts/MobileLayout').then((m) => pickLazyExport(m, 'MobileLayout')));
 
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';

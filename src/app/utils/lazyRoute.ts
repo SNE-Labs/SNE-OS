@@ -11,6 +11,7 @@ const CHUNK_ERROR_PATTERNS = [
   /error loading dynamically imported module/i,
   /Loading chunk .* failed/i,
   /Unable to preload CSS/i,
+  /Lazy route export .* unavailable/i,
 ];
 
 function errorMessage(error: unknown) {
@@ -78,4 +79,17 @@ export function lazyRoute<T extends ComponentType<any>>(
       throw error;
     }
   });
+}
+
+export function pickLazyExport<T extends ComponentType<any>>(
+  module: Record<string, unknown> | undefined,
+  exportName: string
+): { default: T } {
+  const candidate = module?.[exportName];
+
+  if (!candidate) {
+    throw new Error(`Lazy route export "${exportName}" unavailable`);
+  }
+
+  return { default: candidate as T };
 }
