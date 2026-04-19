@@ -66,10 +66,9 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
   void onToggleSidebarPin;
   void sidebarPinned;
 
-  const { routeMeta, sessionStats, pathname } = useShellContextData();
+  const { routeMeta, sessionStats, pathname, effectiveTier } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
-  const planLabel = sessionStats[0]?.value ?? 'FREE';
   const isWalletConnected = walletLabel !== 'Sem wallet';
 
   return (
@@ -165,7 +164,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                   SESSÃO ATIVA
                 </div>
                 <div className="truncate text-[10px] uppercase tracking-[0.13em]" style={{ color: 'var(--text-3)' }}>
-                  IDENTIDADE VINCULADA · {accessLabel(planLabel)}
+                  IDENTIDADE VINCULADA · {accessLabel(effectiveTier)}
                 </div>
               </div>
             </div>

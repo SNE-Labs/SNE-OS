@@ -441,6 +441,7 @@ export function useShellContextData() {
     return {
       routeMeta,
       pathname: location.pathname,
+      effectiveTier,
       topbarChips: topbarChips.slice(0, 3),
       tapeItems: buildTapeItems(location.pathname, { isAuthenticated, address, tier }, { home, radar, passport, vault }),
       sidebarContext: buildSidebarContext(location.pathname, { home, radar, passport, vault }),
