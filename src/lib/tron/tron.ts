@@ -34,6 +34,10 @@ function getTronWindow(): TronWindow {
   return window as TronWindow;
 }
 
+function resolveInjectedAddress(): string | null {
+  return getTronWindow().tronWeb?.defaultAddress?.base58?.trim() || null;
+}
+
 function normalizeTxHash(value: string): string {
   const candidate = value.trim();
   return candidate.startsWith('0x') ? candidate.slice(2) : candidate;
@@ -78,12 +82,29 @@ export async function connectTronWallet(): Promise<string> {
     await tronWindow.tronLink.request({ method: 'tron_requestAccounts' });
   }
 
-  const address = tronWindow.tronWeb?.defaultAddress?.base58?.trim();
+  const address = resolveInjectedAddress();
   if (!address) {
     throw new Error('Não foi possível obter a wallet Tron conectada.');
   }
 
   return address;
+}
+
+export function isTronLinkAvailable(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const tronWindow = getTronWindow();
+  return Boolean(tronWindow.tronLink || tronWindow.tronWeb);
+}
+
+export function getConnectedTronAddress(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return resolveInjectedAddress();
 }
 
 export async function sendUsdtTransfer(params: {
