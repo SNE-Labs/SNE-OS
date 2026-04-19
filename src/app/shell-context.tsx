@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { useEntitlements } from '@/lib/auth/EntitlementsProvider';
 import { readPersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
 import { formatAddress } from '@/utils/format';
@@ -387,7 +388,9 @@ function buildSidebarContext(
 export function useShellContextData() {
   const location = useLocation();
   const { address, isAuthenticated, tier } = useAuth();
+  const { entitlements } = useEntitlements();
   const [tick, setTick] = useState(0);
+  const effectiveTier = entitlements?.tier ?? tier;
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((value) => value + 1), 30000);
@@ -426,7 +429,7 @@ export function useShellContextData() {
 
     if (isAuthenticated && address) {
       topbarChips.push({
-        label: `${localizeTier(tier)} • ${formatAddress(address)}`,
+        label: `${localizeTier(effectiveTier)} • ${formatAddress(address)}`,
         tone: 'success',
       });
     } else {
@@ -442,12 +445,12 @@ export function useShellContextData() {
       tapeItems: buildTapeItems(location.pathname, { isAuthenticated, address, tier }, { home, radar, passport, vault }),
       sidebarContext: buildSidebarContext(location.pathname, { home, radar, passport, vault }),
       sessionStats: [
-        { label: 'Plano', value: localizeTier(tier) },
+        { label: 'Plano', value: localizeTier(effectiveTier) },
         { label: 'Carteira', value: sessionIdentityLabel },
         { label: 'Sessão', value: isAuthenticated ? 'Autenticada' : 'Anônima' },
         { label: 'Foco', value: routeMeta.context },
         { label: 'Modo', value: localizeStorageMode(vault?.surface?.mode || home?.secrets?.sync?.mode) },
       ],
     };
-  }, [address, isAuthenticated, location.pathname, tier, tick]);
+  }, [address, effectiveTier, entitlements?.tier, isAuthenticated, location.pathname, tier, tick]);
 }

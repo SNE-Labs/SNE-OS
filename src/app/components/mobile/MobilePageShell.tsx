@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '../ui/utils';
 import { Badge } from './Badge';
 import { useAuth } from '@/lib/auth/useAuth';
+import { useEntitlements } from '@/lib/auth/EntitlementsProvider';
 import { formatAddress } from '@/utils/format';
 
 export interface MobilePageShellProps {
@@ -27,17 +28,19 @@ export function MobilePageShell({
   className,
 }: MobilePageShellProps) {
   const { address, isAuthenticated, tier } = useAuth();
+  const { entitlements } = useEntitlements();
   const isOsHome = title.trim().toUpperCase() === 'SNE OS';
+  const effectiveTier = entitlements?.tier ?? tier;
   const tierLabel =
-    tier === 'pro'
+    effectiveTier === 'pro'
       ? 'PLANO PRO'
-      : tier === 'premium'
+      : effectiveTier === 'premium'
         ? 'PLANO PREMIUM'
         : 'PLANO FREE';
 
   const contextPill = showContext && isAuthenticated && address ? {
     label: `${tierLabel} • ${formatAddress(address)}`,
-    variant: tier === 'pro' ? 'pro' : tier === 'premium' ? 'orange' : 'free' as const,
+    variant: effectiveTier === 'pro' ? 'pro' : effectiveTier === 'premium' ? 'orange' : 'free' as const,
   } : null;
 
   return (
