@@ -1,4 +1,4 @@
-import TronWeb from 'tronweb';
+import { TronWeb } from 'tronweb';
 
 import type { SignedTransaction, Transaction } from '@tronweb3/tronwallet-abstract-adapter';
 
