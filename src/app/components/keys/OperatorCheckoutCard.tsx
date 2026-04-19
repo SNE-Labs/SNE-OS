@@ -216,6 +216,39 @@ function stepStyles(state: FlowStepState) {
   return { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', color: 'var(--text-3)' };
 }
 
+function stepIcon(stepId: FlowStep['id']) {
+  if (stepId === 'session') return Wallet;
+  if (stepId === 'order') return ShoppingCart;
+  if (stepId === 'tron') return Coins;
+  return ShieldCheck;
+}
+
+function countCompletedSteps(steps: FlowStep[]) {
+  return steps.filter((step) => step.state === 'complete').length;
+}
+
+function progressPercent(steps: FlowStep[]) {
+  if (!steps.length) return 0;
+  return Math.max(8, Math.round((countCompletedSteps(steps) / steps.length) * 100));
+}
+
+function stageSignal(flowStage: FlowStage, order?: CheckoutOrder | null) {
+  if (flowStage === 'success') return 'operator active';
+  if (flowStage === 'activation' && order?.status === 'activation_failed') return 'retry path';
+  if (flowStage === 'activation') return 'mint pending';
+  if (flowStage === 'payment') return 'settlement rail';
+  if (flowStage === 'bind') return 'wallet binding';
+  if (flowStage === 'create') return 'order prep';
+  return 'session bootstrap';
+}
+
+function supportMode(order?: CheckoutOrder | null) {
+  if (!order) return 'guided';
+  if (order.paymentTxHash) return 'tracked';
+  if (order.status === 'awaiting_payment' || order.status === 'payment_seen') return 'hybrid';
+  return 'guided';
+}
+
 function stageCopy(flowStage: FlowStage, order?: CheckoutOrder | null) {
   if (flowStage === 'auth') {
     return {
@@ -310,23 +343,38 @@ function primaryLauncherLabel({
 
 function StepCard({ step }: StepCardProps) {
   const tone = stepStyles(step.state);
+  const Icon = stepIcon(step.id);
 
   return (
     <div
-      className="rounded-xl px-3 py-3"
+      className="group relative overflow-hidden rounded-xl px-3 py-3 transition-all duration-300"
       style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: tone.color }}>
-          {step.label}
+      <div
+        className="absolute inset-x-0 top-0 h-px opacity-80"
+        style={{ background: `linear-gradient(90deg, transparent, ${tone.color}, transparent)` }}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
+            style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: tone.color }}
+          >
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: tone.color }}>
+              {step.label}
+            </div>
+            <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+              {step.detail}
+            </div>
+          </div>
         </div>
         <div
           className="h-2.5 w-2.5 rounded-full"
           style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 6px ${tone.bg}` : 'none' }}
         />
-      </div>
-      <div className="mt-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-        {step.detail}
       </div>
     </div>
   );
@@ -344,7 +392,7 @@ function StageActionButton({ children, onClick, disabled, tone = 'primary' }: St
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-xl px-4 py-3 text-sm font-medium disabled:opacity-60"
+      className="rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:transform-none"
       style={{ borderWidth: '1px', ...style }}
     >
       {children}
@@ -453,6 +501,8 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const steps = buildFlowSteps({ isAuthenticated, order, flowStage });
   const stageMeta = stageCopy(flowStage, order);
   const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
+  const completedSteps = countCompletedSteps(steps);
+  const flowProgress = progressPercent(steps);
 
   async function handleAuthenticate() {
     try {
@@ -975,11 +1025,47 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 {stageMeta.description}
               </div>
             </div>
-            <div
-              className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
-              style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
-            >
-              {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
+            <div className="min-w-[220px] rounded-[24px] p-4" style={{ backgroundColor: 'rgba(9,10,11,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(14px)' }}>
+              <div className="flex items-center justify-between gap-3">
+                <div
+                  className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
+                  style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
+                >
+                  {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
+                </div>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  {stageSignal(flowStage, order)}
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    Progresso
+                  </div>
+                  <div className="text-2xl font-semibold tracking-[-0.03em]" style={{ color: 'var(--text-1)' }}>
+                    {completedSteps}/{steps.length}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                    Rail split
+                  </div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+                    Tron / Arbitrum
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${flowProgress}%`,
+                    background: 'linear-gradient(90deg, rgba(255,140,66,0.75), rgba(50,213,131,0.8))',
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -1075,6 +1161,46 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             </div>
 
             <div
+              className="overflow-hidden rounded-2xl"
+              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-center justify-between gap-4 px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                  Premium rail
+                </div>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
+                  {stageSignal(flowStage, order)}
+                </div>
+              </div>
+              <div className="px-4 pb-4 pt-3">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+                      Completion
+                    </div>
+                    <div className="text-3xl font-semibold tracking-[-0.04em]" style={{ color: 'var(--text-1)' }}>
+                      {flowProgress}%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-right text-[11px] uppercase tracking-[0.16em]">
+                    <div style={{ color: 'var(--text-3)' }}>Tron</div>
+                    <div style={{ color: 'var(--text-3)' }}>Bind</div>
+                    <div style={{ color: 'var(--text-3)' }}>Mint</div>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${flowProgress}%`,
+                      background: 'linear-gradient(90deg, rgba(255,140,66,0.78), rgba(50,213,131,0.78))',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
               className="rounded-2xl p-4"
               style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
             >
@@ -1133,6 +1259,26 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                 Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key. O modal separa esses dois mundos e reduz a carga cognitiva do usuário.
+              </div>
+            </div>
+
+            <div
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Settlement</div>
+                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Tron</div>
+                </div>
+                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Entitlement</div>
+                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>Arbitrum</div>
+                </div>
+                <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                  <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Mode</div>
+                  <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{supportMode(order)}</div>
+                </div>
               </div>
             </div>
           </div>
