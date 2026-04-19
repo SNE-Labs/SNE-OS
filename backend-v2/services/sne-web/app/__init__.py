@@ -41,6 +41,9 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url or 'postgresql://localhost/sne'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # Load configuration before initializing extensions so runtime flags are available.
+    app.config.from_object("app.config.Config")
+
     # Initialize extensions with error handling
     try:
         db.init_app(app)
@@ -50,17 +53,17 @@ def create_app():
         logger.warning("Continuing without database - some features may not work")
 
     # Best-effort schema bootstrap for environments without migrations.
-    try:
-        with app.app_context():
-            from .models import init_db_auto
-            init_db_auto()
-    except Exception as e:
-        logger.warning(f"Database schema bootstrap skipped: {e}")
+    if app.config.get("AUTO_INIT_DB"):
+        try:
+            with app.app_context():
+                from .models import init_db_auto
+                init_db_auto()
+        except Exception as e:
+            logger.warning(f"Database schema bootstrap skipped: {e}")
+    else:
+        logger.info("Automatic database bootstrap disabled for this environment")
 
     socketio.init_app(app)
-
-    # Load configuration
-    app.config.from_object("app.config.Config")
 
     # CORS configuration - Include all SNE OS subdomains
     from .config import Config

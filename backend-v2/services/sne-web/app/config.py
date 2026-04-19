@@ -40,6 +40,12 @@ class Config:
     # Database
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "postgresql://localhost/sne")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    AUTO_INIT_DB = os.getenv("SNE_AUTO_INIT_DB", "1" if IS_DEV else "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
     # SIWE Configuration
     SIWE_DOMAIN = os.getenv("SIWE_DOMAIN", "snelabs.space")

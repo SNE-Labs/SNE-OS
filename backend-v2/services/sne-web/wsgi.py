@@ -1,16 +1,6 @@
-"""
-WSGI entry point for Gunicorn
-"""
-try:
-    import eventlet
-    eventlet.monkey_patch()
-except ImportError:
-    # Local/dev environments may run without eventlet using threading mode.
-    eventlet = None
+"""WSGI entry point for Gunicorn."""
 
-from app import create_app
-
-app = create_app()
+from app import app
 
 # Gunicorn will use the 'app' object
 
