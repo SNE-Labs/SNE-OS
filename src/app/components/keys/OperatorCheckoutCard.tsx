@@ -338,30 +338,30 @@ function StepCard({ step }: StepCardProps) {
 
   return (
     <div
-      className="flex items-center justify-between gap-3 rounded-full px-3 py-2.5 transition-all duration-300"
+      className="flex items-center justify-between gap-2 rounded-full px-2.5 py-1.5 transition-all duration-300"
       style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: tone.color }}
           >
-            <Icon className="w-3 h-3" />
+            <Icon className="w-2.5 h-2.5" />
           </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="shrink-0 text-[10px] uppercase tracking-[0.16em] leading-none" style={{ color: tone.color }}>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="shrink-0 text-[9px] uppercase tracking-[0.14em] leading-none" style={{ color: tone.color }}>
               {step.label}
             </div>
-            <div className="text-sm font-medium leading-none whitespace-nowrap" style={{ color: 'var(--text-1)' }}>
+            <div className="text-[12px] font-medium leading-none whitespace-nowrap" style={{ color: 'var(--text-1)' }}>
               {step.detail}
             </div>
           </div>
         </div>
       </div>
       <div
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 5px ${tone.bg}` : 'none' }}
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 4px ${tone.bg}` : 'none' }}
       />
     </div>
   );
@@ -839,7 +839,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'bind') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+          <div>
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
@@ -863,7 +863,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             </div>
 
             {showBuyerAddressConfig ? (
-              <div className="mt-4 rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="mt-4">
                 <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
                   Buyer Tron Address
                 </div>
@@ -880,7 +880,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
             ) : null}
 
-            <div className="mt-4 rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
                 Resumo operacional
               </div>
