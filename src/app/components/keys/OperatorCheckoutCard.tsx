@@ -777,7 +777,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'bind') {
       return (
         <div className="relative space-y-4">
-          <div className="max-w-[640px]">
+          <div className={showBuyerAddressConfig ? 'max-w-[640px] xl:pr-[392px]' : 'max-w-[640px]'}>
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
@@ -803,9 +803,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
           {showBuyerAddressConfig ? (
             <>
-              <div className="absolute inset-0 z-10 hidden bg-black/20 xl:block" onClick={() => setShowBuyerAddressConfig(false)} />
+              <div className="absolute inset-0 z-10 hidden bg-black/20 lg:block" onClick={() => setShowBuyerAddressConfig(false)} />
               <div
-                className="fixed inset-x-3 bottom-3 top-auto z-20 rounded-2xl p-4 xl:absolute xl:inset-x-auto xl:bottom-0 xl:right-0 xl:top-0 xl:w-[360px]"
+                className="fixed inset-x-3 bottom-3 top-auto z-20 rounded-2xl p-4 lg:absolute lg:inset-x-auto lg:bottom-0 lg:right-0 lg:top-0 lg:w-[360px]"
                 style={{
                   backgroundColor: 'var(--bg-2)',
                   borderWidth: '1px',
