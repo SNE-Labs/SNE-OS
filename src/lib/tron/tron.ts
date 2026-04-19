@@ -13,6 +13,12 @@ function createTronWebClient(rpcUrl?: string | null) {
   });
 }
 
+export function isTronAddress(address?: string | null): boolean {
+  const candidate = address?.trim();
+  if (!candidate) return false;
+  return TronWeb.isAddress(candidate);
+}
+
 export function decimalToUnits(value: string, decimals: number): string {
   const candidate = value.trim();
   if (!candidate) {

@@ -23,6 +23,7 @@ import {
   broadcastSignedTransaction,
   buildUsdtTransferTransaction,
   decimalToUnits,
+  isTronAddress,
 } from '@/lib/tron/tron';
 import {
   useCancelCheckoutOrder,
@@ -426,6 +427,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
   const [showBuyerAddressConfig, setShowBuyerAddressConfig] = useState(false);
+  const [showManualBuyerAddress, setShowManualBuyerAddress] = useState(false);
   const [activeTronConnector, setActiveTronConnector] = useState<SupportedTronAdapterName | null>(null);
 
   const storageKey = useMemo(() => checkoutStorageKey(address), [address]);
@@ -498,7 +500,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
   useEffect(() => {
     if (order?.buyerTronAddress) {
-      setShowBuyerAddressConfig(true);
+      setShowManualBuyerAddress(true);
     }
   }, [order?.buyerTronAddress]);
 
@@ -528,8 +530,12 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const walletConnectWallet = tronWallets.find((candidate) => candidate.adapter.name === 'WalletConnect');
   const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
   const walletConnectAvailable = Boolean(walletConnectWallet);
+  const hasConnectedTronAddress = Boolean(connectedTronAddress);
+  const connectedTronAddressValid = isTronAddress(connectedTronAddress);
   const tronWalletStatusLabel = connectedTronAddress
-    ? 'Wallet conectada'
+    ? connectedTronAddressValid
+      ? 'Wallet conectada'
+      : 'Wallet invalida'
     : activeTronConnector === 'WalletConnect'
       ? 'WalletConnect selecionado'
       : activeTronConnector === 'TronLink'
@@ -538,7 +544,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           : 'TronLink ausente'
         : 'Selecione um conector';
   const tronWalletStatusDescription = connectedTronAddress
-    ? `${shortValue(connectedTronAddress)} via ${selectedTronWallet?.adapter.name ?? activeTronConnector ?? 'wallet'}`
+    ? connectedTronAddressValid
+      ? `${shortValue(connectedTronAddress)} via ${selectedTronWallet?.adapter.name ?? activeTronConnector ?? 'wallet'}`
+      : `${shortValue(connectedTronAddress)} nao parece um address Tron base58. Este checkout nao aceita buyer em formato 0x.`
     : activeTronConnector === 'WalletConnect'
       ? 'Abra QR code ou deep link para concluir a conexão com uma wallet Tron compatível.'
       : activeTronConnector === 'TronLink'
@@ -602,6 +610,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (!nextAddress) {
       throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
     }
+    if (!isTronAddress(nextAddress)) {
+      throw new Error(`O conector ${adapterName} nao retornou um address Tron valido. Recebi ${nextAddress}.`);
+    }
 
     return {
       buyerAddress: nextAddress,
@@ -619,6 +630,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (
       connectedTronAddress &&
       selectedTronWallet?.adapter &&
+      isTronAddress(connectedTronAddress) &&
       selectedTronWallet?.adapter.name &&
       (selectedTronWallet.adapter.name === 'TronLink' || selectedTronWallet.adapter.name === 'WalletConnect')
     ) {
@@ -653,6 +665,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       setFeedback(null);
       const { buyerAddress: connectedTronAddress, connector } = await ensureConnectedTronWallet();
       const resolvedBuyerAddress = buyerTronAddress.trim() || connectedTronAddress;
+      if (!isTronAddress(resolvedBuyerAddress)) {
+        throw new Error('Buyer Tron Address invalido. Use um endereco Tron base58 iniciado em T.');
+      }
       if (resolvedBuyerAddress !== connectedTronAddress) {
         throw new Error(`A wallet Tron conectada não coincide com a buyer wallet informada (${resolvedBuyerAddress}).`);
       }
@@ -845,6 +860,163 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     </div>
   ) : null;
 
+  const tronBindingSurface =
+    flowStage === 'bind' && showBuyerAddressConfig ? (
+      <>
+        {isMobile ? (
+          <button
+            type="button"
+            aria-label="Fechar vinculo Tron"
+            className="fixed inset-0 z-[70] bg-black/55"
+            onClick={() => setShowBuyerAddressConfig(false)}
+          />
+        ) : null}
+        <div
+          className={
+            isMobile
+              ? 'fixed inset-x-3 bottom-3 top-[5.5rem] z-[80]'
+              : 'absolute left-full top-6 z-20 ml-4'
+          }
+          style={
+            isMobile
+              ? undefined
+              : {
+                  width: 'min(388px, calc(100vw - 2rem))',
+                }
+          }
+        >
+          <div
+            className="flex h-full max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-[28px]"
+            style={{
+              backgroundColor: 'var(--bg-2)',
+              borderWidth: '1px',
+              borderColor: 'rgba(255,255,255,0.10)',
+              boxShadow: '0 28px 80px rgba(0,0,0,0.34)',
+            }}
+          >
+            <div
+              className="flex items-start justify-between gap-3 border-b px-5 py-4"
+              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
+                  Vinculo Tron
+                </div>
+                <div className="mt-1 text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                  Wallet + buyer
+                </div>
+                <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                  Conecte a wallet pagadora e, se precisar, trave manualmente o buyer address.
+                </div>
+              </div>
+              <button onClick={() => setShowBuyerAddressConfig(false)} style={{ color: 'var(--text-3)' }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+              <div className="space-y-4">
+                <div
+                  className="rounded-2xl p-4"
+                  style={{
+                    backgroundColor: hasConnectedTronAddress
+                      ? connectedTronAddressValid
+                        ? 'rgba(50,213,131,0.10)'
+                        : 'rgba(255,99,99,0.10)'
+                      : 'rgba(255,255,255,0.03)',
+                    borderWidth: '1px',
+                    borderColor: hasConnectedTronAddress
+                      ? connectedTronAddressValid
+                        ? 'rgba(50,213,131,0.18)'
+                        : 'rgba(255,99,99,0.18)'
+                      : 'rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
+                    Sessao Tron
+                  </div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                    {tronWalletStatusLabel}
+                  </div>
+                  <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                    {tronWalletStatusDescription}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <StageActionButton
+                      onClick={() => void handleConnectTronAdapter('TronLink')}
+                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !tronLinkWallet}
+                      tone={activeTronConnector === 'TronLink' ? 'primary' : 'secondary'}
+                    >
+                      {isConnectingTronWallet && activeTronConnector === 'TronLink' ? 'Conectando...' : 'TronLink'}
+                    </StageActionButton>
+                    <StageActionButton
+                      onClick={() => void handleConnectTronAdapter('WalletConnect')}
+                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !walletConnectAvailable}
+                      tone={activeTronConnector === 'WalletConnect' ? 'primary' : 'secondary'}
+                    >
+                      {isConnectingTronWallet && activeTronConnector === 'WalletConnect' ? 'Abrindo QR...' : 'WalletConnect'}
+                    </StageActionButton>
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
+                        Buyer Tron
+                      </div>
+                      <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                        O checkout usa a wallet conectada por padrao. Abra a configuracao manual apenas se quiser travar explicitamente o buyer.
+                      </div>
+                    </div>
+                    <StageActionButton onClick={() => setShowManualBuyerAddress((current) => !current)} tone="secondary">
+                      {showManualBuyerAddress ? 'Ocultar' : 'Configurar'}
+                    </StageActionButton>
+                  </div>
+
+                  {showManualBuyerAddress ? (
+                    <div className="mt-4">
+                      <input
+                        value={buyerTronAddress}
+                        onChange={(event) => setBuyerTronAddress(event.target.value)}
+                        placeholder="T..."
+                        className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+                        style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+                      />
+                      <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                        Se voce preencher, ele precisa bater exatamente com a wallet Tron conectada.
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {feedbackSurface}
+
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                >
+                  <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                    Resumo operacional
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
+                    <DetailRow label="Order" value={shortValue(order?.id)} />
+                    <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
+                    <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress || connectedTronAddress)} />
+                    <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null;
+
   const stageContent = (() => {
     if (flowStage === 'auth') {
       return (
@@ -908,129 +1080,53 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
     if (flowStage === 'bind') {
       return (
-        <div className="relative space-y-4">
-          <div className={showBuyerAddressConfig ? 'max-w-[640px] xl:pr-[392px]' : 'max-w-[640px]'}>
+        <div className="space-y-4 max-w-[760px]">
+          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
                 Vínculo da wallet Tron
               </div>
             </div>
-            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              Abra o painel lateral para conectar uma wallet Tron, revisar a ordem e, se precisar, fixar manualmente o `Buyer Tron Address`.
+            <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+              Esta etapa só prepara a wallet pagadora. O vínculo detalhado abre em uma segunda superfície lateral, separada do fluxo principal.
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <StageActionButton onClick={() => setShowBuyerAddressConfig((current) => !current)} tone="secondary">
-                {showBuyerAddressConfig ? 'Fechar painel Tron' : 'Abrir painel Tron'}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Status
+                </div>
+                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                  {statusLabel(order?.status)}
+                </div>
+                <div className="mt-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                  {order?.buyerTronAddress ? `Buyer atual ${shortValue(order.buyerTronAddress)}` : 'Nenhum buyer Tron fixado ainda.'}
+                </div>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Target
+                </div>
+                <div className="text-base font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                  {order?.targetArbitrumAddress || targetArbitrumAddress || '--'}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone="secondary">
+                Abrir modal Tron
               </StageActionButton>
-              {buyerTronAddress ? (
-                <span className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                  Atual {shortValue(buyerTronAddress)}
+              {connectedTronAddress ? (
+                <span className="text-xs uppercase tracking-[0.16em]" style={{ color: connectedTronAddressValid ? 'var(--text-3)' : 'var(--danger)' }}>
+                  {connectedTronAddressValid ? `Conectada ${shortValue(connectedTronAddress)}` : `Wallet invalida ${shortValue(connectedTronAddress)}`}
                 </span>
               ) : null}
             </div>
           </div>
 
-          {showBuyerAddressConfig ? (
-            <>
-              <div className="absolute inset-0 z-10 hidden bg-black/20 lg:block" onClick={() => setShowBuyerAddressConfig(false)} />
-              <div
-                className="fixed inset-x-3 bottom-3 top-auto z-20 rounded-2xl p-4 lg:absolute lg:inset-x-auto lg:bottom-0 lg:right-0 lg:top-0 lg:w-[360px]"
-                style={{
-                  backgroundColor: 'var(--bg-2)',
-                  borderWidth: '1px',
-                  borderColor: 'rgba(255,255,255,0.10)',
-                  boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
-                      Painel lateral
-                    </div>
-                    <div className="mt-1 font-semibold" style={{ color: 'var(--text-1)' }}>
-                      Buyer + resumo
-                    </div>
-                  </div>
-                  <button onClick={() => setShowBuyerAddressConfig(false)} style={{ color: 'var(--text-3)' }}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text-2)' }}>
-                  <p>Esta etapa ainda não envia USDT. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.</p>
-                  <p>Selecione TronLink ou WalletConnect. Só preencha manualmente o `Buyer Tron Address` se quiser travar explicitamente a wallet pagadora.</p>
-                </div>
-
-                <div
-                  className="mt-4 rounded-2xl p-4"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                        Sessão Tron
-                      </div>
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                        {tronWalletStatusLabel}
-                      </div>
-                      <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
-                        {tronWalletStatusDescription}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <StageActionButton
-                      onClick={() => void handleConnectTronAdapter('TronLink')}
-                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !tronLinkWallet}
-                      tone={activeTronConnector === 'TronLink' ? 'primary' : 'secondary'}
-                    >
-                      {isConnectingTronWallet && activeTronConnector === 'TronLink' ? 'Conectando...' : 'TronLink'}
-                    </StageActionButton>
-                    <StageActionButton
-                      onClick={() => void handleConnectTronAdapter('WalletConnect')}
-                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !walletConnectAvailable}
-                      tone={activeTronConnector === 'WalletConnect' ? 'primary' : 'secondary'}
-                    >
-                      {isConnectingTronWallet && activeTronConnector === 'WalletConnect' ? 'Abrindo QR...' : 'WalletConnect'}
-                    </StageActionButton>
-                  </div>
-                </div>
-
-                {feedbackSurface ? <div className="mt-4">{feedbackSurface}</div> : null}
-
-                <div className="mt-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-                    Buyer Tron Address
-                  </div>
-                  <input
-                    value={buyerTronAddress}
-                    onChange={(event) => setBuyerTronAddress(event.target.value)}
-                    placeholder="T..."
-                    className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-                    style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                  />
-                  <div className="mt-3 text-sm" style={{ color: 'var(--text-2)' }}>
-                    Se o campo estiver vazio, o fluxo usa o endereço conectado pelo conector ativo. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                    Resumo operacional
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
-                    <DetailRow label="Order" value={shortValue(order?.id)} />
-                    <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
-                    <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
-                    <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : null}
+          {!showBuyerAddressConfig ? feedbackSurface : null}
         </div>
       );
     }
@@ -1207,7 +1303,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   })();
 
   const flowShell = (
-    <div className="flex max-h-[90vh] flex-col overflow-hidden">
+    <div className="relative flex max-h-[90vh] flex-col overflow-visible">
       <div
         className="relative overflow-hidden border-b"
         style={{
@@ -1367,6 +1463,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
         </div>
       </div>
+      {tronBindingSurface}
     </div>
   );
 
@@ -1457,7 +1554,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       ) : (
         <Dialog open={isFlowOpen} onOpenChange={setIsFlowOpen}>
           <DialogContent
-            className="max-w-[1120px] p-0 overflow-hidden"
+            className="max-w-[1120px] p-0 overflow-visible"
             style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
           >
             <DialogHeader className="sr-only">
