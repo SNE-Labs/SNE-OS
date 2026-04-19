@@ -421,6 +421,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [feedback, setFeedback] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
+  const [showBuyerAddressConfig, setShowBuyerAddressConfig] = useState(false);
 
   const storageKey = useMemo(() => checkoutStorageKey(address), [address]);
   const orderQuery = useCheckoutOrder(trackedOrderId);
@@ -480,6 +481,12 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     const timer = window.setTimeout(() => setCopyFeedback(null), 1800);
     return () => window.clearTimeout(timer);
   }, [copyFeedback]);
+
+  useEffect(() => {
+    if (order?.buyerTronAddress) {
+      setShowBuyerAddressConfig(true);
+    }
+  }, [order?.buyerTronAddress]);
 
   const isCreating = createOrderMutation.isPending;
   const isBindingTron = bindTronMutation.isPending;
@@ -840,19 +847,54 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                Buyer Tron Address
+                Vínculo da wallet Tron
               </div>
             </div>
-            <input
-              value={buyerTronAddress}
-              onChange={(event) => setBuyerTronAddress(event.target.value)}
-              placeholder="T..."
-              className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-            />
-            <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-2)' }}>
-              <p>Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.</p>
+            <div className="space-y-3 text-sm" style={{ color: 'var(--text-2)' }}>
               <p>Esta etapa ainda não envia USDT. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.</p>
+              <p>Por padrão, o fluxo usa a wallet aberta na TronLink. Só abra a configuração manual se quiser travar explicitamente um `Buyer Tron Address`.</p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <StageActionButton onClick={() => setShowBuyerAddressConfig((current) => !current)} tone="secondary">
+                {showBuyerAddressConfig ? 'Ocultar buyer address' : 'Configurar buyer address'}
+              </StageActionButton>
+              {buyerTronAddress ? (
+                <span className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                  Atual {shortValue(buyerTronAddress)}
+                </span>
+              ) : null}
+            </div>
+
+            {showBuyerAddressConfig ? (
+              <div className="mt-4 rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Buyer Tron Address
+                </div>
+                <input
+                  value={buyerTronAddress}
+                  onChange={(event) => setBuyerTronAddress(event.target.value)}
+                  placeholder="T..."
+                  className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+                />
+                <div className="mt-3 text-sm" style={{ color: 'var(--text-2)' }}>
+                  Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-4 rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
+                Resumo operacional
+              </div>
+              <div className="space-y-2 text-sm">
+                <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
+                <DetailRow label="Order" value={shortValue(order?.id)} />
+                <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
+                <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
+                <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
+              </div>
             </div>
           </div>
 
@@ -1018,18 +1060,18 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 {stageMeta.description}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <div
                 className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
                 style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
               >
                 {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
               </div>
-              {headerTopAction ? <div className="flex flex-wrap justify-end gap-2">{headerTopAction}</div> : null}
+              {headerTopAction}
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
               <StepCard key={step.id} step={step} />
             ))}
@@ -1037,7 +1079,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1.62fr)_320px]">
+      <div className={`grid min-h-0 flex-1 ${flowStage === 'bind' ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1.62fr)_320px]'}`}>
         <div className="overflow-y-auto px-5 py-5 lg:px-6 lg:py-6">
           <div className="max-w-[780px]">
           {stageContent}
@@ -1063,19 +1105,21 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
         </div>
 
-        <div
-          className="overflow-y-auto border-t px-5 py-5 xl:border-l xl:border-t-0 lg:px-6 lg:py-6"
-          style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
-        >
-          {orderQuery.isLoading && trackedOrderId ? (
-            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Carregando ActivationOrder...
-            </div>
-          ) : (
-            sidePanel
-          )}
-        </div>
+        {flowStage !== 'bind' ? (
+          <div
+            className="overflow-y-auto border-t px-5 py-5 xl:border-l xl:border-t-0 lg:px-6 lg:py-6"
+            style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+          >
+            {orderQuery.isLoading && trackedOrderId ? (
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Carregando ActivationOrder...
+              </div>
+            ) : (
+              sidePanel
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div
