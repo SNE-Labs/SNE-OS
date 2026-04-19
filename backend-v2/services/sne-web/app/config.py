@@ -44,10 +44,10 @@ class Config:
     # SIWE Configuration
     SIWE_DOMAIN = os.getenv("SIWE_DOMAIN", "snelabs.space")
     SIWE_ORIGIN = os.getenv("SIWE_ORIGIN", "https://snelabs.space")
-    SIWE_CHAIN_ID = int(os.getenv("SIWE_CHAIN_ID", 534352))
+    SIWE_CHAIN_ID = int(os.getenv("SIWE_CHAIN_ID", 42161))
     SIWE_ALLOWED_CHAIN_IDS = _parse_chain_ids(
         os.getenv("SIWE_ALLOWED_CHAIN_IDS"),
-        (1, 10, 137, 8453, 42161, 534352),
+        (42161, 421614, 1, 10, 137, 8453, 534352),
     )
     SIWE_MAX_CLOCK_SKEW_SECONDS = int(os.getenv("SIWE_MAX_CLOCK_SKEW_SECONDS", 300))
 
@@ -95,6 +95,15 @@ class Config:
     INTEL_ENRICHMENT_PROVIDER = os.getenv("INTEL_ENRICHMENT_PROVIDER", "heuristic")
     INTEL_ENRICHMENT_MODEL = os.getenv("INTEL_ENRICHMENT_MODEL", "gpt-4.1-mini")
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+    # SNE Keys sovereign access
+    SNE_KEYS_NETWORK = os.getenv("SNE_KEYS_NETWORK", os.getenv("DEFAULT_NETWORK", "arbitrum"))
+    SNE_KEYS_DEPLOYMENT_PATH = os.getenv("SNE_KEYS_DEPLOYMENT_PATH")
+    SNE_OPERATOR_KEY_CONTRACT = os.getenv("SNE_OPERATOR_KEY_CONTRACT")
+    SNE_DELEGATION_REGISTRY_CONTRACT = os.getenv("SNE_DELEGATION_REGISTRY_CONTRACT")
+    SNE_KEYSALE_CONTRACT = os.getenv("SNE_KEYSALE_CONTRACT")
+    SNE_KEYS_LEGACY_REGISTRY_CONTRACT = os.getenv("SNE_KEYS_LEGACY_REGISTRY_CONTRACT")
+    SNE_KEYS_LEGACY_ABI_PATH = os.getenv("SNE_KEYS_LEGACY_ABI_PATH")
 
     SIWE_ALLOWED_ORIGINS = tuple(
         origin

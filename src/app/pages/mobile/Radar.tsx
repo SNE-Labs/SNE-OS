@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Activity, AlertTriangle, ArrowUpRight, MoveRight, RefreshCw, ShieldAlert, Waves } from 'lucide-react';
+import { useAccount } from 'wagmi';
 
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { useRadarOverview } from '../../../hooks/useRadarData';
+import { useKeysEntitlement } from '../../../hooks/useKeysEntitlement';
 import { getRadarAssetBySymbol, mergeRadarUniverse } from '../../../lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { formatAddress } from '@/utils/format';
 import { buildSwapsHrefFromRadarSymbol } from '../../components/swaps/radarSwapPrefill';
 
 type Tone = 'active' | 'success' | 'warning' | 'pending';
@@ -75,6 +78,9 @@ const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2
 
 export function MobileRadar() {
   const navigate = useNavigate();
+  const { address, isConnected } = useAccount();
+  const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
+  const entitlement = entitlementQuery.data;
   const { symbol: routeSymbol } = useParams();
   const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
   const [querySymbol] = useState(() => normalizedRouteSymbol);
@@ -158,6 +164,21 @@ export function MobileRadar() {
   const momentumLane = [...rows].sort((left, right) => right.score - left.score).slice(0, 4);
   const cautionLane = [...rows].filter((row) => row.state.label !== 'BUY').sort((left, right) => left.score - right.score).slice(0, 3);
   const routeActions = (nextAction?.actions ?? []).slice(0, 2);
+  const operatorActive = Boolean(entitlement?.effectiveAccess);
+  const accessBannerTitle = !isConnected
+    ? 'Radar Web em discovery'
+    : operatorActive
+      ? 'Classe Operator ativa'
+      : 'Preview web ativo';
+  const accessBannerDescription = !isConnected
+    ? 'Conecte a wallet para verificar posse ou delegação válida do Operator Key.'
+    : entitlementQuery.isLoading
+      ? 'Resolvendo entitlement soberano desta wallet.'
+      : operatorActive
+        ? entitlement?.delegateWallet
+          ? `Esta wallet opera por delegação de ${formatAddress(entitlement.ownerWallet)}.`
+          : 'Esta wallet segura o Operator Key diretamente.'
+        : 'O Radar Web continua livre. O Operator Key libera a classe Operator no ecossistema.';
 
   function pinSymbol(symbol: string) {
     setPinnedSymbol(symbol);
@@ -192,8 +213,28 @@ export function MobileRadar() {
           <Badge variant={toBadgeVariant(executionRisk?.tone)} size="sm">{executionRisk?.label ?? 'sem friccao'}</Badge>
           <Badge variant="neutral" size="sm">{formatUpdatedAt(overview?.last_updated)}</Badge>
           <Badge variant="neutral" size="sm">{marketState?.execution ?? 'intel-first'}</Badge>
+          <Badge variant={operatorActive ? 'success' : 'neutral'} size="sm">{operatorActive ? 'operator' : 'discovery'}</Badge>
         </div>
 
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-3)]">classe de acesso</div>
+            <div className="mt-1 text-[var(--text-1)]">{accessBannerTitle}</div>
+          </div>
+          <Badge variant={operatorActive ? 'success' : 'neutral'} size="sm">
+            {operatorActive ? 'operator' : 'web'}
+          </Badge>
+        </div>
+        <div className="text-sm leading-6 text-[var(--text-2)]">
+          {accessBannerDescription}
+        </div>
+        <MobileButton variant="secondary" className="mt-4 w-full" onClick={() => navigate('/keys')}>
+          <ArrowUpRight className="mr-2 h-4 w-4" />
+          {operatorActive ? 'Abrir Keys' : 'Resolver Keys'}
+        </MobileButton>
       </SurfaceCard>
 
       {overviewQuery.isLoading && !overview ? (

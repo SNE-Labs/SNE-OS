@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
 
 import { ApiError, apiGet, apiPost } from "../api/http";
+import { CHAIN_RPC_URLS } from "../rpcUrls";
 
 export type ConnectMethod = 'injected' | 'walletconnect';
 export type AuthStatus = 'idle' | 'restoring' | 'connecting' | 'signing' | 'verifying' | 'authenticated' | 'error';
@@ -32,7 +33,21 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 const SIWE_DOMAIN = import.meta.env.VITE_SIWE_DOMAIN?.trim() || "snelabs.space";
 const SIWE_ORIGIN = import.meta.env.VITE_SIWE_ORIGIN?.trim() || "https://snelabs.space";
-const CHAIN_ID = Number(import.meta.env.VITE_SIWE_CHAIN_ID || 534352);
+const CHAIN_ID = Number(import.meta.env.VITE_SIWE_CHAIN_ID || 42161);
+const CHAIN_CONFIG_BY_ID: Record<number, { chainName: string; nativeCurrency: { name: string; symbol: string; decimals: number }; rpcUrls: string[]; blockExplorerUrls: string[] }> = {
+  42161: {
+    chainName: 'Arbitrum One',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: [CHAIN_RPC_URLS.arbitrum],
+    blockExplorerUrls: ['https://arbiscan.io'],
+  },
+  421614: {
+    chainName: 'Arbitrum Sepolia',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: [CHAIN_RPC_URLS.arbitrumSepolia],
+    blockExplorerUrls: ['https://sepolia.arbiscan.io'],
+  },
+};
 
 function getNonce(address: string) {
   return apiPost<{ nonce: string }>("/api/auth/nonce", { address });
@@ -54,6 +69,47 @@ Chain ID: ${opts.chainId}
 Nonce: ${opts.nonce}
 Issued At: ${new Date().toISOString()}
 Expiration Time: ${new Date(Date.now() + 5 * 60 * 1000).toISOString()}`;
+}
+
+async function switchInjectedChain(targetChainId: number) {
+  const provider = getInjectedProvider();
+  if (!provider) return;
+
+  const desiredHex = `0x${targetChainId.toString(16)}`;
+  const currentChainId = await getInjectedChainId();
+  if (currentChainId === targetChainId) {
+    return;
+  }
+
+  try {
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: desiredHex }],
+    });
+  } catch (error) {
+    const walletError = error as { code?: number };
+    if (walletError.code !== 4902) {
+      throw error;
+    }
+
+    const chainConfig = CHAIN_CONFIG_BY_ID[targetChainId];
+    if (!chainConfig) {
+      throw error;
+    }
+
+    await provider.request({
+      method: 'wallet_addEthereumChain',
+      params: [
+        {
+          chainId: desiredHex,
+          chainName: chainConfig.chainName,
+          nativeCurrency: chainConfig.nativeCurrency,
+          rpcUrls: chainConfig.rpcUrls,
+          blockExplorerUrls: chainConfig.blockExplorerUrls,
+        },
+      ],
+    });
+  }
 }
 
 function connectorMethod(connector: { id?: string; type?: string }): ConnectMethod | null {
@@ -307,6 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (preferredMethod === 'injected') {
+        await switchInjectedChain(CHAIN_ID);
         const accounts = await getInjectedAccounts();
         const nextAddress = accounts[0];
 

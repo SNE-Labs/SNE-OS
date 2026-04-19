@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from '
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
-import { arbitrum, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
+import { arbitrum, arbitrumSepolia, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
 import { Suspense, useEffect, useState } from 'react';
 
 // Desktop Components (carregados normalmente)
@@ -44,7 +44,7 @@ import { CHAIN_RPC_URLS } from '@/lib/rpcUrls';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 
-const SUPPORTED_CHAINS = [mainnet, arbitrum, optimism, base, polygon, scroll] as const;
+const SUPPORTED_CHAINS = [arbitrum, arbitrumSepolia, mainnet, optimism, base, polygon, scroll] as const;
 
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
@@ -254,6 +254,7 @@ export default function App() {
       ],
       transports: {
         [mainnet.id]: http(CHAIN_RPC_URLS.mainnet),
+        [arbitrumSepolia.id]: http(CHAIN_RPC_URLS.arbitrumSepolia),
         [arbitrum.id]: http(CHAIN_RPC_URLS.arbitrum),
         [optimism.id]: http(CHAIN_RPC_URLS.optimism),
         [base.id]: http(CHAIN_RPC_URLS.base),

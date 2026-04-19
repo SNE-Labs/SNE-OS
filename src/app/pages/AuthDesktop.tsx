@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { apiPost } from "../../lib/api/http";
+import { CHAIN_RPC_URLS } from "../../lib/rpcUrls";
 
 type Status =
     | "AWAITING_WALLET"
@@ -9,6 +10,22 @@ type Status =
     | "VERIFYING"
     | "SUCCESS"
     | "ERROR";
+
+const DESKTOP_SIWE_CHAIN_ID = Number(import.meta.env.VITE_SIWE_CHAIN_ID || 42161);
+const DESKTOP_CHAIN_CONFIG_BY_ID: Record<number, { chainName: string; nativeCurrency: { name: string; symbol: string; decimals: number }; rpcUrls: string[]; blockExplorerUrls: string[] }> = {
+    42161: {
+        chainName: "Arbitrum One",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: [CHAIN_RPC_URLS.arbitrum],
+        blockExplorerUrls: ["https://arbiscan.io"],
+    },
+    421614: {
+        chainName: "Arbitrum Sepolia",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: [CHAIN_RPC_URLS.arbitrumSepolia],
+        blockExplorerUrls: ["https://sepolia.arbiscan.io"],
+    },
+};
 
 function safeTrunc(s: string, left = 6, right = 4) {
     if (!s) return "";
@@ -91,6 +108,47 @@ async function signMessage(message: string, address: string): Promise<string> {
     }
 }
 
+async function switchDesktopChain(targetChainId: number): Promise<void> {
+    // @ts-expect-error - ethereum injected
+    const eth = window.ethereum;
+    if (!eth) return;
+
+    const desiredHex = `0x${targetChainId.toString(16)}`;
+    const currentChainId = await eth.request({ method: "eth_chainId" });
+    if (typeof currentChainId === "string" && currentChainId.toLowerCase() === desiredHex.toLowerCase()) {
+        return;
+    }
+
+    try {
+        await eth.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: desiredHex }],
+        });
+    } catch (error: any) {
+        if (error?.code !== 4902) {
+            throw error;
+        }
+
+        const chainConfig = DESKTOP_CHAIN_CONFIG_BY_ID[targetChainId];
+        if (!chainConfig) {
+            throw error;
+        }
+
+        await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+                {
+                    chainId: desiredHex,
+                    chainName: chainConfig.chainName,
+                    nativeCurrency: chainConfig.nativeCurrency,
+                    rpcUrls: chainConfig.rpcUrls,
+                    blockExplorerUrls: chainConfig.blockExplorerUrls,
+                },
+            ],
+        });
+    }
+}
+
 export function AuthDesktop() {
     const [params] = useSearchParams();
     const machine_id = params.get("machine_id") || "";
@@ -134,6 +192,7 @@ export function AuthDesktop() {
             setStatus("AWAITING_WALLET");
 
             // 1) Connect wallet
+            await switchDesktopChain(DESKTOP_SIWE_CHAIN_ID);
             const addr = await requestAddress();
             setAddress(addr);
 
@@ -153,7 +212,7 @@ export function AuthDesktop() {
                 domain: "snelabs.space",
                 address: addr,
                 uri: "https://snelabs.space/auth",
-                chainId: 534352, // Scroll L2
+                chainId: DESKTOP_SIWE_CHAIN_ID,
                 nonce,
                 machineId: machine_id,
                 state,

@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, AlertTriangle, ArrowUpRight, MoveRight, RefreshCw, ShieldAlert, Waves } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAccount } from 'wagmi';
 
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { useRadarOverview } from '../../hooks/useRadarData';
+import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { resolveModuleState } from '../../lib/moduleState';
 import { getRadarAssetBySymbol, mergeRadarUniverse } from '../../lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
+import { formatAddress } from '@/utils/format';
 import { buildSwapsHrefFromRadarSymbol } from '../components/swaps/radarSwapPrefill';
 
 type Tone = 'active' | 'success' | 'warning' | 'pending';
@@ -78,6 +81,9 @@ const deriveLiquidity = (rank: number, volume: number) => (rank >= 0 && rank < 2
 
 export function Radar() {
   const navigate = useNavigate();
+  const { address, isConnected } = useAccount();
+  const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
+  const entitlement = entitlementQuery.data;
   const { symbol: routeSymbol } = useParams();
   const normalizedRouteSymbol = (routeSymbol || 'ETHUSDT').replace('/', '').toUpperCase();
   const [querySymbol] = useState(() => normalizedRouteSymbol);
@@ -182,6 +188,21 @@ export function Radar() {
     { label: 'Confianca', value: detailRow?.confidenceLabel ?? '--', tone: detailRow?.confidenceTone ?? 'pending' as Tone },
     { label: 'Volume', value: `$${compact(Number(detailRow?.volume ?? 0))}`, tone: 'pending' as Tone },
   ];
+  const operatorActive = Boolean(entitlement?.effectiveAccess);
+  const accessBannerTitle = !isConnected
+    ? 'Radar Web em discovery'
+    : operatorActive
+      ? 'Classe Operator ativa'
+      : 'Preview web ativo';
+  const accessBannerDescription = !isConnected
+    ? 'O Radar Web continua aberto. Conecte a wallet para verificar posse ou delegação válida do Operator Key.'
+    : entitlementQuery.isLoading
+      ? 'Resolvendo entitlement soberano desta wallet.'
+      : operatorActive
+        ? entitlement?.delegateWallet
+          ? `Esta wallet opera por delegação de ${formatAddress(entitlement.ownerWallet)} e já pode carregar privilégios Operator no ecossistema.`
+          : 'Esta wallet segura o Operator Key diretamente e já está na classe Operator do ecossistema.'
+        : 'Esta wallet segue em discovery no web. O Operator Key libera a classe Operator e os privilégios ligados a SNE Radar e Swaps.';
 
   function pinSymbol(symbol: string) {
     setPinnedSymbol(symbol);
@@ -211,6 +232,7 @@ export function Radar() {
                 <TopStat label="Media 24h" value={formatPercent(regime?.avg_change_24h ?? 0)} tone={(regime?.avg_change_24h ?? 0) >= 0 ? 'success' : 'warning'} />
                 <TopStat label="Friccao" value={executionRisk?.label ?? '--'} tone={executionRisk?.tone} />
                 <TopStat label="Update" value={formatUpdatedAt(overview?.last_updated)} />
+                <TopStat label="Acesso" value={operatorActive ? 'operator' : isConnected ? 'discovery' : 'wallet off'} tone={operatorActive ? 'success' : 'pending'} />
               </div>
 
               <button
@@ -222,7 +244,36 @@ export function Radar() {
                 Atualizar
               </button>
             </div>
-
+            <div
+              className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-[24px] border px-4 py-4"
+              style={{
+                backgroundColor: operatorActive ? 'rgba(50,213,131,0.05)' : 'rgba(255,255,255,0.02)',
+                borderColor: operatorActive ? 'rgba(50,213,131,0.14)' : 'rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: operatorActive ? 'var(--ok-green)' : 'var(--text-3)' }}>
+                  classe de acesso
+                </div>
+                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+                  {accessBannerTitle}
+                </div>
+                <div className="mt-1 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                  {accessBannerDescription}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/keys')}
+                className="shrink-0 rounded-full border px-3 py-2 text-[11px] uppercase tracking-[0.16em] transition-transform duration-200 hover:-translate-y-0.5"
+                style={{
+                  color: operatorActive ? 'var(--ok-green)' : 'var(--accent-orange)',
+                  borderColor: operatorActive ? 'rgba(50,213,131,0.18)' : 'rgba(255,140,66,0.18)',
+                  backgroundColor: operatorActive ? 'rgba(50,213,131,0.08)' : 'rgba(255,140,66,0.08)',
+                }}
+              >
+                {operatorActive ? 'Abrir Keys' : 'Resolver Keys'}
+              </button>
+            </div>
           </section>
 
           {moduleState !== 'ready' ? (

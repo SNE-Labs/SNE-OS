@@ -1,0 +1,35 @@
+{
+  "name": "@sne/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hardhat workspace for SNE Keys sovereign access contracts",
+  "scripts": {
+    "clean": "hardhat clean",
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.js --network arbitrum-sepolia",
+    "deploy:arbitrum-sepolia:mock": "hardhat run scripts/deploy-mock-stack.js --network arbitrum-sepolia",
+    "deploy:ethereum": "hardhat run scripts/deploy.js --network ethereum",
+    "deploy:arbitrum": "hardhat run scripts/deploy.js --network arbitrum",
+    "deploy:arbitrum:mock": "hardhat run scripts/deploy-mock-stack.js --network arbitrum",
+    "deploy:optimism": "hardhat run scripts/deploy.js --network optimism",
+    "deploy:polygon": "hardhat run scripts/deploy.js --network polygon",
+    "deploy:base": "hardhat run scripts/deploy.js --network base",
+    "deploy:scroll": "hardhat run scripts/deploy.js --network scroll",
+    "mint:mock-usdt:arbitrum-sepolia": "hardhat run scripts/mint-mock-usdt.js --network arbitrum-sepolia",
+    "mint:mock-usdt:arbitrum": "hardhat run scripts/mint-mock-usdt.js --network arbitrum",
+    "approve:mock-usdt:arbitrum-sepolia": "hardhat run scripts/approve-mock-usdt.js --network arbitrum-sepolia",
+    "buy:operator-key:arbitrum-sepolia": "hardhat run scripts/buy-operator-key.js --network arbitrum-sepolia",
+    "set-delegate:arbitrum-sepolia": "hardhat run scripts/set-delegate.js --network arbitrum-sepolia",
+    "clear-delegate:arbitrum-sepolia": "hardhat run scripts/clear-delegate.js --network arbitrum-sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.9",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@openzeppelin/contracts": "^5.2.0",
+    "chai": "^4.5.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "hardhat": "^2.24.3"
+  }
+}

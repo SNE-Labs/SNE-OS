@@ -4,13 +4,16 @@ import { ArrowUpRight, Box, KeyRound, Shield, Wallet } from 'lucide-react';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useKeysOverview } from '../../hooks/useKeysData';
+import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { resolveModuleState } from '../../lib/moduleState';
 import { formatAddress } from '@/utils/format';
 
 export function Keys() {
   const { address, isConnected } = useAccount();
   const overviewQuery = useKeysOverview(isConnected && address ? address : null);
+  const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
   const overview = overviewQuery.data;
+  const entitlement = entitlementQuery.data;
   const moduleState = resolveModuleState({
     isConnected,
     isLoading: overviewQuery.isLoading,
@@ -18,6 +21,18 @@ export function Keys() {
     data: overview,
   });
   const signals = overview?.signals ?? [];
+  const accessLevel = entitlement?.accessClass === 'operator' ? 'Operator' : isConnected ? 'Discovery' : '--';
+  const sourceLabel = entitlement?.source ?? overview?.surface.source ?? '--';
+  const feePolicyLabel = entitlement?.feePolicy?.label ?? (entitlement?.feeTier === 'operator_discount' ? 'Operator discount' : 'Standard');
+  const accessSummary = !isConnected
+    ? 'Conecte uma carteira para resolver posse, delegação e classe de acesso.'
+    : entitlementQuery.isLoading
+      ? 'Resolvendo entitlement soberano para esta carteira.'
+      : entitlement?.effectiveAccess
+        ? entitlement.delegateWallet
+          ? `Classe Operator ativa por delegação de ${formatAddress(entitlement.ownerWallet)}.`
+          : 'Classe Operator ativa por posse direta do Key.'
+        : 'Sem Operator Key efetivo nesta sessão. O modo web continua em discovery.';
 
   return (
     <div className="flex flex-1">
@@ -93,11 +108,11 @@ export function Keys() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Nível</div>
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.surface.access_level ?? '--'}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{accessLevel}</div>
                     </div>
                     <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                       <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fonte</div>
-                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{overview?.surface.source ?? '--'}</div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{sourceLabel}</div>
                     </div>
                   </div>
                 </div>
@@ -136,6 +151,40 @@ export function Keys() {
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl p-4 min-w-0 md:col-span-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Entitlement soberano</div>
+                    </div>
+                    <div className="text-sm mb-4" style={{ color: 'var(--text-2)' }}>
+                      {accessSummary}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Owner</div>
+                        <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                          {entitlement?.ownerWallet ? formatAddress(entitlement.ownerWallet) : '--'}
+                        </div>
+                      </div>
+                      <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Delegate</div>
+                        <div className="font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                          {entitlement?.delegateWallet ? formatAddress(entitlement.delegateWallet) : entitlement?.effectiveAccess ? 'Posse direta' : '--'}
+                        </div>
+                      </div>
+                      <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Fee tier</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{feePolicyLabel}</div>
+                      </div>
+                      <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                        <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Contratos</div>
+                        <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                          {entitlement?.contractsConfigured ? 'Configurados' : 'Pendentes'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="rounded-xl p-4 min-w-0" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
@@ -181,13 +230,17 @@ export function Keys() {
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Licenças</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.boundary.grants ?? 'Licenças definem o que esta conta pode acessar.'}
+                      {entitlement?.effectiveAccess
+                        ? 'A posse atual ou a delegação válida do Operator Key define a classe de acesso desta wallet.'
+                        : overview?.boundary.grants ?? 'Licenças definem o que esta conta pode acessar.'}
                     </div>
                   </div>
                   <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
                     <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Devices</div>
                     <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                      {overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
+                      {entitlement?.delegateWallet
+                        ? 'A wallet operacional delegada usa a classe Operator enquanto a owner wallet continuar segurando o Key.'
+                        : overview?.boundary.devices ?? 'Dispositivos e vínculos representam a camada portátil de confiança.'}
                     </div>
                   </div>
                 </div>

@@ -1,11 +1,12 @@
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { ArrowUpRight, CheckCircle2, CircleDot, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, CircleDot, KeyRound, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react';
 
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { getRadarSwapContext } from '../components/swaps/radarSwapPrefill';
 import { WalletConnect } from '../components/passport/WalletConnect';
+import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { getPreferredExecutionTarget, getRadarAssetByKey, getRadarAssetBySymbol } from '@/lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
@@ -34,6 +35,8 @@ export function Swaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
+  const entitlement = entitlementQuery.data;
   const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
   const radarAsset = useMemo(
     () => getRadarAssetByKey(radarContext.assetKey) ?? getRadarAssetBySymbol(radarContext.symbol),
@@ -61,6 +64,16 @@ export function Swaps() {
   const executionSurfaceLabel = radarAsset
     ? `${radarAsset.displaySymbol} em ${getUsdtChainName(prefill.toChain ?? executionTarget?.chainId)}`
     : getUsdtChainName(prefill.toChain);
+  const operatorActive = Boolean(entitlement?.effectiveAccess);
+  const operatorStatusLabel = !isConnected ? 'Discovery' : operatorActive ? 'Operator ativo' : 'Fee padrão';
+  const feePolicyLabel = entitlement?.feePolicy?.label ?? (entitlement?.feeTier === 'operator_discount' ? 'Operator discount' : 'Standard');
+  const accessNarrative = !isConnected
+    ? 'Conecte a wallet para resolver a classe de acesso soberana antes da execução.'
+    : operatorActive
+      ? entitlement?.delegateWallet
+        ? 'Fee operator ativa por delegação válida do Key.'
+        : 'Fee operator ativa por posse direta do Key.'
+      : 'Sem Operator Key efetivo. O rail continua disponível com fee padrão.';
 
   useSeoMeta({
     title: 'Mover USDT | SNE OS',
@@ -106,6 +119,7 @@ export function Swaps() {
               {radarContext.fromRadar ? <StatusToken label="Origem Radar" tone="neutral" /> : null}
               {radarAsset ? <StatusToken label={radarAsset.displaySymbol} tone="accent" /> : null}
               <StatusToken label={executionModeLabel} tone="accent" />
+              <StatusToken label={operatorStatusLabel} tone={operatorActive ? 'success' : 'neutral'} />
             </div>
           </header>
 
@@ -196,7 +210,43 @@ export function Swaps() {
                   <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
                     A conta permanece na sua carteira. O OS só organiza contexto, rota e assinatura.
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Metric label="Classe" value={operatorActive ? 'Operator' : 'Discovery'} />
+                    <Metric label="Fee" value={feePolicyLabel} />
+                  </div>
+                  <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                    {accessNarrative}
+                  </div>
+                  <button
+                    onClick={() => navigate('/keys')}
+                    className="w-full rounded-2xl border px-4 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                    style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)' }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+                          {operatorActive ? 'Gerenciar Keys' : 'Resolver Operator Key'}
+                        </div>
+                        <div className="mt-1 text-sm leading-5" style={{ color: 'var(--text-2)' }}>
+                          Posse, delegação e fee tier vivem na camada soberana de Keys.
+                        </div>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+                    </div>
+                  </button>
                   <WalletConnect />
+                </div>
+              </Panel>
+
+              <Panel title="Entitlement" icon={KeyRound}>
+                <div className="grid grid-cols-2 gap-3">
+                  <Metric label="Owner" value={entitlement?.ownerWallet ? formatAddress(entitlement.ownerWallet) : '--'} />
+                  <Metric label="Delegate" value={entitlement?.delegateWallet ? formatAddress(entitlement.delegateWallet) : operatorActive ? 'Posse direta' : '--'} />
+                </div>
+                <div className="mt-3 rounded-2xl border px-3 py-3 text-sm leading-6" style={{ backgroundColor: 'var(--bg-2)', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}>
+                  {entitlementQuery.isLoading
+                    ? 'Resolvendo entitlement soberano para esta wallet.'
+                    : accessNarrative}
                 </div>
               </Panel>
 

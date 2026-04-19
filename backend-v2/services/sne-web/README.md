@@ -63,15 +63,25 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `X_REFRESH_TOKEN`: X OAuth 2.0 refresh token, optional fallback
 - `X_TOKEN_SCOPE`: expected X scopes such as `tweet.read tweet.write users.read offline.access` for OAuth 2.0 fallback
 - `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
+- `DEFAULT_NETWORK`: default sovereign access network, now expected to be `arbitrum`
+- `SNE_KEYS_NETWORK`: explicit entitlement network override, typically `arbitrum`
+- `ARBITRUM_SEPOLIA_RPC_URLS`: comma-separated fallback RPC list for Arbitrum Sepolia
+- `ARBITRUM_RPC_URLS`: comma-separated fallback RPC list for Arbitrum
 - `ETHEREUM_RPC_URLS`: comma-separated fallback RPC list for Ethereum
 - `POLYGON_RPC_URLS`: comma-separated fallback RPC list for Polygon
 - `SCROLL_RPC_URLS`: comma-separated fallback RPC list for Scroll
+- `TRON_RPC_URL`: Tron RPC for checkout and payment verification flows
 
 Example:
 ```bash
+export DEFAULT_NETWORK=arbitrum
+export SNE_KEYS_NETWORK=arbitrum
+export ARBITRUM_SEPOLIA_RPC_URLS=https://sepolia-rollup.arbitrum.io/rpc,https://arbitrum-sepolia-rpc.publicnode.com
+export ARBITRUM_RPC_URLS=https://arbitrum-one-rpc.publicnode.com,https://arb1.arbitrum.io/rpc
 export ETHEREUM_RPC_URLS=https://ethereum-rpc.publicnode.com,https://rpc.ankr.com/eth,https://cloudflare-eth.com
 export POLYGON_RPC_URLS=https://polygon-bor-rpc.publicnode.com,https://1rpc.io/matic,https://polygon-rpc.com
 export SCROLL_RPC_URLS=https://rpc.scroll.io,https://scroll-mainnet.public.blastapi.io
+export TRON_RPC_URL=https://api.trongrid.io
 ```
 
 ## Endpoints

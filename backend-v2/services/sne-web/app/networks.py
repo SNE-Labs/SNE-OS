@@ -91,6 +91,25 @@ NETWORKS: Dict[str, NetworkConfig] = {
         "read_supported": True,
         "write_supported": True,
     },
+    "arbitrum-sepolia": {
+        "key": "arbitrum-sepolia",
+        "label": "Arbitrum Sepolia",
+        "family": "evm",
+        "native_asset": "ETH",
+        "chain_id": int(os.getenv("ARBITRUM_SEPOLIA_CHAIN_ID", "421614")),
+        "explorer_url": "https://sepolia.arbiscan.io",
+        "rpc_urls": _rpc_urls(
+            "ARBITRUM_SEPOLIA_RPC_URLS",
+            "ARBITRUM_SEPOLIA_RPC_URL",
+            [
+                "https://sepolia-rollup.arbitrum.io/rpc",
+                "https://arbitrum-sepolia-rpc.publicnode.com",
+            ],
+        ),
+        "enabled": True,
+        "read_supported": True,
+        "write_supported": True,
+    },
     "tron": {
         "key": "tron",
         "label": "Tron",
@@ -183,7 +202,7 @@ NETWORKS: Dict[str, NetworkConfig] = {
 }
 
 
-DEFAULT_NETWORK_KEY = os.getenv("DEFAULT_NETWORK", "scroll")
+DEFAULT_NETWORK_KEY = os.getenv("DEFAULT_NETWORK", "arbitrum")
 
 
 def get_network(network_key: Optional[str]) -> NetworkConfig:

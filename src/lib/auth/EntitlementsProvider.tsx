@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Entitlements, getEntitlements, getSession } from "../api/entitlements";
+import { Entitlements } from "../api/entitlements";
 import { useAuth } from "./AuthProvider";
+import { keysApi, type KeysEntitlement } from "../../services/keys-api";
 
 type EntCtx = {
   loading: boolean;
@@ -11,68 +12,50 @@ type EntCtx = {
 const Ctx = createContext<EntCtx | null>(null);
 
 export function EntitlementsProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, tier } = useAuth();
+  const { address, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [entitlements, setEntitlements] = useState<Entitlements | undefined>();
 
-  // Função para gerar entitlements baseado no tier
-  function getEntitlementsForTier(userTier: 'free' | 'premium' | 'pro'): Entitlements {
-    const baseEntitlements = {
-      user: undefined,
-      tier: userTier,
-    };
-
-    switch (userTier) {
-      case 'free':
-        return {
-          ...baseEntitlements,
-          features: ["vault.preview", "pass.preview", "radar.preview"],
-          limits: { watchlist: 3, signals_per_day: 10 }
-        };
-      case 'premium':
-        return {
-          ...baseEntitlements,
-          features: ["vault.checkout", "pass.access", "radar.access"],
-          limits: { watchlist: 10, signals_per_day: 50 }
-        };
-      case 'pro':
-        return {
-          ...baseEntitlements,
-          features: ["vault.checkout", "pass.access", "radar.access", "radar.trade"],
-          limits: { watchlist: 50, signals_per_day: -1 } // -1 = unlimited
-        };
-      default:
-        return {
-          ...baseEntitlements,
-          features: ["vault.preview", "pass.preview", "radar.preview"],
-          limits: { watchlist: 3, signals_per_day: 10 }
-        };
+  function buildEntitlementsFromKeys(data: KeysEntitlement | null | undefined): Entitlements {
+    if (!data?.effectiveAccess) {
+      return {
+        user: data?.wallet ?? undefined,
+        tier: 'free',
+        features: ['vault.preview', 'pass.preview', 'radar.preview'],
+        limits: { watchlist: 3, signals_per_day: 10 },
+      };
     }
+
+    return {
+      user: data.wallet ?? undefined,
+      tier: 'pro',
+      features: ['vault.checkout', 'pass.access', 'radar.access', 'radar.trade', 'keys.operator'],
+      limits: { watchlist: 50, signals_per_day: -1 },
+      expiresAt: undefined,
+    };
   }
 
   async function refresh() {
     setLoading(true);
     try {
-      if (isAuthenticated && tier) {
-        // Usar entitlements baseado no tier do AuthProvider
-        const data = getEntitlementsForTier(tier);
-        setEntitlements(data);
+      if (address) {
+        const data = await keysApi.getEntitlement(address);
+        setEntitlements(buildEntitlementsFromKeys(data));
       } else {
-        setEntitlements(undefined);
+        setEntitlements(buildEntitlementsFromKeys(undefined));
       }
     } catch (error) {
-      console.warn("Failed to set entitlements:", error);
-      // Fallback para free tier
-      setEntitlements(getEntitlementsForTier('free'));
+      console.warn("Failed to resolve sovereign entitlements:", error);
+      setEntitlements(buildEntitlementsFromKeys(undefined));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    refresh();
+    void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, tier]);
+  }, [address, isAuthenticated]);
 
   const value = useMemo(() => ({ loading, entitlements, refresh }), [loading, entitlements]);
 

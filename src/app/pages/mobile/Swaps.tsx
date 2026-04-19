@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { ArrowLeftRight, ArrowUpRight, BadgeCheck, Waves } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, BadgeCheck, KeyRound, Waves } from 'lucide-react';
 
 import { Badge, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
 import { LiFiSwapWidget } from '../../components/swaps/LiFiSwapWidget';
 import { getRadarSwapContext } from '../../components/swaps/radarSwapPrefill';
+import { useKeysEntitlement } from '../../../hooks/useKeysEntitlement';
 import { getPreferredExecutionTarget, getRadarAssetByKey, getRadarAssetBySymbol } from '@/lib/assets/registry';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { DEFAULT_USDT_CHAIN_ID, MAJOR_USDT_WIDGET_CHAIN_IDS, getUsdtChainName } from '@/lib/usdt';
@@ -25,6 +26,8 @@ export function MobileSwaps() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  const entitlementQuery = useKeysEntitlement(isConnected && address ? address : null);
+  const entitlement = entitlementQuery.data;
   const radarContext = useMemo(() => getRadarSwapContext(searchParams), [searchParams]);
   const radarAsset = useMemo(
     () => getRadarAssetByKey(radarContext.assetKey) ?? getRadarAssetBySymbol(radarContext.symbol),
@@ -49,6 +52,15 @@ export function MobileSwaps() {
 
   const executionModeLabel =
     radarAsset?.swapAvailability === 'proxy' ? 'rota proxy pronta' : 'execucao direta pronta';
+  const operatorActive = Boolean(entitlement?.effectiveAccess);
+  const feePolicyLabel = entitlement?.feePolicy?.label ?? (entitlement?.feeTier === 'operator_discount' ? 'Operator discount' : 'Standard');
+  const accessNarrative = !isConnected
+    ? 'Conecte a wallet para resolver a classe de acesso soberana antes da execução.'
+    : operatorActive
+      ? entitlement?.delegateWallet
+        ? 'Fee operator ativa por delegação válida do Key.'
+        : 'Fee operator ativa por posse direta do Key.'
+      : 'Sem Operator Key efetivo. O rail continua disponível com fee padrão.';
 
   useSeoMeta({
     title: 'Swaps | SNE OS',
@@ -68,8 +80,8 @@ export function MobileSwaps() {
           : 'Execucao USDT-first para mover, converter ou usar dolar digital pela wallet.'
       }
       statusPill={{
-        label: radarContext.fromRadar ? executionModeLabel : isConnected ? 'wallet online' : 'wallet pending',
-        variant: isConnected ? 'success' : 'orange',
+        label: operatorActive ? 'operator active' : radarContext.fromRadar ? executionModeLabel : isConnected ? 'wallet online' : 'wallet pending',
+        variant: operatorActive || isConnected ? 'success' : 'orange',
       }}
     >
       {radarContext.fromRadar ? (
@@ -141,6 +153,45 @@ export function MobileSwaps() {
             </div>
           </div>
         ) : null}
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <div className="mb-3 flex items-center gap-2 text-[var(--text-1)]">
+          <KeyRound className="h-4 w-4 text-[var(--accent-orange)]" />
+          <span>Entitlement</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+            <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Classe</div>
+            <div className="text-[var(--text-1)]">{operatorActive ? 'Operator' : 'Discovery'}</div>
+          </div>
+          <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+            <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Fee</div>
+            <div className="text-[var(--text-1)]">{feePolicyLabel}</div>
+          </div>
+          <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+            <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Owner</div>
+            <div className="text-sm text-[var(--text-1)] break-all">
+              {entitlement?.ownerWallet ? formatAddress(entitlement.ownerWallet) : '--'}
+            </div>
+          </div>
+          <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--stroke-1)] p-3">
+            <div className="mb-1 text-[10px] uppercase text-[var(--text-3)]">Delegate</div>
+            <div className="text-sm text-[var(--text-1)] break-all">
+              {entitlement?.delegateWallet ? formatAddress(entitlement.delegateWallet) : operatorActive ? 'Posse direta' : '--'}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 text-sm text-[var(--text-2)]">
+          {entitlementQuery.isLoading ? 'Resolvendo entitlement soberano para esta wallet.' : accessNarrative}
+        </div>
+
+        <MobileButton variant="secondary" className="mt-4 w-full" onClick={() => navigate('/keys')}>
+          <ArrowUpRight className="mr-2 h-4 w-4" />
+          {operatorActive ? 'Gerenciar Keys' : 'Resolver Operator Key'}
+        </MobileButton>
       </SurfaceCard>
 
       <SurfaceCard className="overflow-hidden">
