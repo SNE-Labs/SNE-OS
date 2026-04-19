@@ -670,27 +670,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
-  const headerTopAction =
-    flowStage === 'bind' ? (
-      <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron}>
-        {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
-      </StageActionButton>
-    ) : flowStage === 'payment' ? (
-      <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling}>
-        {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
-      </StageActionButton>
-    ) : flowStage === 'activation' ? (
-      order?.status === 'activation_failed' ? (
-        <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
-          {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
-        </StageActionButton>
-      ) : (
-        <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
-          {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
-        </StageActionButton>
-      )
-    ) : null;
-
   const sidePanel = (
     <div
       className="rounded-2xl p-4"
@@ -721,25 +700,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
         Tron liquida o pagamento em USDT. Arbitrum entrega o entitlement final. Este painel serve só como referência rápida.
       </div>
-
-      {hasTrackedOrder ? (
-        <>
-          <div className="my-4 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
-          <div className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: 'var(--text-3)' }}>
-            Ações da ordem
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            <StageActionButton onClick={() => void orderQuery.refetch()}>Atualizar ordem</StageActionButton>
-            {order && !FINAL_ORDER_STATUSES.has(order.status) ? (
-              <StageActionButton onClick={() => void handleCancelOrder()} disabled={isCancelling} tone="danger">
-                {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
-              </StageActionButton>
-            ) : (
-              <StageActionButton onClick={clearTrackedOrder}>Limpar rastreamento</StageActionButton>
-            )}
-          </div>
-        </>
-      ) : null}
     </div>
   );
 
@@ -756,34 +716,23 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'auth') {
       return (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Sessão EVM</div>
-              </div>
-              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Sessão EVM</div>
+            </div>
+            <div className="space-y-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+              <p>
                 {address
                   ? `Wallet detectada: ${shortValue(address)}. Falta concluir a autenticação SIWE para abrir o rail da ordem.`
                   : 'Nenhuma wallet autenticada ainda. O checkout pede conexão e assinatura antes de criar a ordem.'}
-              </div>
-            </div>
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Por que isso vem primeiro</div>
-              </div>
-              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+              </p>
+              <p>
                 A `ActivationOrder` precisa nascer vinculada à wallet EVM correta. Isso define o target inicial e evita ativação em sessão errada.
-              </div>
+              </p>
             </div>
           </div>
           {feedbackSurface}
-          <div className="flex flex-wrap gap-2">
-            <StageActionButton onClick={() => void handleAuthenticate()} disabled={authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying'}>
-              {authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying' ? 'Autenticando...' : 'Autenticar EVM'}
-            </StageActionButton>
-          </div>
         </div>
       );
     }
@@ -791,7 +740,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'create') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
             <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
               Target Arbitrum
             </div>
@@ -806,32 +755,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             <div className="text-sm mt-3" style={{ color: 'var(--text-2)' }}>
               A compra em Tron não concede premium sozinha. O direito só nasce depois da ativação do Key neste endereço.
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Produto</div>
-              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Operator Key</div>
-              <div className="text-sm mt-2" style={{ color: 'var(--text-2)' }}>
-                A ordem vai abrir o rail Tron para pagamento em USDT e reservar a ativação em Arbitrum.
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Produto</div>
+                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>Operator Key</div>
               </div>
-            </div>
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Preço esperado</div>
-              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>100.000000 USDT</div>
-              <div className="text-sm mt-2" style={{ color: 'var(--text-2)' }}>
-                A ordem gera os metadados do checkout e prepara o reconcile do `txHash`.
+              <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Preço esperado</div>
+                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>100.000000 USDT</div>
               </div>
             </div>
           </div>
 
           {feedbackSurface}
-
-          <div className="flex flex-wrap gap-2">
-            <StageActionButton onClick={() => void handleCreateOrder()} disabled={!canStartNewOrder || isCreating}>
-              {isCreating ? 'Criando ordem...' : 'Criar ActivationOrder'}
-            </StageActionButton>
-          </div>
         </div>
       );
     }
@@ -1063,7 +1000,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               >
                 {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
               </div>
-              {headerTopAction}
             </div>
           </div>
 
@@ -1075,7 +1011,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         </div>
       </div>
 
-      <div className={`grid min-h-0 flex-1 ${flowStage === 'bind' ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1.62fr)_320px]'}`}>
+      <div className={`grid min-h-0 flex-1 ${flowStage === 'payment' || flowStage === 'activation' || flowStage === 'success' ? 'grid-cols-1 xl:grid-cols-[minmax(0,1.62fr)_320px]' : 'grid-cols-1'}`}>
         <div className="overflow-y-auto px-5 py-5 lg:px-6 lg:py-6">
           <div className="max-w-[780px]">
           {stageContent}
@@ -1101,7 +1037,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           </div>
         </div>
 
-        {flowStage !== 'bind' ? (
+        {flowStage === 'payment' || flowStage === 'activation' || flowStage === 'success' ? (
           <div
             className="overflow-y-auto border-t px-5 py-5 xl:border-l xl:border-t-0 lg:px-6 lg:py-6"
             style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
@@ -1122,7 +1058,53 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         className="border-t px-5 py-3 lg:px-6"
         style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 text-[11px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {hasTrackedOrder && (flowStage === 'payment' || flowStage === 'activation' || flowStage === 'success') ? (
+              <StageActionButton onClick={() => void orderQuery.refetch()} tone="secondary">
+                Atualizar ordem
+              </StageActionButton>
+            ) : null}
+            {order && !FINAL_ORDER_STATUSES.has(order.status) && flowStage !== 'auth' ? (
+              <StageActionButton onClick={() => void handleCancelOrder()} disabled={isCancelling} tone="danger">
+                {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
+              </StageActionButton>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {flowStage === 'auth' ? (
+              <StageActionButton onClick={() => void handleAuthenticate()} disabled={authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying'}>
+                {authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying' ? 'Autenticando...' : 'Autenticar EVM'}
+              </StageActionButton>
+            ) : flowStage === 'create' ? (
+              <StageActionButton onClick={() => void handleCreateOrder()} disabled={!canStartNewOrder || isCreating}>
+                {isCreating ? 'Criando ordem...' : 'Criar ActivationOrder'}
+              </StageActionButton>
+            ) : flowStage === 'bind' ? (
+              <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron}>
+                {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
+              </StageActionButton>
+            ) : flowStage === 'payment' ? (
+              <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling}>
+                {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
+              </StageActionButton>
+            ) : flowStage === 'activation' ? (
+              order?.status === 'activation_failed' ? (
+                <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
+                  {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
+                </StageActionButton>
+              ) : (
+                <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
+                  {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
+                </StageActionButton>
+              )
+            ) : order && FINAL_ORDER_STATUSES.has(order.status) ? (
+              <StageActionButton onClick={clearTrackedOrder}>Nova ordem</StageActionButton>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px]">
           <div className="flex flex-wrap items-center gap-2">
             <span
               className="rounded-full px-2.5 py-1 uppercase tracking-[0.16em]"
