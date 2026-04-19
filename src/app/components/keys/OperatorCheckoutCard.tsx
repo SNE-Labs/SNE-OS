@@ -15,14 +15,14 @@ import {
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../ui/drawer';
+import { useWallet as useTronWallet } from '@tronweb3/tronwallet-adapter-react-hooks';
+import { AdapterState, type Adapter, type AdapterName } from '@tronweb3/tronwallet-abstract-adapter';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import {
-  connectTronWallet,
+  broadcastSignedTransaction,
+  buildUsdtTransferTransaction,
   decimalToUnits,
-  getConnectedTronAddress,
-  isTronLinkAvailable,
-  sendUsdtTransfer,
 } from '@/lib/tron/tron';
 import {
   useCancelCheckoutOrder,
@@ -41,6 +41,7 @@ type OperatorCheckoutCardProps = {
 
 type FlowStage = 'auth' | 'create' | 'bind' | 'payment' | 'activation' | 'success';
 type FlowStepState = 'complete' | 'current' | 'upcoming' | 'error';
+type SupportedTronAdapterName = AdapterName<'TronLink'> | AdapterName<'WalletConnect'>;
 
 type FlowStep = {
   id: 'session' | 'order' | 'tron' | 'activation';
@@ -273,7 +274,7 @@ function stageCopy(flowStage: FlowStage, order?: CheckoutOrder | null) {
     return {
       eyebrow: 'Rail de pagamento',
       title: 'Pague em Tron e entregue o `txHash` para a reconciliação.',
-      description: 'O fluxo já consegue abrir a TronLink, transferir USDT para a treasury e disparar a prova de pagamento no backend.',
+      description: 'O fluxo consegue abrir um conector Tron compatível, transferir USDT para a treasury e disparar a prova de pagamento no backend.',
     };
   }
   if (flowStage === 'activation') {
@@ -312,7 +313,7 @@ function cardSynopsis({
     return 'A ordem já existe. Falta vincular a wallet Tron que vai pagar em USDT.';
   }
   if (order.status === 'awaiting_payment' || order.status === 'payment_seen') {
-    return 'A ordem está pronta para pagamento. O modal concentra treasury, contrato USDT, CTA da TronLink e reconcile manual do `txHash`.';
+    return 'A ordem está pronta para pagamento. O modal concentra treasury, contrato USDT, CTA da wallet Tron e reconcile manual do `txHash`.';
   }
   if (order.status === 'activation_failed') {
     return order.errorMessage || 'O pagamento foi aceito, mas a ativação falhou. O modal expõe o erro e o retry em uma etapa isolada.';
@@ -425,13 +426,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
   const [showBuyerAddressConfig, setShowBuyerAddressConfig] = useState(false);
-  const [tronLinkAvailable, setTronLinkAvailable] = useState(false);
-  const [connectedTronAddress, setConnectedTronAddress] = useState<string | null>(null);
-  const [isConnectingTronLink, setIsConnectingTronLink] = useState(false);
+  const [activeTronConnector, setActiveTronConnector] = useState<SupportedTronAdapterName | null>(null);
 
   const storageKey = useMemo(() => checkoutStorageKey(address), [address]);
   const orderQuery = useCheckoutOrder(trackedOrderId);
   const order = orderQuery.data;
+  const {
+    wallets: tronWallets,
+    wallet: selectedTronWallet,
+    address: connectedTronAddress,
+    connecting: isConnectingTronWallet,
+    connected: isTronWalletConnected,
+    disconnecting: isDisconnectingTronWallet,
+    select: selectTronWallet,
+  } = useTronWallet();
 
   const createOrderMutation = useCreateCheckoutOrder();
   const bindTronMutation = useCreateTronSession();
@@ -495,30 +503,10 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   }, [order?.buyerTronAddress]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const refreshTronLinkState = () => {
-      setTronLinkAvailable(isTronLinkAvailable());
-      setConnectedTronAddress(getConnectedTronAddress());
-    };
-
-    refreshTronLinkState();
-
-    const handleFocus = () => refreshTronLinkState();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshTronLinkState();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isFlowOpen]);
+    if (selectedTronWallet?.adapter.name === 'TronLink' || selectedTronWallet?.adapter.name === 'WalletConnect') {
+      setActiveTronConnector(selectedTronWallet.adapter.name);
+    }
+  }, [selectedTronWallet]);
 
   const isCreating = createOrderMutation.isPending;
   const isBindingTron = bindTronMutation.isPending;
@@ -536,16 +524,28 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const completedSteps = countCompletedSteps(steps);
   const flowProgress = progressPercent(steps);
   const bottomSignalTone = stepStyles(flowStage === 'activation' && order?.status === 'activation_failed' ? 'error' : flowStage === 'success' ? 'complete' : 'current');
-  const tronLinkStatusLabel = connectedTronAddress
+  const tronLinkWallet = tronWallets.find((candidate) => candidate.adapter.name === 'TronLink');
+  const walletConnectWallet = tronWallets.find((candidate) => candidate.adapter.name === 'WalletConnect');
+  const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
+  const walletConnectAvailable = Boolean(walletConnectWallet);
+  const tronWalletStatusLabel = connectedTronAddress
     ? 'Wallet conectada'
-    : tronLinkAvailable
-      ? 'Provider detectado'
-      : 'TronLink indisponível';
-  const tronLinkStatusDescription = connectedTronAddress
-    ? shortValue(connectedTronAddress)
-    : tronLinkAvailable
-      ? 'Desbloqueie a extensão e autorize a wallet que vai pagar em USDT.'
-      : 'Instale ou desbloqueie a extensão para conectar a wallet pagadora.';
+    : activeTronConnector === 'WalletConnect'
+      ? 'WalletConnect selecionado'
+      : activeTronConnector === 'TronLink'
+        ? tronLinkAvailable
+          ? 'TronLink disponível'
+          : 'TronLink ausente'
+        : 'Selecione um conector';
+  const tronWalletStatusDescription = connectedTronAddress
+    ? `${shortValue(connectedTronAddress)} via ${selectedTronWallet?.adapter.name ?? activeTronConnector ?? 'wallet'}`
+    : activeTronConnector === 'WalletConnect'
+      ? 'Abra QR code ou deep link para concluir a conexão com uma wallet Tron compatível.'
+      : activeTronConnector === 'TronLink'
+        ? tronLinkAvailable
+          ? 'A extensão está disponível nesta página. Autorize a wallet que vai pagar em USDT.'
+          : 'A TronLink não foi injetada nesta página. Use WalletConnect ou reconcile manual.'
+        : 'Escolha TronLink ou WalletConnect para abrir a sessão Tron do checkout.';
 
   async function handleAuthenticate() {
     try {
@@ -572,19 +572,78 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
-  async function handleConnectTronLink() {
+  type ConnectedTronWallet = {
+    buyerAddress: string;
+    connector: SupportedTronAdapterName;
+    adapter: Adapter;
+  };
+
+  function resolvePreferredTronWalletName(): SupportedTronAdapterName | null {
+    if (activeTronConnector) return activeTronConnector;
+    if (selectedTronWallet?.adapter.name === 'TronLink' || selectedTronWallet?.adapter.name === 'WalletConnect') {
+      return selectedTronWallet.adapter.name;
+    }
+    if (tronLinkAvailable) return 'TronLink';
+    if (walletConnectAvailable) return 'WalletConnect';
+    return null;
+  }
+
+  async function connectTronAdapter(adapterName: SupportedTronAdapterName): Promise<ConnectedTronWallet> {
+    const targetWallet = tronWallets.find((candidate) => candidate.adapter.name === adapterName);
+    if (!targetWallet) {
+      throw new Error(`O conector ${adapterName} não está disponível nesta sessão.`);
+    }
+
+    setActiveTronConnector(adapterName);
+    selectTronWallet(targetWallet.adapter.name);
+    await targetWallet.adapter.connect();
+
+    const nextAddress = targetWallet.adapter.address?.trim();
+    if (!nextAddress) {
+      throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
+    }
+
+    return {
+      buyerAddress: nextAddress,
+      connector: adapterName,
+      adapter: targetWallet.adapter,
+    };
+  }
+
+  async function ensureConnectedTronWallet(): Promise<ConnectedTronWallet> {
+    const preferredConnector = resolvePreferredTronWalletName();
+    if (!preferredConnector) {
+      throw new Error('Nenhum conector Tron disponível. Use WalletConnect ou o reconcile manual do txHash.');
+    }
+
+    if (
+      connectedTronAddress &&
+      selectedTronWallet?.adapter &&
+      selectedTronWallet?.adapter.name &&
+      (selectedTronWallet.adapter.name === 'TronLink' || selectedTronWallet.adapter.name === 'WalletConnect')
+    ) {
+      return {
+        buyerAddress: connectedTronAddress,
+        connector: selectedTronWallet.adapter.name,
+        adapter: selectedTronWallet.adapter,
+      };
+    }
+
+    return connectTronAdapter(preferredConnector);
+  }
+
+  async function handleConnectTronAdapter(adapterName: SupportedTronAdapterName) {
     try {
-      setFeedback(null);
-      setIsConnectingTronLink(true);
-      const nextAddress = await connectTronWallet();
-      setTronLinkAvailable(true);
-      setConnectedTronAddress(nextAddress);
+      setFeedback(
+        adapterName === 'WalletConnect'
+          ? 'Abrindo WalletConnect para conectar a wallet pagadora...'
+          : 'Abrindo TronLink para conectar a wallet pagadora...'
+      );
+      const { buyerAddress: nextAddress } = await connectTronAdapter(adapterName);
       setBuyerTronAddress((current) => current.trim() || nextAddress);
-      setFeedback(`TronLink conectada com ${shortValue(nextAddress)}.`);
+      setFeedback(`${adapterName} conectada com ${shortValue(nextAddress)}.`);
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Falha ao conectar a TronLink.');
-    } finally {
-      setIsConnectingTronLink(false);
+      setFeedback(error instanceof Error ? error.message : 'Falha ao conectar a wallet Tron.');
     }
   }
 
@@ -592,7 +651,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (!trackedOrderId) return;
     try {
       setFeedback(null);
-      const connectedTronAddress = await connectTronWallet();
+      const { buyerAddress: connectedTronAddress, connector } = await ensureConnectedTronWallet();
       const resolvedBuyerAddress = buyerTronAddress.trim() || connectedTronAddress;
       if (resolvedBuyerAddress !== connectedTronAddress) {
         throw new Error(`A wallet Tron conectada não coincide com a buyer wallet informada (${resolvedBuyerAddress}).`);
@@ -601,13 +660,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         orderId: trackedOrderId,
         payload: {
           buyerTronAddress: resolvedBuyerAddress,
-          walletProvider: 'tronlink',
+          walletProvider: connector.toLowerCase(),
           gasMode: 'gasfree_planned',
         },
       });
       setTrackedOrderId(updatedOrder.id);
-      setTronLinkAvailable(true);
-      setConnectedTronAddress(connectedTronAddress);
       setBuyerTronAddress(resolvedBuyerAddress);
       setFeedback('Wallet Tron vinculada. A ordem agora está pronta para o pagamento em USDT.');
     } catch (error) {
@@ -615,19 +672,29 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
-  async function handlePayWithTronLink() {
+  async function handlePayWithTronWallet() {
     if (!trackedOrderId || !order?.payment.assetContract || !order.payment.treasuryAddress) return;
     try {
       setFeedback(null);
+      const { buyerAddress, adapter: activeAdapter } = await ensureConnectedTronWallet();
+      const expectedFromAddress = order.buyerTronAddress?.trim();
+      if (expectedFromAddress && buyerAddress !== expectedFromAddress) {
+        throw new Error(`A wallet Tron conectada não corresponde à buyer wallet vinculada (${expectedFromAddress}).`);
+      }
+
       const amountUnits = decimalToUnits(order.payment.expectedAmount, order.payment.assetDecimals);
-      const payment = await sendUsdtTransfer({
+      const unsignedTransaction = await buildUsdtTransferTransaction({
         contractAddress: order.payment.assetContract,
         to: order.payment.treasuryAddress,
         amountUnits,
-        expectedFromAddress: order.buyerTronAddress,
+        ownerAddress: buyerAddress,
+        rpcUrl: order.payment.rpcUrl,
       });
-      setTronLinkAvailable(true);
-      setConnectedTronAddress(payment.buyerAddress);
+      const signedTransaction = await activeAdapter.signTransaction(unsignedTransaction);
+      const payment = await broadcastSignedTransaction({
+        signedTransaction,
+        rpcUrl: order.payment.rpcUrl,
+      });
       setManualTxHash(payment.txHash);
 
       const updatedOrder = await reconcilePaymentMutation.mutateAsync({
@@ -650,7 +717,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
       setFeedback('Pagamento Tron enviado. O backend reconciliou a ordem e iniciou a ativação em Arbitrum.');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Falha ao pagar com TronLink.');
+      setFeedback(error instanceof Error ? error.message : 'Falha ao pagar com a wallet Tron.');
     }
   }
 
@@ -850,7 +917,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
             </div>
             <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              Abra o painel lateral para conectar a TronLink, revisar a ordem e, se precisar, fixar manualmente o `Buyer Tron Address`.
+              Abra o painel lateral para conectar uma wallet Tron, revisar a ordem e, se precisar, fixar manualmente o `Buyer Tron Address`.
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -893,7 +960,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
                 <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text-2)' }}>
                   <p>Esta etapa ainda não envia USDT. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.</p>
-                  <p>Por padrão, o fluxo usa a wallet aberta na TronLink. Só preencha manualmente se quiser travar explicitamente um `Buyer Tron Address`.</p>
+                  <p>Selecione TronLink ou WalletConnect. Só preencha manualmente o `Buyer Tron Address` se quiser travar explicitamente a wallet pagadora.</p>
                 </div>
 
                 <div
@@ -903,17 +970,30 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                        Sessão TronLink
+                        Sessão Tron
                       </div>
                       <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                        {tronLinkStatusLabel}
+                        {tronWalletStatusLabel}
                       </div>
                       <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
-                        {tronLinkStatusDescription}
+                        {tronWalletStatusDescription}
                       </div>
                     </div>
-                    <StageActionButton onClick={() => void handleConnectTronLink()} disabled={isConnectingTronLink} tone="secondary">
-                      {isConnectingTronLink ? 'Conectando...' : connectedTronAddress ? 'Trocar wallet' : 'Conectar TronLink'}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <StageActionButton
+                      onClick={() => void handleConnectTronAdapter('TronLink')}
+                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !tronLinkWallet}
+                      tone={activeTronConnector === 'TronLink' ? 'primary' : 'secondary'}
+                    >
+                      {isConnectingTronWallet && activeTronConnector === 'TronLink' ? 'Conectando...' : 'TronLink'}
+                    </StageActionButton>
+                    <StageActionButton
+                      onClick={() => void handleConnectTronAdapter('WalletConnect')}
+                      disabled={isConnectingTronWallet || isDisconnectingTronWallet || !walletConnectAvailable}
+                      tone={activeTronConnector === 'WalletConnect' ? 'primary' : 'secondary'}
+                    >
+                      {isConnectingTronWallet && activeTronConnector === 'WalletConnect' ? 'Abrindo QR...' : 'WalletConnect'}
                     </StageActionButton>
                   </div>
                 </div>
@@ -932,7 +1012,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                     style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
                   />
                   <div className="mt-3 text-sm" style={{ color: 'var(--text-2)' }}>
-                    Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
+                    Se o campo estiver vazio, o fluxo usa o endereço conectado pelo conector ativo. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
                   </div>
                 </div>
 
@@ -980,20 +1060,33 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                  Sessão TronLink
+                  Sessão Tron
                 </div>
                 <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                  {tronLinkStatusLabel}
+                  {tronWalletStatusLabel}
                 </div>
                 <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
                   {connectedTronAddress
                     ? `A transferência sairá de ${shortValue(connectedTronAddress)}.`
-                    : tronLinkStatusDescription}
+                    : tronWalletStatusDescription}
                 </div>
               </div>
-              <StageActionButton onClick={() => void handleConnectTronLink()} disabled={isConnectingTronLink} tone="secondary">
-                {isConnectingTronLink ? 'Conectando...' : connectedTronAddress ? 'Trocar wallet' : 'Conectar TronLink'}
-              </StageActionButton>
+              <div className="flex flex-wrap gap-2">
+                <StageActionButton
+                  onClick={() => void handleConnectTronAdapter('TronLink')}
+                  disabled={isConnectingTronWallet || isDisconnectingTronWallet || !tronLinkWallet}
+                  tone={activeTronConnector === 'TronLink' ? 'primary' : 'secondary'}
+                >
+                  {isConnectingTronWallet && activeTronConnector === 'TronLink' ? 'Conectando...' : 'TronLink'}
+                </StageActionButton>
+                <StageActionButton
+                  onClick={() => void handleConnectTronAdapter('WalletConnect')}
+                  disabled={isConnectingTronWallet || isDisconnectingTronWallet || !walletConnectAvailable}
+                  tone={activeTronConnector === 'WalletConnect' ? 'primary' : 'secondary'}
+                >
+                  {isConnectingTronWallet && activeTronConnector === 'WalletConnect' ? 'Abrindo QR...' : 'WalletConnect'}
+                </StageActionButton>
+              </div>
             </div>
           </div>
 
@@ -1003,7 +1096,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Pagamento guiado</div>
             </div>
             <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              `Pagar com TronLink` executa a transferência para a treasury e já envia o `txHash` ao backend. Se você pagou fora do modal, use o reconcile manual abaixo.
+              `Pagar com wallet Tron` assina a transferência TRC-20 pelo conector ativo e já envia o `txHash` ao backend. Se você pagou fora do modal, use o reconcile manual abaixo.
             </div>
           </div>
 
@@ -1225,12 +1318,12 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 {isCreating ? 'Criando ordem...' : 'Criar ActivationOrder'}
               </StageActionButton>
             ) : flowStage === 'bind' ? (
-              <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron || isConnectingTronLink}>
-                {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
+              <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron || isConnectingTronWallet || isDisconnectingTronWallet}>
+                {isBindingTron ? 'Vinculando...' : 'Vincular wallet pagadora'}
               </StageActionButton>
             ) : flowStage === 'payment' ? (
-              <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling || isConnectingTronLink}>
-                {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
+              <StageActionButton onClick={() => void handlePayWithTronWallet()} disabled={isReconciling || isConnectingTronWallet || isDisconnectingTronWallet}>
+                {isReconciling ? 'Confirmando pagamento...' : 'Pagar com wallet Tron'}
               </StageActionButton>
             ) : flowStage === 'activation' ? (
               order?.status === 'activation_failed' ? (

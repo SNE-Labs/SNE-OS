@@ -41,6 +41,7 @@ const MobileLayout = lazyRoute(() => import('./layouts/MobileLayout').then((m) =
 import { AuthProvider } from '@/lib/auth/AuthProvider.tsx';
 import { EntitlementsProvider } from '@/lib/auth/EntitlementsProvider.tsx';
 import { CHAIN_RPC_URLS } from '@/lib/rpcUrls';
+import { TronWalletProvider } from '@/lib/tron/TronWalletProvider';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -268,26 +269,28 @@ export default function App() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <EntitlementsProvider>
-            <BrowserRouter>
-              <Routes>
-                {/* Desktop Auth Route - Fullscreen outside main layout */}
-                <Route path="/auth" element={
-                  <ChunkLoadBoundary>
-                    <Suspense fallback={<AuthSkeleton />}>
-                      <AuthSeo />
-                      <AuthDesktop />
-                    </Suspense>
-                  </ChunkLoadBoundary>
-                } />
+        <TronWalletProvider>
+          <AuthProvider>
+            <EntitlementsProvider>
+              <BrowserRouter>
+                <Routes>
+                  {/* Desktop Auth Route - Fullscreen outside main layout */}
+                  <Route path="/auth" element={
+                    <ChunkLoadBoundary>
+                      <Suspense fallback={<AuthSkeleton />}>
+                        <AuthSeo />
+                        <AuthDesktop />
+                      </Suspense>
+                    </ChunkLoadBoundary>
+                  } />
 
-                {/* Main App Routes */}
-                <Route path="/*" element={<AppContent />} />
-              </Routes>
-            </BrowserRouter>
-          </EntitlementsProvider>
-        </AuthProvider>
+                  {/* Main App Routes */}
+                  <Route path="/*" element={<AppContent />} />
+                </Routes>
+              </BrowserRouter>
+            </EntitlementsProvider>
+          </AuthProvider>
+        </TronWalletProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

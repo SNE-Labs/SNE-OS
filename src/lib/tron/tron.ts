@@ -1,46 +1,16 @@
-type TronRequestMethod = 'tron_requestAccounts';
+import TronWeb from 'tronweb';
 
-type TronLinkProvider = {
-  ready?: boolean;
-  request?: (payload: { method: TronRequestMethod }) => Promise<unknown>;
-};
-
-type TronContractTransfer = {
-  send: (options?: Record<string, unknown>) => Promise<string>;
-};
-
-type TronContractInstance = {
-  transfer: (to: string, amount: string) => TronContractTransfer;
-};
-
-type TronContractFactory = {
-  at: (address: string) => Promise<TronContractInstance>;
-};
-
-type TronWebLike = {
-  defaultAddress?: {
-    base58?: string;
-    hex?: string;
-  };
-  contract: () => TronContractFactory;
-};
-
-type TronWindow = Window & {
-  tronLink?: TronLinkProvider;
-  tronWeb?: TronWebLike;
-};
-
-function getTronWindow(): TronWindow {
-  return window as TronWindow;
-}
-
-function resolveInjectedAddress(): string | null {
-  return getTronWindow().tronWeb?.defaultAddress?.base58?.trim() || null;
-}
+import type { SignedTransaction, Transaction } from '@tronweb3/tronwallet-abstract-adapter';
 
 function normalizeTxHash(value: string): string {
   const candidate = value.trim();
   return candidate.startsWith('0x') ? candidate.slice(2) : candidate;
+}
+
+function createTronWebClient(rpcUrl?: string | null) {
+  return new TronWeb({
+    fullHost: rpcUrl?.trim() || 'https://api.trongrid.io',
+  });
 }
 
 export function decimalToUnits(value: string, decimals: number): string {
@@ -68,76 +38,50 @@ export function decimalToUnits(value: string, decimals: number): string {
   return BigInt(combined).toString();
 }
 
-export async function connectTronWallet(): Promise<string> {
-  if (typeof window === 'undefined') {
-    throw new Error('TronLink não está disponível neste ambiente.');
-  }
-
-  const tronWindow = getTronWindow();
-  if (!tronWindow.tronLink && !tronWindow.tronWeb) {
-    throw new Error('TronLink não detectado. Instale ou desbloqueie a extensão.');
-  }
-
-  if (tronWindow.tronLink?.request) {
-    await tronWindow.tronLink.request({ method: 'tron_requestAccounts' });
-  }
-
-  const address = resolveInjectedAddress();
-  if (!address) {
-    throw new Error('Não foi possível obter a wallet Tron conectada.');
-  }
-
-  return address;
-}
-
-export function isTronLinkAvailable(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const tronWindow = getTronWindow();
-  return Boolean(tronWindow.tronLink || tronWindow.tronWeb);
-}
-
-export function getConnectedTronAddress(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return resolveInjectedAddress();
-}
-
-export async function sendUsdtTransfer(params: {
+export async function buildUsdtTransferTransaction(params: {
   contractAddress: string;
   to: string;
   amountUnits: string;
-  expectedFromAddress?: string | null;
-}): Promise<{ buyerAddress: string; txHash: string }> {
-  const buyerAddress = await connectTronWallet();
-  const expectedFromAddress = params.expectedFromAddress?.trim();
-  if (expectedFromAddress && buyerAddress !== expectedFromAddress) {
-    throw new Error(`A wallet Tron conectada não corresponde à buyer wallet vinculada (${expectedFromAddress}).`);
+  ownerAddress: string;
+  rpcUrl?: string | null;
+}): Promise<Transaction> {
+  const tronWeb = createTronWebClient(params.rpcUrl);
+  const transactionWrapper = await tronWeb.transactionBuilder.triggerSmartContract(
+    params.contractAddress,
+    'transfer(address,uint256)',
+    {
+      feeLimit: 100_000_000,
+      callValue: 0,
+    },
+    [
+      { type: 'address', value: params.to },
+      { type: 'uint256', value: params.amountUnits },
+    ],
+    params.ownerAddress
+  );
+
+  if (!transactionWrapper?.result?.result || !transactionWrapper.transaction) {
+    throw new Error(transactionWrapper?.result?.message || transactionWrapper?.Error || 'Falha ao montar a transação TRC-20.');
   }
 
-  const tronWindow = getTronWindow();
-  const contractFactory = tronWindow.tronWeb?.contract;
-  if (!contractFactory) {
-    throw new Error('TronWeb não foi injetado pela wallet.');
+  return transactionWrapper.transaction;
+}
+
+export async function broadcastSignedTransaction(params: {
+  signedTransaction: SignedTransaction;
+  rpcUrl?: string | null;
+}): Promise<{ txHash: string }> {
+  const tronWeb = createTronWebClient(params.rpcUrl);
+  const response = await tronWeb.trx.sendRawTransaction(params.signedTransaction as SignedTransaction);
+
+  if (!response?.result) {
+    throw new Error(response?.code || response?.message || 'Falha ao transmitir a transação Tron.');
   }
 
-  const contract = await contractFactory().at(params.contractAddress);
-  const txHash = await contract.transfer(params.to, params.amountUnits).send({
-    feeLimit: 100_000_000,
-    shouldPollResponse: false,
-  });
-
-  const normalizedTxHash = normalizeTxHash(txHash);
-  if (!normalizedTxHash) {
+  const txHash = normalizeTxHash(response.txid || params.signedTransaction.txID || '');
+  if (!txHash) {
     throw new Error('A transação Tron não retornou txHash.');
   }
 
-  return {
-    buyerAddress,
-    txHash: normalizedTxHash,
-  };
+  return { txHash };
 }
