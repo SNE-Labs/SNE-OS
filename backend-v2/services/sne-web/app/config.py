@@ -6,6 +6,19 @@ from urllib.parse import urlparse
 
 IS_DEV = os.getenv("FLASK_ENV", "development") != "production"
 
+
+def _env_int(name: str, fallback: int) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return fallback
+    candidate = raw_value.strip()
+    if not candidate:
+        return fallback
+    try:
+        return int(candidate)
+    except ValueError:
+        return fallback
+
 def _parse_chain_ids(value: str | None, fallback: tuple[int, ...]) -> tuple[int, ...]:
     if not value:
         return fallback
@@ -50,12 +63,12 @@ class Config:
     # SIWE Configuration
     SIWE_DOMAIN = os.getenv("SIWE_DOMAIN", "snelabs.space")
     SIWE_ORIGIN = os.getenv("SIWE_ORIGIN", "https://snelabs.space")
-    SIWE_CHAIN_ID = int(os.getenv("SIWE_CHAIN_ID", 42161))
+    SIWE_CHAIN_ID = _env_int("SIWE_CHAIN_ID", 42161)
     SIWE_ALLOWED_CHAIN_IDS = _parse_chain_ids(
         os.getenv("SIWE_ALLOWED_CHAIN_IDS"),
         (42161, 421614, 1, 10, 137, 8453, 534352),
     )
-    SIWE_MAX_CLOCK_SKEW_SECONDS = int(os.getenv("SIWE_MAX_CLOCK_SKEW_SECONDS", 300))
+    SIWE_MAX_CLOCK_SKEW_SECONDS = _env_int("SIWE_MAX_CLOCK_SKEW_SECONDS", 300)
 
     # Session configuration
     SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "sne_session")
@@ -68,7 +81,7 @@ class Config:
 
     # Redis
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_PORT = _env_int("REDIS_PORT", 6379)
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
     REDIS_DB = 0
     REDIS_URL = os.getenv("REDIS_URL")
@@ -118,7 +131,19 @@ class Config:
     TRON_RPC_URL = os.getenv("TRON_RPC_URL")
     TRON_USDT_CONTRACT = os.getenv("TRON_USDT_CONTRACT")
     TRON_TREASURY_ADDRESS = os.getenv("TRON_TREASURY_ADDRESS")
-    TRON_USDT_DECIMALS = int(os.getenv("TRON_USDT_DECIMALS", 6))
+    TRON_USDT_DECIMALS = _env_int("TRON_USDT_DECIMALS", 6)
+    TRON_API_KEY = os.getenv("TRON_API_KEY")
+    TRON_WEBHOOK_SECRET = os.getenv("TRON_WEBHOOK_SECRET")
+    TRON_HTTP_TIMEOUT_SECONDS = _env_int("TRON_HTTP_TIMEOUT_SECONDS", 20)
+    SNE_ACTIVATION_PRIVATE_KEY = os.getenv("SNE_ACTIVATION_PRIVATE_KEY", os.getenv("DEPLOYER_PRIVATE_KEY"))
+    SNE_ACTIVATION_CONFIRMATIONS = _env_int("SNE_ACTIVATION_CONFIRMATIONS", 1)
+    SNE_ACTIVATION_MINT_AMOUNT = _env_int("SNE_ACTIVATION_MINT_AMOUNT", 1)
+    SNE_ACTIVATION_RESTORE_CONTROLLER = os.getenv("SNE_ACTIVATION_RESTORE_CONTROLLER", "true").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
     SIWE_ALLOWED_ORIGINS = tuple(
         origin

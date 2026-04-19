@@ -81,6 +81,11 @@ export type CancelCheckoutOrderPayload = {
   reason?: string;
 };
 
+export type ReconcileTronPaymentPayload = {
+  txHash: string;
+  autoProcess?: boolean;
+};
+
 export const checkoutApi = {
   createOrder: (payload: CreateCheckoutOrderPayload = {}): Promise<CheckoutOrder> =>
     apiPost('/api/checkout/orders', payload),
@@ -90,4 +95,10 @@ export const checkoutApi = {
     apiPost(`/api/checkout/orders/${encodeURIComponent(orderId)}/tron-session`, payload),
   cancelOrder: (orderId: string, payload: CancelCheckoutOrderPayload = {}): Promise<CheckoutOrder> =>
     apiPost(`/api/checkout/orders/${encodeURIComponent(orderId)}/cancel`, payload),
+  reconcileTronPayment: (orderId: string, payload: ReconcileTronPaymentPayload): Promise<CheckoutOrder> =>
+    apiPost(`/api/payments/tron/reconcile/${encodeURIComponent(orderId)}`, payload),
+  processActivation: (orderId: string): Promise<CheckoutOrder> =>
+    apiPost(`/api/activations/${encodeURIComponent(orderId)}/process`, {}),
+  retryActivation: (orderId: string): Promise<CheckoutOrder> =>
+    apiPost(`/api/activations/${encodeURIComponent(orderId)}/retry`, {}),
 };

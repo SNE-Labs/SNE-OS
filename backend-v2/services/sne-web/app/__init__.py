@@ -88,6 +88,8 @@ def create_app():
     from .keys_api import keys_bp
     from .swaps_api import swaps_bp
     from .checkout_api import checkout_bp
+    from .payments_tron_api import payments_tron_bp
+    from .activations_api import activations_bp
     from .networks_api import networks_bp
     from .radar_api import radar_bp
     from .secrets_api import secrets_bp
@@ -110,6 +112,8 @@ def create_app():
     app.register_blueprint(keys_bp, url_prefix="/api/keys")
     app.register_blueprint(swaps_bp, url_prefix="/api/swaps")
     app.register_blueprint(checkout_bp, url_prefix="/api/checkout")
+    app.register_blueprint(payments_tron_bp, url_prefix="/api/payments/tron")
+    app.register_blueprint(activations_bp, url_prefix="/api/activations")
     app.register_blueprint(networks_bp, url_prefix="/api/networks")
     app.register_blueprint(radar_bp, url_prefix="/api/radar")
     app.register_blueprint(secrets_bp, url_prefix="/api/secrets")

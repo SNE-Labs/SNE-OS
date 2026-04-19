@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Copy, Loader2, RefreshCcw, ShieldCheck, ShoppingCart, Trash2 } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { connectTronWallet, decimalToUnits, sendUsdtTransfer } from '@/lib/tron/tron';
 import {
   useCancelCheckoutOrder,
   useCheckoutOrder,
   useCreateCheckoutOrder,
   useCreateTronSession,
+  useProcessActivation,
+  useReconcileTronPayment,
+  useRetryActivation,
 } from '../../../hooks/useCheckoutData';
 
 type OperatorCheckoutCardProps = {
@@ -66,6 +70,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
   const [targetArbitrumAddress, setTargetArbitrumAddress] = useState('');
   const [buyerTronAddress, setBuyerTronAddress] = useState('');
+  const [manualTxHash, setManualTxHash] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
@@ -76,6 +81,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const createOrderMutation = useCreateCheckoutOrder();
   const bindTronMutation = useCreateTronSession();
   const cancelOrderMutation = useCancelCheckoutOrder();
+  const reconcilePaymentMutation = useReconcileTronPayment();
+  const processActivationMutation = useProcessActivation();
+  const retryActivationMutation = useRetryActivation();
 
   useEffect(() => {
     if (!address) {
@@ -114,6 +122,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (order.buyerTronAddress) {
       setBuyerTronAddress(order.buyerTronAddress);
     }
+    if (order.paymentTxHash) {
+      setManualTxHash(order.paymentTxHash);
+    }
   }, [order]);
 
   useEffect(() => {
@@ -125,6 +136,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const isCreating = createOrderMutation.isPending;
   const isBindingTron = bindTronMutation.isPending;
   const isCancelling = cancelOrderMutation.isPending;
+  const isReconciling = reconcilePaymentMutation.isPending;
+  const isProcessingActivation = processActivationMutation.isPending;
+  const isRetryingActivation = retryActivationMutation.isPending;
   const orderStatusTone = statusTone(order?.status);
   const hasTrackedOrder = Boolean(trackedOrderId);
   const canStartNewOrder = isConnected && isAuthenticated && !effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status));
@@ -158,18 +172,112 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (!trackedOrderId) return;
     try {
       setFeedback(null);
+      const connectedTronAddress = await connectTronWallet();
+      const resolvedBuyerAddress = buyerTronAddress.trim() || connectedTronAddress;
+      if (resolvedBuyerAddress !== connectedTronAddress) {
+        throw new Error(`A wallet Tron conectada não coincide com a buyer wallet informada (${resolvedBuyerAddress}).`);
+      }
       const updatedOrder = await bindTronMutation.mutateAsync({
         orderId: trackedOrderId,
         payload: {
-          buyerTronAddress,
+          buyerTronAddress: resolvedBuyerAddress,
           walletProvider: 'tronlink',
           gasMode: 'gasfree_planned',
         },
       });
       setTrackedOrderId(updatedOrder.id);
+      setBuyerTronAddress(resolvedBuyerAddress);
       setFeedback('Wallet Tron vinculada. A ordem agora está pronta para o pagamento em USDT.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao vincular a wallet Tron.');
+    }
+  }
+
+  async function handlePayWithTronLink() {
+    if (!trackedOrderId || !order?.payment.assetContract || !order.payment.treasuryAddress) return;
+    try {
+      setFeedback(null);
+      const amountUnits = decimalToUnits(order.payment.expectedAmount, order.payment.assetDecimals);
+      const payment = await sendUsdtTransfer({
+        contractAddress: order.payment.assetContract,
+        to: order.payment.treasuryAddress,
+        amountUnits,
+        expectedFromAddress: order.buyerTronAddress,
+      });
+      setManualTxHash(payment.txHash);
+
+      const updatedOrder = await reconcilePaymentMutation.mutateAsync({
+        orderId: trackedOrderId,
+        payload: {
+          txHash: payment.txHash,
+          autoProcess: true,
+        },
+      });
+
+      if (updatedOrder.status === 'activated') {
+        setFeedback('Pagamento Tron confirmado e Operator Key ativado em Arbitrum.');
+        return;
+      }
+
+      if (updatedOrder.status === 'activation_failed') {
+        setFeedback(updatedOrder.errorMessage || 'Pagamento confirmado, mas a ativação falhou. Tente o retry.');
+        return;
+      }
+
+      setFeedback('Pagamento Tron enviado. O backend reconciliou a ordem e iniciou a ativação em Arbitrum.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao pagar com TronLink.');
+    }
+  }
+
+  async function handleManualReconcile() {
+    if (!trackedOrderId || !manualTxHash.trim()) return;
+    try {
+      setFeedback(null);
+      const updatedOrder = await reconcilePaymentMutation.mutateAsync({
+        orderId: trackedOrderId,
+        payload: {
+          txHash: manualTxHash.trim(),
+          autoProcess: true,
+        },
+      });
+      if (updatedOrder.status === 'activated') {
+        setFeedback('Pagamento reconciliado e ativação concluída.');
+        return;
+      }
+      setFeedback(updatedOrder.errorMessage || 'Reconciliação executada. Atualize a ordem para acompanhar o status.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao reconciliar a transação Tron.');
+    }
+  }
+
+  async function handleProcessActivation() {
+    if (!trackedOrderId) return;
+    try {
+      setFeedback(null);
+      const updatedOrder = await processActivationMutation.mutateAsync({ orderId: trackedOrderId });
+      if (updatedOrder.status === 'activated') {
+        setFeedback('Ativação concluída em Arbitrum.');
+        return;
+      }
+      setFeedback(updatedOrder.errorMessage || 'A ativação foi reenviada para processamento.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao processar a ativação.');
+    }
+  }
+
+  async function handleRetryActivation() {
+    if (!trackedOrderId) return;
+    try {
+      setFeedback(null);
+      const updatedOrder = await retryActivationMutation.mutateAsync({ orderId: trackedOrderId });
+      if (updatedOrder.status === 'activated') {
+        setFeedback('Retry concluído. Operator Key ativado em Arbitrum.');
+        return;
+      }
+      setFeedback(updatedOrder.errorMessage || 'Retry enviado. Atualize a ordem para acompanhar o status.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao reenviar a ativação.');
     }
   }
 
@@ -280,11 +388,44 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             {order?.status === 'created' ? (
               <button
                 onClick={() => void handleBindTronSession()}
-                disabled={!buyerTronAddress || isBindingTron}
+                disabled={isBindingTron}
                 className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
                 style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
               >
                 {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
+              </button>
+            ) : null}
+
+            {order?.status === 'awaiting_payment' ? (
+              <button
+                onClick={() => void handlePayWithTronLink()}
+                disabled={isReconciling}
+                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
+                style={{ backgroundColor: 'var(--accent-orange)', color: '#161616' }}
+              >
+                {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
+              </button>
+            ) : null}
+
+            {(order?.status === 'payment_confirmed' || order?.status === 'activation_pending') ? (
+              <button
+                onClick={() => void handleProcessActivation()}
+                disabled={isProcessingActivation}
+                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
+                style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
+              >
+                {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
+              </button>
+            ) : null}
+
+            {order?.status === 'activation_failed' ? (
+              <button
+                onClick={() => void handleRetryActivation()}
+                disabled={isRetryingActivation}
+                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
+                style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
+              >
+                {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
               </button>
             ) : null}
 
@@ -377,6 +518,14 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                   <span style={{ color: 'var(--text-3)' }}>Target</span>
                   <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.targetArbitrumAddress)}</span>
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-3)' }}>Payment tx</span>
+                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.paymentTxHash)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span style={{ color: 'var(--text-3)' }}>Activation tx</span>
+                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.activationTxHash)}</span>
+                </div>
               </div>
             ) : (
               <div className="text-sm" style={{ color: 'var(--text-2)' }}>
@@ -423,8 +572,31 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
             </div>
 
+            {order && !order.paymentTxHash ? (
+              <div className="rounded-lg px-3 py-2 mt-3" style={{ backgroundColor: 'var(--bg-2)' }}>
+                <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tron tx hash manual</div>
+                <input
+                  value={manualTxHash}
+                  onChange={(event) => setManualTxHash(event.target.value)}
+                  placeholder="0x... ou hash Tron"
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => void handleManualReconcile()}
+                    disabled={!manualTxHash.trim() || isReconciling}
+                    className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+                  >
+                    {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="text-xs mt-3" style={{ color: 'var(--text-3)' }}>
-              Esta tela ainda não envia a transação em Tron. Ela prepara a ordem e os metadados que o `PR 5` vai reconciliar.
+              Esta tela agora consegue pagar com `TronLink`, reconciliar o `txHash` e disparar a ativação em Arbitrum.
             </div>
           </div>
 
@@ -433,7 +605,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               <div className="flex items-start gap-2">
                 <ArrowUpRight className="w-4 h-4 mt-0.5" style={{ color: 'var(--accent-orange)' }} />
                 <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  A ordem já está pronta para pagamento. O próximo PR vai conectar `TronLink`, detectar o `txHash` e disparar a ativação em Arbitrum.
+                  A ordem já está pronta para pagamento. Use `Pagar com TronLink` ou reconcilie manualmente um `txHash` já enviado.
                 </div>
               </div>
             </div>
