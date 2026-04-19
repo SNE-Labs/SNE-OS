@@ -1,6 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Copy, Loader2, RefreshCcw, ShieldCheck, ShoppingCart, Trash2 } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  CheckCircle2,
+  Coins,
+  Copy,
+  Link2,
+  Loader2,
+  RefreshCcw,
+  ShieldCheck,
+  ShoppingCart,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
 
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../ui/drawer';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { connectTronWallet, decimalToUnits, sendUsdtTransfer } from '@/lib/tron/tron';
 import {
@@ -12,12 +28,49 @@ import {
   useReconcileTronPayment,
   useRetryActivation,
 } from '../../../hooks/useCheckoutData';
+import type { CheckoutOrder, CheckoutOrderStatus } from '../../../services/checkout-api';
 
 type OperatorCheckoutCardProps = {
   effectiveAccess: boolean;
 };
 
-const FINAL_ORDER_STATUSES = new Set(['activated', 'cancelled', 'refunded']);
+type FlowStage = 'auth' | 'create' | 'bind' | 'payment' | 'activation' | 'success';
+type FlowStepState = 'complete' | 'current' | 'upcoming' | 'error';
+
+type FlowStep = {
+  id: 'session' | 'order' | 'tron' | 'activation';
+  label: string;
+  detail: string;
+  state: FlowStepState;
+};
+
+type StepCardProps = {
+  step: FlowStep;
+};
+
+type StageActionButtonProps = {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  tone?: 'primary' | 'secondary' | 'danger';
+};
+
+type DetailRowProps = {
+  label: string;
+  value?: string | null;
+  onCopy?: () => void;
+};
+
+const FINAL_ORDER_STATUSES = new Set<CheckoutOrderStatus>(['activated', 'cancelled', 'refunded']);
+const ACTIVE_ORDER_STATUSES = new Set<CheckoutOrderStatus>([
+  'created',
+  'awaiting_payment',
+  'payment_seen',
+  'payment_confirmed',
+  'activation_pending',
+  'activation_submitted',
+  'activation_failed',
+]);
 
 function checkoutStorageKey(address?: string | null) {
   return address ? `sne:checkout:operator:${address.toLowerCase()}` : null;
@@ -65,14 +118,268 @@ function shortValue(value?: string | null) {
   return `${value.slice(0, 10)}...${value.slice(-6)}`;
 }
 
+function resolveFlowStage({
+  effectiveAccess,
+  isAuthenticated,
+  order,
+}: {
+  effectiveAccess: boolean;
+  isAuthenticated: boolean;
+  order?: CheckoutOrder | null;
+}): FlowStage {
+  if (effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status) || order.status === 'activated')) {
+    return 'success';
+  }
+  if (!isAuthenticated) return 'auth';
+  if (!order || FINAL_ORDER_STATUSES.has(order.status)) return 'create';
+  if (order.status === 'created') return 'bind';
+  if (order.status === 'awaiting_payment' || order.status === 'payment_seen') return 'payment';
+  if (
+    order.status === 'payment_confirmed' ||
+    order.status === 'activation_pending' ||
+    order.status === 'activation_submitted' ||
+    order.status === 'activation_failed'
+  ) {
+    return 'activation';
+  }
+  if (order.status === 'activated') return 'success';
+  return 'create';
+}
+
+function buildFlowSteps({
+  isAuthenticated,
+  order,
+  flowStage,
+}: {
+  isAuthenticated: boolean;
+  order?: CheckoutOrder | null;
+  flowStage: FlowStage;
+}): FlowStep[] {
+  const hasOrder = Boolean(order && !FINAL_ORDER_STATUSES.has(order.status));
+  const hasTronBinding = Boolean(
+    order &&
+      (order.status === 'awaiting_payment' ||
+        order.status === 'payment_seen' ||
+        order.status === 'payment_confirmed' ||
+        order.status === 'activation_pending' ||
+        order.status === 'activation_submitted' ||
+        order.status === 'activation_failed' ||
+        order.status === 'activated')
+  );
+  const activationFailed = order?.status === 'activation_failed';
+  const activationActive = Boolean(
+    order &&
+      (order.status === 'payment_confirmed' ||
+        order.status === 'activation_pending' ||
+        order.status === 'activation_submitted' ||
+        order.status === 'activation_failed')
+  );
+
+  return [
+    {
+      id: 'session',
+      label: 'Sessão',
+      detail: 'EVM + SIWE',
+      state: isAuthenticated ? 'complete' : flowStage === 'auth' ? 'current' : 'upcoming',
+    },
+    {
+      id: 'order',
+      label: 'Ordem',
+      detail: 'ActivationOrder',
+      state: hasOrder || order?.status === 'activated' ? 'complete' : flowStage === 'create' ? 'current' : 'upcoming',
+    },
+    {
+      id: 'tron',
+      label: 'Tron',
+      detail: 'Wallet + USDT',
+      state: hasTronBinding || order?.status === 'activated' ? 'complete' : flowStage === 'bind' || flowStage === 'payment' ? 'current' : 'upcoming',
+    },
+    {
+      id: 'activation',
+      label: 'Arbitrum',
+      detail: 'Mint do Key',
+      state: order?.status === 'activated' ? 'complete' : activationFailed ? 'error' : activationActive ? 'current' : 'upcoming',
+    },
+  ];
+}
+
+function stepStyles(state: FlowStepState) {
+  if (state === 'complete') {
+    return { bg: 'rgba(50,213,131,0.12)', border: 'rgba(50,213,131,0.22)', color: 'var(--ok-green)' };
+  }
+  if (state === 'current') {
+    return { bg: 'rgba(255,140,66,0.12)', border: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' };
+  }
+  if (state === 'error') {
+    return { bg: 'rgba(255,99,99,0.10)', border: 'rgba(255,99,99,0.20)', color: 'var(--danger)' };
+  }
+  return { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', color: 'var(--text-3)' };
+}
+
+function stageCopy(flowStage: FlowStage, order?: CheckoutOrder | null) {
+  if (flowStage === 'auth') {
+    return {
+      eyebrow: 'Sessão soberana',
+      title: 'Autentique a wallet EVM que vai receber a ativação.',
+      description: 'A ordem nasce vinculada à sessão autenticada. Sem SIWE, o checkout não consegue ancorar o target Arbitrum com segurança.',
+    };
+  }
+  if (flowStage === 'create') {
+    return {
+      eyebrow: 'Preparação',
+      title: 'Defina o destino da ativação antes de criar a ordem.',
+      description: 'O pagamento acontece em Tron, mas o direito só nasce depois do mint em Arbitrum. Esta tela fixa o target da ativação.',
+    };
+  }
+  if (flowStage === 'bind') {
+    return {
+      eyebrow: 'Vínculo Tron',
+      title: 'Conecte a wallet Tron que vai pagar em USDT.',
+      description: 'A buyer wallet fica registrada na ordem. O reconcile só aceita um `txHash` que saia desse endereço para a treasury correta.',
+    };
+  }
+  if (flowStage === 'payment') {
+    return {
+      eyebrow: 'Rail de pagamento',
+      title: 'Pague em Tron e entregue o `txHash` para a reconciliação.',
+      description: 'O fluxo já consegue abrir a TronLink, transferir USDT para a treasury e disparar a prova de pagamento no backend.',
+    };
+  }
+  if (flowStage === 'activation') {
+    return {
+      eyebrow: 'Rail de ativação',
+      title: order?.status === 'activation_failed' ? 'O pagamento entrou. Falta concluir o mint em Arbitrum.' : 'O pagamento já foi aceito. Agora a ordem entra na camada de ativação.',
+      description: 'Esta etapa valida o recebimento em Tron, resolve o signer correto e executa a ativação do Operator Key na target wallet.',
+    };
+  }
+  return {
+    eyebrow: 'Entrega concluída',
+    title: 'Operator Key pronto para esta sessão.',
+    description: 'O checkout fechou o rail financeiro em Tron e a ativação soberana em Arbitrum. A wallet agora herda a classe Operator.',
+  };
+}
+
+function cardSynopsis({
+  effectiveAccess,
+  isAuthenticated,
+  order,
+}: {
+  effectiveAccess: boolean;
+  isAuthenticated: boolean;
+  order?: CheckoutOrder | null;
+}) {
+  if (effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status) || order.status === 'activated')) {
+    return 'A sessão já está em classe Operator. O modal agora funciona como uma superfície premium para revisar estado, txs e próximos movimentos.';
+  }
+  if (!isAuthenticated) {
+    return 'Abra o modal para autenticar a sessão EVM e iniciar uma ActivationOrder com contexto completo de pagamento e ativação.';
+  }
+  if (!order || FINAL_ORDER_STATUSES.has(order.status)) {
+    return 'Nenhuma ordem ativa nesta sessão. O novo modal conduz a criação da ordem, o vínculo da wallet Tron e a ativação final em Arbitrum em telas separadas.';
+  }
+  if (order.status === 'created') {
+    return 'A ordem já existe. Falta vincular a wallet Tron que vai pagar em USDT.';
+  }
+  if (order.status === 'awaiting_payment' || order.status === 'payment_seen') {
+    return 'A ordem está pronta para pagamento. O modal concentra treasury, contrato USDT, CTA da TronLink e reconcile manual do `txHash`.';
+  }
+  if (order.status === 'activation_failed') {
+    return order.errorMessage || 'O pagamento foi aceito, mas a ativação falhou. O modal expõe o erro e o retry em uma etapa isolada.';
+  }
+  if (order.status === 'activated') {
+    return 'Ativação concluída. O rail financeiro e o mint soberano já fecharam para esta sessão.';
+  }
+  return 'O pagamento já entrou. O modal acompanha a entrega do Key em Arbitrum e mostra o estado da ativação em tempo real.';
+}
+
+function primaryLauncherLabel({
+  effectiveAccess,
+  order,
+}: {
+  effectiveAccess: boolean;
+  order?: CheckoutOrder | null;
+}) {
+  if (effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status) || order.status === 'activated')) {
+    return 'Revisar estado do Operator';
+  }
+  if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
+    return 'Continuar ativação premium';
+  }
+  return 'Abrir checkout premium';
+}
+
+function StepCard({ step }: StepCardProps) {
+  const tone = stepStyles(step.state);
+
+  return (
+    <div
+      className="rounded-xl px-3 py-3"
+      style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: tone.color }}>
+          {step.label}
+        </div>
+        <div
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 6px ${tone.bg}` : 'none' }}
+        />
+      </div>
+      <div className="mt-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+        {step.detail}
+      </div>
+    </div>
+  );
+}
+
+function StageActionButton({ children, onClick, disabled, tone = 'primary' }: StageActionButtonProps) {
+  const style =
+    tone === 'primary'
+      ? { backgroundColor: 'var(--accent-orange)', color: '#161616', borderColor: 'transparent' }
+      : tone === 'danger'
+        ? { backgroundColor: 'rgba(255,99,99,0.10)', color: 'var(--danger)', borderColor: 'rgba(255,99,99,0.20)' }
+        : { backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', borderColor: 'var(--stroke-1)' };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-xl px-4 py-3 text-sm font-medium disabled:opacity-60"
+      style={{ borderWidth: '1px', ...style }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DetailRow({ label, value, onCopy }: DetailRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span style={{ color: 'var(--text-3)' }}>{label}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>
+          {value || '--'}
+        </span>
+        {onCopy ? (
+          <button onClick={onCopy} className="shrink-0" style={{ color: 'var(--text-3)' }}>
+            <Copy className="w-4 h-4" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardProps) {
   const { address, isConnected, isAuthenticated, authStatus, connect } = useAuth();
+  const isMobile = useIsMobile();
   const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
   const [targetArbitrumAddress, setTargetArbitrumAddress] = useState('');
   const [buyerTronAddress, setBuyerTronAddress] = useState('');
   const [manualTxHash, setManualTxHash] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [isFlowOpen, setIsFlowOpen] = useState(false);
 
   const storageKey = useMemo(() => checkoutStorageKey(address), [address]);
   const orderQuery = useCheckoutOrder(trackedOrderId);
@@ -142,6 +449,10 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const orderStatusTone = statusTone(order?.status);
   const hasTrackedOrder = Boolean(trackedOrderId);
   const canStartNewOrder = isConnected && isAuthenticated && !effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status));
+  const flowStage = resolveFlowStage({ effectiveAccess, isAuthenticated, order });
+  const steps = buildFlowSteps({ isAuthenticated, order, flowStage });
+  const stageMeta = stageCopy(flowStage, order);
+  const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
 
   async function handleAuthenticate() {
     try {
@@ -298,6 +609,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   function clearTrackedOrder() {
     setTrackedOrderId(null);
     setBuyerTronAddress('');
+    setManualTxHash('');
     setFeedback('Rastreamento local limpo. A ordem continua persistida no backend.');
   }
 
@@ -311,343 +623,549 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     }
   }
 
-  return (
-    <div
-      className="rounded-xl p-4"
-      style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text-2)' }}>
-            Checkout Operator
-          </div>
-          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-            Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key.
-          </div>
+  const rightRail = (
+    <div className="space-y-3">
+      <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+          <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Snapshot da ordem</div>
         </div>
-        <div
-          className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.14em]"
-          style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
-        >
-          {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
+        <div className="space-y-2 text-sm">
+          <DetailRow label="Status" value={order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : '--'} />
+          <DetailRow label="Order" value={shortValue(order?.id)} onCopy={order?.id ? () => void copyValue(order.id, 'Order') : undefined} />
+          <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} onCopy={() => void copyValue(order?.targetArbitrumAddress || targetArbitrumAddress, 'Target')} />
+          <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} onCopy={order?.buyerTronAddress || buyerTronAddress ? () => void copyValue(order?.buyerTronAddress || buyerTronAddress, 'Buyer') : undefined} />
+          <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} onCopy={order?.payment.expectedAmount ? () => void copyValue(order.payment.expectedAmount, 'Valor') : undefined} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-4">
-        <div className="space-y-3">
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Target Arbitrum</div>
+      <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
+        <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+          Rail design
+        </div>
+        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+          Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key. O modal separa cada uma dessas superfícies para reduzir ruído operacional.
+        </div>
+      </div>
+
+      {hasTrackedOrder ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <StageActionButton onClick={() => void orderQuery.refetch()}>
+            Atualizar ordem
+          </StageActionButton>
+          {order && !FINAL_ORDER_STATUSES.has(order.status) ? (
+            <StageActionButton onClick={() => void handleCancelOrder()} disabled={isCancelling} tone="danger">
+              {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
+            </StageActionButton>
+          ) : (
+            <StageActionButton onClick={clearTrackedOrder}>
+              Limpar rastreamento
+            </StageActionButton>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const feedbackSurface = feedback || copyFeedback ? (
+    <div
+      className="rounded-2xl p-4 text-sm"
+      style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}
+    >
+      {feedback || copyFeedback}
+    </div>
+  ) : null;
+
+  const stageContent = (() => {
+    if (flowStage === 'auth') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Wallet className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Sessão EVM</div>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                {address
+                  ? `Wallet detectada: ${shortValue(address)}. Falta concluir a autenticação SIWE para abrir o rail da ordem.`
+                  : 'Nenhuma wallet autenticada ainda. O checkout pede conexão e assinatura antes de criar a ordem.'}
+              </div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldCheck className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Por que isso vem primeiro</div>
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                A `ActivationOrder` precisa nascer vinculada à wallet EVM correta. Isso define o target inicial e evita ativação em sessão errada.
+              </div>
+            </div>
+          </div>
+          {feedbackSurface}
+          <div className="flex flex-wrap gap-2">
+            <StageActionButton onClick={() => void handleAuthenticate()} disabled={authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying'}>
+              {authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying' ? 'Autenticando...' : 'Autenticar EVM'}
+            </StageActionButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (flowStage === 'create') {
+      return (
+        <div className="space-y-4">
+          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+              Target Arbitrum
+            </div>
             <input
               value={targetArbitrumAddress}
               onChange={(event) => setTargetArbitrumAddress(event.target.value)}
               placeholder="0x..."
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl px-3 py-3 text-sm outline-none"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-              disabled={Boolean(order)}
+              disabled={Boolean(order && !FINAL_ORDER_STATUSES.has(order.status))}
             />
-            <div className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>
-              A compra em Tron não concede premium sozinha. O direito nasce apenas depois da ativação em Arbitrum.
+            <div className="text-sm mt-3" style={{ color: 'var(--text-2)' }}>
+              A compra em Tron não concede premium sozinha. O direito só nasce depois da ativação do Key neste endereço.
             </div>
           </div>
 
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Buyer Tron Address</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Produto</div>
+              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Operator Key</div>
+              <div className="text-sm mt-2" style={{ color: 'var(--text-2)' }}>
+                A ordem vai abrir o rail Tron para pagamento em USDT e reservar a ativação em Arbitrum.
+              </div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Preço esperado</div>
+              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>100.000000 USDT</div>
+              <div className="text-sm mt-2" style={{ color: 'var(--text-2)' }}>
+                A ordem gera os metadados do checkout e prepara o reconcile do `txHash`.
+              </div>
+            </div>
+          </div>
+
+          {feedbackSurface}
+
+          <div className="flex flex-wrap gap-2">
+            <StageActionButton onClick={() => void handleCreateOrder()} disabled={!canStartNewOrder || isCreating}>
+              {isCreating ? 'Criando ordem...' : 'Criar ActivationOrder'}
+            </StageActionButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (flowStage === 'bind') {
+      return (
+        <div className="space-y-4">
+          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+              Buyer Tron Address
+            </div>
             <input
               value={buyerTronAddress}
               onChange={(event) => setBuyerTronAddress(event.target.value)}
               placeholder="T..."
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl px-3 py-3 text-sm outline-none"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-              disabled={order?.status !== 'created' && order?.status !== undefined}
             />
-            <div className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>
-              Use a wallet TronLink que fará o pagamento em `USDT`.
+            <div className="text-sm mt-3" style={{ color: 'var(--text-2)' }}>
+              Se o campo estiver vazio, o fluxo usa o endereço conectado pela TronLink. Se estiver preenchido, ele precisa coincidir com a wallet aberta.
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {!isAuthenticated ? (
-              <button
-                onClick={() => void handleAuthenticate()}
-                className="rounded-lg px-4 py-2 text-sm font-medium"
-                style={{ backgroundColor: 'var(--accent-orange)', color: '#161616' }}
-              >
-                {authStatus === 'connecting' || authStatus === 'signing' || authStatus === 'verifying' ? 'Autenticando...' : 'Autenticar EVM'}
-              </button>
-            ) : canStartNewOrder ? (
-              <button
-                onClick={() => void handleCreateOrder()}
-                disabled={isCreating}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'var(--accent-orange)', color: '#161616' }}
-              >
-                {isCreating ? 'Criando ordem...' : 'Criar ActivationOrder'}
-              </button>
-            ) : null}
-
-            {order?.status === 'created' ? (
-              <button
-                onClick={() => void handleBindTronSession()}
-                disabled={isBindingTron}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
-              >
-                {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
-              </button>
-            ) : null}
-
-            {order?.status === 'awaiting_payment' ? (
-              <button
-                onClick={() => void handlePayWithTronLink()}
-                disabled={isReconciling}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'var(--accent-orange)', color: '#161616' }}
-              >
-                {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
-              </button>
-            ) : null}
-
-            {(order?.status === 'payment_confirmed' || order?.status === 'activation_pending') ? (
-              <button
-                onClick={() => void handleProcessActivation()}
-                disabled={isProcessingActivation}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
-              >
-                {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
-              </button>
-            ) : null}
-
-            {order?.status === 'activation_failed' ? (
-              <button
-                onClick={() => void handleRetryActivation()}
-                disabled={isRetryingActivation}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'rgba(255,140,66,0.12)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.24)', color: 'var(--accent-orange)' }}
-              >
-                {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
-              </button>
-            ) : null}
-
-            {hasTrackedOrder ? (
-              <button
-                onClick={() => void orderQuery.refetch()}
-                className="rounded-lg px-4 py-2 text-sm font-medium"
-                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-              >
-                Atualizar ordem
-              </button>
-            ) : null}
-
-            {order && !FINAL_ORDER_STATUSES.has(order.status) ? (
-              <button
-                onClick={() => void handleCancelOrder()}
-                disabled={isCancelling}
-                className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
-                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,99,99,0.20)', color: 'var(--danger)' }}
-              >
-                {isCancelling ? 'Cancelando...' : 'Cancelar ordem'}
-              </button>
-            ) : null}
-
-            {order && FINAL_ORDER_STATUSES.has(order.status) ? (
-              <button
-                onClick={clearTrackedOrder}
-                className="rounded-lg px-4 py-2 text-sm font-medium"
-                style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-              >
-                Nova ordem
-              </button>
-            ) : null}
+          <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Vínculo de sessão Tron</div>
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+              Esta etapa não envia USDT ainda. Ela só fixa a wallet pagadora e prepara a ordem para o rail financeiro.
+            </div>
           </div>
 
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="text-[11px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>Trilha operacional</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-1)' }}>1. Ordem</div>
-                Criar a `ActivationOrder` ligada à wallet EVM autenticada.
+          {feedbackSurface}
+
+          <div className="flex flex-wrap gap-2">
+            <StageActionButton onClick={() => void handleBindTronSession()} disabled={isBindingTron}>
+              {isBindingTron ? 'Vinculando...' : 'Vincular TronLink'}
+            </StageActionButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (flowStage === 'payment') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Treasury Tron</div>
+              <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.treasuryAddress ?? '--'}</div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Valor esperado</div>
+              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>{order?.payment.expectedAmount ?? '100.000000'} USDT</div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>USDT contract</div>
+              <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.assetContract ?? '--'}</div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Pagamento guiado</div>
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+              `Pagar com TronLink` executa a transferência para a treasury e já envia o `txHash` ao backend. Se você pagou fora do modal, use o reconcile manual abaixo.
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+              Reconcile manual do `txHash`
+            </div>
+            <input
+              value={manualTxHash}
+              onChange={(event) => setManualTxHash(event.target.value)}
+              placeholder="Hash da transação Tron"
+              className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+            />
+            <div className="text-sm mt-3" style={{ color: 'var(--text-2)' }}>
+              Use esta via se o pagamento já foi enviado e você só precisa provar a transação para a ordem.
+            </div>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <StageActionButton onClick={() => void handleManualReconcile()} disabled={!manualTxHash.trim() || isReconciling} tone="secondary">
+                {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
+              </StageActionButton>
+            </div>
+          </div>
+
+          {feedbackSurface}
+
+          <div className="flex flex-wrap gap-2">
+            <StageActionButton onClick={() => void handlePayWithTronLink()} disabled={isReconciling}>
+              {isReconciling ? 'Confirmando pagamento...' : 'Pagar com TronLink'}
+            </StageActionButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (flowStage === 'activation') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Payment tx</div>
+              <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.paymentTxHash ?? '--'}</div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Activation tx</div>
+              <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.activationTxHash ?? '--'}</div>
+            </div>
+          </div>
+
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              backgroundColor: order?.status === 'activation_failed' ? 'rgba(255,99,99,0.08)' : 'rgba(255,140,66,0.08)',
+              borderWidth: '1px',
+              borderColor: order?.status === 'activation_failed' ? 'rgba(255,99,99,0.18)' : 'rgba(255,140,66,0.18)',
+            }}
+          >
+            <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+              {order?.status === 'activation_failed' ? 'Ativação pendurada em erro' : 'Entrega soberana em andamento'}
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+              {order?.errorMessage || 'O backend já aceitou o rail financeiro. Falta fechar o mint do Operator Key no target Arbitrum.'}
+            </div>
+          </div>
+
+          {feedbackSurface}
+
+          <div className="flex flex-wrap gap-2">
+            {order?.status === 'activation_failed' ? (
+              <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
+                {isRetryingActivation ? 'Reenviando...' : 'Retry ativação'}
+              </StageActionButton>
+            ) : (
+              <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
+                {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
+              </StageActionButton>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div
+          className="rounded-2xl p-5"
+          style={{ backgroundColor: 'rgba(50,213,131,0.10)', borderWidth: '1px', borderColor: 'rgba(50,213,131,0.18)' }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="h-11 w-11 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(50,213,131,0.14)', color: 'var(--ok-green)' }}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Operator ativado</div>
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                A wallet já concluiu o rail financeiro e a entrega soberana.
               </div>
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-1)' }}>2. Tron</div>
-                Vincular a wallet Tron que vai pagar o `USDT`.
-              </div>
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-1)' }}>3. Ativação</div>
-                O `PR 5` vai reconciliar pagamento e mint em Arbitrum.
-              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>Target</div>
+              <div className="break-all" style={{ color: 'var(--text-1)' }}>{order?.targetArbitrumAddress || targetArbitrumAddress || '--'}</div>
+            </div>
+            <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>Activation tx</div>
+              <div className="break-all" style={{ color: 'var(--text-1)' }}>{order?.activationTxHash || '--'}</div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Estado da ordem</div>
-            </div>
+        {feedbackSurface}
 
-            {orderQuery.isLoading && trackedOrderId ? (
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Carregando ActivationOrder...
-              </div>
-            ) : order ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Order</span>
-                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.id)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Produto</span>
-                  <span style={{ color: 'var(--text-1)' }}>{order.product.label}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Preço</span>
-                  <span style={{ color: 'var(--text-1)' }}>{order.expectedAmount} USDT</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Payment chain</span>
-                  <span style={{ color: 'var(--text-1)' }}>{order.paymentChain}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Activation chain</span>
-                  <span style={{ color: 'var(--text-1)' }}>{order.activationChain}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Target</span>
-                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.targetArbitrumAddress)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Payment tx</span>
-                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.paymentTxHash)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-3)' }}>Activation tx</span>
-                  <span className="break-all text-right" style={{ color: 'var(--text-1)' }}>{shortValue(order.activationTxHash)}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Nenhuma ActivationOrder rastreada nesta sessão ainda.
-              </div>
-            )}
+        {order && FINAL_ORDER_STATUSES.has(order.status) ? (
+          <div className="flex flex-wrap gap-2">
+            <StageActionButton onClick={clearTrackedOrder}>
+              Nova ordem
+            </StageActionButton>
           </div>
+        ) : null}
+      </div>
+    );
+  })();
 
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldCheck className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Instruções de pagamento</div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Treasury Tron</div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.treasuryAddress ?? '--'}</span>
-                  <button onClick={() => void copyValue(order?.payment.treasuryAddress, 'Treasury')} style={{ color: 'var(--text-3)' }}>
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
+  const flowShell = (
+    <div className="flex max-h-[90vh] flex-col overflow-hidden">
+      <div
+        className="relative overflow-hidden border-b"
+        style={{
+          borderColor: 'rgba(255,255,255,0.08)',
+          background:
+            'radial-gradient(circle at top left, rgba(255,140,66,0.22), transparent 34%), radial-gradient(circle at top right, rgba(50,213,131,0.10), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+        }}
+      >
+        <div className="relative px-5 py-5 lg:px-6 lg:py-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+                {stageMeta.eyebrow}
               </div>
-
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Valor esperado</div>
-                <div className="flex items-center justify-between gap-3">
-                  <span style={{ color: 'var(--text-1)' }}>{order?.payment.expectedAmount ?? '100.000000'} USDT</span>
-                  <button onClick={() => void copyValue(order?.payment.expectedAmount, 'Valor')} style={{ color: 'var(--text-3)' }}>
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="text-2xl font-semibold leading-tight mb-2" style={{ color: 'var(--text-1)' }}>
+                {stageMeta.title}
               </div>
-
-              <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>USDT contract</div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.assetContract ?? '--'}</span>
-                  <button onClick={() => void copyValue(order?.payment.assetContract, 'Contrato')} style={{ color: 'var(--text-3)' }}>
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="text-sm max-w-2xl" style={{ color: 'var(--text-2)' }}>
+                {stageMeta.description}
               </div>
             </div>
-
-            {order && !order.paymentTxHash ? (
-              <div className="rounded-lg px-3 py-2 mt-3" style={{ backgroundColor: 'var(--bg-2)' }}>
-                <div className="text-[11px] uppercase mb-1" style={{ color: 'var(--text-3)' }}>Tron tx hash manual</div>
-                <input
-                  value={manualTxHash}
-                  onChange={(event) => setManualTxHash(event.target.value)}
-                  placeholder="0x... ou hash Tron"
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                />
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => void handleManualReconcile()}
-                    disabled={!manualTxHash.trim() || isReconciling}
-                    className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                  >
-                    {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="text-xs mt-3" style={{ color: 'var(--text-3)' }}>
-              Esta tela agora consegue pagar com `TronLink`, reconciliar o `txHash` e disparar a ativação em Arbitrum.
+            <div
+              className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
+              style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
+            >
+              {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
             </div>
           </div>
 
-          {order?.status === 'awaiting_payment' ? (
-            <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
-              <div className="flex items-start gap-2">
-                <ArrowUpRight className="w-4 h-4 mt-0.5" style={{ color: 'var(--accent-orange)' }} />
-                <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                  A ordem já está pronta para pagamento. Use `Pagar com TronLink` ou reconcilie manualmente um `txHash` já enviado.
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-5">
+            {steps.map((step) => (
+              <StepCard key={step.id} step={step} />
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {feedback ? (
-            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}>
-              {feedback}
-            </div>
-          ) : null}
-
-          {copyFeedback ? (
-            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-2)' }}>
-              {copyFeedback}
-            </div>
-          ) : null}
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_360px]">
+        <div className="overflow-y-auto px-5 py-5 lg:px-6 lg:py-6">
+          {stageContent}
 
           {orderQuery.isError ? (
-            <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(255,99,99,0.08)', borderWidth: '1px', borderColor: 'rgba(255,99,99,0.18)', color: 'var(--text-2)' }}>
+            <div
+              className="rounded-2xl p-4 text-sm mt-4"
+              style={{ backgroundColor: 'rgba(255,99,99,0.08)', borderWidth: '1px', borderColor: 'rgba(255,99,99,0.18)', color: 'var(--text-2)' }}
+            >
               Não foi possível carregar a ordem rastreada agora.
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => void orderQuery.refetch()}
-                  className="rounded-lg px-3 py-2 text-sm"
-                  style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                >
+              <div className="flex flex-wrap gap-2 mt-4">
+                <StageActionButton onClick={() => void orderQuery.refetch()}>
                   <RefreshCcw className="w-4 h-4 inline-block mr-2" />
                   Tentar de novo
-                </button>
-                <button
-                  onClick={clearTrackedOrder}
-                  className="rounded-lg px-3 py-2 text-sm"
-                  style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-                >
+                </StageActionButton>
+                <StageActionButton onClick={clearTrackedOrder}>
                   <Trash2 className="w-4 h-4 inline-block mr-2" />
                   Limpar rastreamento
-                </button>
+                </StageActionButton>
               </div>
             </div>
           ) : null}
+        </div>
+
+        <div
+          className="overflow-y-auto border-t lg:border-l lg:border-t-0 px-5 py-5 lg:px-6 lg:py-6"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+        >
+          {orderQuery.isLoading && trackedOrderId ? (
+            <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando ActivationOrder...
+            </div>
+          ) : (
+            rightRail
+          )}
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <div
+        className="rounded-xl p-5"
+        style={{
+          background:
+            'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
+          backgroundColor: 'var(--bg-2)',
+          borderWidth: '1px',
+          borderColor: 'var(--stroke-1)',
+          boxShadow: 'var(--shadow-1)',
+        }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+              Operator Checkout
+            </div>
+            <div className="text-xl font-semibold leading-tight mb-2" style={{ color: 'var(--text-1)' }}>
+              Fluxo premium para pagamento em Tron e ativação em Arbitrum.
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+              Em vez de despejar tudo num card só, o checkout agora abre uma superfície dedicada com telas separadas para sessão, ordem, payment rail e ativação.
+            </div>
+          </div>
+
+          <div
+            className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
+            style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
+          >
+            {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_360px] gap-4 mt-5">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {steps.map((step) => (
+                <StepCard key={step.id} step={step} />
+              ))}
+            </div>
+
+            <div
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: 'rgba(255,140,66,0.10)', color: 'var(--accent-orange)' }}
+                >
+                  {effectiveAccess ? <BadgeCheck className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold mb-1" style={{ color: 'var(--text-1)' }}>
+                    {effectiveAccess ? 'Entitlement ativo' : 'Checkout guiado por etapas'}
+                  </div>
+                  <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                    {synopsis}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {feedbackSurface}
+
+            <div className="flex flex-wrap gap-2">
+              <StageActionButton onClick={() => setIsFlowOpen(true)}>
+                {primaryLauncherLabel({ effectiveAccess, order })}
+              </StageActionButton>
+              {hasTrackedOrder ? (
+                <StageActionButton onClick={() => void orderQuery.refetch()} tone="secondary">
+                  Atualizar ordem
+                </StageActionButton>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Resumo vivo</div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
+                <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress)} />
+                <DetailRow label="Order" value={shortValue(order?.id)} />
+                <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
+              </div>
+            </div>
+
+            <div
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}
+            >
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+                Superfície
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
+                Tron recebe o pagamento em USDT. Arbitrum recebe a ativação do Key. O modal separa esses dois mundos e reduz a carga cognitiva do usuário.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isMobile ? (
+        <Drawer open={isFlowOpen} onOpenChange={setIsFlowOpen}>
+          <DrawerContent
+            className="border-[var(--stroke-1)] bg-[var(--bg-1)]"
+            style={{ borderColor: 'var(--stroke-1)', backgroundColor: 'var(--bg-1)' }}
+          >
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Checkout Operator</DrawerTitle>
+              <DrawerDescription>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</DrawerDescription>
+            </DrawerHeader>
+            {flowShell}
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={isFlowOpen} onOpenChange={setIsFlowOpen}>
+          <DialogContent
+            className="max-w-[1120px] p-0 overflow-hidden"
+            style={{ backgroundColor: 'var(--bg-1)', borderColor: 'var(--stroke-1)' }}
+          >
+            <DialogHeader className="sr-only">
+              <DialogTitle>Checkout Operator</DialogTitle>
+              <DialogDescription>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</DialogDescription>
+            </DialogHeader>
+            {flowShell}
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
