@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Coins,
@@ -442,6 +442,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [showPaymentSurface, setShowPaymentSurface] = useState(false);
   const [showManualBuyerAddress, setShowManualBuyerAddress] = useState(false);
   const [activeTronConnector, setActiveTronConnector] = useState<SupportedTronAdapterName | null>(null);
+  const tronConnectRequestRef = useRef<Promise<ConnectedTronWallet> | null>(null);
 
   const storageKey = useMemo(() => checkoutStorageKey(address), [address]);
   const orderQuery = useCheckoutOrder(trackedOrderId);
@@ -619,29 +620,60 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   }
 
   async function connectTronAdapter(adapterName: SupportedTronAdapterName): Promise<ConnectedTronWallet> {
-    const targetWallet = tronWallets.find((candidate) => candidate.adapter.name === adapterName);
-    if (!targetWallet) {
-      throw new Error(`O conector ${adapterName} não está disponível nesta sessão.`);
+    if (tronConnectRequestRef.current) {
+      return tronConnectRequestRef.current;
     }
 
-    setActiveTronConnector(adapterName);
-    selectTronWallet(targetWallet.adapter.name);
-    await targetWallet.adapter.connect();
+    const connectAttempt = (async (): Promise<ConnectedTronWallet> => {
+      const targetWallet = tronWallets.find((candidate) => candidate.adapter.name === adapterName);
+      if (!targetWallet) {
+        throw new Error(`O conector ${adapterName} não está disponível nesta sessão.`);
+      }
 
-    const nextAddress = targetWallet.adapter.address?.trim();
-    if (!nextAddress) {
-      throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
-    }
-    const normalizedNextAddress = normalizeTronAddress(nextAddress);
-    if (!normalizedNextAddress) {
-      throw new Error(explainInvalidTronWalletAddress(nextAddress, adapterName));
-    }
+      const existingAddress = normalizeTronAddress(targetWallet.adapter.address?.trim());
+      if (existingAddress) {
+        setActiveTronConnector(adapterName);
+        if (selectedTronWallet?.adapter.name !== adapterName) {
+          selectTronWallet(targetWallet.adapter.name);
+        }
+        return {
+          buyerAddress: existingAddress,
+          connector: adapterName,
+          adapter: targetWallet.adapter,
+        };
+      }
 
-    return {
-      buyerAddress: normalizedNextAddress,
-      connector: adapterName,
-      adapter: targetWallet.adapter,
-    };
+      setActiveTronConnector(adapterName);
+      if (selectedTronWallet?.adapter.name !== adapterName) {
+        selectTronWallet(targetWallet.adapter.name);
+      }
+      await targetWallet.adapter.connect();
+
+      const nextAddress = targetWallet.adapter.address?.trim();
+      if (!nextAddress) {
+        throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
+      }
+      const normalizedNextAddress = normalizeTronAddress(nextAddress);
+      if (!normalizedNextAddress) {
+        throw new Error(explainInvalidTronWalletAddress(nextAddress, adapterName));
+      }
+
+      return {
+        buyerAddress: normalizedNextAddress,
+        connector: adapterName,
+        adapter: targetWallet.adapter,
+      };
+    })();
+
+    tronConnectRequestRef.current = connectAttempt;
+
+    try {
+      return await connectAttempt;
+    } finally {
+      if (tronConnectRequestRef.current === connectAttempt) {
+        tronConnectRequestRef.current = null;
+      }
+    }
   }
 
   async function ensureConnectedTronWallet(): Promise<ConnectedTronWallet> {
@@ -1331,49 +1363,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'payment') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Liquidação em Tron</div>
-            </div>
-            <div className="space-y-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-              <p>
-                O modal principal fica limpo e o rail financeiro abre numa superfície lateral própria. Lá dentro você encontra treasury, contrato USDT, wallet Tron, pagamento guiado e reconcile manual.
-              </p>
-              <p>
-                Se precisar revisar ou trocar a buyer wallet antes de pagar, abra também o painel de vínculo Tron sem sair desta etapa.
-              </p>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-                  Buyer ativo
-                </div>
-                <div className="text-base font-semibold break-all" style={{ color: 'var(--text-1)' }}>
-                  {order?.buyerTronAddress || normalizedConnectedTronAddress || '--'}
-                </div>
-              </div>
-              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-                  Valor
-                </div>
-                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
-                  {order?.payment.expectedAmount ?? '100.000000'} USDT
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <StageActionButton onClick={() => setShowPaymentSurface(true)}>
-                Abrir modal de pagamento
-              </StageActionButton>
-              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone="secondary">
-                Abrir modal Tron
-              </StageActionButton>
-            </div>
-          </div>
-
           {feedbackSurface}
         </div>
       );
