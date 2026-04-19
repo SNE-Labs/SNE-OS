@@ -338,35 +338,31 @@ function StepCard({ step }: StepCardProps) {
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl px-3 py-3 transition-all duration-300"
+      className="flex items-center justify-between gap-3 rounded-full px-3 py-2.5 transition-all duration-300"
       style={{ backgroundColor: tone.bg, borderWidth: '1px', borderColor: tone.border }}
     >
-      <div
-        className="absolute inset-x-0 top-0 h-px opacity-80"
-        style={{ background: `linear-gradient(90deg, transparent, ${tone.color}, transparent)` }}
-      />
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: tone.color }}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-3 h-3" />
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.16em] leading-none" style={{ color: tone.color }}>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="shrink-0 text-[10px] uppercase tracking-[0.16em] leading-none" style={{ color: tone.color }}>
               {step.label}
             </div>
-            <div className="mt-1 text-sm font-medium leading-5" style={{ color: 'var(--text-1)' }}>
+            <div className="text-sm font-medium leading-none whitespace-nowrap" style={{ color: 'var(--text-1)' }}>
               {step.detail}
             </div>
           </div>
         </div>
-        <div
-          className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 6px ${tone.bg}` : 'none' }}
-        />
       </div>
+      <div
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: tone.color, boxShadow: step.state === 'current' ? `0 0 0 5px ${tone.bg}` : 'none' }}
+      />
     </div>
   );
 }
@@ -1071,7 +1067,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-2">
             {steps.map((step) => (
               <StepCard key={step.id} step={step} />
             ))}
