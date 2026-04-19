@@ -518,14 +518,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   }, [order?.buyerTronAddress]);
 
   useEffect(() => {
-    if (flowStage === 'payment') {
-      setShowPaymentSurface(true);
-      return;
-    }
-    setShowPaymentSurface(false);
-  }, [flowStage]);
-
-  useEffect(() => {
     if (selectedTronWallet?.adapter.name === 'TronLink' || selectedTronWallet?.adapter.name === 'WalletConnect') {
       setActiveTronConnector(selectedTronWallet.adapter.name);
     }
@@ -576,6 +568,14 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           ? 'A extensão está disponível nesta página. Autorize a wallet que vai pagar em USDT.'
           : 'A TronLink não foi injetada nesta página. Use WalletConnect ou reconcile manual.'
         : 'Escolha TronLink ou WalletConnect para abrir a sessão Tron do checkout.';
+
+  useEffect(() => {
+    if (flowStage === 'payment') {
+      setShowPaymentSurface(true);
+      return;
+    }
+    setShowPaymentSurface(false);
+  }, [flowStage]);
 
   async function handleAuthenticate() {
     try {
