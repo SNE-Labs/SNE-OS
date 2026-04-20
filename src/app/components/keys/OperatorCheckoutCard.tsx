@@ -784,7 +784,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         payload: {
           buyerTronAddress: resolvedBuyerAddress,
           walletProvider: connector.toLowerCase(),
-          gasMode: 'gasfree_planned',
+          paymentMode: 'wallet_signed_transfer',
         },
       });
       setTrackedOrderId(updatedOrder.id);
@@ -804,7 +804,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         payload: {
           buyerTronAddress: normalizedConnectedTronAddress,
           walletProvider: connectedTronConnector.toLowerCase(),
-          gasMode: 'gasfree_planned',
+          paymentMode: 'wallet_signed_transfer',
         },
       });
       setTrackedOrderId(updatedOrder.id);
@@ -1548,6 +1548,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const showDesktopTronPanel = !isMobile && (flowStage === 'bind' || flowStage === 'payment') && showBuyerAddressConfig;
   const showDesktopPaymentPanel = !isMobile && flowStage === 'payment' && showPaymentSurface;
   const showDesktopReconcilePanel = !isMobile && flowStage === 'payment' && showReconcileSurface;
+  const compactMainShellHeader = flowStage === 'payment';
   const desktopMainShellWidth = showDesktopTronPanel && showDesktopPaymentPanel && showDesktopReconcilePanel
     ? 'clamp(500px, 34vw, 660px)'
     : showDesktopTronPanel && showDesktopPaymentPanel
@@ -1565,20 +1566,22 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             'radial-gradient(circle at top left, rgba(255,140,66,0.22), transparent 34%), radial-gradient(circle at top right, rgba(50,213,131,0.10), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
         }}
       >
-        <div className="relative px-5 py-4 lg:px-6 lg:py-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-3xl">
-              <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
-                {stageMeta.eyebrow}
+        <div className={`relative px-5 lg:px-6 ${compactMainShellHeader ? 'py-3 lg:py-3.5' : 'py-4 lg:py-5'}`}>
+          <div className={`flex flex-wrap gap-4 ${compactMainShellHeader ? 'items-center justify-end' : 'items-start justify-between'}`}>
+            {!compactMainShellHeader ? (
+              <div className="max-w-3xl">
+                <div className="text-[11px] uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+                  {stageMeta.eyebrow}
+                </div>
+                <div className="mb-2 text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] lg:text-[1.82rem]" style={{ color: 'var(--text-1)' }}>
+                  {stageMeta.title}
+                </div>
+                <div className="max-w-[760px] text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                  {stageMeta.description}
+                </div>
               </div>
-              <div className="mb-2 text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] lg:text-[1.82rem]" style={{ color: 'var(--text-1)' }}>
-                {stageMeta.title}
-              </div>
-              <div className="max-w-[760px] text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                {stageMeta.description}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            ) : null}
+            <div className={`flex flex-wrap items-center gap-2 ${compactMainShellHeader ? 'justify-end w-full' : 'justify-end'}`}>
               <div
                 className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
                 style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
@@ -1588,7 +1591,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-2">
+          <div className={`${compactMainShellHeader ? 'mt-3' : 'mt-4'} grid grid-cols-1 gap-2`}>
             {steps.map((step) => (
               <StepCard key={step.id} step={step} />
             ))}

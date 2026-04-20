@@ -59,7 +59,7 @@ export type CheckoutOrder = {
   };
   session: {
     walletProvider?: string | null;
-    gasMode?: string | null;
+    paymentMode?: string | null;
     authSource?: string | null;
     cancelReason?: string | null;
   };
@@ -74,7 +74,7 @@ export type CreateCheckoutOrderPayload = {
 export type CreateTronSessionPayload = {
   buyerTronAddress: string;
   walletProvider?: string;
-  gasMode?: string;
+  paymentMode?: string;
 };
 
 export type CancelCheckoutOrderPayload = {

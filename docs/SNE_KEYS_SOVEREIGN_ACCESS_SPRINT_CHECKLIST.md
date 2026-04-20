@@ -198,6 +198,7 @@ Subir a trilha comercial em `Tron` sem mover o source of truth do access layer.
 - [ ] Implementar `POST /api/checkout/orders/:id/cancel`
 - [ ] Integrar `TronLink`
 - [ ] Exibir instrucoes de pagamento `USDT on Tron`
+- [ ] Assinar transferencia TRC-20 normal em `Tron` com a wallet do usuario
 - [ ] Persistir `buyer_tron_address`
 - [ ] Persistir `target_arbitrum_address`
 - [ ] Validar ordem server-side mesmo com fechamento de aba
@@ -206,6 +207,7 @@ Subir a trilha comercial em `Tron` sem mover o source of truth do access layer.
 
 - usuario autenticado em EVM consegue criar ordem
 - wallet `Tron` consegue ser vinculada a ordem
+- pagamento em `Tron` e uma transferencia normal assinada pela wallet do usuario
 - nenhuma etapa de checkout concede premium diretamente
 
 ## Sprint 6: Activation service cross-chain

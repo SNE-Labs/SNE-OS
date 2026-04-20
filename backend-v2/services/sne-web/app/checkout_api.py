@@ -63,7 +63,7 @@ def bind_tron_session(order_id: str):
                 auth_address=g.user["address"],
                 buyer_tron_address=body.get("buyerTronAddress"),
                 wallet_provider=body.get("walletProvider"),
-                gas_mode=body.get("gasMode"),
+                payment_mode=body.get("paymentMode") or body.get("gasMode"),
             )
         ), 200
     except CheckoutError as exc:

@@ -23,7 +23,7 @@ Este plano substitui a premissa anterior de rede unica.
 O modelo novo e:
 
 - `Arbitrum = OS auth / SIWE / Pass / Keys / delegacao / entitlement`
-- `Tron = compra / ativacao / checkout / GasFree / TronLink / USDT`
+- `Tron = compra / ativacao / checkout / TronLink / USDT`
 
 Consequencia:
 
@@ -137,7 +137,7 @@ Entram no v1:
 - leitura de entitlement por posse ou delegacao em `Arbitrum`
 - checkout em `USDT on Tron`
 - integracao `TronLink`
-- fluxo de compra com `GasFree` ou abstracao equivalente
+- fluxo de compra com transferencia TRC-20 assinada pela wallet do usuario
 - `ActivationOrder` como entidade operacional
 - activation service que valida pagamento em `Tron` e ativa `Key` em `Arbitrum`
 - gating premium do `SNE Radar`
@@ -233,7 +233,7 @@ O fluxo canonicamente correto do v1 e:
 
 - checkout em `USDT`
 - `TronLink`
-- fluxo `GasFree`
+- transferencia TRC-20 assinada pela wallet do usuario
 - pagamento e ativacao comercial
 
 `Activation Service`
@@ -576,7 +576,7 @@ Criar a trilha comercial do v1 em `Tron`, sem mover o source of truth do entitle
 
 - checkout em `USDT on Tron`
 - integracao `TronLink`
-- suporte `GasFree`
+- assinatura direta da transferencia TRC-20 pela wallet do usuario
 - criacao e leitura de `ActivationOrder`
 - vinculacao entre wallet `Tron` pagadora e wallet `Arbitrum` de destino
 
@@ -601,14 +601,16 @@ Criar a trilha comercial do v1 em `Tron`, sem mover o source of truth do entitle
 3. Implementar endpoints de checkout
 4. Integrar `TronLink` no frontend
 5. Mostrar instrucoes de pagamento `USDT on Tron`
-6. Persistir `buyer_tron_address` e `target_arbitrum_address`
-7. Garantir que a ordem continue server-side mesmo se a aba fechar
+6. Assinar transferencia TRC-20 normal em `Tron` com a wallet do usuario
+7. Persistir `buyer_tron_address` e `target_arbitrum_address`
+8. Garantir que a ordem continue server-side mesmo se a aba fechar
 
 ### Critérios de aceite
 
 - usuario autenticado em EVM consegue criar ordem
 - wallet `Tron` consegue ser vinculada a ordem
 - ordem passa por `created -> awaiting_payment`
+- pagamento em `Tron` e uma transferencia normal assinada pela wallet do usuario
 - nenhuma etapa de checkout concede premium diretamente
 
 ---

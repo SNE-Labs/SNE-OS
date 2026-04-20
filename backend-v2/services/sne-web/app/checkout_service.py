@@ -138,7 +138,7 @@ def serialize_activation_order(order: ActivationOrder) -> dict:
         },
         "session": {
             "walletProvider": metadata.get("walletProvider"),
-            "gasMode": metadata.get("gasMode"),
+            "paymentMode": metadata.get("paymentMode") or metadata.get("gasMode"),
             "authSource": metadata.get("authSource"),
             "cancelReason": metadata.get("cancelReason"),
         },
@@ -208,7 +208,7 @@ def create_tron_session(
     auth_address: str,
     buyer_tron_address: str | None,
     wallet_provider: str | None,
-    gas_mode: str | None,
+    payment_mode: str | None,
 ) -> dict:
     order = _require_owned_order(order_id, auth_address)
 
@@ -223,7 +223,8 @@ def create_tron_session(
 
     metadata = dict(order.session_metadata or {})
     metadata["walletProvider"] = (wallet_provider or "tronlink").strip().lower()
-    metadata["gasMode"] = (gas_mode or "gasfree_planned").strip().lower()
+    metadata["paymentMode"] = (payment_mode or "wallet_signed_transfer").strip().lower()
+    metadata.pop("gasMode", None)
     metadata["tronSessionCreatedAt"] = _utcnow().isoformat()
 
     order.buyer_tron_address = _normalize_tron_address(buyer_tron_address)
