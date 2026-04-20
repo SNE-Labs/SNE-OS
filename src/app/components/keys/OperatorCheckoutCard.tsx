@@ -557,6 +557,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const steps = buildFlowSteps({ isAuthenticated, order, flowStage });
   const stageMeta = stageCopy(flowStage, order);
   const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
+  const orderStatusTone = statusTone(order?.status ?? (effectiveAccess ? 'activated' : null));
   const tronLinkWallet = tronWallets.find((candidate) => candidate.adapter.name === 'TronLink');
   const walletConnectWallet = tronWallets.find((candidate) => candidate.adapter.name === 'WalletConnect');
   const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
