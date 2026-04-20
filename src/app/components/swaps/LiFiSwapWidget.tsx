@@ -20,7 +20,9 @@ type LiFiSwapWidgetProps = {
   className?: string;
 };
 
-const LIFI_INTEGRATOR = 'sne-os';
+const LIFI_INTEGRATOR =
+  import.meta.env.VITE_LIFI_INTEGRATOR?.trim() || 'SNE-OS';
+const LIFI_API_KEY = import.meta.env.VITE_LIFI_API_KEY?.trim();
 
 function mergeAllowedTokens(
   baseTokens: Array<{ chainId: number; address: string }>,
@@ -215,6 +217,7 @@ export function LiFiSwapWidget({
 
       return {
         integrator: LIFI_INTEGRATOR,
+        apiKey: LIFI_API_KEY,
         variant: compact ? 'compact' : 'wide',
         appearance: 'dark',
         buildUrl: true,
