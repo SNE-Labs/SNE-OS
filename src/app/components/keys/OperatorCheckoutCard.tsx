@@ -460,6 +460,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const [isFlowOpen, setIsFlowOpen] = useState(false);
   const [showBuyerAddressConfig, setShowBuyerAddressConfig] = useState(false);
   const [showPaymentSurface, setShowPaymentSurface] = useState(false);
+  const [showReconcileSurface, setShowReconcileSurface] = useState(false);
   const [showManualBuyerAddress, setShowManualBuyerAddress] = useState(false);
   const [activeTronConnector, setActiveTronConnector] = useState<SupportedTronAdapterName | null>(null);
   const tronConnectRequestRef = useRef<Promise<ConnectedTronWallet> | null>(null);
@@ -624,9 +625,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       }
       setShowBuyerAddressConfig(true);
       setShowPaymentSurface(false);
+      setShowReconcileSurface(false);
       return;
     }
     setShowPaymentSurface(false);
+    setShowReconcileSurface(false);
   }, [buyerWalletReady, flowStage]);
 
   async function handleAuthenticate() {
@@ -809,6 +812,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       setBuyerTronAddress(normalizedConnectedTronAddress);
       setShowBuyerAddressConfig(false);
       setShowPaymentSurface(true);
+      setShowReconcileSurface(false);
       setFeedback(`Buyer atualizada para ${shortValue(normalizedConnectedTronAddress)}. O rail de pagamento já pode seguir.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao atualizar a buyer wallet da ordem.');
@@ -1156,19 +1160,12 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
                 Ja paguei
               </div>
-              <input
-                value={manualTxHash}
-                onChange={(event) => setManualTxHash(event.target.value)}
-                placeholder="Hash da transação Tron"
-                className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-              />
-              <div className="text-sm mt-3 leading-6" style={{ color: 'var(--text-2)' }}>
-                Use esta via se a transferencia ja saiu da buyer wallet e voce so precisa provar o `txHash`.
+              <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                Se a transferencia ja saiu da buyer wallet, abra a superfície de reconcile e entregue o `txHash` ao backend.
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
-                <StageActionButton onClick={() => void handleManualReconcile()} disabled={!manualTxHash.trim() || isReconciling} tone="secondary">
-                  {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
+                <StageActionButton onClick={() => setShowReconcileSurface(true)} tone="secondary">
+                  Abrir reconcile
                 </StageActionButton>
               </div>
             </div>
@@ -1176,6 +1173,35 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         )}
 
         {showPaymentSurface ? feedbackSurface : null}
+      </div>
+    </div>
+  );
+
+  const reconcilePanelBody = (
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      <div className="space-y-3">
+        <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+          <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+            Reconcile manual
+          </div>
+          <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+            Use esta via so depois que a transferencia Tron estiver concluida e voce ja tiver o `txHash`.
+          </div>
+          <input
+            value={manualTxHash}
+            onChange={(event) => setManualTxHash(event.target.value)}
+            placeholder="Hash da transação Tron"
+            className="mt-4 w-full rounded-xl px-3 py-3 text-sm outline-none"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+          />
+          <div className="flex flex-wrap gap-2 mt-4">
+            <StageActionButton onClick={() => void handleManualReconcile()} disabled={!manualTxHash.trim() || isReconciling} tone="secondary">
+              {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
+            </StageActionButton>
+          </div>
+        </div>
+
+        {showReconcileSurface ? feedbackSurface : null}
       </div>
     </div>
   );
@@ -1267,6 +1293,52 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </button>
             </div>
             {paymentRailPanelBody}
+          </div>
+        </div>
+      </>
+    ) : null;
+
+  const reconcileSurface =
+    flowStage === 'payment' && showReconcileSurface ? (
+      <>
+        {isMobile ? (
+          <button
+            type="button"
+            aria-label="Fechar reconcile manual"
+            className="fixed inset-0 z-[70] bg-black/55"
+            onClick={() => setShowReconcileSurface(false)}
+          />
+        ) : null}
+        <div className="fixed inset-x-3 bottom-3 top-[5.5rem] z-[80] lg:hidden">
+          <div
+            className="flex h-full max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-[28px]"
+            style={{
+              backgroundColor: 'var(--bg-2)',
+              borderWidth: '1px',
+              borderColor: 'rgba(255,255,255,0.10)',
+              boxShadow: '0 28px 80px rgba(0,0,0,0.34)',
+            }}
+          >
+            <div
+              className="flex items-start justify-between gap-3 border-b px-5 py-4"
+              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
+                  Reconcile manual
+                </div>
+                <div className="mt-1 text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                  Prova do txHash
+                </div>
+                <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                  Esta superfície só entra depois do pagamento, quando você já tem o hash da transação Tron.
+                </div>
+              </div>
+              <button onClick={() => setShowReconcileSurface(false)} style={{ color: 'var(--text-3)' }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {reconcilePanelBody}
           </div>
         </div>
       </>
@@ -1499,10 +1571,13 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
   const showDesktopTronPanel = !isMobile && (flowStage === 'bind' || flowStage === 'payment') && showBuyerAddressConfig;
   const showDesktopPaymentPanel = !isMobile && flowStage === 'payment' && showPaymentSurface;
-  const desktopMainShellWidth = showDesktopTronPanel && showDesktopPaymentPanel
-    ? 'clamp(560px, 36vw, 720px)'
-    : showDesktopTronPanel || showDesktopPaymentPanel
-      ? 'clamp(680px, 50vw, 860px)'
+  const showDesktopReconcilePanel = !isMobile && flowStage === 'payment' && showReconcileSurface;
+  const desktopMainShellWidth = showDesktopTronPanel && showDesktopPaymentPanel && showDesktopReconcilePanel
+    ? 'clamp(500px, 34vw, 660px)'
+    : showDesktopTronPanel && showDesktopPaymentPanel
+      ? 'clamp(560px, 36vw, 720px)'
+      : showDesktopTronPanel || showDesktopPaymentPanel || showDesktopReconcilePanel
+        ? 'clamp(680px, 50vw, 860px)'
       : 'min(1040px, calc(100vw - 3rem))';
   const showOrderSummaryStrip = Boolean(order && !FINAL_ORDER_STATUSES.has(order.status));
 
@@ -1807,7 +1882,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
               {showDesktopPaymentPanel ? (
                 <div
-                  className="flex max-h-[90vh] min-h-0 w-[360px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)] xl:w-[400px]"
+                  className="flex max-h-[90vh] min-h-0 w-[320px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)] xl:w-[340px]"
                   style={{ backgroundColor: 'var(--bg-2)', borderColor: 'rgba(255,255,255,0.10)' }}
                 >
                   <div
@@ -1832,12 +1907,41 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                   {paymentRailPanelBody}
                 </div>
               ) : null}
+
+              {showDesktopReconcilePanel ? (
+                <div
+                  className="flex max-h-[90vh] min-h-0 w-[300px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)] xl:w-[320px]"
+                  style={{ backgroundColor: 'var(--bg-2)', borderColor: 'rgba(255,255,255,0.10)' }}
+                >
+                  <div
+                    className="flex items-start justify-between gap-3 border-b px-5 py-4"
+                    style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+                  >
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--accent-orange)' }}>
+                        Reconcile manual
+                      </div>
+                      <div className="mt-1 text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                        Prova do txHash
+                      </div>
+                      <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                        Abra este painel só depois da transferencia Tron concluir e o hash ja existir.
+                      </div>
+                    </div>
+                    <button onClick={() => setShowReconcileSurface(false)} style={{ color: 'var(--text-3)' }}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {reconcilePanelBody}
+                </div>
+              ) : null}
             </div>
           </DialogContent>
         </Dialog>
       )}
 
       {paymentRailSurface}
+      {reconcileSurface}
       {tronBindingSurface}
     </>
   );
