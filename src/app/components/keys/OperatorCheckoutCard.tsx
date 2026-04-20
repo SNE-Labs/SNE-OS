@@ -1463,7 +1463,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
   const showDesktopTronPanel = !isMobile && (flowStage === 'bind' || flowStage === 'payment') && showBuyerAddressConfig;
   const showDesktopPaymentPanel = !isMobile && flowStage === 'payment' && showPaymentSurface;
-  const desktopMainShellWidth = showDesktopTronPanel && showDesktopPaymentPanel ? 'min(860px, 48vw)' : showDesktopTronPanel || showDesktopPaymentPanel ? 'min(980px, 58vw)' : 'min(1120px, calc(100vw - 3rem))';
+  const desktopMainShellWidth = showDesktopTronPanel && showDesktopPaymentPanel
+    ? 'clamp(560px, 36vw, 720px)'
+    : showDesktopTronPanel || showDesktopPaymentPanel
+      ? 'clamp(680px, 50vw, 860px)'
+      : 'min(1040px, calc(100vw - 3rem))';
 
   const flowShell = (
     <div className="relative flex max-h-[90vh] flex-col overflow-visible">
@@ -1723,7 +1727,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               <DialogTitle>Checkout Operator</DialogTitle>
               <DialogDescription>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</DialogDescription>
             </DialogHeader>
-            <div className="flex max-h-[90vh] items-start justify-center gap-4 overflow-visible">
+            <div className="flex max-h-[90vh] items-start justify-center gap-3 overflow-visible">
               <div
                 className="min-w-0 overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)]"
                 style={{
@@ -1737,7 +1741,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
               {showDesktopTronPanel ? (
                 <div
-                  className="flex max-h-[90vh] min-h-0 w-[388px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)]"
+                  className="flex max-h-[90vh] min-h-0 w-[320px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)] xl:w-[340px]"
                   style={{ backgroundColor: 'var(--bg-2)', borderColor: 'rgba(255,255,255,0.10)' }}
                 >
                   <div
@@ -1765,7 +1769,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
               {showDesktopPaymentPanel ? (
                 <div
-                  className="flex max-h-[90vh] min-h-0 w-[460px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)]"
+                  className="flex max-h-[90vh] min-h-0 w-[360px] flex-col overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)] xl:w-[400px]"
                   style={{ backgroundColor: 'var(--bg-2)', borderColor: 'rgba(255,255,255,0.10)' }}
                 >
                   <div
