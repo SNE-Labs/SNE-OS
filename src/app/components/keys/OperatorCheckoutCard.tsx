@@ -80,6 +80,11 @@ const ACTIVE_ORDER_STATUSES = new Set<CheckoutOrderStatus>([
   'activation_failed',
 ]);
 
+const MOBILE_OVERLAY_INSET_STYLE = {
+  top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+};
+
 function checkoutStorageKey(address?: string | null) {
   return address ? `sne:checkout:operator:${address.toLowerCase()}` : null;
 }
@@ -1348,9 +1353,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             onClick={() => setShowBuyerAddressConfig(false)}
           />
         ) : null}
-        <div className="fixed inset-x-3 bottom-3 top-[5.5rem] z-[80] lg:hidden">
+        <div className="fixed inset-x-3 z-[80] lg:hidden" style={MOBILE_OVERLAY_INSET_STYLE}>
           <div
-            className="flex h-full max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-[28px]"
+            className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px]"
             style={{
               backgroundColor: 'var(--bg-2)',
               borderWidth: '1px',
@@ -1394,9 +1399,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             onClick={() => setShowPaymentSurface(false)}
           />
         ) : null}
-        <div className="fixed inset-x-3 bottom-3 top-[5.5rem] z-[80] lg:hidden">
+        <div className="fixed inset-x-3 z-[80] lg:hidden" style={MOBILE_OVERLAY_INSET_STYLE}>
           <div
-            className="flex h-full max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-[28px]"
+            className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px]"
             style={{
               backgroundColor: 'var(--bg-2)',
               borderWidth: '1px',
@@ -1440,9 +1445,9 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             onClick={() => setShowReconcileSurface(false)}
           />
         ) : null}
-        <div className="fixed inset-x-3 bottom-3 top-[5.5rem] z-[80] lg:hidden">
+        <div className="fixed inset-x-3 z-[80] lg:hidden" style={MOBILE_OVERLAY_INSET_STYLE}>
           <div
-            className="flex h-full max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-[28px]"
+            className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px]"
             style={{
               backgroundColor: 'var(--bg-2)',
               borderWidth: '1px',
@@ -1799,7 +1804,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         ? 'clamp(680px, 50vw, 860px)'
       : 'min(1040px, calc(100vw - 3rem))';
   const flowShell = (
-    <div className="relative flex max-h-[90vh] flex-col overflow-visible">
+    <div className={`relative flex min-h-0 flex-col ${isMobile ? 'h-full overflow-hidden' : 'max-h-[90vh] overflow-visible'}`}>
       <div
         className="relative overflow-hidden border-b"
         style={{
@@ -2032,7 +2037,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       {isMobile ? (
         <Drawer open={isFlowOpen} onOpenChange={setIsFlowOpen}>
           <DrawerContent
-            className="border-[var(--stroke-1)] bg-[var(--bg-1)]"
+            className="mt-2 h-[calc(100dvh-0.5rem)] min-h-0 max-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-t-[28px] border-[var(--stroke-1)] bg-[var(--bg-1)]"
             style={{ borderColor: 'var(--stroke-1)', backgroundColor: 'var(--bg-1)' }}
           >
             <DrawerHeader className="sr-only">
