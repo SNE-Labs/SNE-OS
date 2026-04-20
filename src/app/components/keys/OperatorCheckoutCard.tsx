@@ -551,7 +551,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const isReconciling = reconcilePaymentMutation.isPending;
   const isProcessingActivation = processActivationMutation.isPending;
   const isRetryingActivation = retryActivationMutation.isPending;
-  const orderStatusTone = statusTone(order?.status);
   const hasTrackedOrder = Boolean(trackedOrderId);
   const canStartNewOrder = isConnected && isAuthenticated && !effectiveAccess && (!order || FINAL_ORDER_STATUSES.has(order.status));
   const flowStage = resolveFlowStage({ effectiveAccess, isAuthenticated, order });
@@ -1461,30 +1460,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'payment') {
       return (
         <div className="space-y-4">
-          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                {buyerWalletMismatch ? 'Resolva a wallet Tron antes de pagar' : 'Order pronta para liquidar em Tron'}
-              </div>
-            </div>
-            <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-              {buyerWalletMismatch
-                ? 'O painel do meio resolve o conflito entre wallet conectada e buyer da ordem. O pagamento so destrava depois disso.'
-                : 'A order ja tem buyer vinculada. O painel da direita concentra so o envio do pagamento ou o reconcile manual.'}
-            </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone={buyerWalletMismatch ? 'primary' : 'secondary'}>
-                Abrir wallet Tron
-              </StageActionButton>
-              {!buyerWalletMismatch ? (
-                <StageActionButton onClick={() => setShowPaymentSurface(true)}>
-                  Abrir pagamento
-                </StageActionButton>
-              ) : null}
-            </div>
-          </div>
-          {!showBuyerAddressConfig && !showPaymentSurface ? feedbackSurface : null}
+          {!showBuyerAddressConfig && !showPaymentSurface && !showReconcileSurface ? feedbackSurface : null}
         </div>
       );
     }
@@ -1579,8 +1555,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       : showDesktopTronPanel || showDesktopPaymentPanel || showDesktopReconcilePanel
         ? 'clamp(680px, 50vw, 860px)'
       : 'min(1040px, calc(100vw - 3rem))';
-  const showOrderSummaryStrip = Boolean(order && !FINAL_ORDER_STATUSES.has(order.status));
-
   const flowShell = (
     <div className="relative flex max-h-[90vh] flex-col overflow-visible">
       <div
@@ -1620,26 +1594,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             ))}
           </div>
 
-          {showOrderSummaryStrip ? (
-            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
-              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Order</div>
-                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{shortValue(order?.id)}</div>
-              </div>
-              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Target</div>
-                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)}</div>
-              </div>
-              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Valor</div>
-                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{orderExpectedAmountLabel}</div>
-              </div>
-              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Status</div>
-                <div className="mt-1 text-sm font-medium" style={{ color: orderStatusTone.color }}>{statusLabel(order?.status)}</div>
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 
