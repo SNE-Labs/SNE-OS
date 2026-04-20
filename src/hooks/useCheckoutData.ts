@@ -16,6 +16,18 @@ export function useCheckoutOrder(orderId: string | null) {
     enabled: Boolean(orderId),
     staleTime: 15 * 1000,
     gcTime: 5 * 60 * 1000,
+    refetchInterval: (query) => {
+      const order = query.state.data as CheckoutOrder | undefined;
+      if (!order) return false;
+      if (
+        order.status === 'payment_confirmed' ||
+        order.status === 'activation_pending' ||
+        order.status === 'activation_submitted'
+      ) {
+        return 8000;
+      }
+      return false;
+    },
     retry: 1,
   });
 }

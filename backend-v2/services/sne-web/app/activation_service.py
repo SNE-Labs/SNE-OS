@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 from eth_account import Account
 from web3 import Web3
+from web3.exceptions import TimeExhausted, TransactionNotFound
 
 from .checkout_service import CheckoutError, serialize_activation_order
 from .config import Config
@@ -22,7 +23,7 @@ from .keys_entitlement_service import build_keys_entitlement
 
 logger = logging.getLogger(__name__)
 
-_ACTIVATABLE_STATUSES = {"payment_confirmed", "activation_pending", "activation_failed"}
+_ACTIVATABLE_STATUSES = {"payment_confirmed", "activation_pending", "activation_submitted", "activation_failed"}
 
 _OPERATOR_KEY_WRITE_ABI = [
     {
@@ -144,7 +145,18 @@ def _build_tx_params(w3: Web3, signer_address: str, nonce: int, gas_estimate: in
     return tx
 
 
-def _send_contract_transaction(w3: Web3, signer, function_call, nonce: int) -> tuple[str, int]:
+def _activation_metadata(order: ActivationOrder) -> tuple[dict[str, Any], dict[str, Any]]:
+    metadata = dict(order.session_metadata or {})
+    activation = dict(metadata.get("activation") or {})
+    return metadata, activation
+
+
+def _save_activation_metadata(order: ActivationOrder, activation: dict[str, Any], metadata: dict[str, Any]) -> None:
+    metadata["activation"] = activation
+    order.session_metadata = metadata
+
+
+def _build_contract_transaction(w3: Web3, signer, function_call, nonce: int) -> tuple[dict[str, Any], int]:
     signer_address = Web3.to_checksum_address(signer.address)
     try:
         gas_estimate = int(function_call.estimate_gas({"from": signer_address}))
@@ -152,12 +164,107 @@ def _send_contract_transaction(w3: Web3, signer, function_call, nonce: int) -> t
         gas_estimate = 250_000
 
     tx = function_call.build_transaction(_build_tx_params(w3, signer_address, nonce, gas_estimate))
+    return tx, nonce + 1
+
+
+def _submit_contract_transaction(w3: Web3, signer, function_call, nonce: int) -> tuple[str, bytes, int]:
+    tx, next_nonce = _build_contract_transaction(w3, signer, function_call, nonce)
     signed = signer.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    tx_hash_bytes = w3.eth.send_raw_transaction(signed.raw_transaction)
+    return tx_hash_bytes.hex(), tx_hash_bytes, next_nonce
+
+
+def _send_contract_transaction(w3: Web3, signer, function_call, nonce: int) -> tuple[str, int]:
+    tx_hash_hex, tx_hash, next_nonce = _submit_contract_transaction(w3, signer, function_call, nonce)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
     if receipt.status != 1:
         raise CheckoutError("ACTIVATION_TX_REVERTED", "Activation transaction reverted on-chain", 502)
-    return tx_hash.hex(), nonce + 1
+    return tx_hash_hex, next_nonce
+
+
+def _activation_confirmations(w3: Web3, receipt: Any) -> int:
+    latest_block = int(w3.eth.block_number)
+    receipt_block = int(receipt.blockNumber)
+    return max(latest_block - receipt_block + 1, 0)
+
+
+def _receipt_confirmed(w3: Web3, receipt: Any) -> bool:
+    return _activation_confirmations(w3, receipt) >= max(int(Config.SNE_ACTIVATION_CONFIRMATIONS or 1), 1)
+
+
+def _get_receipt_if_available(w3: Web3, tx_hash: str) -> Any | None:
+    try:
+        return w3.eth.get_transaction_receipt(tx_hash)
+    except TransactionNotFound:
+        return None
+
+
+def _finalize_submitted_activation(order: ActivationOrder, w3: Web3) -> dict[str, Any]:
+    metadata, activation = _activation_metadata(order)
+    activation["lastObservedAt"] = _utcnow().isoformat()
+
+    tx_hash = order.activation_tx_hash
+    if not tx_hash:
+        raise CheckoutError("INVALID_ORDER_STATE", "Order is marked as submitted but has no activation tx hash", 409)
+
+    receipt = _get_receipt_if_available(w3, tx_hash)
+    if receipt is None:
+        activation["state"] = "waiting_receipt"
+        _save_activation_metadata(order, activation, metadata)
+        order.status = "activation_submitted"
+        order.updated_at = _utcnow()
+        db.session.commit()
+        return serialize_activation_order(order)
+
+    activation["receiptBlock"] = int(receipt.blockNumber)
+    activation["confirmations"] = _activation_confirmations(w3, receipt)
+    activation["requiredConfirmations"] = max(int(Config.SNE_ACTIVATION_CONFIRMATIONS or 1), 1)
+
+    if receipt.status != 1:
+        activation["state"] = "reverted"
+        _save_activation_metadata(order, activation, metadata)
+        order.status = "activation_failed"
+        order.error_code = "ACTIVATION_TX_REVERTED"
+        order.error_message = "Activation transaction reverted on-chain"
+        order.updated_at = _utcnow()
+        db.session.commit()
+        raise CheckoutError("ACTIVATION_TX_REVERTED", "Activation transaction reverted on-chain", 502)
+
+    if not _receipt_confirmed(w3, receipt):
+        activation["state"] = "waiting_confirmations"
+        _save_activation_metadata(order, activation, metadata)
+        order.status = "activation_submitted"
+        order.updated_at = _utcnow()
+        db.session.commit()
+        return serialize_activation_order(order)
+
+    confirmation = build_keys_entitlement(order.target_arbitrum_address)
+    if not confirmation.get("hasOperatorKey"):
+        activation["state"] = "waiting_entitlement_projection"
+        _save_activation_metadata(order, activation, metadata)
+        order.status = "activation_submitted"
+        order.updated_at = _utcnow()
+        db.session.commit()
+        return serialize_activation_order(order)
+
+    activation["state"] = "confirmed"
+    activation["confirmedAt"] = _utcnow().isoformat()
+    _save_activation_metadata(order, activation, metadata)
+    order.status = "activated"
+    order.error_code = None
+    order.error_message = None
+    order.updated_at = _utcnow()
+    db.session.commit()
+    return serialize_activation_order(order)
+
+
+def refresh_activation_status(*, order_id: str, auth_address: Optional[str], trusted: bool = False) -> dict[str, Any]:
+    order = _load_order(order_id, auth_address, trusted)
+    if order.status != "activation_submitted" or not order.activation_tx_hash:
+        return serialize_activation_order(order)
+
+    w3 = _activation_web3(order.activation_chain)
+    return _finalize_submitted_activation(order, w3)
 
 
 def process_activation_order(*, order_id: str, auth_address: Optional[str], trusted: bool = False) -> dict[str, Any]:
@@ -171,6 +278,12 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
 
     if not order.payment_confirmed_at or not order.payment_tx_hash:
         raise CheckoutError("PAYMENT_NOT_CONFIRMED", "Order has no confirmed Tron payment yet", 409)
+
+    signer = _activation_account()
+    w3 = _activation_web3(order.activation_chain)
+
+    if order.status == "activation_submitted" and order.activation_tx_hash:
+        return _finalize_submitted_activation(order, w3)
 
     entitlement = build_keys_entitlement(order.target_arbitrum_address)
     if entitlement.get("hasOperatorKey"):
@@ -188,8 +301,6 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
         db.session.commit()
         raise CheckoutError("TARGET_ALREADY_HAS_KEY", "Target wallet already has an Operator Key", 409)
 
-    signer = _activation_account()
-    w3 = _activation_web3(order.activation_chain)
     operator_key_address = _operator_key_contract(order)
     operator_key = w3.eth.contract(address=operator_key_address, abi=_OPERATOR_KEY_WRITE_ABI)
     signer_address = Web3.to_checksum_address(signer.address)
@@ -223,12 +334,48 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
             )
             restore_required = Config.SNE_ACTIVATION_RESTORE_CONTROLLER and previous_controller.lower() != signer_address.lower()
 
-        tx_hash, nonce = _send_contract_transaction(
+        tx_hash, tx_hash_bytes, nonce = _submit_contract_transaction(
             w3,
             signer,
             operator_key.functions.mintOperator(target_address, Config.SNE_ACTIVATION_MINT_AMOUNT),
             nonce,
         )
+
+        metadata, activation = _activation_metadata(order)
+        activation.update({
+            "submittedAt": _utcnow().isoformat(),
+            "state": "submitted",
+            "targetAddress": target_address,
+            "operatorKeyContract": operator_key_address,
+            "previousSaleController": previous_controller,
+            "restoreControllerRequested": restore_required,
+        })
+        _save_activation_metadata(order, activation, metadata)
+        order.status = "activation_submitted"
+        order.activation_tx_hash = tx_hash
+        order.error_code = None
+        order.error_message = None
+        order.updated_at = _utcnow()
+        db.session.commit()
+
+        try:
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=180)
+        except TimeExhausted:
+            activation["state"] = "waiting_receipt"
+            activation["lastObservedAt"] = _utcnow().isoformat()
+            _save_activation_metadata(order, activation, metadata)
+            order.status = "activation_submitted"
+            order.updated_at = _utcnow()
+            db.session.commit()
+            return serialize_activation_order(order)
+
+        activation["receiptBlock"] = int(receipt.blockNumber)
+        activation["confirmations"] = _activation_confirmations(w3, receipt)
+        activation["requiredConfirmations"] = max(int(Config.SNE_ACTIVATION_CONFIRMATIONS or 1), 1)
+        activation["lastObservedAt"] = _utcnow().isoformat()
+
+        if receipt.status != 1:
+            raise CheckoutError("ACTIVATION_TX_REVERTED", "Activation transaction reverted on-chain", 502)
 
         if restore_required:
             try:
@@ -241,18 +388,27 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
             except Exception as restore_exc:
                 logger.error("Failed to restore OperatorKey sale controller: %s", restore_exc, exc_info=True)
 
+        if not _receipt_confirmed(w3, receipt):
+            activation["state"] = "waiting_confirmations"
+            _save_activation_metadata(order, activation, metadata)
+            order.status = "activation_submitted"
+            order.updated_at = _utcnow()
+            db.session.commit()
+            return serialize_activation_order(order)
+
         confirmation = build_keys_entitlement(order.target_arbitrum_address)
         if not confirmation.get("hasOperatorKey"):
-            raise CheckoutError("ACTIVATION_NOT_VISIBLE", "Mint transaction succeeded but entitlement is not yet visible", 502)
+            activation["state"] = "waiting_entitlement_projection"
+            _save_activation_metadata(order, activation, metadata)
+            order.status = "activation_submitted"
+            order.updated_at = _utcnow()
+            db.session.commit()
+            return serialize_activation_order(order)
 
-        metadata = dict(order.session_metadata or {})
-        metadata["activation"] = {
-            "processedAt": _utcnow().isoformat(),
-            "targetAddress": target_address,
-            "operatorKeyContract": operator_key_address,
-            "previousSaleController": previous_controller,
-            "restoredController": restore_required,
-        }
+        activation["state"] = "confirmed"
+        activation["processedAt"] = _utcnow().isoformat()
+        activation["restoredController"] = restore_required
+        _save_activation_metadata(order, activation, metadata)
 
         order.status = "activated"
         order.activation_tx_hash = tx_hash
@@ -264,6 +420,11 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
         return serialize_activation_order(order)
 
     except CheckoutError as exc:
+        metadata, activation = _activation_metadata(order)
+        activation["state"] = "failed"
+        activation["failedAt"] = _utcnow().isoformat()
+        activation["failureCode"] = exc.code
+        _save_activation_metadata(order, activation, metadata)
         order.status = "activation_failed"
         order.error_code = exc.code
         order.error_message = exc.message
@@ -272,10 +433,14 @@ def process_activation_order(*, order_id: str, auth_address: Optional[str], trus
         raise
     except Exception as exc:
         logger.error("Activation processing failed for %s: %s", order.id, exc, exc_info=True)
+        metadata, activation = _activation_metadata(order)
+        activation["state"] = "failed"
+        activation["failedAt"] = _utcnow().isoformat()
+        activation["failureCode"] = "ACTIVATION_FAILED"
+        _save_activation_metadata(order, activation, metadata)
         order.status = "activation_failed"
         order.error_code = "ACTIVATION_FAILED"
         order.error_message = str(exc)
         order.updated_at = _utcnow()
         db.session.commit()
         raise CheckoutError("ACTIVATION_FAILED", "Failed to activate Operator Key on Arbitrum", 502) from exc
-

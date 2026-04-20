@@ -311,10 +311,11 @@ function stageCopy(flowStage: FlowStage, order?: CheckoutOrder | null) {
     };
   }
   if (flowStage === 'activation') {
+    const activationRail = activationRailState(order);
     return {
       eyebrow: 'Rail de ativação',
-      title: order?.status === 'activation_failed' ? 'O pagamento entrou. Falta concluir o mint em Arbitrum.' : 'O pagamento já foi aceito. Agora a ordem entra na camada de ativação.',
-      description: 'Esta etapa valida o recebimento em Tron, resolve o signer correto e executa a ativação do Operator Key na target wallet.',
+      title: activationRail.title,
+      description: activationRail.description,
     };
   }
   return {
@@ -355,6 +356,90 @@ function cardSynopsis({
     return 'Ativação concluída. O rail financeiro e o mint soberano já fecharam para esta sessão.';
   }
   return 'O pagamento já entrou. O modal acompanha a entrega do Key em Arbitrum e mostra o estado da ativação em tempo real.';
+}
+
+function activationRailState(order?: CheckoutOrder | null) {
+  const activationState = order?.activation.state || null;
+  const confirmations = order?.activation.confirmations ?? null;
+  const requiredConfirmations = order?.activation.requiredConfirmations ?? null;
+
+  if (order?.status === 'activated') {
+    return {
+      tone: 'ok' as const,
+      title: 'Operator Key confirmado em Arbitrum',
+      description: 'O mint já foi confirmado e o entitlement soberano ficou visível para a target wallet.',
+    };
+  }
+
+  if (order?.status === 'activation_failed') {
+    return {
+      tone: 'error' as const,
+      title: 'Ativação falhou e exige intervenção',
+      description: order.errorMessage || 'A ordem entrou em erro depois da etapa de pagamento. Revise a causa e reenvie a ativação.',
+    };
+  }
+
+  if (activationState === 'waiting_receipt') {
+    return {
+      tone: 'warn' as const,
+      title: 'Tx enviada, aguardando receipt',
+      description: 'A transação já foi submetida em Arbitrum, mas o backend ainda espera o primeiro receipt para avançar.',
+    };
+  }
+
+  if (activationState === 'waiting_confirmations') {
+    return {
+      tone: 'warn' as const,
+      title: 'Tx confirmando em Arbitrum',
+      description:
+        confirmations !== null && requiredConfirmations !== null
+          ? `A tx já tem ${confirmations}/${requiredConfirmations} confirmações. O checkout aguarda o mínimo exigido antes de fechar a entrega.`
+          : 'A tx já saiu da carteira de ativação e agora espera confirmações suficientes em Arbitrum.',
+    };
+  }
+
+  if (activationState === 'waiting_entitlement_projection') {
+    return {
+      tone: 'warn' as const,
+      title: 'Mint confirmado, aguardando projeção do entitlement',
+      description: 'A tx já confirmou, mas a leitura soberana ainda não refletiu o Operator Key na target wallet.',
+    };
+  }
+
+  if (order?.status === 'activation_submitted' || activationState === 'submitted') {
+    return {
+      tone: 'warn' as const,
+      title: 'Ativação submetida para Arbitrum',
+      description: 'O backend já enviou a tx de mint. Agora o fluxo acompanha confirmações e visibilidade do entitlement.',
+    };
+  }
+
+  if (order?.status === 'payment_confirmed' || order?.status === 'activation_pending') {
+    return {
+      tone: 'warn' as const,
+      title: 'Pagamento aceito, mint ainda não submetido',
+      description: 'O rail financeiro já foi reconciliado. Falta enviar ou concluir a ativação do Operator Key em Arbitrum.',
+    };
+  }
+
+  return {
+    tone: 'neutral' as const,
+    title: 'Ativação aguardando próximo passo',
+    description: 'A ordem está em transição entre pagamento confirmado e entrega soberana do Key.',
+  };
+}
+
+function railTone(tone: 'ok' | 'warn' | 'error' | 'neutral') {
+  if (tone === 'ok') {
+    return { bg: 'rgba(50,213,131,0.10)', border: 'rgba(50,213,131,0.18)' };
+  }
+  if (tone === 'warn') {
+    return { bg: 'rgba(255,140,66,0.08)', border: 'rgba(255,140,66,0.18)' };
+  }
+  if (tone === 'error') {
+    return { bg: 'rgba(255,99,99,0.08)', border: 'rgba(255,99,99,0.18)' };
+  }
+  return { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' };
 }
 
 function primaryLauncherLabel({
@@ -557,6 +642,8 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const steps = buildFlowSteps({ isAuthenticated, order, flowStage });
   const stageMeta = stageCopy(flowStage, order);
   const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
+  const activationRail = activationRailState(order);
+  const activationRailTone = railTone(activationRail.tone);
   const orderStatusTone = statusTone(order?.status ?? (effectiveAccess ? 'activated' : null));
   const tronLinkWallet = tronWallets.find((candidate) => candidate.adapter.name === 'TronLink');
   const walletConnectWallet = tronWallets.find((candidate) => candidate.adapter.name === 'WalletConnect');
@@ -619,18 +706,36 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
   useEffect(() => {
     if (flowStage === 'payment') {
-      if (buyerWalletReady) {
-        setShowPaymentSurface(true);
-        return;
+      if (!buyerWalletReady) {
+        setShowBuyerAddressConfig(true);
+        setShowPaymentSurface(false);
+        setShowReconcileSurface(false);
       }
-      setShowBuyerAddressConfig(true);
-      setShowPaymentSurface(false);
-      setShowReconcileSurface(false);
       return;
     }
+    setShowBuyerAddressConfig(false);
     setShowPaymentSurface(false);
     setShowReconcileSurface(false);
   }, [buyerWalletReady, flowStage]);
+
+  useEffect(() => {
+    if (showReconcileSurface) {
+      setShowPaymentSurface(false);
+    }
+  }, [showReconcileSurface]);
+
+  useEffect(() => {
+    if (showPaymentSurface) {
+      setShowReconcileSurface(false);
+    }
+  }, [showPaymentSurface]);
+
+  useEffect(() => {
+    if (showBuyerAddressConfig) {
+      setShowPaymentSurface(false);
+      setShowReconcileSurface(false);
+    }
+  }, [showBuyerAddressConfig]);
 
   async function handleAuthenticate() {
     try {
@@ -883,6 +988,10 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         setFeedback('Pagamento reconciliado e ativação concluída.');
         return;
       }
+      if (updatedOrder.status === 'activation_submitted') {
+        setFeedback('Pagamento reconciliado. A tx de ativação já foi submetida em Arbitrum e agora aguarda confirmações.');
+        return;
+      }
       setFeedback(updatedOrder.errorMessage || 'Reconciliação executada. Atualize a ordem para acompanhar o status.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao reconciliar a transação Tron.');
@@ -898,6 +1007,10 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         setFeedback('Ativação concluída em Arbitrum.');
         return;
       }
+      if (updatedOrder.status === 'activation_submitted') {
+        setFeedback('A ativação já foi submetida. O checkout agora acompanha receipt, confirmações e projeção do entitlement.');
+        return;
+      }
       setFeedback(updatedOrder.errorMessage || 'A ativação foi reenviada para processamento.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao processar a ativação.');
@@ -911,6 +1024,10 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       const updatedOrder = await retryActivationMutation.mutateAsync({ orderId: trackedOrderId });
       if (updatedOrder.status === 'activated') {
         setFeedback('Retry concluído. Operator Key ativado em Arbitrum.');
+        return;
+      }
+      if (updatedOrder.status === 'activation_submitted') {
+        setFeedback('Retry aceito. A tx de ativação já está no rail de Arbitrum e o modal vai acompanhar a confirmação.');
         return;
       }
       setFeedback(updatedOrder.errorMessage || 'Retry enviado. Atualize a ordem para acompanhar o status.');
@@ -980,6 +1097,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
         Tron liquida o pagamento em USDT. Arbitrum entrega o entitlement final. Este painel serve só como referência rápida.
       </div>
+
+      {flowStage === 'activation' || flowStage === 'success' ? (
+        <>
+          <div className="my-4 h-px" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--accent-orange)' }}>
+            Activation rail
+          </div>
+          <div className="space-y-2 text-sm">
+            <DetailRow label="Estado" value={order?.activation.state || statusLabel(order?.status)} />
+            <DetailRow label="Confirmações" value={order?.activation.confirmations != null && order?.activation.requiredConfirmations != null ? `${order.activation.confirmations}/${order.activation.requiredConfirmations}` : '--'} />
+            <DetailRow label="Activation tx" value={shortValue(order?.activationTxHash)} onCopy={order?.activationTxHash ? () => void copyValue(order.activationTxHash, 'Activation tx') : undefined} />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 
@@ -1460,7 +1591,94 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
     if (flowStage === 'payment') {
       return (
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-[760px]">
+          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                Liquidação pronta
+              </div>
+            </div>
+            <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+              Esta etapa cuida só do pagamento Tron. O vínculo da buyer e o envio/reconcile vivem em superfícies laterais separadas.
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Buyer
+                </div>
+                <div className="text-base font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                  {order?.buyerTronAddress || '--'}
+                </div>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Treasury
+                </div>
+                <div className="text-base font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                  {order?.payment.treasuryAddress || '--'}
+                </div>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Valor
+                </div>
+                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                  {orderExpectedAmountLabel}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mt-5 rounded-2xl p-4"
+              style={{
+                backgroundColor: buyerWalletMismatch
+                  ? 'rgba(255,99,99,0.08)'
+                  : buyerWalletReady
+                    ? 'rgba(50,213,131,0.10)'
+                    : 'rgba(255,140,66,0.08)',
+                borderWidth: '1px',
+                borderColor: buyerWalletMismatch
+                  ? 'rgba(255,99,99,0.18)'
+                  : buyerWalletReady
+                    ? 'rgba(50,213,131,0.18)'
+                    : 'rgba(255,140,66,0.18)',
+              }}
+            >
+              <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                {buyerWalletMismatch
+                  ? 'Wallet pagadora divergente'
+                  : buyerWalletReady
+                    ? 'Wallet Tron pronta para liquidar'
+                    : 'Falta vincular a wallet pagadora'}
+              </div>
+              <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                {buyerWalletMismatch
+                  ? 'A wallet conectada não corresponde à buyer vinculada na order. Resolva isso antes de abrir o rail financeiro.'
+                  : buyerWalletReady
+                    ? 'A buyer já confere com a wallet conectada. Agora você pode abrir o painel de pagamento guiado ou entregar um txHash manualmente.'
+                    : 'Abra o painel Tron para conectar a wallet correta e travar a buyer antes do pagamento.'}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone={buyerWalletReady ? 'secondary' : 'primary'}>
+                {buyerWalletReady ? 'Editar wallet Tron' : 'Abrir wallet Tron'}
+              </StageActionButton>
+              {buyerWalletReady ? (
+                <>
+                  <StageActionButton onClick={() => setShowPaymentSurface(true)}>
+                    Abrir pagamento
+                  </StageActionButton>
+                  <StageActionButton onClick={() => setShowReconcileSurface(true)} tone="secondary">
+                    Abrir reconcile
+                  </StageActionButton>
+                </>
+              ) : null}
+            </div>
+          </div>
+
           {!showBuyerAddressConfig && !showPaymentSurface && !showReconcileSurface ? feedbackSurface : null}
         </div>
       );
@@ -1483,16 +1701,39 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           <div
             className="rounded-2xl p-4"
             style={{
-              backgroundColor: order?.status === 'activation_failed' ? 'rgba(255,99,99,0.08)' : 'rgba(255,140,66,0.08)',
+              backgroundColor: activationRailTone.bg,
               borderWidth: '1px',
-              borderColor: order?.status === 'activation_failed' ? 'rgba(255,99,99,0.18)' : 'rgba(255,140,66,0.18)',
+              borderColor: activationRailTone.border,
             }}
           >
             <div className="font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
-              {order?.status === 'activation_failed' ? 'Ativação pendurada em erro' : 'Entrega soberana em andamento'}
+              {activationRail.title}
             </div>
             <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-              {order?.errorMessage || 'O backend já aceitou o rail financeiro. Falta fechar o mint do Operator Key no target Arbitrum.'}
+              {activationRail.description}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Estado interno</div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                {order?.activation.state || '--'}
+              </div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Confirmações</div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                {order?.activation.confirmations != null && order?.activation.requiredConfirmations != null
+                  ? `${order.activation.confirmations}/${order.activation.requiredConfirmations}`
+                  : '--'}
+              </div>
+            </div>
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Última observação</div>
+              <div className="text-sm font-semibold break-all" style={{ color: 'var(--text-1)' }}>
+                {order?.activation.lastObservedAt || order?.updatedAt || '--'}
+              </div>
             </div>
           </div>
 
@@ -1680,10 +1921,19 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 <StageActionButton onClick={() => setShowBuyerAddressConfig(true)}>
                   Resolver wallet Tron
                 </StageActionButton>
-              ) : !showPaymentSurface ? (
-                <StageActionButton onClick={() => setShowPaymentSurface(true)}>
-                  Abrir pagamento
+              ) : !buyerWalletReady ? (
+                <StageActionButton onClick={() => setShowBuyerAddressConfig(true)}>
+                  Abrir wallet Tron
                 </StageActionButton>
+              ) : !showPaymentSurface && !showReconcileSurface ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <StageActionButton onClick={() => setShowPaymentSurface(true)}>
+                    Abrir pagamento
+                  </StageActionButton>
+                  <StageActionButton onClick={() => setShowReconcileSurface(true)} tone="secondary">
+                    Abrir reconcile
+                  </StageActionButton>
+                </div>
               ) : null
             ) : flowStage === 'activation' ? (
               order?.status === 'activation_failed' ? (
@@ -1692,7 +1942,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 </StageActionButton>
               ) : (
                 <StageActionButton onClick={() => void handleProcessActivation()} disabled={isProcessingActivation}>
-                  {isProcessingActivation ? 'Processando ativação...' : 'Processar ativação'}
+                  {isProcessingActivation
+                    ? 'Atualizando ativação...'
+                    : order?.status === 'activation_submitted'
+                      ? 'Atualizar ativação'
+                      : 'Processar ativação'}
                 </StageActionButton>
               )
             ) : order && FINAL_ORDER_STATUSES.has(order.status) ? (

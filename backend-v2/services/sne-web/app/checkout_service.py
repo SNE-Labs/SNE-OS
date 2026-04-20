@@ -7,12 +7,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+import logging
 import re
 import uuid
 
 from .config import Config
 from .extensions import db
 from .models import ActivationOrder
+
+logger = logging.getLogger(__name__)
 
 EVM_ADDRESS_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 TRON_ADDRESS_RE = re.compile(r"^T[1-9A-HJ-NP-Za-km-z]{33}$")
@@ -99,6 +102,8 @@ def _payment_instructions(order: ActivationOrder) -> dict:
 
 def serialize_activation_order(order: ActivationOrder) -> dict:
     metadata = order.session_metadata or {}
+    payment_metadata = dict(metadata.get("tronPayment") or {})
+    activation_metadata = dict(metadata.get("activation") or {})
     return {
         "id": order.id,
         "status": order.status,
@@ -129,12 +134,32 @@ def serialize_activation_order(order: ActivationOrder) -> dict:
             **_payment_instructions(order),
             "txHash": order.payment_tx_hash,
             "confirmedAt": order.payment_confirmed_at.isoformat() if order.payment_confirmed_at else None,
+            "verifiedAt": payment_metadata.get("verifiedAt"),
+            "blockNumber": payment_metadata.get("blockNumber"),
+            "from": payment_metadata.get("from"),
+            "to": payment_metadata.get("to"),
+            "amountUnits": payment_metadata.get("amountUnits"),
         },
         "activation": {
             "chain": order.activation_chain,
             "targetAddress": order.target_arbitrum_address,
             "txHash": order.activation_tx_hash,
             "attempts": order.activation_attempts,
+            "state": activation_metadata.get("state"),
+            "submittedAt": activation_metadata.get("submittedAt"),
+            "processedAt": activation_metadata.get("processedAt"),
+            "confirmedAt": activation_metadata.get("confirmedAt"),
+            "failedAt": activation_metadata.get("failedAt"),
+            "failureCode": activation_metadata.get("failureCode"),
+            "lastObservedAt": activation_metadata.get("lastObservedAt"),
+            "receiptBlock": activation_metadata.get("receiptBlock"),
+            "confirmations": activation_metadata.get("confirmations"),
+            "requiredConfirmations": activation_metadata.get("requiredConfirmations"),
+            "operatorKeyContract": activation_metadata.get("operatorKeyContract"),
+            "previousSaleController": activation_metadata.get("previousSaleController"),
+            "restoreControllerRequested": activation_metadata.get("restoreControllerRequested"),
+            "restoredController": activation_metadata.get("restoredController"),
+            "skipReason": activation_metadata.get("skipReason"),
         },
         "session": {
             "walletProvider": metadata.get("walletProvider"),
@@ -199,6 +224,15 @@ def create_activation_order(
 
 def get_activation_order(*, order_id: str, auth_address: str) -> dict:
     order = _require_owned_order(order_id, auth_address)
+    if order.status == "activation_submitted" and order.activation_tx_hash:
+        try:
+            from .activation_service import refresh_activation_status
+
+            return refresh_activation_status(order_id=order.id, auth_address=auth_address)
+        except CheckoutError:
+            raise
+        except Exception as exc:
+            logger.warning("Failed to refresh submitted activation order %s: %s", order.id, exc, exc_info=True)
     return serialize_activation_order(order)
 
 

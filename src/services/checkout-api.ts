@@ -50,12 +50,32 @@ export type CheckoutOrder = {
     rpcUrl: string | null;
     txHash: string | null;
     confirmedAt: string | null;
+    verifiedAt?: string | null;
+    blockNumber?: number | null;
+    from?: string | null;
+    to?: string | null;
+    amountUnits?: string | null;
   };
   activation: {
     chain: string;
     targetAddress: string;
     txHash: string | null;
     attempts: number;
+    state?: string | null;
+    submittedAt?: string | null;
+    processedAt?: string | null;
+    confirmedAt?: string | null;
+    failedAt?: string | null;
+    failureCode?: string | null;
+    lastObservedAt?: string | null;
+    receiptBlock?: number | null;
+    confirmations?: number | null;
+    requiredConfirmations?: number | null;
+    operatorKeyContract?: string | null;
+    previousSaleController?: string | null;
+    restoreControllerRequested?: boolean | null;
+    restoredController?: boolean | null;
+    skipReason?: string | null;
   };
   session: {
     walletProvider?: string | null;
