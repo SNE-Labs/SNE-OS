@@ -271,15 +271,6 @@ function stepIcon(stepId: FlowStep['id']) {
   return ShieldCheck;
 }
 
-function countCompletedSteps(steps: FlowStep[]) {
-  return steps.filter((step) => step.state === 'complete').length;
-}
-
-function progressPercent(steps: FlowStep[]) {
-  if (!steps.length) return 0;
-  return Math.max(8, Math.round((countCompletedSteps(steps) / steps.length) * 100));
-}
-
 function stageSignal(flowStage: FlowStage, order?: CheckoutOrder | null) {
   if (flowStage === 'success') return 'operator active';
   if (flowStage === 'activation' && order?.status === 'activation_failed') return 'retry path';
@@ -566,9 +557,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const steps = buildFlowSteps({ isAuthenticated, order, flowStage });
   const stageMeta = stageCopy(flowStage, order);
   const synopsis = cardSynopsis({ effectiveAccess, isAuthenticated, order });
-  const completedSteps = countCompletedSteps(steps);
-  const flowProgress = progressPercent(steps);
-  const bottomSignalTone = stepStyles(flowStage === 'activation' && order?.status === 'activation_failed' ? 'error' : flowStage === 'success' ? 'complete' : 'current');
   const tronLinkWallet = tronWallets.find((candidate) => candidate.adapter.name === 'TronLink');
   const walletConnectWallet = tronWallets.find((candidate) => candidate.adapter.name === 'WalletConnect');
   const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
@@ -580,6 +568,26 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       : activeTronConnector;
   const normalizedConnectedTronAddress = normalizeConnectedWalletAddress(connectedTronAddress, connectedTronConnector);
   const connectedTronAddressValid = Boolean(normalizedConnectedTronAddress);
+  const normalizedOrderBuyerAddress = normalizeTronAddress(order?.buyerTronAddress);
+  const buyerWalletMismatch = Boolean(
+    normalizedOrderBuyerAddress &&
+      normalizedConnectedTronAddress &&
+      normalizedOrderBuyerAddress !== normalizedConnectedTronAddress
+  );
+  const buyerWalletReady = Boolean(
+    normalizedOrderBuyerAddress &&
+      normalizedConnectedTronAddress &&
+      normalizedOrderBuyerAddress === normalizedConnectedTronAddress
+  );
+  const orderExpectedAmountLabel = `${order?.payment.expectedAmount ?? '100.000000'} USDT`;
+  const canAdoptConnectedWallet =
+    Boolean(trackedOrderId) &&
+    Boolean(normalizedConnectedTronAddress) &&
+    Boolean(
+      connectedTronConnector &&
+        (connectedTronConnector === 'TronLink' || connectedTronConnector === 'WalletConnect')
+    ) &&
+    order?.status === 'awaiting_payment';
   const tronWalletStatusLabel = connectedTronAddress
     ? connectedTronAddressValid
       ? 'Wallet conectada'
@@ -602,14 +610,24 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           ? 'A extensão está disponível nesta página. Autorize a wallet que vai pagar em USDT.'
           : 'A TronLink não foi injetada nesta página. Use WalletConnect ou reconcile manual.'
         : 'Escolha TronLink ou WalletConnect para abrir a sessão Tron do checkout.';
+  const walletPanelMatchTone = buyerWalletMismatch
+    ? { bg: 'rgba(255,99,99,0.10)', border: 'rgba(255,99,99,0.20)', color: 'var(--danger)', label: 'Nao confere' }
+    : buyerWalletReady
+      ? { bg: 'rgba(50,213,131,0.12)', border: 'rgba(50,213,131,0.22)', color: 'var(--ok-green)', label: 'Confere' }
+      : { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', color: 'var(--text-2)', label: 'Pendente' };
 
   useEffect(() => {
     if (flowStage === 'payment') {
-      setShowPaymentSurface(true);
+      if (buyerWalletReady) {
+        setShowPaymentSurface(true);
+        return;
+      }
+      setShowBuyerAddressConfig(true);
+      setShowPaymentSurface(false);
       return;
     }
     setShowPaymentSurface(false);
-  }, [flowStage]);
+  }, [buyerWalletReady, flowStage]);
 
   async function handleAuthenticate() {
     try {
@@ -772,6 +790,28 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       setFeedback('Wallet Tron vinculada. A ordem agora está pronta para o pagamento em USDT.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Falha ao vincular a wallet Tron.');
+    }
+  }
+
+  async function handleAdoptConnectedWalletForOrder() {
+    if (!trackedOrderId || !normalizedConnectedTronAddress || !connectedTronConnector) return;
+    try {
+      setFeedback(null);
+      const updatedOrder = await bindTronMutation.mutateAsync({
+        orderId: trackedOrderId,
+        payload: {
+          buyerTronAddress: normalizedConnectedTronAddress,
+          walletProvider: connectedTronConnector.toLowerCase(),
+          gasMode: 'gasfree_planned',
+        },
+      });
+      setTrackedOrderId(updatedOrder.id);
+      setBuyerTronAddress(normalizedConnectedTronAddress);
+      setShowBuyerAddressConfig(false);
+      setShowPaymentSurface(true);
+      setFeedback(`Buyer atualizada para ${shortValue(normalizedConnectedTronAddress)}. O rail de pagamento já pode seguir.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao atualizar a buyer wallet da ordem.');
     }
   }
 
@@ -950,7 +990,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
   const tronBindingPanelBody = (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div
           className="rounded-2xl p-4"
           style={{
@@ -968,13 +1008,15 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
           }}
         >
           <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-            Sessao Tron
+            Wallet conectada agora
           </div>
           <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-            {tronWalletStatusLabel}
+            {normalizedConnectedTronAddress ? shortValue(normalizedConnectedTronAddress) : tronWalletStatusLabel}
           </div>
           <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-            {tronWalletStatusDescription}
+            {normalizedConnectedTronAddress
+              ? `${shortValue(connectedTronAddress)} via ${selectedTronWallet?.adapter.name ?? activeTronConnector ?? 'wallet'}`
+              : tronWalletStatusDescription}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <StageActionButton
@@ -996,22 +1038,41 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
         <div
           className="rounded-2xl p-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+          style={{ backgroundColor: walletPanelMatchTone.bg, borderWidth: '1px', borderColor: walletPanelMatchTone.border }}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                Buyer Tron
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                Buyer da ordem
               </div>
-              <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                O checkout usa a wallet conectada por padrao. Abra a configuracao manual apenas se quiser travar explicitamente o buyer.
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                {normalizedOrderBuyerAddress ? shortValue(normalizedOrderBuyerAddress) : 'Ainda nao vinculada'}
               </div>
             </div>
+            <div
+              className="rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]"
+              style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: walletPanelMatchTone.color }}
+            >
+              {walletPanelMatchTone.label}
+            </div>
+          </div>
+          <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+            {buyerWalletMismatch
+              ? 'A ordem esta vinculada a outra wallet Tron. Resolva isso aqui antes de abrir o pagamento.'
+              : buyerWalletReady
+                ? 'A wallet conectada ja confere com a buyer da ordem.'
+                : 'Conecte uma wallet Tron e vincule-a nesta ordem para destravar o rail financeiro.'}
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2">
+            {canAdoptConnectedWallet ? (
+              <StageActionButton onClick={() => void handleAdoptConnectedWalletForOrder()}>
+                Usar wallet conectada nesta ordem
+              </StageActionButton>
+            ) : null}
             <StageActionButton onClick={() => setShowManualBuyerAddress((current) => !current)} tone="secondary">
-              {showManualBuyerAddress ? 'Ocultar' : 'Configurar'}
+              {showManualBuyerAddress ? 'Ocultar buyer manual' : 'Editar buyer manualmente'}
             </StageActionButton>
           </div>
-
           {showManualBuyerAddress ? (
             <div className="mt-4">
               <input
@@ -1022,147 +1083,99 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 style={{ backgroundColor: 'var(--bg-1)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
               />
               <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                Se voce preencher, ele precisa bater exatamente com a wallet Tron conectada.
+                Se voce preencher, esse buyer precisa bater exatamente com a wallet conectada.
               </div>
             </div>
           ) : null}
         </div>
 
-        {feedbackSurface}
-
-        <div
-          className="rounded-2xl p-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
-          <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-            Resumo operacional
-          </div>
-          <div className="space-y-2 text-sm">
-            <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
-            <DetailRow label="Order" value={shortValue(order?.id)} />
-            <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
-            <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress || connectedTronAddress)} />
-            <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
-          </div>
-        </div>
+        {showBuyerAddressConfig ? feedbackSurface : null}
       </div>
     </div>
   );
 
   const paymentRailPanelBody = (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3">
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Treasury Tron</div>
-            <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.treasuryAddress ?? '--'}</div>
+      <div className="space-y-3">
+        {buyerWalletMismatch ? (
+          <div
+            className="rounded-2xl p-4"
+            style={{ backgroundColor: 'rgba(255,99,99,0.10)', borderWidth: '1px', borderColor: 'rgba(255,99,99,0.20)' }}
+          >
+            <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--danger)' }}>
+              Pagamento bloqueado
+            </div>
+            <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+              A wallet conectada nao confere com a buyer da ordem.
+            </div>
+            <div className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-2)' }}>
+              <div>Wallet conectada: {shortValue(normalizedConnectedTronAddress)}</div>
+              <div>Buyer da ordem: {shortValue(normalizedOrderBuyerAddress)}</div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)}>
+                Resolver wallet Tron
+              </StageActionButton>
+              {canAdoptConnectedWallet ? (
+                <StageActionButton onClick={() => void handleAdoptConnectedWalletForOrder()} tone="secondary">
+                  Usar esta wallet
+                </StageActionButton>
+              ) : null}
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>Pagamento em Tron</div>
+                <div className="space-y-2 text-sm">
+                  <DetailRow label="Origem" value={normalizedConnectedTronAddress ? shortValue(normalizedConnectedTronAddress) : '--'} />
+                  <DetailRow label="Destino" value={order?.payment.treasuryAddress ?? '--'} />
+                  <DetailRow label="Valor" value={orderExpectedAmountLabel} />
+                  <DetailRow label="USDT" value={order?.payment.assetContract ?? '--'} />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+                <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Pagar agora</div>
+              </div>
+              <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                Assina a transferencia TRC-20 de USDT com a wallet Tron vinculada e envia o `txHash` ao backend.
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                <StageActionButton onClick={() => void handlePayWithTronWallet()} disabled={isReconciling || isConnectingTronWallet || isDisconnectingTronWallet}>
+                  {isReconciling ? 'Confirmando pagamento...' : `Pagar ${orderExpectedAmountLabel}`}
+                </StageActionButton>
+              </div>
+            </div>
+
             <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>Valor esperado</div>
-              <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>{order?.payment.expectedAmount ?? '100.000000'} USDT</div>
-            </div>
-            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>USDT contract</div>
-              <div className="text-sm break-all" style={{ color: 'var(--text-1)' }}>{order?.payment.assetContract ?? '--'}</div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="rounded-2xl p-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                Sessão Tron
+              <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                Ja paguei
               </div>
-              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                {tronWalletStatusLabel}
+              <input
+                value={manualTxHash}
+                onChange={(event) => setManualTxHash(event.target.value)}
+                placeholder="Hash da transação Tron"
+                className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
+              />
+              <div className="text-sm mt-3 leading-6" style={{ color: 'var(--text-2)' }}>
+                Use esta via se a transferencia ja saiu da buyer wallet e voce so precisa provar o `txHash`.
               </div>
-              <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                {normalizedConnectedTronAddress
-                  ? `A transferência sairá de ${shortValue(normalizedConnectedTronAddress)}.`
-                  : tronWalletStatusDescription}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <StageActionButton onClick={() => void handleManualReconcile()} disabled={!manualTxHash.trim() || isReconciling} tone="secondary">
+                  {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
+                </StageActionButton>
               </div>
             </div>
-            <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone="secondary">
-              Editar buyer
-            </StageActionButton>
-          </div>
+          </>
+        )}
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <StageActionButton
-              onClick={() => void handleConnectTronAdapter('TronLink')}
-              disabled={isConnectingTronWallet || isDisconnectingTronWallet || !tronLinkWallet}
-              tone={activeTronConnector === 'TronLink' ? 'primary' : 'secondary'}
-            >
-              {isConnectingTronWallet && activeTronConnector === 'TronLink' ? 'Conectando...' : 'TronLink'}
-            </StageActionButton>
-            <StageActionButton
-              onClick={() => void handleConnectTronAdapter('WalletConnect')}
-              disabled={isConnectingTronWallet || isDisconnectingTronWallet || !walletConnectAvailable}
-              tone={activeTronConnector === 'WalletConnect' ? 'primary' : 'secondary'}
-            >
-              {isConnectingTronWallet && activeTronConnector === 'WalletConnect' ? 'Abrindo QR...' : 'WalletConnect'}
-            </StageActionButton>
-          </div>
-        </div>
-
-        <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,140,66,0.08)', borderWidth: '1px', borderColor: 'rgba(255,140,66,0.18)' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
-            <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Pagamento guiado</div>
-          </div>
-          <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-            `Pagar com wallet Tron` assina a transferência TRC-20 pelo conector ativo e já envia o `txHash` ao backend.
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <StageActionButton onClick={() => void handlePayWithTronWallet()} disabled={isReconciling || isConnectingTronWallet || isDisconnectingTronWallet}>
-              {isReconciling ? 'Confirmando pagamento...' : 'Pagar com wallet Tron'}
-            </StageActionButton>
-          </div>
-        </div>
-
-        <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
-          <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-            Reconcile manual do `txHash`
-          </div>
-          <input
-            value={manualTxHash}
-            onChange={(event) => setManualTxHash(event.target.value)}
-            placeholder="Hash da transação Tron"
-            className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', color: 'var(--text-1)' }}
-          />
-          <div className="text-sm mt-3 leading-6" style={{ color: 'var(--text-2)' }}>
-            Use esta via se o pagamento já foi enviado e você só precisa provar a transação para a ordem.
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <StageActionButton onClick={() => void handleManualReconcile()} disabled={!manualTxHash.trim() || isReconciling} tone="secondary">
-              {isReconciling ? 'Reconciliando...' : 'Reconciliar tx'}
-            </StageActionButton>
-          </div>
-        </div>
-
-        <div
-          className="rounded-2xl p-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
-          <div className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-            Resumo operacional
-          </div>
-          <div className="space-y-2 text-sm">
-            <DetailRow label="Status" value={order ? statusLabel(order.status) : '--'} />
-            <DetailRow label="Order" value={shortValue(order?.id)} />
-            <DetailRow label="Target" value={shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)} />
-            <DetailRow label="Buyer Tron" value={shortValue(order?.buyerTronAddress || buyerTronAddress || normalizedConnectedTronAddress)} />
-            <DetailRow label="Valor" value={`${order?.payment.expectedAmount ?? '100.000000'} USDT`} />
-          </div>
-        </div>
-
-        {feedbackSurface}
+        {showPaymentSurface ? feedbackSurface : null}
       </div>
     </div>
   );
@@ -1246,7 +1259,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                   Tron settlement
                 </div>
                 <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                  Tudo que envolve treasury, USDT, wallet Tron, pagamento guiado e reconcile manual fica concentrado aqui.
+                  Aqui ficam apenas os dados de liquidação em Tron, o envio guiado do pagamento e o reconcile manual do txHash.
                 </div>
               </div>
               <button onClick={() => setShowPaymentSurface(false)} style={{ color: 'var(--text-3)' }}>
@@ -1327,23 +1340,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             <div className="flex items-center gap-2 mb-3">
               <Link2 className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
               <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
-                Vínculo da wallet Tron
+                Activation Order pronta
               </div>
             </div>
             <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-              Esta etapa só prepara a wallet pagadora. O vínculo detalhado abre em uma segunda superfície lateral, separada do fluxo principal.
+              Este painel so ancora a ordem. Abra o painel Tron para decidir qual wallet vai pagar e vincular a buyer correta.
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
                 <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
-                  Status
+                  Produto
                 </div>
                 <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
-                  {statusLabel(order?.status)}
-                </div>
-                <div className="mt-2 text-sm" style={{ color: 'var(--text-2)' }}>
-                  {order?.buyerTronAddress ? `Buyer atual ${shortValue(order.buyerTronAddress)}` : 'Nenhum buyer Tron fixado ainda.'}
+                  Operator Key
                 </div>
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
@@ -1354,17 +1364,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                   {order?.targetArbitrumAddress || targetArbitrumAddress || '--'}
                 </div>
               </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                <div className="text-[11px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--text-3)' }}>
+                  Valor
+                </div>
+                <div className="text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                  {orderExpectedAmountLabel}
+                </div>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone="secondary">
-                Abrir modal Tron
+              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)}>
+                Abrir wallet Tron
               </StageActionButton>
-              {connectedTronAddress ? (
-                <span className="text-xs uppercase tracking-[0.16em]" style={{ color: connectedTronAddressValid ? 'var(--text-3)' : 'var(--danger)' }}>
-                  {connectedTronAddressValid ? `Conectada ${shortValue(connectedTronAddress)}` : `Wallet invalida ${shortValue(connectedTronAddress)}`}
-                </span>
-              ) : null}
             </div>
           </div>
 
@@ -1376,7 +1389,30 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     if (flowStage === 'payment') {
       return (
         <div className="space-y-4">
-          {feedbackSurface}
+          <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-4 h-4" style={{ color: 'var(--accent-orange)' }} />
+              <div className="font-semibold" style={{ color: 'var(--text-1)' }}>
+                {buyerWalletMismatch ? 'Resolva a wallet Tron antes de pagar' : 'Order pronta para liquidar em Tron'}
+              </div>
+            </div>
+            <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+              {buyerWalletMismatch
+                ? 'O painel do meio resolve o conflito entre wallet conectada e buyer da ordem. O pagamento so destrava depois disso.'
+                : 'A order ja tem buyer vinculada. O painel da direita concentra so o envio do pagamento ou o reconcile manual.'}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <StageActionButton onClick={() => setShowBuyerAddressConfig(true)} tone={buyerWalletMismatch ? 'primary' : 'secondary'}>
+                Abrir wallet Tron
+              </StageActionButton>
+              {!buyerWalletMismatch ? (
+                <StageActionButton onClick={() => setShowPaymentSurface(true)}>
+                  Abrir pagamento
+                </StageActionButton>
+              ) : null}
+            </div>
+          </div>
+          {!showBuyerAddressConfig && !showPaymentSurface ? feedbackSurface : null}
         </div>
       );
     }
@@ -1468,6 +1504,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     : showDesktopTronPanel || showDesktopPaymentPanel
       ? 'clamp(680px, 50vw, 860px)'
       : 'min(1040px, calc(100vw - 3rem))';
+  const showOrderSummaryStrip = Boolean(order && !FINAL_ORDER_STATUSES.has(order.status));
 
   const flowShell = (
     <div className="relative flex max-h-[90vh] flex-col overflow-visible">
@@ -1507,6 +1544,27 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               <StepCard key={step.id} step={step} />
             ))}
           </div>
+
+          {showOrderSummaryStrip ? (
+            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Order</div>
+                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{shortValue(order?.id)}</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Target</div>
+                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{shortValue(order?.targetArbitrumAddress || targetArbitrumAddress)}</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Valor</div>
+                <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-1)' }}>{orderExpectedAmountLabel}</div>
+              </div>
+              <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>Status</div>
+                <div className="mt-1 text-sm font-medium" style={{ color: orderStatusTone.color }}>{statusLabel(order?.status)}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -1585,9 +1643,15 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                 {isBindingTron ? 'Vinculando...' : 'Vincular wallet pagadora'}
               </StageActionButton>
             ) : flowStage === 'payment' ? (
-              <StageActionButton onClick={() => setShowPaymentSurface(true)}>
-                Abrir modal de pagamento
-              </StageActionButton>
+              buyerWalletMismatch ? (
+                <StageActionButton onClick={() => setShowBuyerAddressConfig(true)}>
+                  Resolver wallet Tron
+                </StageActionButton>
+              ) : !showPaymentSurface ? (
+                <StageActionButton onClick={() => setShowPaymentSurface(true)}>
+                  Abrir pagamento
+                </StageActionButton>
+              ) : null
             ) : flowStage === 'activation' ? (
               order?.status === 'activation_failed' ? (
                 <StageActionButton onClick={() => void handleRetryActivation()} disabled={isRetryingActivation}>
@@ -1601,32 +1665,6 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
             ) : order && FINAL_ORDER_STATUSES.has(order.status) ? (
               <StageActionButton onClick={clearTrackedOrder}>Nova ordem</StageActionButton>
             ) : null}
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[11px]">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="rounded-full px-2.5 py-1 uppercase tracking-[0.16em]"
-              style={{ backgroundColor: bottomSignalTone.bg, borderWidth: '1px', borderColor: bottomSignalTone.border, color: bottomSignalTone.color }}
-            >
-              {order ? statusLabel(order.status) : effectiveAccess ? 'operator ativo' : 'checkout idle'}
-            </span>
-            <span style={{ color: 'var(--text-3)' }}>{stageSignal(flowStage, order)}</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 uppercase tracking-[0.14em]" style={{ color: 'var(--text-2)' }}>
-            <span>Progresso {completedSteps}/{steps.length}</span>
-            <span>Rail split Tron / Arbitrum</span>
-          </div>
-
-          <div className="h-1.5 w-full overflow-hidden rounded-full xl:max-w-[220px]" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${flowProgress}%`,
-                background: 'linear-gradient(90deg, rgba(255,140,66,0.75), rgba(50,213,131,0.8))',
-              }}
-            />
           </div>
         </div>
       </div>
@@ -1784,7 +1822,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
                         Tron settlement
                       </div>
                       <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                        O guiado, o reconcile manual e o snapshot operacional ficam isolados nesta superfície lateral.
+                        Este painel cuida só da liquidação em Tron: origem, destino, pagamento guiado e reconcile manual.
                       </div>
                     </div>
                     <button onClick={() => setShowPaymentSurface(false)} style={{ color: 'var(--text-3)' }}>
