@@ -2,24 +2,50 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { WalletProvider } from '@tronweb3/tronwallet-adapter-react-hooks';
-import { TronLinkAdapter, WalletConnectAdapter } from '@tronweb3/tronwallet-adapters';
+import { TronLinkAdapter } from '@tronweb3/tronwallet-adapters';
+
+import { IsolatedWalletConnectAdapter } from './IsolatedWalletConnectAdapter';
 
 const TRON_WALLET_STORAGE_KEY = 'sne:tron:wallet-adapter';
-const STALE_WALLETCONNECT_MARKERS = ['No matching key', "session topic doesn't exist"];
+const TRON_WALLETCONNECT_STORAGE_PREFIX = 'sne-tron-wc';
+const LEGACY_TRON_WALLETCONNECT_MARKERS = [
+  'tron:',
+  'tron_signTransaction',
+  'tron_signMessage',
+  '0x2b6653dc',
+  '0x94a9059e',
+  '0xcd8690dc',
+];
+const STALE_WALLETCONNECT_MARKERS = [
+  'No matching key',
+  "session topic doesn't exist",
+  'Pending session not found',
+  'proposal:',
+];
 
-function clearWalletConnectStorage() {
+function clearWalletConnectStorage(customStoragePrefix: string) {
   if (typeof window === 'undefined') return;
 
-  const shouldClear = (key: string) =>
-    key === TRON_WALLET_STORAGE_KEY ||
-    key.toLowerCase().includes('walletconnect') ||
-    key.toLowerCase().includes('wc@2');
+  const shouldClear = (storage: Storage, key: string) => {
+    const normalizedKey = key.toLowerCase();
+
+    if (key === TRON_WALLET_STORAGE_KEY) return true;
+    if (normalizedKey.startsWith('sne:tron:')) return true;
+    if (normalizedKey.includes(customStoragePrefix.toLowerCase())) return true;
+    if (normalizedKey.includes(TRON_WALLETCONNECT_STORAGE_PREFIX)) return true;
+    if (!normalizedKey.includes('walletconnect') && !normalizedKey.includes('wc@2')) return false;
+
+    const value = storage.getItem(key);
+    if (!value) return false;
+
+    return LEGACY_TRON_WALLETCONNECT_MARKERS.some((marker) => value.includes(marker));
+  };
 
   for (const storage of [window.localStorage, window.sessionStorage]) {
     const keysToRemove: string[] = [];
     for (let index = 0; index < storage.length; index += 1) {
       const key = storage.key(index);
-      if (key && shouldClear(key)) {
+      if (key && shouldClear(storage, key)) {
         keysToRemove.push(key);
       }
     }
@@ -33,6 +59,7 @@ export function TronWalletProvider({ children }: { children: ReactNode }) {
     import.meta.env.VITE_TRON_WALLETCONNECT_PROJECT_ID?.trim() ||
     import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
   const appUrl = (import.meta.env.VITE_SIWE_ORIGIN?.trim() || 'https://snelabs.space').replace(/\/$/, '');
+  const walletConnectStoragePrefix = `${TRON_WALLETCONNECT_STORAGE_PREFIX}-${providerNonce}`;
 
   const adapters = useMemo(() => {
     const baseAdapters = [
@@ -45,7 +72,7 @@ export function TronWalletProvider({ children }: { children: ReactNode }) {
 
     if (walletConnectProjectId) {
       baseAdapters.push(
-        new WalletConnectAdapter({
+        new IsolatedWalletConnectAdapter({
           network: 'Mainnet',
           options: {
             projectId: walletConnectProjectId,
@@ -58,18 +85,19 @@ export function TronWalletProvider({ children }: { children: ReactNode }) {
           },
           allWallets: 'HIDE',
           enableMobileDeepLink: true,
+          customStoragePrefix: walletConnectStoragePrefix,
         })
       );
     }
 
     return baseAdapters;
-  }, [appUrl, walletConnectProjectId]);
+  }, [appUrl, walletConnectProjectId, walletConnectStoragePrefix]);
 
   const resetStaleWalletConnectSession = useCallback(() => {
-    clearWalletConnectStorage();
+    clearWalletConnectStorage(walletConnectStoragePrefix);
     setProviderNonce((current) => current + 1);
     console.warn('[tron-wallet] stale WalletConnect session detected, provider reset.');
-  }, []);
+  }, [walletConnectStoragePrefix]);
 
   const handleWalletError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error ?? '');
@@ -84,11 +112,10 @@ export function TronWalletProvider({ children }: { children: ReactNode }) {
   }, [resetStaleWalletConnectSession]);
 
   useEffect(() => {
-    // Tron WalletConnect session resume has been producing stale-topic loops in production.
-    // Start each page load from a clean connector state until the adapter proves session
-    // rehydration is reliable enough for this checkout flow.
-    clearWalletConnectStorage();
-  }, []);
+    // Clear only Tron-specific WalletConnect residue so the EVM WalletConnect runtime can
+    // continue using its own persisted session.
+    clearWalletConnectStorage(walletConnectStoragePrefix);
+  }, [walletConnectStoragePrefix]);
 
   useEffect(() => {
     const extractMessage = (reason: unknown) => {

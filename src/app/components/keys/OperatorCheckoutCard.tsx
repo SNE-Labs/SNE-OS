@@ -137,6 +137,16 @@ function explainInvalidTronWalletAddress(address: string, connector: SupportedTr
   return `O conector ${connector} nao retornou um address Tron valido. Recebi ${candidate}.`;
 }
 
+function formatTronConnectorError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+
+  if (message.includes('Missing or invalid. request() chainId: tron:0x2b6653dc')) {
+    return 'A wallet conectada pelo WalletConnect abriu uma sessao que nao aceita a rede Tron Mainnet. Escaneie o QR com uma wallet Tron compativel ou tente TronLink.';
+  }
+
+  return message || 'Falha ao interagir com a wallet Tron.';
+}
+
 function resolveFlowStage({
   effectiveAccess,
   isAuthenticated,
@@ -699,20 +709,20 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
     return connectTronAdapter(preferredConnector);
   }
 
-  async function handleConnectTronAdapter(adapterName: SupportedTronAdapterName) {
-    try {
-      setFeedback(
+    async function handleConnectTronAdapter(adapterName: SupportedTronAdapterName) {
+      try {
+        setFeedback(
         adapterName === 'WalletConnect'
           ? 'Abrindo WalletConnect para conectar a wallet pagadora...'
           : 'Abrindo TronLink para conectar a wallet pagadora...'
       );
-      const { buyerAddress: nextAddress } = await connectTronAdapter(adapterName);
-      setBuyerTronAddress((current) => normalizeTronAddress(current) || nextAddress);
-      setFeedback(`${adapterName} conectada com ${shortValue(nextAddress)}.`);
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Falha ao conectar a wallet Tron.');
+        const { buyerAddress: nextAddress } = await connectTronAdapter(adapterName);
+        setBuyerTronAddress((current) => normalizeTronAddress(current) || nextAddress);
+        setFeedback(`${adapterName} conectada com ${shortValue(nextAddress)}.`);
+      } catch (error) {
+        setFeedback(formatTronConnectorError(error));
+      }
     }
-  }
 
   async function handleBindTronSession() {
     if (!trackedOrderId) return;
@@ -787,7 +797,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
 
       setFeedback('Pagamento Tron enviado. O backend reconciliou a ordem e iniciou a ativação em Arbitrum.');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Falha ao pagar com a wallet Tron.');
+      setFeedback(formatTronConnectorError(error));
     }
   }
 
