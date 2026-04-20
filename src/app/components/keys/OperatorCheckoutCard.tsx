@@ -1720,14 +1720,14 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       ) : (
         <Dialog open={isFlowOpen} onOpenChange={setIsFlowOpen}>
           <DialogContent
-            className="w-[min(calc(100vw-2rem),1980px)] max-w-none border-none bg-transparent p-0 shadow-none overflow-visible"
+            className="left-4 right-auto w-[min(calc(100vw-3.5rem),1980px)] max-w-none translate-x-0 border-none bg-transparent p-0 shadow-none overflow-visible lg:left-20 xl:left-24 2xl:left-28"
             style={{ backgroundColor: 'transparent', borderColor: 'transparent' }}
           >
             <DialogHeader className="sr-only">
               <DialogTitle>Checkout Operator</DialogTitle>
               <DialogDescription>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</DialogDescription>
             </DialogHeader>
-            <div className="flex max-h-[90vh] items-start justify-center gap-3 overflow-visible">
+            <div className="flex max-h-[90vh] items-start justify-start gap-3 overflow-visible">
               <div
                 className="min-w-0 overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.34)]"
                 style={{
