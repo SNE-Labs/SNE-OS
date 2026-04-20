@@ -108,6 +108,11 @@ export function TronWalletProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (message.includes('The wallet is not found.')) {
+      console.warn('[tron-wallet] Tron wallet not found in this page context.');
+      return;
+    }
+
     console.error('[tron-wallet]', error);
   }, [resetStaleWalletConnectSession]);
 

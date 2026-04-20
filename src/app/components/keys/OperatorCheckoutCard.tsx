@@ -151,6 +151,10 @@ function normalizeConnectedWalletAddress(address: string | null | undefined, con
 function formatTronConnectorError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '');
 
+  if (message.includes('The wallet is not found.')) {
+    return 'A TronLink nao foi encontrada nesta pagina. Desbloqueie a extensao, permita a injeção no site atual ou use WalletConnect.';
+  }
+
   if (message.includes('Missing or invalid. request() chainId: tron:0x2b6653dc')) {
     return 'A wallet conectada pelo WalletConnect abriu uma sessao que nao aceita a rede Tron Mainnet. Escaneie o QR com uma wallet Tron compativel ou tente TronLink.';
   }
