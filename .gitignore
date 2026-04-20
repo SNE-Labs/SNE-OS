@@ -16,6 +16,8 @@ venv/
 
 # Environment variables
 .env
+.env.example
+contracts/.env.example
 .env.local
 .env.development.local
 .env.test.local
