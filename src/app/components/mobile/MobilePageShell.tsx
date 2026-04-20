@@ -13,7 +13,7 @@ export interface MobilePageShellProps {
     label: string;
     variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'orange' | 'free' | 'pro' | 'enterprise';
   };
-  showContext?: boolean; // Mostrar tier/network/wallet no header
+  showContext?: boolean; // Mostrar contexto soberano + wallet no header
   children: React.ReactNode;
   className?: string;
 }
@@ -27,20 +27,14 @@ export function MobilePageShell({
   children,
   className,
 }: MobilePageShellProps) {
-  const { address, isAuthenticated, tier } = useAuth();
-  const { entitlements } = useEntitlements();
+  const { address, isAuthenticated } = useAuth();
+  const { effectiveAccess, accessClass } = useEntitlements();
   const isOsHome = title.trim().toUpperCase() === 'SNE OS';
-  const effectiveTier = entitlements?.tier ?? tier;
-  const tierLabel =
-    effectiveTier === 'pro'
-      ? 'PLANO PRO'
-      : effectiveTier === 'premium'
-        ? 'PLANO PREMIUM'
-        : 'PLANO FREE';
+  const accessLabel = effectiveAccess && accessClass === 'operator' ? 'OPERATOR' : 'DISCOVERY';
 
   const contextPill = showContext && isAuthenticated && address ? {
-    label: `${tierLabel} • ${formatAddress(address)}`,
-    variant: effectiveTier === 'pro' ? 'pro' : effectiveTier === 'premium' ? 'orange' : 'free' as const,
+    label: `${accessLabel} • ${formatAddress(address)}`,
+    variant: effectiveAccess ? 'success' : 'neutral' as const,
   } : null;
 
   return (

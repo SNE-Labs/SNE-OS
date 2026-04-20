@@ -40,10 +40,9 @@ function routeRadarSymbol(pathname: string) {
   return match?.[1]?.replace('/', '').toUpperCase() ?? 'ETHUSDT';
 }
 
-function localizeTier(tier: 'free' | 'premium' | 'pro') {
-  if (tier === 'pro') return 'PRO';
-  if (tier === 'premium') return 'PREMIUM';
-  return 'FREE';
+function localizeAccessClass(effectiveAccess?: boolean, accessClass?: string | null) {
+  if (effectiveAccess && accessClass === 'operator') return 'OPERATOR';
+  return 'DISCOVERY';
 }
 
 function localizeIdentityStatus(value?: string | null) {
@@ -89,7 +88,7 @@ function formatPassportDisplayLabel(
 
 function buildTapeItems(
   pathname: string,
-  auth: { isAuthenticated: boolean; address?: string; tier: 'free' | 'premium' | 'pro' },
+  auth: { isAuthenticated: boolean; address?: string },
   snapshots: {
     home?: any;
     radar?: any;
@@ -387,10 +386,10 @@ function buildSidebarContext(
 
 export function useShellContextData() {
   const location = useLocation();
-  const { address, isAuthenticated, tier } = useAuth();
-  const { entitlements } = useEntitlements();
+  const { address, isAuthenticated } = useAuth();
+  const { effectiveAccess, accessClass } = useEntitlements();
   const [tick, setTick] = useState(0);
-  const effectiveTier = entitlements?.tier ?? tier;
+  const accessLabel = localizeAccessClass(effectiveAccess, accessClass);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((value) => value + 1), 30000);
@@ -429,8 +428,8 @@ export function useShellContextData() {
 
     if (isAuthenticated && address) {
       topbarChips.push({
-        label: `${localizeTier(effectiveTier)} • ${formatAddress(address)}`,
-        tone: 'success',
+        label: `${accessLabel} • ${formatAddress(address)}`,
+        tone: effectiveAccess ? 'success' : 'neutral',
       });
     } else {
       topbarChips.push({ label: 'Sessão anônima', tone: 'warning' });
@@ -441,17 +440,17 @@ export function useShellContextData() {
     return {
       routeMeta,
       pathname: location.pathname,
-      effectiveTier,
+      accessLabel,
       topbarChips: topbarChips.slice(0, 3),
-      tapeItems: buildTapeItems(location.pathname, { isAuthenticated, address, tier }, { home, radar, passport, vault }),
+      tapeItems: buildTapeItems(location.pathname, { isAuthenticated, address }, { home, radar, passport, vault }),
       sidebarContext: buildSidebarContext(location.pathname, { home, radar, passport, vault }),
       sessionStats: [
-        { label: 'Plano', value: localizeTier(effectiveTier) },
+        { label: 'Acesso', value: accessLabel },
         { label: 'Carteira', value: sessionIdentityLabel },
         { label: 'Sessão', value: isAuthenticated ? 'Autenticada' : 'Anônima' },
         { label: 'Foco', value: routeMeta.context },
         { label: 'Modo', value: localizeStorageMode(vault?.surface?.mode || home?.secrets?.sync?.mode) },
       ],
     };
-  }, [address, effectiveTier, entitlements?.tier, isAuthenticated, location.pathname, tier, tick]);
+  }, [address, accessClass, accessLabel, effectiveAccess, isAuthenticated, location.pathname, tick]);
 }

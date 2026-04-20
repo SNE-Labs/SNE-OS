@@ -226,7 +226,6 @@ export function AuthDesktop() {
             setStatus("VERIFYING");
             const verifyRes = await apiPost<{
                 code: string;
-                tier: string;
             }>("/api/auth/siwe", {
                 message: siweMessage,
                 signature,
@@ -235,7 +234,7 @@ export function AuthDesktop() {
                 app: "desktop",
             });
 
-            const { code, tier } = verifyRes;
+            const { code } = verifyRes;
 
             setStatus("SUCCESS");
 

@@ -21,7 +21,6 @@ type AuthCtx = {
   isAuthenticated: boolean;
   authStatus: AuthStatus;
   authError: string | null;
-  tier: 'free' | 'premium' | 'pro';
   connectionOptions: ConnectionOption[];
   connect: (method?: ConnectMethod) => Promise<void>;
   logout: () => Promise<void>;
@@ -192,7 +191,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authError, setAuthError] = useState<string | null>(null);
-  const [tier, setTier] = useState<'free' | 'premium' | 'pro'>('free');
 
   const injectedAvailable = hasInjectedEthereumProvider();
   const walletConnectAvailable = useMemo(
@@ -255,20 +253,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!getStoredAuthToken()) {
       setSessionAddress(undefined);
       setIsAuthenticated(false);
-      setTier('free');
       setAuthStatus('idle');
       setAuthError(null);
       return false;
     }
 
     try {
-      const response = await apiGet<{ tier: string; address?: string }>('/api/auth/verify', {
+      const response = await apiGet<{ address?: string }>('/api/auth/verify', {
         suppressErrorStatuses: [401],
       });
 
       if (response) {
         setSessionAddress(response.address);
-        setTier((response.tier as 'free' | 'premium' | 'pro') || 'free');
         setIsAuthenticated(true);
         setAuthStatus('authenticated');
         setAuthError(null);
@@ -283,7 +279,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('auth_token');
       setSessionAddress(undefined);
       setIsAuthenticated(false);
-      setTier('free');
       setAuthStatus('idle');
       setAuthError(null);
     }
@@ -315,12 +310,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthStatus('verifying');
     const authResponse = await apiPost<{
       token: string;
-      tier: 'free' | 'premium' | 'pro';
     }>("/api/auth/siwe", { message, signature });
 
     localStorage.setItem('auth_token', authResponse.token);
     setSessionAddress(address);
-    setTier(authResponse.tier || 'free');
     setIsAuthenticated(true);
     setAuthStatus('authenticated');
     setAuthError(null);
@@ -411,7 +404,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('auth_token');
     setSessionAddress(undefined);
     setIsAuthenticated(false);
-    setTier('free');
     setAuthStatus('idle');
     setAuthError(null);
     queryClient.invalidateQueries({ queryKey: ['home'] });
@@ -430,14 +422,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       authStatus,
       authError,
-      tier,
       connectionOptions,
       connect,
       logout,
       checkAuth,
       clearAuthError,
     }),
-    [displayAddress, walletConnected, isAuthenticated, authStatus, authError, tier, connectionOptions]
+    [displayAddress, walletConnected, isAuthenticated, authStatus, authError, connectionOptions]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

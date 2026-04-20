@@ -7,13 +7,6 @@ type TopbarProps = {
   sidebarPinned: boolean;
 };
 
-function accessLabel(plan: string) {
-  const normalized = plan.trim().toLowerCase();
-  if (normalized === 'pro') return 'ACESSO PRO';
-  if (normalized === 'premium') return 'ACESSO PREMIUM';
-  return 'ACESSO FREE';
-}
-
 function resolveGlow(pathname: string) {
   if (pathname.startsWith('/radar')) {
     return {
@@ -66,7 +59,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
   void onToggleSidebarPin;
   void sidebarPinned;
 
-  const { routeMeta, sessionStats, pathname, effectiveTier } = useShellContextData();
+  const { routeMeta, sessionStats, pathname, accessLabel } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
   const isWalletConnected = walletLabel !== 'Sem wallet';
@@ -164,7 +157,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
                   SESSÃO ATIVA
                 </div>
                 <div className="truncate text-[10px] uppercase tracking-[0.13em]" style={{ color: 'var(--text-3)' }}>
-                  IDENTIDADE VINCULADA · {accessLabel(effectiveTier)}
+                  IDENTIDADE VINCULADA · {accessLabel}
                 </div>
               </div>
             </div>
