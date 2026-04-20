@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../ui/drawer';
 import { useWallet as useTronWallet } from '@tronweb3/tronwallet-adapter-react-hooks';
 import { AdapterState, type Adapter, type AdapterName } from '@tronweb3/tronwallet-abstract-adapter';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -741,6 +740,18 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       setShowReconcileSurface(false);
     }
   }, [showBuyerAddressConfig]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!isMobile || !isFlowOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFlowOpen, isMobile]);
 
   async function handleAuthenticate() {
     try {
@@ -1829,6 +1840,21 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
               </div>
             ) : null}
             <div className={`flex flex-wrap items-center gap-2 ${compactMainShellHeader ? 'justify-end w-full' : 'justify-end'}`}>
+              {isMobile ? (
+                <button
+                  type="button"
+                  aria-label="Fechar checkout Operator"
+                  onClick={() => setIsFlowOpen(false)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border"
+                  style={{
+                    borderColor: 'rgba(255,255,255,0.10)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'var(--text-2)',
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
               <div
                 className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]"
                 style={{ backgroundColor: orderStatusTone.bg, borderWidth: '1px', borderColor: orderStatusTone.border, color: orderStatusTone.color }}
@@ -2035,18 +2061,30 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       </div>
 
       {isMobile ? (
-        <Drawer open={isFlowOpen} onOpenChange={setIsFlowOpen}>
-          <DrawerContent
-            className="mt-2 h-[calc(100dvh-0.5rem)] min-h-0 max-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-t-[28px] border-[var(--stroke-1)] bg-[var(--bg-1)]"
-            style={{ borderColor: 'var(--stroke-1)', backgroundColor: 'var(--bg-1)' }}
-          >
-            <DrawerHeader className="sr-only">
-              <DrawerTitle>Checkout Operator</DrawerTitle>
-              <DrawerDescription>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</DrawerDescription>
-            </DrawerHeader>
-            {flowShell}
-          </DrawerContent>
-        </Drawer>
+        isFlowOpen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Fechar checkout Operator"
+              className="fixed inset-0 z-[70] bg-black/60"
+              onClick={() => setIsFlowOpen(false)}
+            />
+            <div
+              className="fixed inset-x-2 z-[80] overflow-hidden rounded-[28px] border shadow-[0_32px_90px_rgba(0,0,0,0.38)]"
+              style={{
+                ...MOBILE_OVERLAY_INSET_STYLE,
+                borderColor: 'var(--stroke-1)',
+                backgroundColor: 'var(--bg-1)',
+              }}
+            >
+              <div className="sr-only">
+                <div>Checkout Operator</div>
+                <div>Fluxo guiado para ordem, pagamento em Tron e ativação em Arbitrum.</div>
+              </div>
+              {flowShell}
+            </div>
+          </>
+        ) : null
       ) : (
         <Dialog open={isFlowOpen} onOpenChange={setIsFlowOpen}>
           <DialogContent
