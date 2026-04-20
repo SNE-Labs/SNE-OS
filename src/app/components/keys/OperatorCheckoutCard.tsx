@@ -130,11 +130,22 @@ function explainInvalidTronWalletAddress(address: string, connector: SupportedTr
   const candidate = address.trim();
   if (candidate.startsWith('0x')) {
     return connector === 'WalletConnect'
-      ? `O WalletConnect retornou ${candidate}. Vou aceitar isso quando ele mapear para a mesma conta Tron, mas este valor isolado ainda precisa resolver para um address Tron base58 iniciado em T.`
+      ? `O WalletConnect retornou ${candidate}, mas esta sessao nao expôs uma conta Tron valida. Escaneie o QR com uma wallet Tron compativel que aprove a rede Tron Mainnet.`
       : `A ${connector} retornou ${candidate}, que não é um address Tron base58 iniciado em T.`;
   }
 
   return `O conector ${connector} nao retornou um address Tron valido. Recebi ${candidate}.`;
+}
+
+function normalizeConnectedWalletAddress(address: string | null | undefined, connector?: SupportedTronAdapterName | null) {
+  const candidate = address?.trim();
+  if (!candidate) return null;
+
+  if (connector === 'WalletConnect' && candidate.startsWith('0x')) {
+    return null;
+  }
+
+  return normalizeTronAddress(candidate);
 }
 
 function formatTronConnectorError(error: unknown) {
@@ -142,6 +153,10 @@ function formatTronConnectorError(error: unknown) {
 
   if (message.includes('Missing or invalid. request() chainId: tron:0x2b6653dc')) {
     return 'A wallet conectada pelo WalletConnect abriu uma sessao que nao aceita a rede Tron Mainnet. Escaneie o QR com uma wallet Tron compativel ou tente TronLink.';
+  }
+
+  if (message.includes('sessao Tron Mainnet valida')) {
+    return message;
   }
 
   return message || 'Falha ao interagir com a wallet Tron.';
@@ -555,7 +570,11 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
   const tronLinkAvailable = Boolean(tronLinkWallet && tronLinkWallet.state !== AdapterState.NotFound);
   const walletConnectAvailable = Boolean(walletConnectWallet);
   const hasConnectedTronAddress = Boolean(connectedTronAddress);
-  const normalizedConnectedTronAddress = normalizeTronAddress(connectedTronAddress);
+  const connectedTronConnector =
+    selectedTronWallet?.adapter.name === 'TronLink' || selectedTronWallet?.adapter.name === 'WalletConnect'
+      ? selectedTronWallet.adapter.name
+      : activeTronConnector;
+  const normalizedConnectedTronAddress = normalizeConnectedWalletAddress(connectedTronAddress, connectedTronConnector);
   const connectedTronAddressValid = Boolean(normalizedConnectedTronAddress);
   const tronWalletStatusLabel = connectedTronAddress
     ? connectedTronAddressValid
@@ -640,7 +659,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
         throw new Error(`O conector ${adapterName} não está disponível nesta sessão.`);
       }
 
-      const existingAddress = normalizeTronAddress(targetWallet.adapter.address?.trim());
+      const existingAddress = normalizeConnectedWalletAddress(targetWallet.adapter.address?.trim(), adapterName);
       if (existingAddress) {
         setActiveTronConnector(adapterName);
         if (selectedTronWallet?.adapter.name !== adapterName) {
@@ -663,7 +682,7 @@ export function OperatorCheckoutCard({ effectiveAccess }: OperatorCheckoutCardPr
       if (!nextAddress) {
         throw new Error(`O conector ${adapterName} não retornou uma wallet Tron conectada.`);
       }
-      const normalizedNextAddress = normalizeTronAddress(nextAddress);
+      const normalizedNextAddress = normalizeConnectedWalletAddress(nextAddress, adapterName);
       if (!normalizedNextAddress) {
         throw new Error(explainInvalidTronWalletAddress(nextAddress, adapterName));
       }

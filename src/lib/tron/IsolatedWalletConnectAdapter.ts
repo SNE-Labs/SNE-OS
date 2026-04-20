@@ -30,6 +30,16 @@ type PatchedWalletConnectWallet = WalletConnectWallet & {
   providerPromise?: Promise<UniversalProvider> | null;
   _client?: unknown;
   _options: SignClientTypes.Options;
+  _session?: {
+    topic?: string;
+    namespaces?: Record<
+      string,
+      {
+        accounts?: string[];
+        methods?: string[];
+      }
+    >;
+  };
 };
 
 type ConnectOptions = {
@@ -49,6 +59,8 @@ const WALLET_CONNECT_ICON =
       '<path d="M18 26c7.8-7.2 20.2-7.2 28 0l1.7 1.6a2 2 0 010 2.9l-3.8 3.7a1 1 0 01-1.4 0l-2.4-2.4c-4.5-4.1-11.7-4.1-16.2 0L21.5 34a1 1 0 01-1.4 0l-3.8-3.7a2 2 0 010-2.9L18 26zm36.7 6.9l3.4 3.3a2 2 0 010 2.9L42.8 54.4a2 2 0 01-2.8 0l-5.9-5.7a1.5 1.5 0 00-2.2 0L26 54.4a2 2 0 01-2.8 0L7.9 39.1a2 2 0 010-2.9l3.4-3.3a2 2 0 012.8 0L29.3 47a1.5 1.5 0 002.1 0l15.5-14.1a2 2 0 012.8 0z" fill="#fff"/>' +
     '</svg>'
   );
+
+const REQUIRED_TRON_METHODS = ['tron_signTransaction', 'tron_signMessage'];
 
 function resolveWalletConnectChainId(network: WalletConnectAdapterConfig['network']) {
   const mapped = WalletConnectChainID[network as keyof typeof WalletConnectChainID];
@@ -123,6 +135,25 @@ export class IsolatedWalletConnectAdapter extends Adapter<'WalletConnect'> {
     this._config = { ...config };
   }
 
+  private ensureTronSession(wallet: PatchedWalletConnectWallet, address: string) {
+    const session = wallet._session ?? wallet.provider?.session;
+    const tronNamespace = session?.namespaces?.tron;
+    const accounts = tronNamespace?.accounts ?? [];
+    const methods = tronNamespace?.methods ?? [];
+    const expectedAccount = `${resolveWalletConnectChainId(this._config.network)}:${address}`;
+    const hasExpectedAccount = accounts.includes(expectedAccount);
+    const hasRequiredMethods = REQUIRED_TRON_METHODS.every((method) => methods.includes(method));
+
+    if (hasExpectedAccount && hasRequiredMethods) {
+      return;
+    }
+
+    void wallet.disconnect().catch(() => undefined);
+    throw new WalletConnectionError(
+      'A wallet aprovada no WalletConnect nao abriu uma sessao Tron Mainnet valida. Escaneie o QR com uma wallet Tron compativel ou tente TronLink.'
+    );
+  }
+
   private readonly _disconnected = () => {
     const wallet = this._wallet;
     if (!wallet) return;
@@ -174,6 +205,7 @@ export class IsolatedWalletConnectAdapter extends Adapter<'WalletConnect'> {
       let address = '';
       try {
         ({ address } = await this._wallet.connect(onUri ? { onUri } : undefined));
+        this.ensureTronSession(this._wallet, address);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error ?? '');
         if (message === 'User closed the connection modal') {
@@ -268,7 +300,11 @@ export class IsolatedWalletConnectAdapter extends Adapter<'WalletConnect'> {
     }
 
     try {
-      return (await this._wallet.checkConnectStatus()) as WalletConnectSessionStatus;
+      const status = (await this._wallet.checkConnectStatus()) as WalletConnectSessionStatus;
+      if (status.address) {
+        this.ensureTronSession(this._wallet, status.address);
+      }
+      return status;
     } catch {
       this._address = null;
       this._state = AdapterState.Disconnect;
