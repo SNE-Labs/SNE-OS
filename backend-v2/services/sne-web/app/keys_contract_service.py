@@ -106,7 +106,17 @@ _KEY_SALE_ABI = [
 
 
 def _contracts_root() -> Path:
-    return Path(__file__).resolve().parents[4] / "contracts"
+    env_root = (os.getenv("SNE_CONTRACTS_ROOT") or "").strip()
+    if env_root:
+        return Path(env_root)
+
+    current_file = Path(__file__).resolve()
+    for parent in current_file.parents:
+        candidate = parent / "contracts"
+        if candidate.exists():
+            return candidate
+
+    return Path.cwd() / "contracts"
 
 
 @lru_cache(maxsize=1)
