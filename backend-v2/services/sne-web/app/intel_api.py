@@ -64,6 +64,13 @@ def _posts_last_updated(posts: list[dict[str, object]]) -> str:
     return _iso_now()
 
 
+def _index_post(post: dict[str, object]) -> dict[str, object]:
+    """Keep list responses light; full markdown is fetched by the detail route."""
+    shaped = dict(post)
+    shaped["body_markdown"] = ""
+    return shaped
+
+
 @intel_bp.get("/briefing")
 def intel_briefing():
     try:
@@ -92,6 +99,7 @@ def intel_posts():
         institutional_type = (request.args.get("type") or "").strip().lower() or None
         stage = (request.args.get("stage") or "").strip().lower() or None
         visibility = (request.args.get("visibility") or "").strip().lower() or None
+        include_body = request.args.get("include_body") == "1"
         posts = fetch_combined_intel_posts(
             limit=normalized_limit,
             stream=stream,
@@ -99,6 +107,7 @@ def intel_posts():
             stage=stage,
             visibility=visibility,
         )
+        items = posts if include_body else [_index_post(post) for post in posts]
         state = fetch_intel_posts_state(limit=normalized_limit) if stream != "institutional" else {
             "cache_updated_at": None,
             "stale": False,
@@ -106,7 +115,7 @@ def intel_posts():
             "count": len(posts),
         }
         return jsonify({
-            "items": posts,
+            "items": items,
             "last_updated": _posts_last_updated(posts),
             "refreshed_at": _iso_now(),
             "cache_updated_at": state["cache_updated_at"],

@@ -26,9 +26,14 @@ export type IntelPost = {
   primary_visual_entity?: IntelVisualEntity | null;
 };
 
-type IntelPostsResponse = {
+export type IntelPostsResponse = {
   items: IntelPost[];
   last_updated: string;
+};
+
+type IntelPostsOptions = {
+  limit?: number;
+  includeBody?: boolean;
 };
 
 function normalizeStringArray(value: unknown): string[] {
@@ -89,9 +94,15 @@ export function intelOgImageUrl(slug: string) {
 }
 
 export const intelApi = {
-  getPosts: async (limit = 120): Promise<IntelPostsResponse> => {
+  getPosts: async (options: number | IntelPostsOptions = {}): Promise<IntelPostsResponse> => {
+    const limit = typeof options === 'number' ? options : options.limit ?? 48;
+    const includeBody = typeof options === 'number' ? false : options.includeBody ?? false;
     const normalizedLimit = Math.max(1, Math.min(limit, 240));
-    const response = await apiGet<IntelPostsResponse>(`/api/intel/posts?limit=${normalizedLimit}`);
+    const params = new URLSearchParams({ limit: `${normalizedLimit}` });
+    if (includeBody) {
+      params.set('include_body', '1');
+    }
+    const response = await apiGet<IntelPostsResponse>(`/api/intel/posts?${params.toString()}`);
     return {
       ...response,
       items: (response.items ?? []).map(normalizePost),

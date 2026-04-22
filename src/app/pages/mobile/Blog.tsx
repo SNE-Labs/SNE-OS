@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../../components/IntelEntityIcon';
 import { IntelVisualChip } from '../../components/IntelVisualChip';
 import { Badge, EmptyState, ErrorState, MobileButton, MobilePageShell, SurfaceCard } from '../../components/mobile';
+import { useIntelPosts } from '@/hooks/useIntelPosts';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { intelApi } from '@/services/intel-api';
 
 function intelEntity(post: { primary_visual_entity?: { iconSymbol?: string | null } | null; assets?: string[]; chains?: string[] }) {
   return post.primary_visual_entity?.iconSymbol || post.assets?.[0] || post.chains?.[0] || null;
@@ -30,11 +29,7 @@ export function MobileBlog() {
   const navigate = useNavigate();
   const { topic, chain, asset } = useParams();
   const [visibleCount, setVisibleCount] = useState(20);
-  const postsQuery = useQuery({
-    queryKey: ['intel-posts', 'mobile'],
-    queryFn: intelApi.getPosts,
-    refetchInterval: 60000,
-  });
+  const postsQuery = useIntelPosts();
 
   const posts = postsQuery.data?.items ?? [];
   const filteredPosts = posts.filter((post) => {
@@ -110,6 +105,11 @@ export function MobileBlog() {
           title="Intel Brief indisponivel"
           description="Os dossiês editoriais não carregaram agora."
           onRetry={() => postsQuery.refetch()}
+        />
+      ) : postsQuery.isLoading ? (
+        <EmptyState
+          title="Carregando Intel Brief"
+          description="Buscando as leituras editoriais mais recentes."
         />
       ) : filteredPosts.length === 0 ? (
         <EmptyState

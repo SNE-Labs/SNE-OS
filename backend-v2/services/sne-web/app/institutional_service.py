@@ -482,9 +482,9 @@ def fetch_combined_intel_posts(
     if normalized_stream == "external":
         return fetch_external_intel_posts(limit=limit)
 
-    external = fetch_external_intel_posts(limit=max(limit, 120))
+    external = fetch_external_intel_posts(limit=max(limit, 48))
     institutional = fetch_institutional_posts(
-        limit=max(limit, 120),
+        limit=max(limit, 48),
         institutional_type=institutional_type,
         stage=stage,
         visibility=visibility,

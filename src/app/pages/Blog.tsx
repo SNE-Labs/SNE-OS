@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -8,8 +7,8 @@ import { IntelVisualChip } from '../components/IntelVisualChip';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { ChainBadge } from '../components/ChainBadge';
+import { useIntelPosts } from '@/hooks/useIntelPosts';
 import { useSeoMeta } from '@/lib/seo/useSeoMeta';
-import { intelApi } from '@/services/intel-api';
 
 function formatRelativeTimestamp(value?: string | null): string {
   if (!value) return 'agora';
@@ -49,11 +48,7 @@ export function Blog() {
   const [chainFilter, setChainFilter] = useState(chain ?? 'all');
   const [assetFilter, setAssetFilter] = useState(asset ?? 'all');
   const [visibleCount, setVisibleCount] = useState(24);
-  const postsQuery = useQuery({
-    queryKey: ['intel-posts'],
-    queryFn: intelApi.getPosts,
-    refetchInterval: 60000,
-  });
+  const postsQuery = useIntelPosts();
 
   const posts = postsQuery.data?.items ?? [];
 
