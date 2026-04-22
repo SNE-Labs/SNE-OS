@@ -7,6 +7,7 @@ import logging
 
 from .keys_service import build_keys_overview
 from .keys_entitlement_service import build_keys_entitlement
+from .operator_cockpit_service import build_operator_cockpit
 from .common.auth import get_auth_context
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,28 @@ def entitlement():
     except Exception as e:
         logger.error(f"Keys entitlement error: {e}")
         return jsonify(build_keys_entitlement(None)), 200
+
+
+@keys_bp.get("/operator-cockpit")
+def operator_cockpit():
+    """
+    Aggregated Operator Cockpit payload.
+    GET /api/keys/operator-cockpit?address=0x...
+    """
+    try:
+        auth = get_auth_context()
+        auth_address = auth.get("address")
+        requested_address = request.args.get("address")
+        address = requested_address or auth_address
+        include_private_orders = bool(
+            auth_address
+            and address
+            and auth_address.lower() == address.lower()
+        )
+        return jsonify(build_operator_cockpit(address, bool(auth_address), include_private_orders)), 200
+    except Exception as e:
+        logger.error(f"Operator cockpit error: {e}")
+        return jsonify(build_operator_cockpit(None, False)), 200
 
 
 @keys_bp.get("/delegation")

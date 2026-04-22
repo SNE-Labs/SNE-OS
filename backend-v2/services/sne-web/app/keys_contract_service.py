@@ -73,6 +73,37 @@ _DELEGATION_REGISTRY_ABI = [
     },
 ]
 
+_KEY_SALE_ABI = [
+    {
+        "inputs": [],
+        "name": "operatorPrice",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "paused",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "treasury",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "usdt",
+        "outputs": [{"internalType": "contract IERC20", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
+
 
 def _contracts_root() -> Path:
     return Path(__file__).resolve().parents[4] / "contracts"
@@ -136,8 +167,84 @@ def _delegation_registry_contract() -> Optional[str]:
     return _clean_address(_env_or_manifest("SNE_DELEGATION_REGISTRY_CONTRACT", "delegationRegistry"))
 
 
+def _key_sale_contract() -> Optional[str]:
+    return _clean_address(_env_or_manifest("SNE_KEYSALE_CONTRACT", "keySale"))
+
+
 def _legacy_registry_contract() -> Optional[str]:
     return _clean_address(os.getenv("SNE_KEYS_LEGACY_REGISTRY_CONTRACT"))
+
+
+def _manifest_value(key: str) -> Optional[str]:
+    value = _deployment_manifest().get(key)
+    return str(value) if value is not None else None
+
+
+def read_keys_contracts_status() -> Dict[str, Any]:
+    """Return best-effort contract configuration and sale state for cockpit UI."""
+    network = _keys_network()
+    manifest = _deployment_manifest()
+    operator_key_contract = _operator_key_contract()
+    delegation_registry_contract = _delegation_registry_contract()
+    key_sale_contract = _key_sale_contract()
+    legacy_registry_contract = _legacy_registry_contract()
+    manifest_operator_price = _manifest_value("operatorPrice")
+    configured = bool(operator_key_contract or legacy_registry_contract)
+
+    status: Dict[str, Any] = {
+        "network": network,
+        "configured": configured,
+        "source": "deployment_manifest" if manifest else "env" if configured else "unconfigured",
+        "operatorKey": operator_key_contract,
+        "keySale": key_sale_contract,
+        "delegationRegistry": delegation_registry_contract,
+        "legacyRegistry": legacy_registry_contract,
+        "usdt": _clean_address(os.getenv("SNE_CHECKOUT_USDT_CONTRACT")) or _clean_address(_manifest_value("usdt")),
+        "treasury": _clean_address(os.getenv("TRON_TREASURY_ADDRESS")) or _clean_address(_manifest_value("treasury")),
+        "operatorPriceUnits": manifest_operator_price,
+        "operatorPriceDisplay": None,
+        "keySalePaused": None,
+        "saleController": None,
+        "latestBlock": None,
+        "manifestNetwork": manifest.get("network"),
+        "error": None,
+    }
+
+    if not operator_key_contract and not key_sale_contract:
+        return status
+
+    def _read(w3):
+        status["latestBlock"] = int(w3.eth.block_number)
+
+        if operator_key_contract:
+            operator_key = w3.eth.contract(address=operator_key_contract, abi=[
+                {
+                    "inputs": [],
+                    "name": "saleController",
+                    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                    "stateMutability": "view",
+                    "type": "function",
+                }
+            ])
+            status["saleController"] = _clean_address(operator_key.functions.saleController().call())
+
+        if key_sale_contract:
+            key_sale = w3.eth.contract(address=key_sale_contract, abi=_KEY_SALE_ABI)
+            operator_price_units = int(key_sale.functions.operatorPrice().call())
+            status["operatorPriceUnits"] = str(operator_price_units)
+            status["operatorPriceDisplay"] = f"{operator_price_units / 1_000_000:.6f} USDT"
+            status["keySalePaused"] = bool(key_sale.functions.paused().call())
+            status["treasury"] = _clean_address(key_sale.functions.treasury().call())
+            status["usdt"] = _clean_address(key_sale.functions.usdt().call())
+
+        return status
+
+    try:
+        return with_evm_provider(network, _read)
+    except Exception as exc:
+        logger.warning("Failed to resolve keys contract status: %s", exc)
+        status["error"] = str(exc)
+        return status
 
 
 def read_keys_snapshot(address: Optional[str]) -> Dict[str, Any]:
