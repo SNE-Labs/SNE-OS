@@ -1,9 +1,9 @@
 """
-Lightweight visual renderer for operational Radar reports.
+Visual renderer for operational Radar reports.
 
-Uses Pillow so production can render report charts without adding a heavy
-matplotlib stack. The legacy beta chart scripts remain useful references for
-future richer renderers.
+This uses the mature beta chart direction: real candlesticks, EMAs,
+Bollinger bands, volume and operational levels. The surrounding layout is a
+HALO distribution card instead of a raw dashboard export.
 """
 
 from __future__ import annotations
@@ -11,15 +11,22 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Any, Dict, List, Tuple
 
-from PIL import Image, ImageDraw, ImageFont
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import mplfinance as mpf
+import pandas as pd
+from matplotlib.transforms import blended_transform_factory
 
 from .radar_report_service import _fetch_candles
 
 
-WIDTH = 1600
-HEIGHT = 1000
 BG = "#080b0f"
 PANEL = "#10161d"
+PANEL_ALT = "#0d131a"
 GRID = "#25313b"
 TEXT = "#e8eef5"
 MUTED = "#8c9aa8"
@@ -28,19 +35,8 @@ RED = "#ff5c7a"
 CYAN = "#49d3ff"
 YELLOW = "#f4d35e"
 ORANGE = "#ff9f43"
-
-
-def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    names = [
-        "arialbd.ttf" if bold else "arial.ttf",
-        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
-    ]
-    for name in names:
-        try:
-            return ImageFont.truetype(name, size=size)
-        except Exception:
-            continue
-    return ImageFont.load_default()
+AMBER = "#ffb02e"
+GRAY = "#5d6b78"
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:
@@ -59,157 +55,327 @@ def _fmt_price(value: Any) -> str:
     return f"{number:,.6f}"
 
 
-def _ema(values: List[float], period: int) -> List[float | None]:
-    if len(values) < period:
-        return [None for _ in values]
-    result: List[float | None] = [None for _ in values]
-    current = sum(values[:period]) / period
-    result[period - 1] = current
-    multiplier = 2 / (period + 1)
-    for index in range(period, len(values)):
-        current = (values[index] - current) * multiplier + current
-        result[index] = current
-    return result
+def _state_badge(state: str) -> Tuple[str, str]:
+    normalized = str(state or "").lower()
+    if normalized == "ready":
+        return "PRONTO", GREEN
+    if normalized == "prepare":
+        return "PREPARAR", AMBER
+    if normalized == "observe":
+        return "OBSERVAR", GRAY
+    return normalized.upper() or "OBSERVAR", GRAY
 
 
-def _scale(value: float, low: float, high: float, top: int, bottom: int) -> int:
-    if high <= low:
-        return (top + bottom) // 2
-    return int(bottom - ((value - low) / (high - low)) * (bottom - top))
+def _desk_bias(bias: str) -> str:
+    normalized = str(bias or "").lower()
+    if normalized == "alta":
+        return "ALTA"
+    if normalized == "baixa":
+        return "BAIXA"
+    if normalized == "lateral":
+        return "LATERAL"
+    return "NEUTRO"
 
 
-def _draw_text(draw: ImageDraw.ImageDraw, xy: Tuple[int, int], text: str, *, size: int = 28, fill: str = TEXT, bold: bool = False) -> None:
-    draw.text(xy, text, font=_font(size, bold=bold), fill=fill)
+def _visual_thesis(state: str, bias: str) -> str:
+    desk_bias = _desk_bias(bias).lower()
+    normalized_state = str(state or "").lower()
+    if normalized_state == "ready":
+        return f"Setup de {desk_bias} confirmado. Apenas no gatilho."
+    if normalized_state == "prepare":
+        return f"Viés de {desk_bias}. Sem perseguir preço."
+    return "Sem confirmação. Preservar capital."
 
 
-def _draw_label(draw: ImageDraw.ImageDraw, x: int, y: int, label: str, value: str, fill: str = TEXT) -> None:
-    _draw_text(draw, (x, y), label.upper(), size=18, fill=MUTED, bold=True)
-    _draw_text(draw, (x, y + 26), value, size=30, fill=fill, bold=True)
-
-
-def _draw_polyline(
-    draw: ImageDraw.ImageDraw,
-    values: List[float | None],
-    x_positions: List[int],
-    low: float,
-    high: float,
-    top: int,
-    bottom: int,
-    fill: str,
-    width: int = 3,
-) -> None:
-    points: List[Tuple[int, int]] = []
-    for x, value in zip(x_positions, values):
-        if value is None:
-            if len(points) > 1:
-                draw.line(points, fill=fill, width=width)
-            points = []
-            continue
-        points.append((x, _scale(value, low, high, top, bottom)))
-    if len(points) > 1:
-        draw.line(points, fill=fill, width=width)
-
-
-def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 90) -> bytes:
-    symbol = str(report.get("symbol") or "BTCUSDT")
-    timeframe = str(report.get("timeframe") or "1h")
-    candles = _fetch_candles(symbol, timeframe, limit=max(60, candle_limit))
-    candles = candles[-candle_limit:]
-
-    image = Image.new("RGB", (WIDTH, HEIGHT), BG)
-    draw = ImageDraw.Draw(image)
-
-    draw.rectangle((40, 40, WIDTH - 40, 150), fill=PANEL, outline="#1f2a34", width=2)
-    _draw_text(draw, (70, 62), f"SNE RADAR | {symbol} ({timeframe})", size=38, fill=TEXT, bold=True)
+def _report_parts(report: Dict[str, Any]) -> Dict[str, Any]:
     summary = report.get("executive_summary") or {}
     decision = report.get("operator_decision") or {}
-    state = str(decision.get("state") or "observe").capitalize()
-    confluence = str(summary.get("confluence_score") or 0)
-    bias = str(summary.get("bias") or "sem dados")
-    _draw_text(draw, (70, 108), f"Estado: {state} | Confluência: {confluence}/100 | Viés: {bias}", size=24, fill=MUTED)
-
-    price = _fmt_price(summary.get("price"))
-    risk_state = str((report.get("risk_plan") or {}).get("state") or "observe")
-    _draw_label(draw, 70, 185, "Preco", price, CYAN)
-    _draw_label(draw, 320, 185, "Confluencia", f"{confluence}/100", YELLOW)
-    _draw_label(draw, 570, 185, "Bias", bias, GREEN if bias == "alta" else RED if bias == "baixa" else TEXT)
-    _draw_label(draw, 820, 185, "Risco", risk_state, ORANGE if risk_state != "ready" else GREEN)
-    _draw_label(draw, 1070, 185, "RSI", str(summary.get("rsi") or "N/A"), TEXT)
-    _draw_label(draw, 1300, 185, "Vol ratio", str(summary.get("volume_ratio") or "N/A"), TEXT)
-
-    chart_left, chart_top, chart_right, chart_bottom = 70, 305, 1530, 760
-    draw.rectangle((chart_left, chart_top, chart_right, chart_bottom), fill="#0b1117", outline="#1f2a34", width=2)
-
-    if candles:
-        lows = [item["low"] for item in candles]
-        highs = [item["high"] for item in candles]
-        closes = [item["close"] for item in candles]
-        levels = report.get("technical", {}).get("levels", {})
-        level_values = [item.get("price") for item in levels.get("supports", []) + levels.get("resistances", [])]
-        scenarios = report.get("scenarios") or {}
-        for side in ("long", "short"):
-            scenario = scenarios.get(side) or {}
-            level_values.extend([scenario.get("trigger"), scenario.get("stop"), scenario.get("tp1")])
-        extra = [_to_float(value) for value in level_values if value is not None]
-        low = min(lows + extra)
-        high = max(highs + extra)
-        pad = max((high - low) * 0.08, high * 0.001)
-        low -= pad
-        high += pad
-
-        for index in range(6):
-            y = chart_top + int((chart_bottom - chart_top) * index / 5)
-            draw.line((chart_left, y, chart_right, y), fill=GRID, width=1)
-            level = high - ((high - low) * index / 5)
-            _draw_text(draw, (chart_right - 115, y - 12), _fmt_price(level), size=18, fill=MUTED)
-
-        step = (chart_right - chart_left) / max(1, len(candles))
-        xs = [int(chart_left + (index + 0.5) * step) for index in range(len(candles))]
-        candle_width = max(3, int(step * 0.55))
-        for x, candle in zip(xs, candles):
-            open_y = _scale(candle["open"], low, high, chart_top, chart_bottom)
-            close_y = _scale(candle["close"], low, high, chart_top, chart_bottom)
-            high_y = _scale(candle["high"], low, high, chart_top, chart_bottom)
-            low_y = _scale(candle["low"], low, high, chart_top, chart_bottom)
-            color = GREEN if candle["close"] >= candle["open"] else RED
-            draw.line((x, high_y, x, low_y), fill=color, width=2)
-            y1, y2 = sorted([open_y, close_y])
-            draw.rectangle((x - candle_width // 2, y1, x + candle_width // 2, max(y2, y1 + 2)), fill=color)
-
-        _draw_polyline(draw, _ema(closes, 8), xs, low, high, chart_top, chart_bottom, CYAN, width=3)
-        _draw_polyline(draw, _ema(closes, 21), xs, low, high, chart_top, chart_bottom, ORANGE, width=3)
-
-        for label, color, values in [
-            ("S", GREEN, levels.get("supports", [])[:2]),
-            ("R", RED, levels.get("resistances", [])[:2]),
-        ]:
-            for item in values:
-                value = _to_float(item.get("price"))
-                y = _scale(value, low, high, chart_top, chart_bottom)
-                draw.line((chart_left, y, chart_right, y), fill=color, width=2)
-                _draw_text(draw, (chart_left + 8, y - 22), f"{label} {_fmt_price(value)}", size=18, fill=color, bold=True)
-
-        for side, color in [("long", GREEN), ("short", RED)]:
-            scenario = scenarios.get(side) or {}
-            trigger = scenario.get("trigger")
-            if trigger is None:
-                continue
-            y = _scale(_to_float(trigger), low, high, chart_top, chart_bottom)
-            draw.line((chart_left, y, chart_right, y), fill=color, width=3)
-            _draw_text(draw, (chart_left + 220, y - 24), f"{side.upper()} trigger {_fmt_price(trigger)}", size=20, fill=color, bold=True)
-    else:
-        _draw_text(draw, (chart_left + 40, chart_top + 180), "Candles indisponiveis para renderizar grafico.", size=28, fill=MUTED)
-
     scenarios = report.get("scenarios") or {}
-    long_s = scenarios.get("long") or {}
-    short_s = scenarios.get("short") or {}
-    draw.rectangle((40, 800, WIDTH - 40, 950), fill=PANEL, outline="#1f2a34", width=2)
-    _draw_text(draw, (70, 825), "Cenarios operacionais", size=28, fill=TEXT, bold=True)
-    _draw_text(draw, (70, 870), f"LONG  gatilho {_fmt_price(long_s.get('trigger'))} | stop {_fmt_price(long_s.get('stop'))} | TP1 {_fmt_price(long_s.get('tp1'))}", size=24, fill=GREEN)
-    _draw_text(draw, (70, 910), f"SHORT gatilho {_fmt_price(short_s.get('trigger'))} | stop {_fmt_price(short_s.get('stop'))} | TP1 {_fmt_price(short_s.get('tp1'))}", size=24, fill=RED)
-    _draw_text(draw, (980, 870), "HALO", size=20, fill=MUTED, bold=True)
-    _draw_text(draw, (980, 905), "Liquidez precisa confirmar antes da execução.", size=22, fill=MUTED)
+    risk = report.get("risk_plan") or {}
+    return {
+        "symbol": str(report.get("symbol") or "BTCUSDT"),
+        "timeframe": str(report.get("timeframe") or "1h"),
+        "summary": summary,
+        "decision": decision,
+        "long": scenarios.get("long") or {},
+        "short": scenarios.get("short") or {},
+        "risk": risk,
+    }
+
+
+def _candles_frame(candles: List[Dict[str, float]]) -> pd.DataFrame:
+    frame = pd.DataFrame(candles)
+    if frame.empty:
+        return frame
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], unit="ms", utc=True)
+    frame = frame.set_index("timestamp")
+    frame = frame.rename(columns={
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "volume": "Volume",
+    })
+    frame = frame[["Open", "High", "Low", "Close", "Volume"]].astype(float)
+    frame["EMA8"] = frame["Close"].ewm(span=8, adjust=False).mean()
+    frame["EMA21"] = frame["Close"].ewm(span=21, adjust=False).mean()
+    frame["SMA50"] = frame["Close"].rolling(window=50).mean()
+    frame["BB_Mid"] = frame["Close"].rolling(window=20).mean()
+    bb_std = frame["Close"].rolling(window=20).std()
+    frame["BB_Upper"] = frame["BB_Mid"] + (bb_std * 2)
+    frame["BB_Lower"] = frame["BB_Mid"] - (bb_std * 2)
+    return frame
+
+
+def _rounded_panel(ax: plt.Axes, xy: Tuple[float, float], width: float, height: float, *, color: str = PANEL) -> None:
+    panel = patches.FancyBboxPatch(
+        xy,
+        width,
+        height,
+        boxstyle="round,pad=0.014,rounding_size=0.035",
+        transform=ax.transAxes,
+        linewidth=1.2,
+        edgecolor="#1f2a34",
+        facecolor=color,
+        clip_on=False,
+    )
+    ax.add_patch(panel)
+
+
+def _draw_header(ax: plt.Axes, parts: Dict[str, Any]) -> None:
+    ax.set_axis_off()
+    _rounded_panel(ax, (0.01, 0.08), 0.98, 0.84)
+    symbol = parts["symbol"]
+    timeframe = parts["timeframe"].upper()
+    summary = parts["summary"]
+    decision = parts["decision"]
+    long_s = parts["long"]
+    short_s = parts["short"]
+    state = str(decision.get("state") or "observe")
+    badge, badge_color = _state_badge(state)
+    bias = str(summary.get("bias") or "sem dados")
+
+    ax.text(0.035, 0.73, f"SNE RADAR / {symbol} / {timeframe}", transform=ax.transAxes, color=MUTED, fontsize=18, fontweight="bold")
+    ax.text(0.035, 0.39, _visual_thesis(state, bias), transform=ax.transAxes, color=TEXT, fontsize=27, fontweight="bold")
+    ax.text(
+        0.035,
+        0.13,
+        f"LONG > {_fmt_price(long_s.get('trigger'))}    SHORT < {_fmt_price(short_s.get('trigger'))}",
+        transform=ax.transAxes,
+        color=YELLOW,
+        fontsize=19,
+        fontweight="bold",
+    )
+
+    badge_patch = patches.FancyBboxPatch(
+        (0.78, 0.48),
+        0.17,
+        0.3,
+        boxstyle="round,pad=0.015,rounding_size=0.035",
+        transform=ax.transAxes,
+        linewidth=0,
+        facecolor=badge_color,
+        clip_on=False,
+    )
+    ax.add_patch(badge_patch)
+    ax.text(0.865, 0.625, badge, transform=ax.transAxes, color=BG, fontsize=23, fontweight="bold", ha="center", va="center")
+
+
+def _draw_metrics(ax: plt.Axes, parts: Dict[str, Any]) -> None:
+    ax.set_axis_off()
+    _rounded_panel(ax, (0.01, 0.08), 0.98, 0.84, color=PANEL_ALT)
+    summary = parts["summary"]
+    risk = parts["risk"]
+    metrics = [
+        ("VIÉS", _desk_bias(str(summary.get("bias") or "")), GREEN if summary.get("bias") == "alta" else RED if summary.get("bias") == "baixa" else TEXT),
+        ("CONF", f"{summary.get('confluence_score', 0)}/100", YELLOW),
+        ("RSI", str(summary.get("rsi") or "N/A"), TEXT),
+        ("VOL", str(summary.get("volume_ratio") or "N/A"), TEXT),
+        ("TAM", f"{risk.get('position_size_factor', 'N/A')}x", ORANGE),
+        ("RISCO", f"{risk.get('risk_per_trade_pct', 'N/A')}%", ORANGE),
+    ]
+    for index, (label, value, color) in enumerate(metrics):
+        x = 0.035 + index * 0.158
+        ax.text(x, 0.61, label, transform=ax.transAxes, color=MUTED, fontsize=12, fontweight="bold")
+        ax.text(x, 0.25, value, transform=ax.transAxes, color=color, fontsize=19, fontweight="bold")
+
+
+def _chart_style() -> Dict[str, Any]:
+    market_colors = mpf.make_marketcolors(
+        up=GREEN,
+        down=RED,
+        edge={"up": GREEN, "down": RED},
+        wick={"up": GREEN, "down": RED},
+        volume={"up": "#1f8f62", "down": "#a83c50"},
+        alpha=0.95,
+    )
+    return mpf.make_mpf_style(
+        marketcolors=market_colors,
+        gridstyle="-",
+        gridcolor=GRID,
+        y_on_right=True,
+        facecolor="#0b1117",
+        figcolor=BG,
+        edgecolor="#1f2a34",
+        rc={
+            "axes.labelcolor": MUTED,
+            "axes.edgecolor": "#1f2a34",
+            "xtick.color": MUTED,
+            "ytick.color": MUTED,
+            "text.color": TEXT,
+            "font.size": 9,
+        },
+    )
+
+
+def _draw_level_label(ax: plt.Axes, price: float, label: str, color: str) -> None:
+    transform = blended_transform_factory(ax.transAxes, ax.transData)
+    ax.text(
+        0.995,
+        price,
+        f" {label} {_fmt_price(price)} ",
+        transform=transform,
+        color=BG,
+        fontsize=8,
+        fontweight="bold",
+        ha="right",
+        va="center",
+        bbox={
+            "boxstyle": "round,pad=0.25,rounding_size=0.08",
+            "facecolor": color,
+            "edgecolor": "none",
+            "alpha": 0.92,
+        },
+        zorder=9,
+    )
+
+
+def _draw_operational_levels(ax: plt.Axes, report: Dict[str, Any]) -> None:
+    parts = _report_parts(report)
+    levels = report.get("technical", {}).get("levels", {})
+    long_s = parts["long"]
+    short_s = parts["short"]
+
+    for item in levels.get("supports", [])[:1]:
+        price = _to_float(item.get("price"))
+        ax.axhline(price, color=GREEN, linestyle=":", linewidth=1.1, alpha=0.55, zorder=2)
+    for item in levels.get("resistances", [])[:1]:
+        price = _to_float(item.get("price"))
+        ax.axhline(price, color=RED, linestyle=":", linewidth=1.1, alpha=0.55, zorder=2)
+
+    if long_s.get("trigger") is not None:
+        price = _to_float(long_s.get("trigger"))
+        ax.axhline(price, color=GREEN, linewidth=2.0, alpha=0.95, zorder=3)
+        _draw_level_label(ax, price, "LONG", GREEN)
+    if short_s.get("trigger") is not None:
+        price = _to_float(short_s.get("trigger"))
+        ax.axhline(price, color=RED, linewidth=2.0, alpha=0.95, zorder=3)
+        _draw_level_label(ax, price, "SHORT", RED)
+    if long_s.get("tp1") is not None:
+        price = _to_float(long_s.get("tp1"))
+        ax.axhline(price, color=GREEN, linestyle="--", linewidth=1.2, alpha=0.55, zorder=2)
+        _draw_level_label(ax, price, "TP1", GREEN)
+    if short_s.get("tp1") is not None:
+        price = _to_float(short_s.get("tp1"))
+        ax.axhline(price, color=RED, linestyle="--", linewidth=1.2, alpha=0.55, zorder=2)
+        _draw_level_label(ax, price, "TP1", RED)
+
+
+def _draw_footer(ax: plt.Axes, parts: Dict[str, Any]) -> None:
+    ax.set_axis_off()
+    _rounded_panel(ax, (0.01, 0.08), 0.98, 0.84)
+    long_s = parts["long"]
+    short_s = parts["short"]
+    ax.text(0.035, 0.72, "EXECUÇÃO", transform=ax.transAxes, color=MUTED, fontsize=13, fontweight="bold")
+    ax.text(
+        0.035,
+        0.42,
+        f"LONG > {_fmt_price(long_s.get('trigger'))}   TP1 {_fmt_price(long_s.get('tp1'))}",
+        transform=ax.transAxes,
+        color=GREEN,
+        fontsize=25,
+        fontweight="bold",
+    )
+    ax.text(
+        0.035,
+        0.14,
+        f"SHORT < {_fmt_price(short_s.get('trigger'))}   TP1 {_fmt_price(short_s.get('tp1'))}",
+        transform=ax.transAxes,
+        color=RED,
+        fontsize=25,
+        fontweight="bold",
+    )
+    ax.text(0.58, 0.64, "HALO", transform=ax.transAxes, color=MUTED, fontsize=13, fontweight="bold")
+    ax.text(0.58, 0.38, "Liquidez precisa confirmar.", transform=ax.transAxes, color=TEXT, fontsize=22, fontweight="bold")
+    ax.text(0.58, 0.14, "Sem perseguir. Só rompimento.", transform=ax.transAxes, color=YELLOW, fontsize=18, fontweight="bold")
+
+
+def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 110) -> bytes:
+    parts = _report_parts(report)
+    candles = _fetch_candles(parts["symbol"], parts["timeframe"], limit=max(80, candle_limit))
+    frame = _candles_frame(candles[-candle_limit:])
+
+    fig = plt.figure(figsize=(16, 10), facecolor=BG)
+    grid = fig.add_gridspec(
+        5,
+        1,
+        height_ratios=[1.45, 0.72, 4.8, 1.05, 1.35],
+        hspace=0.16,
+        left=0.035,
+        right=0.965,
+        top=0.97,
+        bottom=0.045,
+    )
+    ax_header = fig.add_subplot(grid[0])
+    ax_metrics = fig.add_subplot(grid[1])
+    ax_price = fig.add_subplot(grid[2])
+    ax_volume = fig.add_subplot(grid[3], sharex=ax_price)
+    ax_footer = fig.add_subplot(grid[4])
+    for ax in (ax_price, ax_volume):
+        ax.set_facecolor("#0b1117")
+
+    _draw_header(ax_header, parts)
+    _draw_metrics(ax_metrics, parts)
+
+    if frame.empty:
+        ax_price.set_facecolor("#0b1117")
+        ax_price.text(0.5, 0.5, "Candles unavailable", color=MUTED, fontsize=22, ha="center", va="center", transform=ax_price.transAxes)
+        ax_price.set_axis_off()
+        ax_volume.set_axis_off()
+    else:
+        addplots = [
+            mpf.make_addplot(frame["EMA8"], ax=ax_price, color=CYAN, width=1.2),
+            mpf.make_addplot(frame["EMA21"], ax=ax_price, color=ORANGE, width=1.2),
+            mpf.make_addplot(frame["BB_Upper"], ax=ax_price, color="#6d7884", width=0.7, alpha=0.45),
+            mpf.make_addplot(frame["BB_Lower"], ax=ax_price, color="#6d7884", width=0.7, alpha=0.45),
+        ]
+        if not frame["SMA50"].isna().all():
+            addplots.append(mpf.make_addplot(frame["SMA50"], ax=ax_price, color=YELLOW, width=0.9, alpha=0.55))
+
+        mpf.plot(
+            frame,
+            type="candle",
+            ax=ax_price,
+            volume=ax_volume,
+            addplot=addplots,
+            style=_chart_style(),
+            datetime_format="%H:%M",
+            xrotation=0,
+            warn_too_much_data=220,
+        )
+        for ax in (ax_price, ax_volume):
+            ax.set_facecolor("#0b1117")
+        _draw_operational_levels(ax_price, report)
+        ax_price.set_ylabel("USDT", color=MUTED, fontsize=10)
+        ax_volume.set_ylabel("Volume", color=MUTED, fontsize=10)
+        ax_price.tick_params(axis="both", colors=MUTED, labelsize=9)
+        ax_volume.tick_params(axis="both", colors=MUTED, labelsize=9)
+        ax_price.grid(True, color=GRID, alpha=0.55, linewidth=0.8)
+        ax_volume.grid(True, color=GRID, alpha=0.35, linewidth=0.6)
+
+    _draw_footer(ax_footer, parts)
 
     output = BytesIO()
-    image.save(output, format="PNG", optimize=True)
+    fig.savefig(output, format="png", dpi=150, facecolor=BG, edgecolor=BG)
+    plt.close(fig)
     return output.getvalue()
