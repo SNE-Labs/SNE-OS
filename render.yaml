@@ -23,7 +23,7 @@ services:
       - key: RADAR_REPORT_AUTO_TIMEFRAMES
         value: 1h,4h,1d
       - key: RADAR_REPORT_AUTO_CHANNELS
-        value: telegram,threads
+        value: telegram
       - key: RADAR_REPORT_AUTO_INCLUDE_CHART
         value: true
       - key: RADAR_REPORT_PUBLIC_BASE_URL

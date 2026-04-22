@@ -38,7 +38,7 @@ LAST_PUBLISHED_KEY_PREFIX = "intel:distribution:last:"
 RATE_COUNTER_KEY_PREFIX = "intel:distribution:rate:"
 URL_PATTERN = re.compile(r"https?://\S+")
 X_PREVIEW_TIMEOUT_SECONDS = 8
-DISTRIBUTION_FORMAT_VERSION = 3
+DISTRIBUTION_FORMAT_VERSION = 4
 PUBLISHED_INDEX_LIMIT = 240
 DUPLICATE_LOOKBACK_SECONDS = 12 * 60 * 60
 TITLE_OVERLAP_THRESHOLD = 0.52
@@ -768,12 +768,34 @@ def _x_reply_cta(cta_url: str) -> str:
 def _threads_format(post: Dict[str, Any]) -> str:
     slug = str(post.get("slug") or post.get("id") or post.get("title") or "").strip().lower()
     digest = hashlib.sha1(f"threads:{slug}".encode("utf-8")).hexdigest()
-    bucket = int(digest[:2], 16) % 5
+    bucket = int(digest[:2], 16) % 6
     if bucket <= 1:
         return "operator_note"
-    if bucket <= 3:
+    if bucket <= 2:
         return "market_thesis"
+    if bucket <= 4:
+        return "desk_question"
     return "link_brief"
+
+
+def _threads_context(post: Dict[str, Any]) -> str:
+    tokens = _topic_tokens(post)
+    text = " ".join([
+        str(post.get("title") or ""),
+        str(post.get("subtitle") or ""),
+        str(post.get("excerpt") or ""),
+    ]).lower()
+    if {"exploit", "hack", "ataque", "fraude", "security", "seguranca", "exploracao"}.intersection(tokens) or any(term in text for term in ("exploit", "ataque", "fraude", "hack", "exploração", "exploracao")):
+        return "security"
+    if {"stablecoin", "genius", "mica", "regulacao", "regulatory"}.intersection(tokens) or any(term in text for term in ("stablecoin", "genius act", "mica", "regula")):
+        return "policy"
+    if {"banco", "bancos", "bank", "banks", "institucional"}.intersection(tokens) or any(term in text for term in ("banco", "bank", "institucional")):
+        return "institutional"
+    if {"defi", "dao", "aave", "kelp", "liquidez"}.intersection(tokens) or any(term in text for term in ("defi", "dao", "liquidez")):
+        return "defi"
+    if str(post.get("category") or "").strip().lower() == "market":
+        return "market"
+    return "general"
 
 
 def _threads_subject(post: Dict[str, Any], headline: str) -> str:
@@ -787,25 +809,83 @@ def _threads_subject(post: Dict[str, Any], headline: str) -> str:
     return title
 
 
-def _threads_signal_line(post: Dict[str, Any], fallback: str) -> str:
-    subtitle = _normalize_copy_line(post.get("subtitle"))
-    excerpt = _normalize_copy_line(post.get("excerpt"))
-    tldr = _normalize_string_list(post.get("tldr"))
-    return _truncate_copy_line(subtitle or excerpt or (tldr[0] if tldr else fallback), 150)
+def _threads_signal_line(post: Dict[str, Any], fallback: str, headline: str = "") -> str:
+    candidates = [
+        _normalize_copy_line(post.get("subtitle")),
+        _normalize_copy_line(post.get("excerpt")),
+        *[_normalize_copy_line(item) for item in _normalize_string_list(post.get("tldr"))[:3]],
+        _normalize_copy_line(fallback),
+    ]
+    title_tokens = _tokenize_topic_text(headline or post.get("title"))
+    for candidate in candidates:
+        if not candidate:
+            continue
+        candidate_tokens = _tokenize_topic_text(candidate)
+        if title_tokens and candidate_tokens and _title_overlap(title_tokens, candidate_tokens) > 0.72:
+            continue
+        return _truncate_copy_line(candidate, 138)
+    return _truncate_copy_line(fallback or headline or "Leitura operacional em atualização.", 138)
 
 
 def _threads_action_line(post: Dict[str, Any]) -> str:
-    category = str(post.get("category") or "").strip().lower()
-    topics = {str(item).strip().lower() for item in post.get("topics") or []}
-    if category == "market":
-        return "Preço importa menos que gatilho, liquidez e execução."
-    if "seguranca" in topics or "security" in topics:
-        return "Risco operacional primeiro; narrativa depois."
-    if "defi" in topics:
-        return "O ponto prático é liquidez, contraparte e rota."
-    if str(post.get("stream") or "").strip().lower() == "institutional":
-        return "Produto bom reduz fricção operacional, não só narrativa."
-    return "A leitura útil é o que muda para risco, fluxo e decisão."
+    context = _threads_context(post)
+    if context == "security":
+        return "Prioridade: exposição direta, permissões e rota de saída dos fundos."
+    if context == "policy":
+        return "Observar reservas, resgates, disclosure e custo de compliance."
+    if context == "institutional":
+        return "O teste é operacional: liquidação, custódia, compliance e custo de capital."
+    if context == "defi":
+        return "Monitorar liquidez travada, dependência de bridge e risco de contraparte."
+    if context == "market":
+        return "Sem execução por manchete: confirmar volume, spread e reação nos níveis."
+    return "Separar manchete de efeito real: fluxo, risco e decisão."
+
+
+def _threads_learning_line(post: Dict[str, Any]) -> str:
+    context = _threads_context(post)
+    if context == "security":
+        return "Toda falha grande começa pequena: permissão demais, monitoramento de menos."
+    if context == "policy":
+        return "Regulação relevante não muda só narrativa; muda custo, acesso e quem consegue operar."
+    if context == "institutional":
+        return "Adoção institucional só vale quando melhora liquidação, custódia ou distribuição."
+    if context == "defi":
+        return "DeFi forte não é o que promete yield; é o que sobrevive quando a liquidez sai."
+    if context == "market":
+        return "Mercado premia paciência quando o sinal ainda não virou execução."
+    return "O dado bruto informa; a interpretação decide o que merece atenção."
+
+
+def _threads_question_line(post: Dict[str, Any]) -> str:
+    context = _threads_context(post)
+    if context == "security":
+        return "A pergunta: isso foi falha técnica, falha de governança ou falha de processo?"
+    if context == "policy":
+        return "A pergunta: transparência vira vantagem competitiva ou barreira de entrada?"
+    if context == "institutional":
+        return "A pergunta: isso reduz fricção real ou só cria uma nova camada de compliance?"
+    if context == "defi":
+        return "A pergunta: esse desenho aguenta estresse de liquidez ou depende de mercado perfeito?"
+    if context == "market":
+        return "A pergunta: há confirmação suficiente ou só movimento para perseguir?"
+    return "A pergunta: isso muda decisão operacional ou só aumenta ruído?"
+
+
+def _threads_opening(post: Dict[str, Any], headline: str, signal: str) -> str:
+    title = _truncate_copy_line(headline or post.get("title") or "SNE Radar", 104)
+    context = _threads_context(post)
+    if context == "security":
+        return f"{title}\n\nA leitura não é só incidente. É controle, tesouraria e resposta operacional."
+    if context == "policy":
+        return f"{title}\n\nA disputa é por regra de jogo: transparência, reservas e poder de distribuição."
+    if context == "institutional":
+        return f"{title}\n\nInstituições estão testando onde blockchain reduz fricção e onde aumenta supervisão."
+    if context == "defi":
+        return f"{title}\n\nO problema não é só protocolo. É liquidez, tesouraria e dependência operacional."
+    if context == "market":
+        return f"{title}\n\nLeitura de mesa: preço só importa quando confirma execução."
+    return f"{title}\n\n{signal}"
 
 
 def _threads_fit(text: str, limit: int = 500) -> str:
@@ -818,33 +898,39 @@ def _threads_fit(text: str, limit: int = 500) -> str:
 def _compose_threads_body(post: Dict[str, Any], cta_url: str, headline: str, generated_body: str | None = None) -> str:
     selected_format = _threads_format(post)
     subject = _threads_subject(post, headline)
-    signal = _threads_signal_line(post, generated_body or headline)
+    signal = _threads_signal_line(post, generated_body or headline, headline)
     action = _threads_action_line(post)
+    opening = _threads_opening(post, headline, signal)
 
     if selected_format == "operator_note":
         return _threads_fit("\n".join([
-            f"{subject}",
+            opening,
             "",
-            signal,
-            "",
-            f"HALO: {action}",
+            f"O que muda: {action}",
         ]))
 
     if selected_format == "market_thesis":
         return _threads_fit("\n".join([
-            f"{subject}: leitura de mesa.",
+            subject,
             "",
-            signal,
+            f"Tese: {signal}",
             "",
-            action,
+            f"Mesa: {action}",
+        ]))
+
+    if selected_format == "desk_question":
+        return _threads_fit("\n".join([
+            opening,
+            "",
+            _threads_question_line(post),
+            "",
+            f"Aprendizado: {_threads_learning_line(post)}",
         ]))
 
     return _threads_fit("\n".join([
-        subject,
+        opening,
         "",
-        signal,
-        "",
-        action,
+        f"Radar: {action}",
         "",
         cta_url,
     ]))
@@ -1036,7 +1122,7 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
                 cta_url,
             )
         elif channel == "threads":
-            body = _compose_threads_body(post, cta_url, headline, str(parsed.get("body") or ""))
+            body = str(parsed.get("body") or parsed.get("impact_line") or "").strip()
         else:
             body = str(parsed.get("body") or "").strip()
         if not body:
