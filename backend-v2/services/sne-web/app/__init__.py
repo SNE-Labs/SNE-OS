@@ -9,7 +9,7 @@ import os
 # import eventlet
 # eventlet.monkey_patch()  # Deve ser o primeiro import
 
-from flask import Flask, jsonify
+from flask import Flask, Response, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
 import os
@@ -128,6 +128,25 @@ def create_app():
     def root():
         logger.info("Root endpoint called")
         return jsonify({'message': 'SNE Web API is running', 'status': 'ok'}), 200
+
+    @app.route('/robots.txt', methods=['GET', 'HEAD'])
+    def robots_txt():
+        body = "\n".join([
+            "User-agent: facebookexternalhit",
+            "Allow: /api/radar/report/",
+            "Allow: /api/radar/report/media/",
+            "Allow: /api/radar/report/chart-social/",
+            "Allow: /",
+            "",
+            "User-agent: *",
+            "Allow: /",
+            "",
+        ])
+        return Response(
+            body,
+            mimetype="text/plain",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
 
     @app.route('/health', methods=['GET'])
     def health():
