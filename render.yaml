@@ -22,8 +22,12 @@ services:
         value: BTCUSDT,ETHUSDT,SOLUSDT
       - key: RADAR_REPORT_AUTO_TIMEFRAMES
         value: 1h,4h,1d
+      - key: RADAR_REPORT_AUTO_CHANNELS
+        value: telegram,threads
       - key: RADAR_REPORT_AUTO_INCLUDE_CHART
         value: true
+      - key: RADAR_REPORT_PUBLIC_BASE_URL
+        value: https://api.snelabs.space
       # PORT will be set automatically by Render
       - key: COLLECTOR_URL
         value: https://collector.snelabs.space

@@ -68,7 +68,9 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `RADAR_REPORT_AUTO_PUBLISH`: enables automatic Radar report publishing to Telegram
 - `RADAR_REPORT_AUTO_SYMBOLS`: comma-separated symbols for automatic Radar reports, defaults to `BTCUSDT,ETHUSDT,SOLUSDT`
 - `RADAR_REPORT_AUTO_TIMEFRAMES`: comma-separated timeframes for automatic Radar reports, defaults to `1h,4h,1d`
+- `RADAR_REPORT_AUTO_CHANNELS`: comma-separated channels for automatic Radar reports, supports `telegram,threads`
 - `RADAR_REPORT_AUTO_INCLUDE_CHART`: enables chart image delivery for automatic Radar reports
+- `RADAR_REPORT_PUBLIC_BASE_URL`: public API base used by Threads to fetch Radar chart images
 - `RADAR_REPORT_AUTO_CHECK_INTERVAL_SECONDS`: scheduler polling interval, defaults to `60`
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_API_KEY` / `X_API_SECRET`: X OAuth 1.0a app credentials for direct posting as `@SNELabs`

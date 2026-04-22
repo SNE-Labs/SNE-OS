@@ -14,10 +14,11 @@ import os
 import threading
 import time
 from typing import Any, Dict, List
+from urllib.parse import urlencode
 
+from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
 from .radar_report_service import build_radar_report
 from .radar_report_visuals import render_radar_report_chart
-from .telegram_delivery import send_telegram_photo, send_telegram_text
 from .utils.redis_safe import SafeRedis
 
 
@@ -46,6 +47,7 @@ class RadarReportSchedule:
     enabled: bool
     symbols: List[str]
     timeframes: List[str]
+    channels: List[str]
     include_chart: bool
     check_interval_seconds: int
     boundary_window_seconds: int
@@ -63,6 +65,15 @@ def _csv_env(name: str, default: str) -> List[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _report_channels() -> List[str]:
+    channels: List[str] = []
+    for item in _csv_env("RADAR_REPORT_AUTO_CHANNELS", "telegram"):
+        channel = item.lower()
+        if channel in {"telegram", "threads"} and channel not in channels:
+            channels.append(channel)
+    return channels or ["telegram"]
+
+
 def _build_schedule() -> RadarReportSchedule:
     symbols = [item.upper().replace("/", "") for item in _csv_env("RADAR_REPORT_AUTO_SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT")]
     timeframes = [item for item in _csv_env("RADAR_REPORT_AUTO_TIMEFRAMES", "1h,4h,1d") if item in _TIMEFRAME_SECONDS]
@@ -72,10 +83,25 @@ def _build_schedule() -> RadarReportSchedule:
         enabled=_env_bool("RADAR_REPORT_AUTO_PUBLISH", False),
         symbols=symbols[:12],
         timeframes=timeframes[:6],
+        channels=_report_channels(),
         include_chart=_env_bool("RADAR_REPORT_AUTO_INCLUDE_CHART", True),
         check_interval_seconds=check_interval,
         boundary_window_seconds=boundary_window,
     )
+
+
+def _radar_chart_public_url(report_payload: Dict[str, Any]) -> str:
+    base = (
+        os.getenv("RADAR_REPORT_PUBLIC_BASE_URL")
+        or os.getenv("PUBLIC_API_BASE")
+        or "https://api.snelabs.space"
+    ).strip().rstrip("/")
+    query = urlencode({
+        "symbol": report_payload.get("symbol") or "BTCUSDT",
+        "timeframe": report_payload.get("timeframe") or "1h",
+        "v": report_payload.get("generated_at") or int(time.time()),
+    })
+    return f"{base}/api/radar/report/chart?{query}"
 
 
 def _window_id(now: datetime, timeframe: str) -> int:
@@ -103,7 +129,7 @@ def _claim_window(redis_client: SafeRedis, symbol: str, timeframe: str, window_i
     return True
 
 
-def _send_report(symbol: str, timeframe: str, include_chart: bool) -> Dict[str, Any]:
+def _send_report(symbol: str, timeframe: str, include_chart: bool, channels: List[str]) -> Dict[str, Any]:
     report_payload = build_radar_report(
         symbol=symbol,
         timeframe=timeframe,
@@ -115,28 +141,24 @@ def _send_report(symbol: str, timeframe: str, include_chart: bool) -> Dict[str, 
     if include_chart and report_payload.get("status") == "ready":
         chart_bytes = render_radar_report_chart(report_payload)
 
-    sent = False
-    error = None
-    if chart_bytes:
-        caption = "\n".join([
-            f"SNE RADAR | {report_payload.get('symbol')} ({report_payload.get('timeframe')})",
-            f"Estado: {str((report_payload.get('operator_decision') or {}).get('state') or 'observe').capitalize()}",
-        ]).strip()
-        sent, error = send_telegram_photo(chart_bytes, caption=caption, sanitize=True)
-        if sent and report_text:
-            sent, error = send_telegram_text(report_text, disable_web_page_preview=True, sanitize=True)
-    elif report_text:
-        sent, error = send_telegram_text(report_text, disable_web_page_preview=True, sanitize=True)
-    else:
-        error = "report_text_empty"
+    channel_results = []
+    for channel in channels:
+        if channel == "telegram":
+            sent, error = send_radar_report_to_telegram(report_payload, chart_bytes=chart_bytes)
+        else:
+            sent, error = send_radar_report_to_threads(
+                report_payload,
+                image_url=_radar_chart_public_url(report_payload) if chart_bytes else None,
+            )
+        channel_results.append({"channel": channel, "sent": sent, "error": error})
 
     return {
         "symbol": report_payload.get("symbol"),
         "timeframe": report_payload.get("timeframe"),
         "status": report_payload.get("status"),
-        "sent": sent,
+        "sent": any(item.get("sent") for item in channel_results),
         "chart": bool(chart_bytes),
-        "error": error,
+        "channels": channel_results,
     }
 
 
@@ -150,7 +172,7 @@ def _run_due_reports(schedule: RadarReportSchedule, redis_client: SafeRedis) -> 
             if not _claim_window(redis_client, symbol, timeframe, window):
                 continue
             try:
-                result = _send_report(symbol, timeframe, schedule.include_chart)
+                result = _send_report(symbol, timeframe, schedule.include_chart, schedule.channels)
                 logger.info("Radar auto report result: %s", result)
             except Exception as exc:
                 logger.exception("Radar auto report failed: symbol=%s timeframe=%s error=%s", symbol, timeframe, exc)
@@ -158,9 +180,10 @@ def _run_due_reports(schedule: RadarReportSchedule, redis_client: SafeRedis) -> 
 
 def _scheduler_loop(schedule: RadarReportSchedule) -> None:
     logger.info(
-        "Radar report auto scheduler started: symbols=%s timeframes=%s chart=%s",
+        "Radar report auto scheduler started: symbols=%s timeframes=%s channels=%s chart=%s",
         schedule.symbols,
         schedule.timeframes,
+        schedule.channels,
         schedule.include_chart,
     )
     redis_client = SafeRedis()
