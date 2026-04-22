@@ -1158,6 +1158,31 @@ def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
     return "published", None
 
 
+def _http_error_detail(response: requests.Response | None) -> str:
+    if response is None:
+        return ""
+    safe_headers = {
+        key: value
+        for key, value in response.headers.items()
+        if key.lower() in {
+            "content-type",
+            "x-rate-limit-limit",
+            "x-rate-limit-remaining",
+            "x-rate-limit-reset",
+            "x-request-id",
+            "x-transaction-id",
+        }
+    }
+    return json.dumps(
+        {
+            "status_code": response.status_code,
+            "headers": safe_headers,
+            "body": _truncate_response_body(response.text if response is not None else ""),
+        },
+        ensure_ascii=False,
+    )
+
+
 def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False, auto: bool = False) -> Dict[str, Any]:
     post = fetch_combined_intel_post(slug)
     if not post:
@@ -1217,7 +1242,7 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False,
         except requests.HTTPError as exc:
             response = exc.response
             status = "publish_failed"
-            error = _truncate_response_body(response.text if response is not None else "")
+            error = _http_error_detail(response) or _truncate_response_body(response.text if response is not None else "")
         except Exception as exc:
             status = "publish_failed"
             error = str(exc)
