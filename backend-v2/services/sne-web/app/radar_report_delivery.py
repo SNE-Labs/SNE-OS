@@ -103,7 +103,13 @@ def send_radar_report_to_threads(
         return False, "threads_not_configured"
     text = build_radar_threads_text(report_payload)
     sent, _payload, error = send_threads_post(text, image_url=image_url)
-    if not sent and image_url and error and "Media download has failed" in error:
+    media_download_failed = bool(error) and (
+        "Media download has failed" in error
+        or "2207052" in error
+        or "media URI" in error
+        or "URI" in error and "requirements" in error
+    )
+    if not sent and image_url and media_download_failed:
         sent, _payload, fallback_error = send_threads_post(text)
         if sent:
             return True, None
