@@ -180,8 +180,8 @@ def _manifest_value(key: str) -> Optional[str]:
     return str(value) if value is not None else None
 
 
-def read_keys_contracts_status() -> Dict[str, Any]:
-    """Return best-effort contract configuration and sale state for cockpit UI."""
+def read_keys_contracts_static_config() -> Dict[str, Any]:
+    """Return contract configuration without RPC-dependent reads."""
     network = _keys_network()
     manifest = _deployment_manifest()
     operator_key_contract = _operator_key_contract()
@@ -189,9 +189,9 @@ def read_keys_contracts_status() -> Dict[str, Any]:
     key_sale_contract = _key_sale_contract()
     legacy_registry_contract = _legacy_registry_contract()
     manifest_operator_price = _manifest_value("operatorPrice")
-    configured = bool(operator_key_contract or legacy_registry_contract)
+    configured = bool(operator_key_contract or key_sale_contract or delegation_registry_contract or legacy_registry_contract)
 
-    status: Dict[str, Any] = {
+    return {
         "network": network,
         "configured": configured,
         "source": "deployment_manifest" if manifest else "env" if configured else "unconfigured",
@@ -209,6 +209,13 @@ def read_keys_contracts_status() -> Dict[str, Any]:
         "manifestNetwork": manifest.get("network"),
         "error": None,
     }
+
+
+def read_keys_contracts_status() -> Dict[str, Any]:
+    """Return best-effort contract configuration and sale state for cockpit UI."""
+    status = read_keys_contracts_static_config()
+    operator_key_contract = status.get("operatorKey")
+    key_sale_contract = status.get("keySale")
 
     if not operator_key_contract and not key_sale_contract:
         return status

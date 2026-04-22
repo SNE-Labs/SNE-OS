@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from .checkout_service import FINAL_ORDER_STATUSES, serialize_activation_order
 from .config import Config
-from .keys_contract_service import read_keys_contracts_status
+from .keys_contract_service import read_keys_contracts_static_config, read_keys_contracts_status
 from .keys_entitlement_service import build_keys_entitlement
 from .models import ActivationOrder
 
@@ -61,24 +61,10 @@ def _empty_entitlement(address: Optional[str], error: Optional[str] = None) -> D
 
 
 def _empty_contracts(error: Optional[str] = None) -> Dict[str, Any]:
-    return {
-        "network": Config.SNE_KEYS_NETWORK or "arbitrum",
-        "configured": False,
-        "source": "fallback",
-        "operatorKey": None,
-        "keySale": None,
-        "delegationRegistry": None,
-        "legacyRegistry": None,
-        "usdt": None,
-        "treasury": None,
-        "operatorPriceUnits": None,
-        "operatorPriceDisplay": None,
-        "keySalePaused": None,
-        "saleController": None,
-        "latestBlock": None,
-        "manifestNetwork": None,
-        "error": error,
-    }
+    contracts = read_keys_contracts_static_config()
+    contracts["source"] = "fallback" if not contracts.get("configured") else "rpc_error"
+    contracts["error"] = error
+    return contracts
 
 
 def build_operator_cockpit_fallback(address: Optional[str] = None, error: Optional[str] = None) -> Dict[str, Any]:
@@ -337,7 +323,7 @@ def _build_timeline(
             "Indexer de Keys",
             "complete" if indexer.get("healthy") else "warning",
             entitlement.get("checkedAt"),
-            detail=f"{indexer.get('mode', 'unknown')} · bloco {indexer.get('lastIndexedBlock') or '--'}",
+            detail=f"{indexer.get('source') or indexer.get('mode', 'unknown')} · bloco {indexer.get('lastIndexedBlock') or '--'}",
         )
     )
 
@@ -361,19 +347,19 @@ def _next_action(
             "priority": "high",
         }
 
-    if not contracts.get("configured") or not entitlement.get("contractsConfigured"):
-        return {
-            "state": "contracts_unconfigured",
-            "label": "Configurar contratos",
-            "href": "/status",
-            "priority": "high",
-        }
-
     if not indexer.get("healthy"):
         return {
             "state": "indexer_degraded",
             "label": "Revalidar entitlement",
             "href": "/keys",
+            "priority": "high",
+        }
+
+    if not contracts.get("configured") or not entitlement.get("contractsConfigured"):
+        return {
+            "state": "contracts_unconfigured",
+            "label": "Configurar contratos",
+            "href": "/status",
             "priority": "high",
         }
 
@@ -435,6 +421,9 @@ def build_operator_cockpit(
     except Exception as exc:
         logger.warning("Operator cockpit contracts fallback: %s", exc)
         contracts = _empty_contracts(str(exc))
+
+    if entitlement.get("contractsConfigured") and not contracts.get("configured"):
+        contracts["configured"] = True
 
     wallet = entitlement.get("wallet") or _normalize_address(address)
     role = _session_role(wallet, entitlement)
