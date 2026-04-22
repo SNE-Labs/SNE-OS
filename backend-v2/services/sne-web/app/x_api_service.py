@@ -79,7 +79,19 @@ def _oauth1_configured() -> bool:
 
 
 def _oauth2_configured() -> bool:
-    return bool(_env("X_CLIENT_ID") and (_env("X_ACCESS_TOKEN") or _env("X_REFRESH_TOKEN")))
+    return bool(
+        _env("X_CLIENT_ID")
+        and (
+            _env("X_OAUTH2_ACCESS_TOKEN")
+            or _env("X_OAUTH2_REFRESH_TOKEN")
+            or _env("X_REFRESH_TOKEN")
+            or (
+                _env("X_AUTH_MODE").lower() == "oauth2"
+                and _env("X_ACCESS_TOKEN")
+                and not _env("X_ACCESS_TOKEN_SECRET")
+            )
+        )
+    )
 
 
 def x_official_configured() -> bool:
@@ -87,11 +99,20 @@ def x_official_configured() -> bool:
 
 
 def x_auth_mode() -> str | None:
+    preferred = _env("X_AUTH_MODE").lower()
+    if preferred == "oauth2" and _oauth2_configured():
+        return "oauth2"
+    if preferred == "oauth1" and _oauth1_configured():
+        return "oauth1"
     if _oauth1_configured():
         return "oauth1"
     if _oauth2_configured():
         return "oauth2"
     return None
+
+
+def _use_oauth1() -> bool:
+    return x_auth_mode() == "oauth1"
 
 
 def _oauth1_auth() -> OAuth1:
@@ -107,12 +128,15 @@ def _oauth1_auth() -> OAuth1:
 def _token_record() -> Dict[str, Any]:
     redis_client = SafeRedis()
     cached = _read_json(redis_client, X_TOKEN_CACHE_KEY)
-    if isinstance(cached, dict) and cached.get("access_token"):
+    if isinstance(cached, dict) and cached.get("access_token") and cached.get("auth_mode") == "oauth2":
         return cached
 
     payload = {
-        "access_token": _env("X_ACCESS_TOKEN"),
-        "refresh_token": _env("X_REFRESH_TOKEN"),
+        "auth_mode": "oauth2",
+        "access_token": _env("X_OAUTH2_ACCESS_TOKEN") or (
+            _env("X_ACCESS_TOKEN") if _env("X_AUTH_MODE").lower() == "oauth2" and not _env("X_ACCESS_TOKEN_SECRET") else ""
+        ),
+        "refresh_token": _env("X_OAUTH2_REFRESH_TOKEN") or _env("X_REFRESH_TOKEN"),
         "token_type": _env("X_TOKEN_TYPE") or "bearer",
         "scope": _env("X_TOKEN_SCOPE"),
         "updated_at": _iso_now(),
@@ -126,13 +150,14 @@ def _store_token_record(payload: Dict[str, Any]) -> None:
     redis_client = SafeRedis()
     payload = {
         **payload,
+        "auth_mode": "oauth2",
         "updated_at": _iso_now(),
     }
     _write_json(redis_client, X_TOKEN_CACHE_KEY, payload)
 
 
 def _refresh_access_token() -> Tuple[bool, str | None]:
-    refresh_token = _token_record().get("refresh_token") or _env("X_REFRESH_TOKEN")
+    refresh_token = _token_record().get("refresh_token") or _env("X_OAUTH2_REFRESH_TOKEN") or _env("X_REFRESH_TOKEN")
     client_id = _env("X_CLIENT_ID")
     client_secret = _env("X_CLIENT_SECRET")
     if not refresh_token or not client_id:
@@ -195,7 +220,7 @@ def _tweet_id(payload: Dict[str, Any] | None) -> str | None:
 
 def x_post_text(text: str, reply_to_id: str | None = None) -> Tuple[bool, Dict[str, Any] | None, str | None]:
     json_payload = _tweet_payload(text, reply_to_id)
-    if _oauth1_configured():
+    if _use_oauth1():
         response = requests.post(
             f"{_api_base()}/tweets",
             auth=_oauth1_auth(),
@@ -269,7 +294,7 @@ def x_get_authenticated_user(force: bool = False) -> Dict[str, Any] | None:
         if isinstance(cached, dict) and cached.get("data"):
             return cached
 
-    if _oauth1_configured():
+    if _use_oauth1():
         response = requests.get(
             f"{_api_base()}/users/me",
             auth=_oauth1_auth(),

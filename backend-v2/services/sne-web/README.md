@@ -73,8 +73,10 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_API_KEY` / `X_API_SECRET`: X OAuth 1.0a app credentials for direct posting as `@SNELabs`
 - `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET`: X OAuth 1.0a user tokens for `@SNELabs`
-- `X_CLIENT_ID` / `X_CLIENT_SECRET`: X OAuth 2.0 app credentials, optional fallback
-- `X_REFRESH_TOKEN`: X OAuth 2.0 refresh token, optional fallback
+- `X_AUTH_MODE`: optional X auth override, `oauth1` or `oauth2`
+- `X_CLIENT_ID` / `X_CLIENT_SECRET`: X OAuth 2.0 app credentials, optional user-context fallback
+- `X_OAUTH2_ACCESS_TOKEN` / `X_OAUTH2_REFRESH_TOKEN`: X OAuth 2.0 user-context tokens, required for `X_AUTH_MODE=oauth2`
+- `X_REFRESH_TOKEN`: legacy X OAuth 2.0 refresh token fallback
 - `X_TOKEN_SCOPE`: expected X scopes such as `tweet.read tweet.write users.read offline.access` for OAuth 2.0 fallback
 - `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
 - `DEFAULT_NETWORK`: default sovereign access network, now expected to be `arbitrum`
