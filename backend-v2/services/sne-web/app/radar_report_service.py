@@ -474,6 +474,29 @@ def _format_price(value: Any) -> str:
     return f"{number:,.6f}"
 
 
+def _format_time(value: Any) -> str:
+    if not value:
+        return "N/A"
+    try:
+        if isinstance(value, (int, float)):
+            timestamp = float(value)
+            if timestamp > 10_000_000_000:
+                timestamp = timestamp / 1000
+            parsed = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        else:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.astimezone(timezone.utc)
+        return parsed.strftime("%d/%m %H:%M UTC")
+    except Exception:
+        return "N/A"
+
+
+def _format_pct(value: Any) -> str:
+    return f"{_to_float(value):+.2f}%"
+
+
 def _state_label(state: str) -> str:
     labels = {
         "ready": "Ready",
@@ -539,6 +562,8 @@ def _report_text(payload: Dict[str, Any]) -> str:
     risk = payload["risk_plan"]
     decision = payload["operator_decision"]
     levels = payload["technical"]["levels"]
+    indicators = payload["technical"].get("indicators") or {}
+    current_candle = payload["technical"].get("current_candle") or {}
 
     support = levels["supports"][0]["price"] if levels.get("supports") else "N/A"
     resistance = levels["resistances"][0]["price"] if levels.get("resistances") else "N/A"
@@ -550,6 +575,12 @@ def _report_text(payload: Dict[str, Any]) -> str:
         "",
         "ESTADO",
         _state_label(str(decision.get("state") or "")),
+        "",
+        "SNAPSHOT",
+        f"Preço: {_format_price(summary.get('price'))}",
+        f"Janela: {_format_pct(indicators.get('change_window_pct'))} | Volume: {summary.get('volume_ratio', 'N/A')}x",
+        f"Candle: {_format_time(current_candle.get('timestamp'))}",
+        f"Gerado: {_format_time(payload.get('generated_at'))}",
         "",
         "TESE",
         *_thesis_lines(payload),
