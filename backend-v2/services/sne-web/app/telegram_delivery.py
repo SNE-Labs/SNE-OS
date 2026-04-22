@@ -9,10 +9,11 @@ Carries over the useful operational ideas from the legacy stack:
 from __future__ import annotations
 
 import html
+from io import BytesIO
 import logging
 import os
 import time
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import requests
 
@@ -127,3 +128,70 @@ def send_telegram_text(
             return False, last_error or "telegram_send_failed"
 
     return True, None
+
+
+def send_telegram_photo(
+    image_bytes: bytes,
+    *,
+    caption: str = "",
+    chat_id: str | None = None,
+    retry_count: int = 3,
+    sanitize: bool = True,
+) -> Tuple[bool, str | None]:
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    resolved_chat_id = (chat_id or os.getenv("TELEGRAM_CHAT_ID") or "").strip()
+    if not token:
+        return False, "telegram_not_configured"
+    if not resolved_chat_id:
+        return False, "telegram_chat_not_configured"
+    if not image_bytes:
+        return False, "telegram_photo_empty"
+
+    resolved_caption = sanitize_html(caption) if sanitize else (caption or "").strip()
+    if len(resolved_caption) > 1024:
+        resolved_caption = f"{resolved_caption[:1018].rstrip()}..."
+
+    url = f"https://api.telegram.org/bot{token}/sendPhoto"
+    payload: Dict[str, Any] = {
+        "chat_id": resolved_chat_id,
+        "parse_mode": "HTML",
+    }
+    if resolved_caption:
+        payload["caption"] = resolved_caption
+
+    last_error: str | None = None
+    for attempt in range(retry_count):
+        try:
+            with BytesIO(image_bytes) as image_file:
+                image_file.name = "sne-radar-report.png"
+                response = requests.post(
+                    url,
+                    data=payload,
+                    files={"photo": ("sne-radar-report.png", image_file, "image/png")},
+                    timeout=20,
+                )
+            response.raise_for_status()
+            return True, None
+        except requests.HTTPError as exc:
+            response = exc.response
+            last_error = response.text[:400] if response is not None else "telegram_photo_http_error"
+            logger.warning(
+                "Telegram photo send failed: attempt=%s/%s status=%s body=%s",
+                attempt + 1,
+                retry_count,
+                response.status_code if response is not None else "unknown",
+                last_error,
+            )
+        except Exception as exc:
+            last_error = str(exc)
+            logger.warning(
+                "Telegram photo send failed: attempt=%s/%s error=%s",
+                attempt + 1,
+                retry_count,
+                last_error,
+            )
+
+        if attempt < retry_count - 1:
+            time.sleep(2 ** attempt)
+
+    return False, last_error or "telegram_photo_send_failed"

@@ -11,8 +11,9 @@ from datetime import datetime
 from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_report_service import build_radar_report
+from .radar_report_visuals import render_radar_report_chart
 from .radar_service import build_radar_overview, derive_signal_from_ticker
-from .telegram_delivery import send_telegram_text
+from .telegram_delivery import send_telegram_photo, send_telegram_text
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ radar_bp = Blueprint("radar", __name__)
 def _radar_report_secret_authorized() -> bool:
     expected = (
         os.getenv("RADAR_REPORT_SECRET")
+        or os.getenv("INTEL_REFRESH_SECRET")
         or os.getenv("INTEL_DISTRIBUTION_SECRET")
         or ""
     ).strip()
@@ -204,6 +206,7 @@ def report_telegram():
       symbol = payload.get("symbol") or request.args.get("symbol") or "BTCUSDT"
       timeframe = payload.get("timeframe") or request.args.get("timeframe") or "1h"
       dry_run = bool(payload.get("dryRun") or payload.get("dry_run"))
+      include_chart = payload.get("includeChart", payload.get("include_chart", True)) is not False
 
       report_payload = build_radar_report(
           symbol=symbol,
@@ -215,7 +218,10 @@ def report_telegram():
       if not report_text:
           return fail("REPORT_EMPTY", "Radar report text is empty", 422)
 
-      message = f"SNE RADAR | TESTE TELEGRAM\n\n{report_text}"
+      message = f"SNE RADAR\n\n{report_text}"
+      chart_bytes = b""
+      if include_chart and report_payload.get("status") == "ready":
+          chart_bytes = render_radar_report_chart(report_payload)
       if dry_run:
           return ok({
               "sent": False,
@@ -223,14 +229,29 @@ def report_telegram():
               "symbol": report_payload.get("symbol"),
               "timeframe": report_payload.get("timeframe"),
               "status": report_payload.get("status"),
+              "chartBytes": len(chart_bytes),
               "message": message,
           })
 
-      sent, error = send_telegram_text(
-          message,
-          disable_web_page_preview=True,
-          sanitize=True,
-      )
+      if chart_bytes:
+          caption = "\n".join([
+              f"SNE RADAR | {report_payload.get('symbol')} ({report_payload.get('timeframe')})",
+              str((report_payload.get("operator_decision") or {}).get("title") or ""),
+              str((report_payload.get("operator_decision") or {}).get("next_action") or ""),
+          ]).strip()
+          sent, error = send_telegram_photo(chart_bytes, caption=caption, sanitize=True)
+          if sent:
+              sent, error = send_telegram_text(
+                  report_text,
+                  disable_web_page_preview=True,
+                  sanitize=True,
+              )
+      else:
+          sent, error = send_telegram_text(
+              message,
+              disable_web_page_preview=True,
+              sanitize=True,
+          )
       if not sent:
           return fail("TELEGRAM_SEND_FAILED", error or "Telegram send failed", 502)
 
@@ -240,10 +261,99 @@ def report_telegram():
           "timeframe": report_payload.get("timeframe"),
           "status": report_payload.get("status"),
           "generatedAt": report_payload.get("generated_at"),
+          "chart": bool(chart_bytes),
       })
     except Exception as e:
       logger.error(f"Radar report Telegram error: {e}", exc_info=True)
       return fail("INTERNAL_ERROR", "Failed to send Radar report to Telegram", 500)
+
+
+@radar_bp.post("/reports/autopublish")
+def reports_autopublish():
+    """
+    Send automatic operational Radar reports to Telegram.
+    POST /api/radar/reports/autopublish
+    Body: { "symbols": ["BTCUSDT"], "timeframes": ["1h"], "dryRun": false }
+    """
+    if not _radar_report_secret_authorized():
+        return fail("UNAUTHORIZED", "Radar report secret required", 401)
+
+    try:
+      payload = request.get_json(silent=True) or {}
+      symbols = payload.get("symbols") or payload.get("symbol") or ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+      timeframes = payload.get("timeframes") or payload.get("timeframe") or ["1h"]
+      dry_run = bool(payload.get("dryRun") or payload.get("dry_run"))
+      include_chart = payload.get("includeChart", payload.get("include_chart", True)) is not False
+
+      if isinstance(symbols, str):
+          symbols = [symbols]
+      if isinstance(timeframes, str):
+          timeframes = [timeframes]
+
+      results = []
+      for symbol in [str(item).upper().replace("/", "") for item in symbols if str(item).strip()][:8]:
+          for timeframe in [str(item).strip() for item in timeframes if str(item).strip()][:4]:
+              report_payload = build_radar_report(
+                  symbol=symbol,
+                  timeframe=timeframe,
+                  authenticated=False,
+                  has_access=False,
+              )
+              report_text = str(report_payload.get("report_text") or "").strip()
+              if dry_run:
+                  chart_size = 0
+                  if include_chart and report_payload.get("status") == "ready":
+                      chart_size = len(render_radar_report_chart(report_payload))
+                  results.append({
+                      "symbol": report_payload.get("symbol"),
+                      "timeframe": report_payload.get("timeframe"),
+                      "status": report_payload.get("status"),
+                      "sent": False,
+                      "dryRun": True,
+                      "chartBytes": chart_size,
+                  })
+                  continue
+
+              chart_bytes = b""
+              if include_chart and report_payload.get("status") == "ready":
+                  chart_bytes = render_radar_report_chart(report_payload)
+
+              sent = False
+              error = None
+              if chart_bytes:
+                  caption = "\n".join([
+                      f"SNE RADAR | {report_payload.get('symbol')} ({report_payload.get('timeframe')})",
+                      str((report_payload.get("operator_decision") or {}).get("title") or ""),
+                  ]).strip()
+                  sent, error = send_telegram_photo(chart_bytes, caption=caption, sanitize=True)
+                  if sent and report_text:
+                      sent, error = send_telegram_text(report_text, disable_web_page_preview=True, sanitize=True)
+              elif report_text:
+                  sent, error = send_telegram_text(
+                      f"SNE RADAR\n\n{report_text}",
+                      disable_web_page_preview=True,
+                      sanitize=True,
+                  )
+              else:
+                  error = "report_text_empty"
+
+              results.append({
+                  "symbol": report_payload.get("symbol"),
+                  "timeframe": report_payload.get("timeframe"),
+                  "status": report_payload.get("status"),
+                  "sent": sent,
+                  "error": error,
+                  "chart": bool(chart_bytes),
+              })
+
+      return ok({
+          "dryRun": dry_run,
+          "results": results,
+          "sentCount": sum(1 for item in results if item.get("sent")),
+      })
+    except Exception as e:
+      logger.error(f"Radar reports autopublish error: {e}", exc_info=True)
+      return fail("INTERNAL_ERROR", "Failed to autopublish Radar reports", 500)
 
 
 @radar_bp.post("/signals")

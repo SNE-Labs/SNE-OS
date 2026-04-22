@@ -64,6 +64,7 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `INTEL_DISTRIBUTION_DEDUPE_ENABLED`: enables repeated-topic suppression for automatic channel publishing
 - `INTEL_DISTRIBUTION_DEDUPE_SECONDS`: lookback window for repeated-topic suppression
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
+- `RADAR_REPORT_SECRET`: optional secret for protected Radar report delivery endpoints; falls back to `INTEL_REFRESH_SECRET`
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_API_KEY` / `X_API_SECRET`: X OAuth 1.0a app credentials for direct posting as `@SNELabs`
 - `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET`: X OAuth 1.0a user tokens for `@SNELabs`
