@@ -29,6 +29,12 @@ export type IntelPost = {
 export type IntelPostsResponse = {
   items: IntelPost[];
   last_updated: string;
+  refreshed_at?: string;
+  cache_updated_at?: string | null;
+  stale?: boolean;
+  refreshing?: boolean;
+  total_cached?: number;
+  stream?: string;
 };
 
 type IntelPostsOptions = {

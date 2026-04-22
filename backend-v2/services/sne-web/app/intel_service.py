@@ -898,14 +898,8 @@ def fetch_intel_items(limit: int = 6) -> List[Dict[str, Any]]:
 def fetch_intel_posts(limit: int = 8) -> List[Dict[str, Any]]:
     redis_client = SafeRedis()
     posts = _load_cached_posts(redis_client)
-    if posts:
-        if _posts_need_refresh(redis_client, posts, limit):
-            trigger_enterprise_post_refresh(async_refresh=True)
-        return posts[:limit]
-
     if _posts_need_refresh(redis_client, posts, limit):
-        _trigger_enterprise_post_refresh()
-        posts = _load_cached_posts(redis_client)
+        trigger_enterprise_post_refresh(async_refresh=True)
     return posts[:limit]
 
 

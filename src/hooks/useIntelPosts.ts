@@ -19,7 +19,13 @@ export function useIntelPosts(limit = 48) {
     initialData: persistedSnapshot?.data,
     initialDataUpdatedAt: persistedSnapshot?.savedAt,
     placeholderData: (previousData) => previousData,
-    refetchInterval: 60 * 1000,
+    refetchInterval: (query) => {
+      const payload = query.state.data;
+      if (payload?.refreshing || payload?.stale || !payload?.items?.length) {
+        return 5 * 1000;
+      }
+      return 60 * 1000;
+    },
     staleTime: 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
