@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
+from .radar_report_service import build_radar_report
 from .radar_service import build_radar_overview, derive_signal_from_ticker
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,55 @@ def overview():
           "universe": [],
           "last_updated": datetime.utcnow().isoformat(),
       }), 200
+
+
+@radar_bp.get("/report")
+def report():
+    """
+    Operational Radar report payload.
+    GET /api/radar/report?symbol=BTCUSDT&timeframe=1h
+    """
+    try:
+      auth = get_auth_context()
+      symbol = request.args.get("symbol", "BTCUSDT")
+      timeframe = request.args.get("timeframe", "1h")
+      tier = auth.get("tier", "free")
+      has_access = tier in {"premium", "pro"}
+
+      return jsonify(build_radar_report(
+          symbol=symbol,
+          timeframe=timeframe,
+          authenticated=bool(auth.get("address")),
+          has_access=has_access,
+      )), 200
+    except Exception as e:
+      logger.error(f"Radar report error: {e}", exc_info=True)
+      return jsonify({
+          "symbol": request.args.get("symbol", "BTCUSDT"),
+          "timeframe": request.args.get("timeframe", "1h"),
+          "status": "degraded",
+          "data_quality": {"candles": "unavailable", "overview": "unavailable", "dom": "not_available"},
+          "executive_summary": {
+              "headline": "Relatorio operacional indisponivel.",
+              "summary": "O Radar nao conseguiu agregar os dados atuais para este ativo.",
+              "bias": "sem dados",
+              "confluence_score": 0,
+          },
+          "market_context": {},
+          "technical": {"current_candle": None, "indicators": {}, "levels": {"supports": [], "resistances": []}},
+          "multi_timeframe": {"items": [], "alignment": "sem dados", "confluence_score": 0},
+          "scenarios": {},
+          "risk_plan": {"state": "observe", "blockers": ["Falha ao montar relatorio."]},
+          "operator_decision": {
+              "state": "observe",
+              "title": "Aguardar dados.",
+              "summary": "Sem payload suficiente para decisao operacional.",
+              "checklist": [],
+              "next_action": "Tentar novamente quando o Radar responder.",
+          },
+          "report_text": "Relatorio operacional indisponivel.",
+      }), 200
+
 
 @radar_bp.post("/signals")
 def signals_post():
