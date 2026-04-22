@@ -30,7 +30,7 @@ from .x_api_service import x_official_configured, x_post_text, x_post_thread
 
 logger = logging.getLogger(__name__)
 
-VALID_CHANNELS = {"telegram", "whatsapp", "x"}
+VALID_CHANNELS = {"telegram", "whatsapp", "x", "threads"}
 ASSET_KEY_PREFIX = "intel:distribution:asset:"
 ASSET_INDEX_PREFIX = "intel:distribution:index:"
 PUBLISHED_INDEX_KEY = "intel:distribution:published:index"
@@ -173,6 +173,11 @@ def _channel_instruction(channel: str) -> str:
         return (
             "Crie uma peça para WhatsApp em pt-BR com tom direto, até 600 caracteres, "
             "curta o suficiente para boletim e feche com um link."
+        )
+    if channel == "threads":
+        return (
+            "Crie uma peça para Threads em pt-BR com tom editorial direto, até 500 caracteres. "
+            "Abra com uma tese forte, preserve densidade institucional e feche com link quando útil."
         )
     return (
         "Crie copy para X em pt-BR com estrutura seca e escaneavel. "
@@ -403,6 +408,8 @@ def _configured_for_channel(channel: str) -> bool:
             and os.getenv("WHATSAPP_PHONE_NUMBER_ID")
             and os.getenv("WHATSAPP_TO")
         )
+    if channel == "threads":
+        return bool(os.getenv("THREADS_ACCESS_TOKEN") and os.getenv("THREADS_USER_ID"))
     if channel == "x":
         return x_official_configured() or bool((os.getenv("X_PUBLISH_WEBHOOK_URL") or "").strip())
     return False
@@ -414,6 +421,8 @@ def _configured_auto_channels() -> List[str]:
         channels.append("telegram")
     if _env_flag("INTEL_X_AUTO_PUBLISH", default=False) and _configured_for_channel("x"):
         channels.append("x")
+    if _env_flag("INTEL_THREADS_AUTO_PUBLISH", default=False) and _configured_for_channel("threads"):
+        channels.append("threads")
     return channels
 
 
@@ -863,6 +872,14 @@ def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
             parts.append(tldr[0])
         parts.append(cta_url)
         return "\n".join(parts).strip()
+    if channel == "threads":
+        parts = [title]
+        if subtitle:
+            parts.extend(["", subtitle])
+        if tldr:
+            parts.extend(["", tldr[0]])
+        parts.extend(["", cta_url])
+        return _truncate_copy_line(" ".join(part for part in parts if part).replace("  ", " "), 500)
     headline = title
     impact_line = subtitle or str(post.get("excerpt") or "").strip() or headline
     action_line = tldr[0] if tldr else _x_default_action_line(post)
@@ -1070,6 +1087,52 @@ def _publish_to_whatsapp(asset: Dict[str, Any]) -> tuple[str, str | None]:
     return "published", None
 
 
+def _threads_api_base() -> str:
+    version = (os.getenv("THREADS_API_VERSION") or "v1.0").strip().strip("/")
+    return f"https://graph.threads.net/{version}"
+
+
+def _publish_to_threads(asset: Dict[str, Any]) -> tuple[str, str | None]:
+    access_token = (os.getenv("THREADS_ACCESS_TOKEN") or "").strip()
+    user_id = (os.getenv("THREADS_USER_ID") or "").strip()
+    if not access_token or not user_id:
+        return "publish_failed", "threads_not_configured"
+
+    text = _truncate_copy_line(str(asset.get("body") or ""), 500)
+    if not text:
+        return "publish_failed", "threads_body_empty"
+
+    create_response = requests.post(
+        f"{_threads_api_base()}/{user_id}/threads",
+        data={
+            "media_type": "TEXT",
+            "text": text,
+            "access_token": access_token,
+        },
+        timeout=20,
+    )
+    create_response.raise_for_status()
+    creation = create_response.json()
+    creation_id = str(creation.get("id") or "").strip()
+    if not creation_id:
+        return "publish_failed", f"threads_missing_creation_id:{_truncate_response_body(create_response.text)}"
+
+    publish_response = requests.post(
+        f"{_threads_api_base()}/{user_id}/threads_publish",
+        data={
+            "creation_id": creation_id,
+            "access_token": access_token,
+        },
+        timeout=20,
+    )
+    publish_response.raise_for_status()
+    published = publish_response.json()
+    post_id = str(published.get("id") or "").strip()
+    if post_id:
+        asset["external_id"] = post_id
+    return "published", None
+
+
 def _validate_x_preview(asset: Dict[str, Any]) -> tuple[bool, str | None]:
     if not _env_flag("INTEL_X_VALIDATE_PREVIEW", default=True):
         return True, None
@@ -1237,6 +1300,8 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False,
                 status, error = _publish_to_telegram(asset)
             elif channel == "whatsapp":
                 status, error = _publish_to_whatsapp(asset)
+            elif channel == "threads":
+                status, error = _publish_to_threads(asset)
             else:
                 status, error = _publish_to_x(asset)
         except requests.HTTPError as exc:

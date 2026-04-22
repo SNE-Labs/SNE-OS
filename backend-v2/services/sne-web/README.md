@@ -79,6 +79,9 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `X_REFRESH_TOKEN`: legacy X OAuth 2.0 refresh token fallback
 - `X_TOKEN_SCOPE`: expected X scopes such as `tweet.read tweet.write users.read offline.access` for OAuth 2.0 fallback
 - `X_PUBLISH_WEBHOOK_URL`: outbound webhook for X publishing orchestration
+- `THREADS_ACCESS_TOKEN` / `THREADS_USER_ID`: Threads API user token and Threads user id for publishing
+- `THREADS_API_VERSION`: optional Threads Graph API version, defaults to `v1.0`
+- `INTEL_THREADS_AUTO_PUBLISH`: enables automatic Threads publish for eligible Intel posts
 - `DEFAULT_NETWORK`: default sovereign access network, now expected to be `arbitrum`
 - `SNE_KEYS_NETWORK`: explicit entitlement network override, typically `arbitrum`
 - `ARBITRUM_SEPOLIA_RPC_URLS`: comma-separated fallback RPC list for Arbitrum Sepolia
