@@ -765,6 +765,91 @@ def _x_reply_cta(cta_url: str) -> str:
     return f"Leitura completa:\n{cta_url}"
 
 
+def _threads_format(post: Dict[str, Any]) -> str:
+    slug = str(post.get("slug") or post.get("id") or post.get("title") or "").strip().lower()
+    digest = hashlib.sha1(f"threads:{slug}".encode("utf-8")).hexdigest()
+    bucket = int(digest[:2], 16) % 5
+    if bucket <= 1:
+        return "operator_note"
+    if bucket <= 3:
+        return "market_thesis"
+    return "link_brief"
+
+
+def _threads_subject(post: Dict[str, Any], headline: str) -> str:
+    assets = [str(item).upper() for item in post.get("assets") or [] if str(item).strip()]
+    if assets:
+        return " / ".join(assets[:2])
+    chains = [str(item).strip().capitalize() for item in post.get("chains") or [] if str(item).strip()]
+    if chains:
+        return " / ".join(chains[:2])
+    title = _truncate_copy_line(headline or post.get("title") or "SNE Radar", 72)
+    return title
+
+
+def _threads_signal_line(post: Dict[str, Any], fallback: str) -> str:
+    subtitle = _normalize_copy_line(post.get("subtitle"))
+    excerpt = _normalize_copy_line(post.get("excerpt"))
+    tldr = _normalize_string_list(post.get("tldr"))
+    return _truncate_copy_line(subtitle or excerpt or (tldr[0] if tldr else fallback), 150)
+
+
+def _threads_action_line(post: Dict[str, Any]) -> str:
+    category = str(post.get("category") or "").strip().lower()
+    topics = {str(item).strip().lower() for item in post.get("topics") or []}
+    if category == "market":
+        return "Preço importa menos que gatilho, liquidez e execução."
+    if "seguranca" in topics or "security" in topics:
+        return "Risco operacional primeiro; narrativa depois."
+    if "defi" in topics:
+        return "O ponto prático é liquidez, contraparte e rota."
+    if str(post.get("stream") or "").strip().lower() == "institutional":
+        return "Produto bom reduz fricção operacional, não só narrativa."
+    return "A leitura útil é o que muda para risco, fluxo e decisão."
+
+
+def _threads_fit(text: str, limit: int = 500) -> str:
+    cleaned = "\n".join(_normalize_copy_line(line) for line in str(text or "").splitlines()).strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    return _truncate_copy_line(cleaned, limit)
+
+
+def _compose_threads_body(post: Dict[str, Any], cta_url: str, headline: str, generated_body: str | None = None) -> str:
+    selected_format = _threads_format(post)
+    subject = _threads_subject(post, headline)
+    signal = _threads_signal_line(post, generated_body or headline)
+    action = _threads_action_line(post)
+
+    if selected_format == "operator_note":
+        return _threads_fit("\n".join([
+            f"{subject}",
+            "",
+            signal,
+            "",
+            f"HALO: {action}",
+        ]))
+
+    if selected_format == "market_thesis":
+        return _threads_fit("\n".join([
+            f"{subject}: leitura de mesa.",
+            "",
+            signal,
+            "",
+            action,
+        ]))
+
+    return _threads_fit("\n".join([
+        subject,
+        "",
+        signal,
+        "",
+        action,
+        "",
+        cta_url,
+    ]))
+
+
 def _compose_x_native_asset(
     post: Dict[str, Any],
     cta_url: str,
@@ -873,13 +958,7 @@ def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
         parts.append(cta_url)
         return "\n".join(parts).strip()
     if channel == "threads":
-        parts = [title]
-        if subtitle:
-            parts.extend(["", subtitle])
-        if tldr:
-            parts.extend(["", tldr[0]])
-        parts.extend(["", cta_url])
-        return _truncate_copy_line(" ".join(part for part in parts if part).replace("  ", " "), 500)
+        return _compose_threads_body(post, cta_url, title)
     headline = title
     impact_line = subtitle or str(post.get("excerpt") or "").strip() or headline
     action_line = tldr[0] if tldr else _x_default_action_line(post)
@@ -956,6 +1035,8 @@ def _llm_asset(post: Dict[str, Any], channel: str, cta_url: str) -> Dict[str, st
                 },
                 cta_url,
             )
+        elif channel == "threads":
+            body = _compose_threads_body(post, cta_url, headline, str(parsed.get("body") or ""))
         else:
             body = str(parsed.get("body") or "").strip()
         if not body:
@@ -992,6 +1073,8 @@ def _build_asset(post: Dict[str, Any], channel: str) -> Dict[str, Any]:
         body = x_asset["body"]
         thread = x_asset["thread"]
         reply_cta = x_asset["reply_cta"]
+    elif channel == "threads":
+        body = _compose_threads_body(post, cta_url, headline, body)
     dedupe_key = _publication_fingerprint(post, channel)
     asset = {
         "post_id": post.get("id"),
