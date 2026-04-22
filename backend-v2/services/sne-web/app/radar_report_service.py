@@ -465,6 +465,74 @@ def _operator_decision(
     }
 
 
+def _format_price(value: Any) -> str:
+    number = _to_float(value)
+    if number >= 100:
+        return f"{number:,.2f}"
+    if number >= 1:
+        return f"{number:,.4f}"
+    return f"{number:,.6f}"
+
+
+def _state_label(state: str) -> str:
+    labels = {
+        "ready": "Ready",
+        "prepare": "Prepare",
+        "observe": "Observe",
+    }
+    return labels.get(str(state or "").lower(), str(state or "Observe").capitalize())
+
+
+def _bias_label(bias: str) -> str:
+    labels = {
+        "alta": "altista",
+        "baixa": "baixista",
+        "lateral": "lateral",
+        "sem dados": "sem dados",
+    }
+    return labels.get(str(bias or "").lower(), str(bias or "lateral").lower())
+
+
+def _thesis_lines(payload: Dict[str, Any]) -> List[str]:
+    summary = payload["executive_summary"]
+    decision = payload["operator_decision"]
+    state = str(decision.get("state") or "observe")
+    bias = _bias_label(str(summary.get("bias") or "lateral"))
+    confluence = int(summary.get("confluence_score") or 0)
+
+    if state == "ready":
+        return [
+            f"Viés {bias} com confluência forte e contexto operacional preparado.",
+            "Executar apenas após gatilho confirmado; não antecipar a rota.",
+        ]
+    if state == "prepare":
+        quality = "boa" if confluence >= 65 else "moderada"
+        return [
+            f"Viés {bias} com {quality} confluência, mas ainda sem gatilho validado.",
+            "Não perseguir preço. Preparar execução apenas em confirmação.",
+        ]
+    return [
+        f"Viés {bias} ainda sem confluência suficiente para execução.",
+        "Preservar capital, atualizar níveis e aguardar confirmação objetiva.",
+    ]
+
+
+def _halo_line(payload: Dict[str, Any]) -> str:
+    summary = payload["executive_summary"]
+    risk = payload["risk_plan"]
+    state = str((payload.get("operator_decision") or {}).get("state") or "observe")
+    volume_ratio = _to_float(summary.get("volume_ratio"))
+    blockers = risk.get("blockers") or []
+
+    if state == "ready":
+        return "Gatilho manda; sem confirmação, sem execução."
+    if volume_ratio and volume_ratio < 0.8:
+        return "Volume ainda precisa validar a leitura antes da execução."
+    if blockers and "liquidez" in " ".join(str(item).lower() for item in blockers):
+        return "Liquidez precisa confirmar antes da execução."
+    return "Liquidez precisa confirmar antes da execução."
+
+
 def _report_text(payload: Dict[str, Any]) -> str:
     summary = payload["executive_summary"]
     scenarios = payload["scenarios"]
@@ -474,20 +542,38 @@ def _report_text(payload: Dict[str, Any]) -> str:
 
     support = levels["supports"][0]["price"] if levels.get("supports") else "N/A"
     resistance = levels["resistances"][0]["price"] if levels.get("resistances") else "N/A"
+    long_scenario = scenarios["long"]
+    short_scenario = scenarios["short"]
 
     return "\n".join([
-        f"SNE RADAR | {payload['symbol']} ({payload['timeframe']})",
-        f"Estado: {decision['state']} | Confluencia: {summary['confluence_score']}/100",
+        f"SNE RADAR  {payload['symbol']} ({payload['timeframe']})",
         "",
-        summary["headline"],
-        summary["summary"],
+        "ESTADO",
+        _state_label(str(decision.get("state") or "")),
         "",
-        f"Suporte: {support} | Resistencia: {resistance}",
-        f"LONG trigger: {scenarios['long']['trigger']} | stop: {scenarios['long']['stop']} | TP1: {scenarios['long']['tp1']}",
-        f"SHORT trigger: {scenarios['short']['trigger']} | stop: {scenarios['short']['stop']} | TP1: {scenarios['short']['tp1']}",
+        "TESE",
+        *_thesis_lines(payload),
         "",
-        f"Risco: {risk['state']} | tamanho: {risk['position_size_factor']}x | risco/op: {risk['risk_per_trade_pct']}%",
-        decision["next_action"],
+        "NÍVEIS",
+        f"Suporte: {_format_price(support)}",
+        f"Resistência: {_format_price(resistance)}",
+        "",
+        "CENÁRIOS",
+        f"LONG acima de {_format_price(long_scenario['trigger'])}",
+        f"Stop: {_format_price(long_scenario['stop'])}",
+        f"TP1: {_format_price(long_scenario['tp1'])}",
+        "",
+        f"SHORT abaixo de {_format_price(short_scenario['trigger'])}",
+        f"Stop: {_format_price(short_scenario['stop'])}",
+        f"TP1: {_format_price(short_scenario['tp1'])}",
+        "",
+        "RISCO",
+        f"Confluência: {summary['confluence_score']}/100",
+        f"Tamanho: {risk['position_size_factor']}x",
+        f"Risco/op: {risk['risk_per_trade_pct']}%",
+        "",
+        "HALO",
+        _halo_line(payload),
     ]).strip()
 
 

@@ -218,7 +218,7 @@ def report_telegram():
       if not report_text:
           return fail("REPORT_EMPTY", "Radar report text is empty", 422)
 
-      message = f"SNE RADAR\n\n{report_text}"
+      message = report_text
       chart_bytes = b""
       if include_chart and report_payload.get("status") == "ready":
           chart_bytes = render_radar_report_chart(report_payload)
@@ -236,8 +236,7 @@ def report_telegram():
       if chart_bytes:
           caption = "\n".join([
               f"SNE RADAR | {report_payload.get('symbol')} ({report_payload.get('timeframe')})",
-              str((report_payload.get("operator_decision") or {}).get("title") or ""),
-              str((report_payload.get("operator_decision") or {}).get("next_action") or ""),
+              f"Estado: {str((report_payload.get('operator_decision') or {}).get('state') or 'observe').capitalize()}",
           ]).strip()
           sent, error = send_telegram_photo(chart_bytes, caption=caption, sanitize=True)
           if sent:
@@ -323,14 +322,14 @@ def reports_autopublish():
               if chart_bytes:
                   caption = "\n".join([
                       f"SNE RADAR | {report_payload.get('symbol')} ({report_payload.get('timeframe')})",
-                      str((report_payload.get("operator_decision") or {}).get("title") or ""),
+                      f"Estado: {str((report_payload.get('operator_decision') or {}).get('state') or 'observe').capitalize()}",
                   ]).strip()
                   sent, error = send_telegram_photo(chart_bytes, caption=caption, sanitize=True)
                   if sent and report_text:
                       sent, error = send_telegram_text(report_text, disable_web_page_preview=True, sanitize=True)
               elif report_text:
                   sent, error = send_telegram_text(
-                      f"SNE RADAR\n\n{report_text}",
+                      report_text,
                       disable_web_page_preview=True,
                       sanitize=True,
                   )

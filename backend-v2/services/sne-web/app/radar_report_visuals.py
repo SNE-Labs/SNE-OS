@@ -123,11 +123,12 @@ def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 90)
     _draw_text(draw, (70, 62), f"SNE RADAR | {symbol} ({timeframe})", size=38, fill=TEXT, bold=True)
     summary = report.get("executive_summary") or {}
     decision = report.get("operator_decision") or {}
-    _draw_text(draw, (70, 108), str(decision.get("title") or summary.get("headline") or "Relatorio operacional"), size=24, fill=MUTED)
-
-    price = _fmt_price(summary.get("price"))
+    state = str(decision.get("state") or "observe").capitalize()
     confluence = str(summary.get("confluence_score") or 0)
     bias = str(summary.get("bias") or "sem dados")
+    _draw_text(draw, (70, 108), f"Estado: {state} | Confluência: {confluence}/100 | Viés: {bias}", size=24, fill=MUTED)
+
+    price = _fmt_price(summary.get("price"))
     risk_state = str((report.get("risk_plan") or {}).get("state") or "observe")
     _draw_label(draw, 70, 185, "Preco", price, CYAN)
     _draw_label(draw, 320, 185, "Confluencia", f"{confluence}/100", YELLOW)
@@ -206,7 +207,8 @@ def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 90)
     _draw_text(draw, (70, 825), "Cenarios operacionais", size=28, fill=TEXT, bold=True)
     _draw_text(draw, (70, 870), f"LONG  gatilho {_fmt_price(long_s.get('trigger'))} | stop {_fmt_price(long_s.get('stop'))} | TP1 {_fmt_price(long_s.get('tp1'))}", size=24, fill=GREEN)
     _draw_text(draw, (70, 910), f"SHORT gatilho {_fmt_price(short_s.get('trigger'))} | stop {_fmt_price(short_s.get('stop'))} | TP1 {_fmt_price(short_s.get('tp1'))}", size=24, fill=RED)
-    _draw_text(draw, (980, 870), str(decision.get("next_action") or "Confirmar setup antes de executar."), size=22, fill=MUTED)
+    _draw_text(draw, (980, 870), "HALO", size=20, fill=MUTED, bold=True)
+    _draw_text(draw, (980, 905), "Liquidez precisa confirmar antes da execução.", size=22, fill=MUTED)
 
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
