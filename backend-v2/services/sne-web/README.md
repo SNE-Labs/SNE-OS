@@ -65,6 +65,11 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `INTEL_DISTRIBUTION_DEDUPE_SECONDS`: lookback window for repeated-topic suppression
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
 - `RADAR_REPORT_SECRET`: optional secret for protected Radar report delivery endpoints; falls back to `INTEL_REFRESH_SECRET`
+- `RADAR_REPORT_AUTO_PUBLISH`: enables automatic Radar report publishing to Telegram
+- `RADAR_REPORT_AUTO_SYMBOLS`: comma-separated symbols for automatic Radar reports, defaults to `BTCUSDT,ETHUSDT,SOLUSDT`
+- `RADAR_REPORT_AUTO_TIMEFRAMES`: comma-separated timeframes for automatic Radar reports, defaults to `1h,4h,1d`
+- `RADAR_REPORT_AUTO_INCLUDE_CHART`: enables chart image delivery for automatic Radar reports
+- `RADAR_REPORT_AUTO_CHECK_INTERVAL_SECONDS`: scheduler polling interval, defaults to `60`
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_API_KEY` / `X_API_SECRET`: X OAuth 1.0a app credentials for direct posting as `@SNELabs`
 - `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET`: X OAuth 1.0a user tokens for `@SNELabs`

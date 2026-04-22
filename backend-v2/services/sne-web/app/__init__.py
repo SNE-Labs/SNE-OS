@@ -133,6 +133,9 @@ def create_app():
     def health():
         return jsonify({'status': 'ok', 'service': 'sne-web', 'version': '1.0'}), 200
 
+    from .radar_report_scheduler import start_radar_report_scheduler
+    start_radar_report_scheduler()
+
     logger.info("Flask app created successfully")
     return app
 

@@ -16,6 +16,14 @@ services:
         value: false
       - key: FLASK_ENV
         value: production
+      - key: RADAR_REPORT_AUTO_PUBLISH
+        value: true
+      - key: RADAR_REPORT_AUTO_SYMBOLS
+        value: BTCUSDT,ETHUSDT,SOLUSDT
+      - key: RADAR_REPORT_AUTO_TIMEFRAMES
+        value: 1h,4h,1d
+      - key: RADAR_REPORT_AUTO_INCLUDE_CHART
+        value: true
       # PORT will be set automatically by Render
       - key: COLLECTOR_URL
         value: https://collector.snelabs.space
