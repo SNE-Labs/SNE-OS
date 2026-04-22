@@ -251,6 +251,8 @@ def distribution_status(slug: str):
 
 @intel_bp.post("/distribution/autopublish")
 def distribution_autopublish():
+    if not _secret_authorized("INTEL_DISTRIBUTION_SECRET", required=True):
+        return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
     result = auto_publish_latest_posts(
         stream=(payload.get("stream") or "external"),

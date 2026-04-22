@@ -55,6 +55,14 @@ docker run -p 8080:8080 -e DATABASE_URL=postgresql://... sne-web
 - `INTEL_INSTITUTIONAL_MODEL`: model used for institutional post generation
 - `INTEL_DISTRIBUTION_MODEL`: model used for channel-specific copy generation
 - `INTEL_TELEGRAM_AUTO_PUBLISH`: enables automatic Telegram publish for newly generated Intel posts
+- `INTEL_TELEGRAM_AUTO_MIN_INTERVAL_SECONDS`: minimum spacing between automatic Telegram publishes
+- `INTEL_TELEGRAM_AUTO_HOURLY_LIMIT`: maximum automatic Telegram publishes per UTC hour
+- `INTEL_X_AUTO_PUBLISH`: enables automatic X publish for eligible Intel posts
+- `INTEL_X_AUTO_MIN_INTERVAL_SECONDS`: minimum spacing between automatic X publishes
+- `INTEL_X_AUTO_HOURLY_LIMIT`: maximum automatic X publishes per UTC hour
+- `INTEL_X_NATIVE_FORMATS_ENABLED`: rotates X posts across native formats such as hook, question, checklist and short thread while keeping the link-summary format available
+- `INTEL_DISTRIBUTION_DEDUPE_ENABLED`: enables repeated-topic suppression for automatic channel publishing
+- `INTEL_DISTRIBUTION_DEDUPE_SECONDS`: lookback window for repeated-topic suppression
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`: Telegram publish credentials
 - `WHATSAPP_ACCESS_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TO`: WhatsApp Cloud API publish credentials
 - `X_API_KEY` / `X_API_SECRET`: X OAuth 1.0a app credentials for direct posting as `@SNELabs`

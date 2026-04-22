@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import unicodedata
 from typing import Any, Dict, List
 
 import requests
@@ -25,20 +26,31 @@ from .intel_enrichment import (
 from .og_image_service import build_intel_og_image_url, build_intel_share_url
 from .telegram_delivery import send_telegram_text
 from .utils.redis_safe import SafeRedis
-from .x_api_service import x_official_configured, x_post_text
+from .x_api_service import x_official_configured, x_post_text, x_post_thread
 
 logger = logging.getLogger(__name__)
 
 VALID_CHANNELS = {"telegram", "whatsapp", "x"}
 ASSET_KEY_PREFIX = "intel:distribution:asset:"
 ASSET_INDEX_PREFIX = "intel:distribution:index:"
+PUBLISHED_INDEX_KEY = "intel:distribution:published:index"
+LAST_PUBLISHED_KEY_PREFIX = "intel:distribution:last:"
+RATE_COUNTER_KEY_PREFIX = "intel:distribution:rate:"
 URL_PATTERN = re.compile(r"https?://\S+")
 X_PREVIEW_TIMEOUT_SECONDS = 8
-DISTRIBUTION_FORMAT_VERSION = 2
+DISTRIBUTION_FORMAT_VERSION = 3
+PUBLISHED_INDEX_LIMIT = 240
+DUPLICATE_LOOKBACK_SECONDS = 12 * 60 * 60
+TITLE_OVERLAP_THRESHOLD = 0.52
 TRAILING_STOPWORDS = {
     "a", "as", "ao", "aos", "com", "da", "das", "de", "do", "dos", "e",
     "em", "na", "nas", "no", "nos", "o", "os", "para", "por", "sem", "um", "uma",
 }
+TOPIC_STOPWORDS = TRAILING_STOPWORDS.union({
+    "apos", "ate", "com", "como", "das", "depois", "dos", "esta", "isso",
+    "mais", "mercado", "milhoes", "para", "pela", "pelo", "por", "porque",
+    "quando", "sobre", "sua", "suas", "tem", "uma", "vai",
+})
 
 
 def _iso_now() -> str:
@@ -71,6 +83,20 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int, minimum: int = 0, maximum: int | None = None) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+    value = max(minimum, value)
+    if maximum is not None:
+        value = min(maximum, value)
+    return value
+
+
 def _normalize_string_list(value: Any) -> List[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -92,6 +118,25 @@ def _read_json(redis_client: SafeRedis, key: str) -> Any:
 
 def _write_json(redis_client: SafeRedis, key: str, payload: Any) -> None:
     redis_client.set(key, json.dumps(payload, ensure_ascii=False))
+
+
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _seconds_since(value: Any) -> int | None:
+    parsed = _parse_iso_datetime(value)
+    if not parsed:
+        return None
+    return max(0, int((datetime.now(timezone.utc) - parsed).total_seconds()))
 
 
 def _load_index(redis_client: SafeRedis, slug: str) -> List[str]:
@@ -164,6 +209,189 @@ def _truncate_copy_line(text: str, limit: int) -> str:
 
 def _effective_x_length(text: str) -> int:
     return len(URL_PATTERN.sub("x" * 23, text))
+
+
+def _ascii_fold(value: Any) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    return normalized.encode("ascii", "ignore").decode("ascii").lower()
+
+
+def _tokenize_topic_text(value: Any) -> set[str]:
+    folded = _ascii_fold(value)
+    tokens = set(re.findall(r"[a-z0-9]{3,}", folded))
+    return {token for token in tokens if token not in TOPIC_STOPWORDS}
+
+
+def _source_urls(post: Dict[str, Any]) -> List[str]:
+    urls: List[str] = []
+    for source in post.get("sources") or []:
+        if isinstance(source, dict):
+            url = str(source.get("url") or "").strip().lower()
+            if url:
+                urls.append(url.split("?", 1)[0].rstrip("/"))
+    return urls
+
+
+def _topic_tokens(post: Dict[str, Any]) -> set[str]:
+    values: List[Any] = [
+        post.get("title"),
+        post.get("subtitle"),
+        post.get("excerpt"),
+        post.get("category"),
+        post.get("editorial_kind"),
+    ]
+    values.extend(post.get("assets") or [])
+    values.extend(post.get("chains") or [])
+    values.extend(post.get("topics") or [])
+    values.extend(post.get("protocols") or [])
+    tokens: set[str] = set()
+    for value in values:
+        tokens.update(_tokenize_topic_text(value))
+    return tokens
+
+
+def _topic_signature(post: Dict[str, Any]) -> str:
+    source_urls = _source_urls(post)
+    if source_urls:
+        return hashlib.sha1("|".join(sorted(source_urls)).encode("utf-8")).hexdigest()
+    tokens = sorted(_topic_tokens(post))
+    return hashlib.sha1("|".join(tokens[:18]).encode("utf-8")).hexdigest()
+
+
+def _publication_fingerprint(post: Dict[str, Any], channel: str) -> str:
+    raw = {
+        "channel": channel,
+        "topic": _topic_signature(post),
+        "assets": sorted(str(item).upper() for item in post.get("assets") or []),
+        "chains": sorted(str(item).lower() for item in post.get("chains") or []),
+    }
+    return hashlib.sha1(json.dumps(raw, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _load_published_index(redis_client: SafeRedis) -> List[Dict[str, Any]]:
+    payload = _read_json(redis_client, PUBLISHED_INDEX_KEY)
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def _store_published_index(redis_client: SafeRedis, items: List[Dict[str, Any]]) -> None:
+    _write_json(redis_client, PUBLISHED_INDEX_KEY, items[:PUBLISHED_INDEX_LIMIT])
+
+
+def _title_overlap(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left.intersection(right)) / max(1, min(len(left), len(right)))
+
+
+def _recent_duplicate_reason(
+    redis_client: SafeRedis,
+    post: Dict[str, Any],
+    channel: str,
+    fingerprint: str,
+) -> str | None:
+    if not _env_flag("INTEL_DISTRIBUTION_DEDUPE_ENABLED", default=True):
+        return None
+
+    lookback_seconds = _env_int(
+        "INTEL_DISTRIBUTION_DEDUPE_SECONDS",
+        DUPLICATE_LOOKBACK_SECONDS,
+        minimum=300,
+    )
+    topic_tokens = _topic_tokens(post)
+    topic_signature = _topic_signature(post)
+    source_urls = set(_source_urls(post))
+
+    for item in _load_published_index(redis_client):
+        if item.get("channel") != channel:
+            continue
+        age = _seconds_since(item.get("published_at"))
+        if age is None or age > lookback_seconds:
+            continue
+        if item.get("fingerprint") == fingerprint:
+            return "duplicate_fingerprint"
+        if source_urls and source_urls.intersection(set(item.get("source_urls") or [])):
+            return "duplicate_source"
+        if item.get("topic_signature") == topic_signature:
+            return "duplicate_topic"
+        previous_tokens = set(item.get("topic_tokens") or [])
+        if _title_overlap(topic_tokens, previous_tokens) >= TITLE_OVERLAP_THRESHOLD:
+            return "duplicate_similar_topic"
+    return None
+
+
+def _channel_min_interval_seconds(channel: str) -> int:
+    defaults = {"telegram": 12 * 60, "x": 30 * 60, "whatsapp": 30 * 60}
+    env_name = f"INTEL_{channel.upper()}_AUTO_MIN_INTERVAL_SECONDS"
+    return _env_int(env_name, defaults.get(channel, 30 * 60), minimum=0)
+
+
+def _channel_hourly_limit(channel: str) -> int:
+    defaults = {"telegram": 4, "x": 2, "whatsapp": 2}
+    env_name = f"INTEL_{channel.upper()}_AUTO_HOURLY_LIMIT"
+    return _env_int(env_name, defaults.get(channel, 2), minimum=0)
+
+
+def _hour_key() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H")
+
+
+def _auto_channel_gate(
+    redis_client: SafeRedis,
+    post: Dict[str, Any],
+    channel: str,
+    fingerprint: str,
+) -> tuple[bool, str | None]:
+    duplicate_reason = _recent_duplicate_reason(redis_client, post, channel, fingerprint)
+    if duplicate_reason:
+        return False, duplicate_reason
+
+    min_interval = _channel_min_interval_seconds(channel)
+    if min_interval > 0:
+        last_published = redis_client.get(f"{LAST_PUBLISHED_KEY_PREFIX}{channel}")
+        elapsed = _seconds_since(last_published)
+        if elapsed is not None and elapsed < min_interval:
+            return False, "channel_cadence"
+
+    hourly_limit = _channel_hourly_limit(channel)
+    if hourly_limit > 0:
+        counter_key = f"{RATE_COUNTER_KEY_PREFIX}{channel}:{_hour_key()}"
+        try:
+            current = int(redis_client.get(counter_key) or 0)
+        except Exception:
+            current = 0
+        if current >= hourly_limit:
+            return False, "channel_hourly_limit"
+
+    return True, None
+
+
+def _record_published(redis_client: SafeRedis, post: Dict[str, Any], asset: Dict[str, Any]) -> None:
+    channel = str(asset.get("channel") or "").strip().lower()
+    if channel not in VALID_CHANNELS:
+        return
+    published_at = str(asset.get("published_at") or _iso_now())
+    fingerprint = str(asset.get("dedupe_key") or _publication_fingerprint(post, channel))
+
+    redis_client.set(f"{LAST_PUBLISHED_KEY_PREFIX}{channel}", published_at)
+    counter_key = f"{RATE_COUNTER_KEY_PREFIX}{channel}:{_hour_key()}"
+    count = redis_client.incr(counter_key)
+    if count == 1:
+        redis_client.expire(counter_key, 2 * 60 * 60)
+
+    index = _load_published_index(redis_client)
+    index.insert(0, {
+        "channel": channel,
+        "slug": post.get("slug"),
+        "title": post.get("title"),
+        "fingerprint": fingerprint,
+        "topic_signature": _topic_signature(post),
+        "topic_tokens": sorted(_topic_tokens(post)),
+        "source_urls": _source_urls(post),
+        "published_at": published_at,
+    })
+    _store_published_index(redis_client, index)
 
 
 def _configured_for_channel(channel: str) -> bool:
@@ -442,6 +670,185 @@ def _compose_x_body(
     return body
 
 
+def _x_native_formats_enabled() -> bool:
+    return _env_flag("INTEL_X_NATIVE_FORMATS_ENABLED", default=True)
+
+
+def _x_format(post: Dict[str, Any]) -> str:
+    if not _x_native_formats_enabled():
+        return "summary_link"
+
+    slug = str(post.get("slug") or post.get("id") or post.get("title") or "").strip().lower()
+    digest = hashlib.sha1(f"x-format:{slug}".encode("utf-8")).hexdigest()
+    bucket = int(digest[:2], 16) % 10
+    category = str(post.get("category") or "").strip().lower()
+    editorial_kind = str(post.get("editorial_kind") or "").strip().lower()
+
+    if bucket <= 2:
+        return "summary_link"
+    if category == "market":
+        return ["market_snapshot", "operator_checklist", "question", "hook_take"][bucket % 4]
+    if editorial_kind in {"dossier", "analysis", "research-note"}:
+        return ["thread", "hook_take", "contrarian", "operator_checklist"][bucket % 4]
+    return ["hook_take", "question", "operator_checklist", "thread"][bucket % 4]
+
+
+def _x_signal_line(post: Dict[str, Any], fallback: str = "") -> str:
+    return _first_meaningful_line(
+        post.get("subtitle"),
+        post.get("excerpt"),
+        fallback,
+        limit=150,
+    )
+
+
+def _x_consequence_line(post: Dict[str, Any], fallback: str = "") -> str:
+    tldr = _normalize_string_list(post.get("tldr"))
+    return _first_meaningful_line(
+        tldr[0] if tldr else "",
+        post.get("excerpt"),
+        post.get("subtitle"),
+        fallback,
+        limit=145,
+    )
+
+
+def _x_question_line(post: Dict[str, Any]) -> str:
+    assets = [str(item).upper() for item in post.get("assets") or [] if str(item).strip()]
+    category = str(post.get("category") or "").strip().lower()
+    if assets:
+        return f"O que muda para {assets[0]} nas próximas horas?"
+    if category == "institutional":
+        return "Esse movimento muda produto ou só narrativa?"
+    return "Isso muda liquidez ou só manchete?"
+
+
+def _x_checklist_items(post: Dict[str, Any]) -> List[str]:
+    tldr = _normalize_string_list(post.get("tldr"))
+    items = [_truncate_copy_line(item, 78) for item in tldr[:3] if item]
+    defaults = [
+        "Liquidez executável",
+        "Risco de reversão",
+        "Impacto em rotas e custo",
+    ]
+    for item in defaults:
+        if len(items) >= 3:
+            break
+        items.append(item)
+    return items[:3]
+
+
+def _x_fit(text: str, limit: int = 270) -> str:
+    if _effective_x_length(text) <= limit:
+        return text.strip()
+    lines = [line for line in text.splitlines()]
+    while lines and _effective_x_length("\n".join(lines).strip()) > limit:
+        longest_index = max(range(len(lines)), key=lambda index: len(lines[index]))
+        current = lines[longest_index]
+        if len(current) <= 36:
+            lines.pop(longest_index)
+            continue
+        lines[longest_index] = _truncate_copy_line(current, max(36, len(current) - 18))
+    return "\n".join(lines).strip()
+
+
+def _x_reply_cta(cta_url: str) -> str:
+    return f"Leitura completa:\n{cta_url}"
+
+
+def _compose_x_native_asset(
+    post: Dict[str, Any],
+    cta_url: str,
+    headline: str,
+    impact_line: str,
+    action_line: str,
+    summary_body: str,
+) -> Dict[str, Any]:
+    selected_format = _x_format(post)
+    title = _truncate_copy_line(headline, 110)
+    signal = _x_signal_line(post, impact_line or title)
+    consequence = _x_consequence_line(post, action_line or signal)
+    reply_cta = _x_reply_cta(cta_url)
+
+    if selected_format == "summary_link":
+        return {
+            "x_format": "summary_link",
+            "body": summary_body,
+            "thread": [],
+            "reply_cta": None,
+        }
+
+    if selected_format == "hook_take":
+        body = _x_fit("\n".join([
+            title,
+            "",
+            signal,
+            "",
+            _truncate_copy_line(consequence or action_line, 120),
+        ]))
+        return {"x_format": selected_format, "body": body, "thread": [body, reply_cta], "reply_cta": reply_cta}
+
+    if selected_format == "market_snapshot":
+        body = _x_fit("\n".join([
+            f"Leitura de mercado: {title}",
+            "",
+            signal,
+            "",
+            consequence,
+        ]))
+        return {"x_format": selected_format, "body": body, "thread": [body, reply_cta], "reply_cta": reply_cta}
+
+    if selected_format == "operator_checklist":
+        items = _x_checklist_items(post)
+        body = _x_fit("\n".join([
+            f"{title}",
+            "",
+            "Checklist do operador:",
+            f"1. {items[0]}",
+            f"2. {items[1]}",
+            f"3. {items[2]}",
+        ]))
+        return {"x_format": selected_format, "body": body, "thread": [body, reply_cta], "reply_cta": reply_cta}
+
+    if selected_format == "question":
+        body = _x_fit("\n".join([
+            _x_question_line(post),
+            "",
+            signal or title,
+            "",
+            consequence,
+        ]))
+        return {"x_format": selected_format, "body": body, "thread": [body, reply_cta], "reply_cta": reply_cta}
+
+    if selected_format == "contrarian":
+        body = _x_fit("\n".join([
+            f"O ponto não é só: {title}",
+            "",
+            f"O ponto é: {signal or consequence}",
+            "",
+            _truncate_copy_line(consequence or action_line, 120),
+        ]))
+        return {"x_format": selected_format, "body": body, "thread": [body, reply_cta], "reply_cta": reply_cta}
+
+    opening = _x_fit("\n".join([
+        title,
+        "",
+        signal,
+    ]))
+    detail = _x_fit("\n".join([
+        "O que observar:",
+        consequence,
+        "",
+        _truncate_copy_line(action_line or _x_default_action_line(post), 120),
+    ]))
+    return {
+        "x_format": "thread",
+        "body": opening,
+        "thread": [opening, detail, reply_cta],
+        "reply_cta": reply_cta,
+    }
+
+
 def _fallback_body(post: Dict[str, Any], channel: str, cta_url: str) -> str:
     title = str(post.get("title") or "SNELabs").strip()
     subtitle = str(post.get("subtitle") or post.get("excerpt") or "").strip()
@@ -556,7 +963,20 @@ def _build_asset(post: Dict[str, Any], channel: str) -> Dict[str, Any]:
     generated = _llm_asset(post, channel, cta_url)
     headline = generated["headline"] if generated else str(post.get("title") or "SNELabs").strip()
     body = generated["body"] if generated else _fallback_body(post, channel, cta_url)
-    return {
+    x_format = None
+    thread: List[str] = []
+    reply_cta = None
+    if channel == "x":
+        tldr = _normalize_string_list(post.get("tldr"))
+        impact_line = str(post.get("subtitle") or post.get("excerpt") or headline).strip()
+        action_line = tldr[0] if tldr else _x_default_action_line(post)
+        x_asset = _compose_x_native_asset(post, cta_url, headline, impact_line, action_line, body)
+        x_format = x_asset["x_format"]
+        body = x_asset["body"]
+        thread = x_asset["thread"]
+        reply_cta = x_asset["reply_cta"]
+    dedupe_key = _publication_fingerprint(post, channel)
+    asset = {
         "post_id": post.get("id"),
         "slug": post["slug"],
         "channel": channel,
@@ -564,11 +984,16 @@ def _build_asset(post: Dict[str, Any], channel: str) -> Dict[str, Any]:
         "body": body,
         "cta_url": cta_url,
         "status": "ready",
-        "dedupe_key": f"{post.get('id')}:{channel}",
+        "dedupe_key": dedupe_key,
         "published_at": None,
         "generated_at": _iso_now(),
         "format_version": DISTRIBUTION_FORMAT_VERSION,
     }
+    if channel == "x":
+        asset["x_format"] = x_format
+        asset["thread"] = thread
+        asset["reply_cta"] = reply_cta
+    return asset
 
 
 def fetch_distribution_assets(slug: str) -> List[Dict[str, Any]]:
@@ -682,12 +1107,27 @@ def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
         return "publish_failed", preview_error
 
     if x_official_configured():
-        sent, payload, error = x_post_text(asset["body"])
+        thread = asset.get("thread")
+        if isinstance(thread, list) and len([part for part in thread if str(part or "").strip()]) > 1:
+            sent, payload, error = x_post_thread([str(part) for part in thread])
+        else:
+            sent, payload, error = x_post_text(asset["body"])
         if sent:
             if isinstance(payload, dict):
-                data = payload.get("data")
-                if isinstance(data, dict) and data.get("id"):
-                    asset["external_id"] = data["id"]
+                tweets = payload.get("tweets")
+                if isinstance(tweets, list) and tweets:
+                    external_ids: List[str] = []
+                    for tweet in tweets:
+                        data = tweet.get("data") if isinstance(tweet, dict) else None
+                        if isinstance(data, dict) and data.get("id"):
+                            external_ids.append(str(data["id"]))
+                    if external_ids:
+                        asset["external_id"] = external_ids[0]
+                        asset["external_ids"] = external_ids
+                else:
+                    data = payload.get("data")
+                    if isinstance(data, dict) and data.get("id"):
+                        asset["external_id"] = data["id"]
             return "published", None
         return "publish_failed", error
 
@@ -706,6 +1146,9 @@ def _publish_to_x(asset: Dict[str, Any]) -> tuple[str, str | None]:
         json={
             "headline": asset["headline"],
             "body": asset["body"],
+            "x_format": asset.get("x_format"),
+            "thread": asset.get("thread") or [],
+            "reply_cta": asset.get("reply_cta"),
             "slug": asset["slug"],
             "cta_url": asset["cta_url"],
         },
@@ -735,9 +1178,23 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False,
     if not selected_channels:
         return {"slug": slug, "results": results}
 
+    redis_client = SafeRedis()
+    if auto and not dry_run:
+        gated_channels: List[str] = []
+        for channel in selected_channels:
+            fingerprint = _publication_fingerprint(post, channel)
+            allowed, reason = _auto_channel_gate(redis_client, post, channel, fingerprint)
+            if allowed:
+                gated_channels.append(channel)
+            else:
+                results.append({"channel": channel, "status": "skipped", "reason": reason or "auto_gate"})
+        selected_channels = gated_channels
+
+    if not selected_channels:
+        return {"slug": slug, "results": results}
+
     preview = generate_distribution_assets(slug, selected_channels)
     assets = preview.get("assets", [])
-    redis_client = SafeRedis()
 
     for asset in assets:
         channel = asset["channel"]
@@ -769,6 +1226,10 @@ def publish_distribution(slug: str, channels: Any = None, dry_run: bool = False,
         asset["published_at"] = _iso_now() if status == "published" else None
         if error:
             asset["error"] = error
+        elif "error" in asset:
+            asset.pop("error", None)
+        if status == "published" and auto:
+            _record_published(redis_client, post, asset)
         _write_json(redis_client, _asset_key(slug, channel), asset)
         results.append({"channel": channel, "status": status, **({"error": error} if error else {})})
 
@@ -812,11 +1273,7 @@ def auto_publish_latest_posts(
         if len(published) >= normalized_limit:
             break
         result = publish_distribution(str(post.get("slug") or ""), selected_channels, dry_run=False, auto=True)
-        delivered = any(
-            item.get("status") == "published"
-            or (item.get("status") == "skipped" and item.get("reason") == "already_published")
-            for item in result.get("results", [])
-        )
+        delivered = any(item.get("status") == "published" for item in result.get("results", []))
         if delivered:
             published.append({
                 "slug": post.get("slug"),

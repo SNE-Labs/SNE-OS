@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import requests
 from requests_oauthlib import OAuth1
@@ -176,13 +176,31 @@ def _access_token() -> Tuple[str | None, str | None]:
     return (access_token, None) if access_token else (None, "x_access_token_unavailable")
 
 
-def x_post_text(text: str) -> Tuple[bool, Dict[str, Any] | None, str | None]:
+def _tweet_payload(text: str, reply_to_id: str | None = None) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {"text": text}
+    if reply_to_id:
+        payload["reply"] = {"in_reply_to_tweet_id": reply_to_id}
+    return payload
+
+
+def _tweet_id(payload: Dict[str, Any] | None) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return None
+    tweet_id = str(data.get("id") or "").strip()
+    return tweet_id or None
+
+
+def x_post_text(text: str, reply_to_id: str | None = None) -> Tuple[bool, Dict[str, Any] | None, str | None]:
+    json_payload = _tweet_payload(text, reply_to_id)
     if _oauth1_configured():
         response = requests.post(
             f"{_api_base()}/tweets",
             auth=_oauth1_auth(),
             headers={"Content-Type": "application/json"},
-            json={"text": text},
+            json=json_payload,
             timeout=20,
         )
         response.raise_for_status()
@@ -198,7 +216,7 @@ def x_post_text(text: str) -> Tuple[bool, Dict[str, Any] | None, str | None]:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         },
-        json={"text": text},
+        json=json_payload,
         timeout=20,
     )
     if response.status_code == 401 and _token_record().get("refresh_token"):
@@ -214,13 +232,34 @@ def x_post_text(text: str) -> Tuple[bool, Dict[str, Any] | None, str | None]:
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json",
             },
-            json={"text": text},
+            json=json_payload,
             timeout=20,
         )
 
     response.raise_for_status()
     data = response.json()
     return True, data, None
+
+
+def x_post_thread(parts: List[str]) -> Tuple[bool, Dict[str, Any] | None, str | None]:
+    clean_parts = [str(part or "").strip() for part in parts if str(part or "").strip()]
+    if not clean_parts:
+        return False, None, "x_thread_empty"
+    if len(clean_parts) == 1:
+        return x_post_text(clean_parts[0])
+
+    posted: List[Dict[str, Any]] = []
+    reply_to_id: str | None = None
+    for part in clean_parts:
+        sent, payload, error = x_post_text(part, reply_to_id=reply_to_id)
+        if not sent:
+            return False, {"tweets": posted}, error or "x_thread_part_failed"
+        if isinstance(payload, dict):
+            posted.append(payload)
+        reply_to_id = _tweet_id(payload)
+        if not reply_to_id:
+            return False, {"tweets": posted}, "x_thread_missing_tweet_id"
+    return True, {"tweets": posted}, None
 
 
 def x_get_authenticated_user(force: bool = False) -> Dict[str, Any] | None:
