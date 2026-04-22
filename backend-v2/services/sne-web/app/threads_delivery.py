@@ -62,6 +62,7 @@ def send_threads_post(text: str, *, image_url: str | None = None) -> Tuple[bool,
     }
     if image_url:
         payload["image_url"] = image_url
+        payload["alt_text"] = "Card operacional SNE RADAR com gráfico, estado, níveis e cenários."
 
     try:
         create_response = requests.post(

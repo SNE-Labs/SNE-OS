@@ -235,6 +235,7 @@ def report_chart():
           mimetype="image/png",
           headers={
               "Cache-Control": "public, max-age=120",
+              "Content-Length": str(len(image_bytes)),
               "X-Content-Type-Options": "nosniff",
           },
       )
@@ -264,6 +265,7 @@ def report_chart_path(symbol: str, timeframe: str):
           mimetype="image/png",
           headers={
               "Cache-Control": "public, max-age=120",
+              "Content-Length": str(len(image_bytes)),
               "X-Content-Type-Options": "nosniff",
           },
       )
@@ -293,6 +295,7 @@ def report_chart_social_path(symbol: str, timeframe: str):
           mimetype="image/jpeg",
           headers={
               "Cache-Control": "public, max-age=120",
+              "Content-Length": str(len(image_bytes)),
               "X-Content-Type-Options": "nosniff",
           },
       )
