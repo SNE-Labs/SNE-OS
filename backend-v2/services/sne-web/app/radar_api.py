@@ -12,7 +12,7 @@ from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
 from .radar_report_service import build_radar_report
-from .radar_report_visuals import render_radar_report_chart
+from .radar_report_visuals import render_radar_report_chart, render_radar_report_social_chart
 from .radar_service import build_radar_overview, derive_signal_from_ticker
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def _radar_chart_public_url(report_payload) -> str:
     ).strip().rstrip("/")
     symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
     timeframe = str(report_payload.get("timeframe") or "1h").strip()
-    return f"{base}/api/radar/report/chart/{symbol}/{timeframe}.png"
+    return f"{base}/api/radar/report/chart-social/{symbol}/{timeframe}.jpg"
 
 
 def _radar_report_secret_authorized() -> bool:
@@ -270,6 +270,35 @@ def report_chart_path(symbol: str, timeframe: str):
     except Exception as e:
       logger.error(f"Radar report chart path error: {e}", exc_info=True)
       return fail("INTERNAL_ERROR", "Failed to render Radar report chart", 500)
+
+
+@radar_bp.get("/report/chart-social/<symbol>/<timeframe>.jpg")
+def report_chart_social_path(symbol: str, timeframe: str):
+    """
+    Public JPEG Radar chart variant for social media APIs.
+    GET /api/radar/report/chart-social/BTCUSDT/1h.jpg
+    """
+    try:
+      report_payload = build_radar_report(
+          symbol=symbol,
+          timeframe=timeframe,
+          authenticated=False,
+          has_access=False,
+      )
+      if report_payload.get("status") != "ready":
+          return fail("REPORT_DEGRADED", "Radar report social chart is unavailable", 503)
+      image_bytes = render_radar_report_social_chart(report_payload)
+      return Response(
+          image_bytes,
+          mimetype="image/jpeg",
+          headers={
+              "Cache-Control": "public, max-age=120",
+              "X-Content-Type-Options": "nosniff",
+          },
+      )
+    except Exception as e:
+      logger.error(f"Radar report social chart path error: {e}", exc_info=True)
+      return fail("INTERNAL_ERROR", "Failed to render Radar report social chart", 500)
 
 
 @radar_bp.post("/report/telegram")

@@ -310,7 +310,13 @@ def _draw_footer(ax: plt.Axes, parts: Dict[str, Any]) -> None:
     ax.text(0.58, 0.14, "Sem perseguir. Só rompimento.", transform=ax.transAxes, color=YELLOW, fontsize=18, fontweight="bold")
 
 
-def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 110) -> bytes:
+def render_radar_report_chart(
+    report: Dict[str, Any],
+    *,
+    candle_limit: int = 110,
+    image_format: str = "png",
+    dpi: int = 150,
+) -> bytes:
     parts = _report_parts(report)
     candles = _fetch_candles(parts["symbol"], parts["timeframe"], limit=max(80, candle_limit))
     frame = _candles_frame(candles[-candle_limit:])
@@ -376,6 +382,26 @@ def render_radar_report_chart(report: Dict[str, Any], *, candle_limit: int = 110
     _draw_footer(ax_footer, parts)
 
     output = BytesIO()
-    fig.savefig(output, format="png", dpi=150, facecolor=BG, edgecolor=BG)
+    normalized_format = image_format.lower()
+    save_kwargs: Dict[str, Any] = {
+        "format": normalized_format,
+        "dpi": dpi,
+        "facecolor": BG,
+        "edgecolor": BG,
+    }
+    if normalized_format in {"jpg", "jpeg"}:
+        save_kwargs["format"] = "jpeg"
+        save_kwargs["pil_kwargs"] = {"quality": 92, "optimize": True}
+    fig.savefig(output, **save_kwargs)
     plt.close(fig)
     return output.getvalue()
+
+
+def render_radar_report_social_chart(report: Dict[str, Any], *, candle_limit: int = 110) -> bytes:
+    """JPEG variant sized for social media fetchers such as Threads."""
+    return render_radar_report_chart(
+        report,
+        candle_limit=candle_limit,
+        image_format="jpeg",
+        dpi=90,
+    )

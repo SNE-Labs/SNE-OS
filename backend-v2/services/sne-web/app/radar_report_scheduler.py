@@ -97,7 +97,7 @@ def _radar_chart_public_url(report_payload: Dict[str, Any]) -> str:
     ).strip().rstrip("/")
     symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
     timeframe = str(report_payload.get("timeframe") or "1h").strip()
-    return f"{base}/api/radar/report/chart/{symbol}/{timeframe}.png"
+    return f"{base}/api/radar/report/chart-social/{symbol}/{timeframe}.jpg"
 
 
 def _window_id(now: datetime, timeframe: str) -> int:
