@@ -403,6 +403,13 @@ def reports_autopublish():
       dry_run = bool(payload.get("dryRun") or payload.get("dry_run"))
       include_chart = payload.get("includeChart", payload.get("include_chart", True)) is not False
       channels = _normalize_report_channels(payload.get("channels") or payload.get("channel"))
+      threads_image_url_override = str(
+          payload.get("threadsImageUrl")
+          or payload.get("threads_image_url")
+          or ""
+      ).strip()
+      if threads_image_url_override and not threads_image_url_override.startswith("https://"):
+          return fail("INVALID_THREADS_IMAGE_URL", "threadsImageUrl must be an absolute HTTPS URL", 400)
 
       if isinstance(symbols, str):
           symbols = [symbols]
@@ -430,7 +437,10 @@ def reports_autopublish():
                       "sent": False,
                       "dryRun": True,
                       "channels": channels,
-                      "chartUrl": _radar_chart_public_url(report_payload) if "threads" in channels and chart_size else None,
+                      "chartUrl": (
+                          threads_image_url_override
+                          or (_radar_chart_public_url(report_payload) if "threads" in channels and chart_size else None)
+                      ),
                       "chartBytes": chart_size,
                   })
                   continue
@@ -439,7 +449,9 @@ def reports_autopublish():
               if include_chart and report_payload.get("status") == "ready":
                   chart_bytes = render_radar_report_chart(report_payload)
               threads_media_url = None
-              if chart_bytes and "threads" in channels:
+              if "threads" in channels and threads_image_url_override:
+                  threads_media_url = threads_image_url_override
+              elif chart_bytes and "threads" in channels:
                   social_chart_bytes = render_radar_report_social_chart(report_payload)
                   threads_media_url = _radar_chart_public_url(
                       report_payload,
