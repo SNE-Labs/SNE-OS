@@ -14,7 +14,6 @@ import os
 import threading
 import time
 from typing import Any, Dict, List
-from urllib.parse import urlencode
 
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
 from .radar_report_service import build_radar_report
@@ -96,12 +95,9 @@ def _radar_chart_public_url(report_payload: Dict[str, Any]) -> str:
         or os.getenv("PUBLIC_API_BASE")
         or "https://api.snelabs.space"
     ).strip().rstrip("/")
-    query = urlencode({
-        "symbol": report_payload.get("symbol") or "BTCUSDT",
-        "timeframe": report_payload.get("timeframe") or "1h",
-        "v": report_payload.get("generated_at") or int(time.time()),
-    })
-    return f"{base}/api/radar/report/chart?{query}"
+    symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
+    timeframe = str(report_payload.get("timeframe") or "1h").strip()
+    return f"{base}/api/radar/report/chart/{symbol}/{timeframe}.png"
 
 
 def _window_id(now: datetime, timeframe: str) -> int:

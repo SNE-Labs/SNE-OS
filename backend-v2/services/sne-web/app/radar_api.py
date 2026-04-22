@@ -8,7 +8,6 @@ import logging
 import os
 import time
 from datetime import datetime
-from urllib.parse import urlencode
 from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
@@ -49,12 +48,9 @@ def _radar_chart_public_url(report_payload) -> str:
         or os.getenv("PUBLIC_API_BASE")
         or "https://api.snelabs.space"
     ).strip().rstrip("/")
-    query = urlencode({
-        "symbol": report_payload.get("symbol") or "BTCUSDT",
-        "timeframe": report_payload.get("timeframe") or "1h",
-        "v": report_payload.get("generated_at") or int(time.time()),
-    })
-    return f"{base}/api/radar/report/chart?{query}"
+    symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
+    timeframe = str(report_payload.get("timeframe") or "1h").strip()
+    return f"{base}/api/radar/report/chart/{symbol}/{timeframe}.png"
 
 
 def _radar_report_secret_authorized() -> bool:
@@ -244,6 +240,35 @@ def report_chart():
       )
     except Exception as e:
       logger.error(f"Radar report chart error: {e}", exc_info=True)
+      return fail("INTERNAL_ERROR", "Failed to render Radar report chart", 500)
+
+
+@radar_bp.get("/report/chart/<symbol>/<timeframe>.png")
+def report_chart_path(symbol: str, timeframe: str):
+    """
+    Public operational Radar chart image with a clean media URL for social APIs.
+    GET /api/radar/report/chart/BTCUSDT/1h.png
+    """
+    try:
+      report_payload = build_radar_report(
+          symbol=symbol,
+          timeframe=timeframe,
+          authenticated=False,
+          has_access=False,
+      )
+      if report_payload.get("status") != "ready":
+          return fail("REPORT_DEGRADED", "Radar report chart is unavailable", 503)
+      image_bytes = render_radar_report_chart(report_payload)
+      return Response(
+          image_bytes,
+          mimetype="image/png",
+          headers={
+              "Cache-Control": "public, max-age=120",
+              "X-Content-Type-Options": "nosniff",
+          },
+      )
+    except Exception as e:
+      logger.error(f"Radar report chart path error: {e}", exc_info=True)
       return fail("INTERNAL_ERROR", "Failed to render Radar report chart", 500)
 
 
