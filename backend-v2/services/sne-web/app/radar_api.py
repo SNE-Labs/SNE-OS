@@ -3,13 +3,16 @@ Radar API - SNE Market Analysis and Signals
 Market data, signals, and analysis for SNE OS Radar
 """
 from flask import Blueprint, request, jsonify, g
+import hmac
 import logging
+import os
 import time
 from datetime import datetime
 from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_report_service import build_radar_report
 from .radar_service import build_radar_overview, derive_signal_from_ticker
+from .telegram_delivery import send_telegram_text
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,23 @@ def fail(code: str, message: str, status: int = 400, **details):
     return jsonify(payload), status
 
 radar_bp = Blueprint("radar", __name__)
+
+
+def _radar_report_secret_authorized() -> bool:
+    expected = (
+        os.getenv("RADAR_REPORT_SECRET")
+        or os.getenv("INTEL_DISTRIBUTION_SECRET")
+        or ""
+    ).strip()
+    if not expected:
+        return False
+
+    provided = (
+        request.headers.get("X-Radar-Report-Secret", "")
+        or request.headers.get("X-Intel-Refresh-Secret", "")
+        or request.headers.get("Authorization", "").removeprefix("Bearer ")
+    ).strip()
+    return bool(provided) and hmac.compare_digest(provided, expected)
 
 # ============================================
 # PUBLIC ENDPOINTS (no auth required)
@@ -167,6 +187,63 @@ def report():
           },
           "report_text": "Relatorio operacional indisponivel.",
       }), 200
+
+
+@radar_bp.post("/report/telegram")
+def report_telegram():
+    """
+    Send an operational Radar report to Telegram.
+    POST /api/radar/report/telegram
+    Body: { "symbol": "BTCUSDT", "timeframe": "1h", "dryRun": false }
+    """
+    if not _radar_report_secret_authorized():
+        return fail("UNAUTHORIZED", "Radar report secret required", 401)
+
+    try:
+      payload = request.get_json(silent=True) or {}
+      symbol = payload.get("symbol") or request.args.get("symbol") or "BTCUSDT"
+      timeframe = payload.get("timeframe") or request.args.get("timeframe") or "1h"
+      dry_run = bool(payload.get("dryRun") or payload.get("dry_run"))
+
+      report_payload = build_radar_report(
+          symbol=symbol,
+          timeframe=timeframe,
+          authenticated=False,
+          has_access=False,
+      )
+      report_text = str(report_payload.get("report_text") or "").strip()
+      if not report_text:
+          return fail("REPORT_EMPTY", "Radar report text is empty", 422)
+
+      message = f"SNE RADAR | TESTE TELEGRAM\n\n{report_text}"
+      if dry_run:
+          return ok({
+              "sent": False,
+              "dryRun": True,
+              "symbol": report_payload.get("symbol"),
+              "timeframe": report_payload.get("timeframe"),
+              "status": report_payload.get("status"),
+              "message": message,
+          })
+
+      sent, error = send_telegram_text(
+          message,
+          disable_web_page_preview=True,
+          sanitize=True,
+      )
+      if not sent:
+          return fail("TELEGRAM_SEND_FAILED", error or "Telegram send failed", 502)
+
+      return ok({
+          "sent": True,
+          "symbol": report_payload.get("symbol"),
+          "timeframe": report_payload.get("timeframe"),
+          "status": report_payload.get("status"),
+          "generatedAt": report_payload.get("generated_at"),
+      })
+    except Exception as e:
+      logger.error(f"Radar report Telegram error: {e}", exc_info=True)
+      return fail("INTERNAL_ERROR", "Failed to send Radar report to Telegram", 500)
 
 
 @radar_bp.post("/signals")
