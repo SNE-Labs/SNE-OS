@@ -101,5 +101,11 @@ def send_radar_report_to_threads(
 ) -> Tuple[bool, str | None]:
     if not threads_configured():
         return False, "threads_not_configured"
-    sent, _payload, error = send_threads_post(build_radar_threads_text(report_payload), image_url=image_url)
+    text = build_radar_threads_text(report_payload)
+    sent, _payload, error = send_threads_post(text, image_url=image_url)
+    if not sent and image_url and error and "Media download has failed" in error:
+        sent, _payload, fallback_error = send_threads_post(text)
+        if sent:
+            return True, None
+        return False, fallback_error or error
     return sent, error

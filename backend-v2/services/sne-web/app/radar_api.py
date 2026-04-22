@@ -11,6 +11,7 @@ from datetime import datetime
 from .common.auth import get_auth_context, require_authenticated_user
 from .collector_client import get_live_market_snapshot
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
+from .radar_report_media import get_radar_report_media, store_radar_report_media
 from .radar_report_service import build_radar_report
 from .radar_report_visuals import render_radar_report_chart, render_radar_report_social_chart
 from .radar_service import build_radar_overview, derive_signal_from_ticker
@@ -42,12 +43,14 @@ def _normalize_report_channels(value):
     return ordered or ["telegram"]
 
 
-def _radar_chart_public_url(report_payload) -> str:
+def _radar_chart_public_url(report_payload, *, media_id: str | None = None) -> str:
     base = (
         os.getenv("RADAR_REPORT_PUBLIC_BASE_URL")
         or os.getenv("PUBLIC_API_BASE")
         or "https://api.snelabs.space"
     ).strip().rstrip("/")
+    if media_id:
+        return f"{base}/api/radar/report/media/{media_id}.jpg"
     symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
     timeframe = str(report_payload.get("timeframe") or "1h").strip()
     return f"{base}/api/radar/report/chart-social/{symbol}/{timeframe}.jpg"
@@ -304,6 +307,26 @@ def report_chart_social_path(symbol: str, timeframe: str):
       return fail("INTERNAL_ERROR", "Failed to render Radar report social chart", 500)
 
 
+@radar_bp.get("/report/media/<media_id>.jpg")
+def report_media_path(media_id: str):
+    """
+    Public pre-rendered JPEG media for social APIs.
+    GET /api/radar/report/media/<media_id>.jpg
+    """
+    image_bytes = get_radar_report_media(media_id)
+    if not image_bytes:
+      return fail("MEDIA_NOT_FOUND", "Radar report media expired or not found", 404)
+    return Response(
+        image_bytes,
+        mimetype="image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=600",
+            "Content-Length": str(len(image_bytes)),
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @radar_bp.post("/report/telegram")
 def report_telegram():
     """
@@ -415,6 +438,13 @@ def reports_autopublish():
               chart_bytes = b""
               if include_chart and report_payload.get("status") == "ready":
                   chart_bytes = render_radar_report_chart(report_payload)
+              threads_media_url = None
+              if chart_bytes and "threads" in channels:
+                  social_chart_bytes = render_radar_report_social_chart(report_payload)
+                  threads_media_url = _radar_chart_public_url(
+                      report_payload,
+                      media_id=store_radar_report_media(social_chart_bytes),
+                  )
 
               channel_results = []
               for channel in channels:
@@ -423,7 +453,7 @@ def reports_autopublish():
                   else:
                       sent, error = send_radar_report_to_threads(
                           report_payload,
-                          image_url=_radar_chart_public_url(report_payload) if chart_bytes else None,
+                          image_url=threads_media_url,
                       )
                   channel_results.append({"channel": channel, "sent": sent, "error": error})
 

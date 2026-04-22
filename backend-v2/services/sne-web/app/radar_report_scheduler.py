@@ -16,8 +16,9 @@ import time
 from typing import Any, Dict, List
 
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
+from .radar_report_media import store_radar_report_media
 from .radar_report_service import build_radar_report
-from .radar_report_visuals import render_radar_report_chart
+from .radar_report_visuals import render_radar_report_chart, render_radar_report_social_chart
 from .utils.redis_safe import SafeRedis
 
 
@@ -89,12 +90,14 @@ def _build_schedule() -> RadarReportSchedule:
     )
 
 
-def _radar_chart_public_url(report_payload: Dict[str, Any]) -> str:
+def _radar_chart_public_url(report_payload: Dict[str, Any], *, media_id: str | None = None) -> str:
     base = (
         os.getenv("RADAR_REPORT_PUBLIC_BASE_URL")
         or os.getenv("PUBLIC_API_BASE")
         or "https://api.snelabs.space"
     ).strip().rstrip("/")
+    if media_id:
+        return f"{base}/api/radar/report/media/{media_id}.jpg"
     symbol = str(report_payload.get("symbol") or "BTCUSDT").upper().replace("/", "")
     timeframe = str(report_payload.get("timeframe") or "1h").strip()
     return f"{base}/api/radar/report/chart-social/{symbol}/{timeframe}.jpg"
@@ -136,6 +139,13 @@ def _send_report(symbol: str, timeframe: str, include_chart: bool, channels: Lis
     chart_bytes = b""
     if include_chart and report_payload.get("status") == "ready":
         chart_bytes = render_radar_report_chart(report_payload)
+    threads_media_url = None
+    if chart_bytes and "threads" in channels:
+        social_chart_bytes = render_radar_report_social_chart(report_payload)
+        threads_media_url = _radar_chart_public_url(
+            report_payload,
+            media_id=store_radar_report_media(social_chart_bytes),
+        )
 
     channel_results = []
     for channel in channels:
@@ -144,7 +154,7 @@ def _send_report(symbol: str, timeframe: str, include_chart: bool, channels: Lis
         else:
             sent, error = send_radar_report_to_threads(
                 report_payload,
-                image_url=_radar_chart_public_url(report_payload) if chart_bytes else None,
+                image_url=threads_media_url,
             )
         channel_results.append({"channel": channel, "sent": sent, "error": error})
 
