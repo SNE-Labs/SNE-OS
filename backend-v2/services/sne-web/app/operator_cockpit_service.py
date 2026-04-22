@@ -30,6 +30,105 @@ def _normalize_address(value: Optional[str]) -> Optional[str]:
     return candidate.lower() if candidate else None
 
 
+def _empty_entitlement(address: Optional[str], error: Optional[str] = None) -> Dict[str, Any]:
+    wallet = _normalize_address(address)
+    return {
+        "wallet": wallet,
+        "ownerWallet": None,
+        "delegateWallet": None,
+        "hasOperatorKey": False,
+        "accessClass": "none",
+        "effectiveAccess": False,
+        "feeTier": "standard",
+        "feePolicy": {
+            "tier": "standard",
+            "discountBps": 0,
+            "label": "Standard",
+            "reason": "fallback",
+        },
+        "source": "fallback",
+        "lastIndexedBlock": None,
+        "contractsConfigured": False,
+        "checkedAt": _utcnow_iso(),
+        "indexer": {
+            "mode": "fallback",
+            "healthy": False,
+            "source": "fallback",
+            "lastIndexedBlock": None,
+        },
+        "error": error,
+    }
+
+
+def _empty_contracts(error: Optional[str] = None) -> Dict[str, Any]:
+    return {
+        "network": Config.SNE_KEYS_NETWORK or "arbitrum",
+        "configured": False,
+        "source": "fallback",
+        "operatorKey": None,
+        "keySale": None,
+        "delegationRegistry": None,
+        "legacyRegistry": None,
+        "usdt": None,
+        "treasury": None,
+        "operatorPriceUnits": None,
+        "operatorPriceDisplay": None,
+        "keySalePaused": None,
+        "saleController": None,
+        "latestBlock": None,
+        "manifestNetwork": None,
+        "error": error,
+    }
+
+
+def build_operator_cockpit_fallback(address: Optional[str] = None, error: Optional[str] = None) -> Dict[str, Any]:
+    entitlement = _empty_entitlement(address, error)
+    contracts = _empty_contracts(error)
+    wallet = entitlement.get("wallet")
+    indexer = entitlement["indexer"]
+    checkout = {
+        "available": False,
+        "productCode": Config.SNE_CHECKOUT_PRODUCT_CODE,
+        "productLabel": "Operator Key",
+        "price": {
+            "amount": str(Config.SNE_CHECKOUT_OPERATOR_PRICE_USDT),
+            "asset": Config.SNE_CHECKOUT_PAYMENT_ASSET.upper(),
+            "chain": Config.SNE_CHECKOUT_PAYMENT_CHAIN,
+        },
+        "pendingOrder": None,
+        "recentOrders": [],
+        "lastPayment": None,
+        "lastActivation": None,
+    }
+    return {
+        "session": {
+            "authenticated": False,
+            "address": wallet,
+            "role": "discovery" if wallet else "anonymous",
+        },
+        "entitlement": entitlement,
+        "contracts": contracts,
+        "indexer": indexer,
+        "checkout": checkout,
+        "timeline": [
+            _timeline_event(
+                "operator_cockpit_fallback",
+                "Operator Cockpit fallback",
+                "warning",
+                entitlement.get("checkedAt"),
+                detail=error or "Fallback sem dependências externas",
+            )
+        ],
+        "nextAction": {
+            "state": "indexer_degraded",
+            "label": "Revalidar entitlement",
+            "href": "/keys",
+            "priority": "high",
+        },
+        "lastUpdated": _utcnow_iso(),
+    }
+
+
 def _session_role(wallet: Optional[str], entitlement: Dict[str, Any]) -> str:
     if not wallet:
         return "anonymous"
@@ -325,8 +424,18 @@ def build_operator_cockpit(
     authenticated: bool,
     include_private_orders: bool = False,
 ) -> Dict[str, Any]:
-    entitlement = build_keys_entitlement(address)
-    contracts = read_keys_contracts_status()
+    try:
+        entitlement = build_keys_entitlement(address)
+    except Exception as exc:
+        logger.warning("Operator cockpit entitlement fallback for %s: %s", address, exc)
+        entitlement = _empty_entitlement(address, str(exc))
+
+    try:
+        contracts = read_keys_contracts_status()
+    except Exception as exc:
+        logger.warning("Operator cockpit contracts fallback: %s", exc)
+        contracts = _empty_contracts(str(exc))
+
     wallet = entitlement.get("wallet") or _normalize_address(address)
     role = _session_role(wallet, entitlement)
     recent_orders = _safe_recent_orders(wallet) if include_private_orders else []

@@ -7,7 +7,7 @@ import logging
 
 from .keys_service import build_keys_overview
 from .keys_entitlement_service import build_keys_entitlement
-from .operator_cockpit_service import build_operator_cockpit
+from .operator_cockpit_service import build_operator_cockpit, build_operator_cockpit_fallback
 from .common.auth import get_auth_context
 
 logger = logging.getLogger(__name__)
@@ -63,8 +63,8 @@ def operator_cockpit():
         )
         return jsonify(build_operator_cockpit(address, bool(auth_address), include_private_orders)), 200
     except Exception as e:
-        logger.error(f"Operator cockpit error: {e}")
-        return jsonify(build_operator_cockpit(None, False)), 200
+        logger.error(f"Operator cockpit error: {e}", exc_info=True)
+        return jsonify(build_operator_cockpit_fallback(request.args.get("address"), str(e))), 200
 
 
 @keys_bp.get("/delegation")
