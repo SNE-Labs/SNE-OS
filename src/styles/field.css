@@ -1,0 +1,324 @@
+@layer base {
+  .sne-field {
+    --field-primary: 255, 102, 0;
+    --field-secondary: 45, 212, 255;
+    --field-tertiary: 50, 213, 131;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.86;
+  }
+
+  .sne-field--radar {
+    --field-primary: 50, 213, 131;
+    --field-secondary: 45, 212, 255;
+    --field-tertiary: 255, 176, 32;
+  }
+
+  .sne-field--intel {
+    --field-primary: 255, 140, 66;
+    --field-secondary: 132, 146, 232;
+    --field-tertiary: 45, 212, 255;
+  }
+
+  .sne-field--vault {
+    --field-primary: 50, 213, 131;
+    --field-secondary: 255, 176, 32;
+    --field-tertiary: 45, 212, 255;
+  }
+
+  .sne-field--pass {
+    --field-primary: 45, 212, 255;
+    --field-secondary: 255, 140, 66;
+    --field-tertiary: 50, 213, 131;
+  }
+
+  .sne-field--keys {
+    --field-primary: 102, 164, 242;
+    --field-secondary: 255, 102, 0;
+    --field-tertiary: 240, 68, 56;
+  }
+
+  .sne-field--docs {
+    --field-primary: 150, 162, 180;
+    --field-secondary: 86, 138, 194;
+    --field-tertiary: 212, 154, 96;
+    opacity: 0.62;
+  }
+
+  .sne-field__cartography {
+    position: absolute;
+    inset: -12%;
+    background:
+      radial-gradient(circle at 16% 18%, rgba(var(--field-primary), 0.12), transparent 24%),
+      radial-gradient(circle at 82% 16%, rgba(var(--field-secondary), 0.08), transparent 26%),
+      radial-gradient(circle at 42% 86%, rgba(var(--field-tertiary), 0.08), transparent 28%),
+      linear-gradient(115deg, transparent 0 24%, rgba(var(--field-primary), 0.055) 24.2% 24.5%, transparent 24.7% 100%),
+      linear-gradient(64deg, transparent 0 52%, rgba(var(--field-secondary), 0.045) 52.2% 52.45%, transparent 52.7% 100%);
+    filter: blur(0.1px);
+    transform: rotate(-1deg);
+  }
+
+  .sne-field__cartography::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(var(--field-primary), 0.032) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--field-secondary), 0.026) 1px, transparent 1px);
+    background-size: 120px 120px;
+    mask-image: radial-gradient(circle at 48% 45%, black, transparent 72%);
+    animation: sne-field-map-drift 38s linear infinite;
+  }
+
+  .sne-field__aperture {
+    position: absolute;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--field-primary), 0.12);
+    background:
+      radial-gradient(circle, transparent 48%, rgba(var(--field-primary), 0.08) 49%, transparent 51%),
+      conic-gradient(from 210deg, transparent 0 58%, rgba(var(--field-primary), 0.18), transparent 72% 100%);
+    opacity: 0.72;
+    mix-blend-mode: screen;
+    animation: sne-field-aperture 28s linear infinite;
+  }
+
+  .sne-field__aperture--primary {
+    right: 7vw;
+    top: 18vh;
+    width: min(52vw, 620px);
+    height: min(52vw, 620px);
+  }
+
+  .sne-field__aperture--secondary {
+    left: -12vw;
+    bottom: -22vh;
+    width: min(54vw, 680px);
+    height: min(54vw, 680px);
+    border-color: rgba(var(--field-secondary), 0.1);
+    background:
+      radial-gradient(circle, transparent 50%, rgba(var(--field-secondary), 0.065) 51%, transparent 53%),
+      conic-gradient(from 30deg, transparent 0 62%, rgba(var(--field-secondary), 0.14), transparent 78% 100%);
+    animation-duration: 36s;
+    animation-direction: reverse;
+  }
+
+  .sne-field__route {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(var(--field-primary), 0.24), rgba(var(--field-secondary), 0.11), transparent);
+    transform-origin: left center;
+    opacity: 0.58;
+  }
+
+  .sne-field__route--a {
+    left: 12vw;
+    top: 28vh;
+    width: 64vw;
+    transform: rotate(9deg);
+  }
+
+  .sne-field__route--b {
+    left: 20vw;
+    top: 62vh;
+    width: 54vw;
+    transform: rotate(-12deg);
+  }
+
+  .sne-field__route--c {
+    left: 38vw;
+    top: 46vh;
+    width: 44vw;
+    transform: rotate(36deg);
+    opacity: 0.38;
+  }
+
+  .sne-field__node {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(var(--field-primary), 0.72);
+    box-shadow: 0 0 22px rgba(var(--field-primary), 0.48);
+    animation: sne-field-node-pulse 5s ease-in-out infinite;
+  }
+
+  .sne-field__node--a {
+    left: 16vw;
+    top: 30vh;
+  }
+
+  .sne-field__node--b {
+    left: 72vw;
+    top: 39vh;
+    background: rgba(var(--field-secondary), 0.74);
+    box-shadow: 0 0 22px rgba(var(--field-secondary), 0.42);
+    animation-delay: 1s;
+  }
+
+  .sne-field__node--c {
+    left: 44vw;
+    top: 64vh;
+    background: rgba(var(--field-tertiary), 0.74);
+    box-shadow: 0 0 22px rgba(var(--field-tertiary), 0.38);
+    animation-delay: 2s;
+  }
+
+  .sne-field__seal {
+    position: absolute;
+    right: 5vw;
+    bottom: 7vh;
+    color: rgba(255,255,255,0.045);
+    font-family: var(--font-family-mono);
+    font-size: clamp(60px, 10vw, 150px);
+    font-weight: 800;
+    letter-spacing: -0.12em;
+    transform: rotate(-8deg);
+  }
+
+  .field-surface {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .field-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.01)),
+      radial-gradient(circle at top left, rgba(var(--field-surface-accent, 255, 102, 0), 0.11), transparent 42%);
+    opacity: 0.78;
+  }
+
+  .field-surface::after {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    border-radius: inherit;
+    border: 1px solid rgba(255,255,255,0.035);
+    pointer-events: none;
+  }
+
+  .field-surface__motif {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.76;
+  }
+
+  .field-surface__corner {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    pointer-events: none;
+    opacity: 0.64;
+  }
+
+  .field-surface__corner--tl {
+    left: 0;
+    top: 0;
+    border-left: 1px solid rgba(var(--field-surface-accent, 255, 102, 0), 0.36);
+    border-top: 1px solid rgba(var(--field-surface-accent, 255, 102, 0), 0.36);
+    border-top-left-radius: inherit;
+  }
+
+  .field-surface__corner--br {
+    right: 0;
+    bottom: 0;
+    border-right: 1px solid rgba(var(--field-surface-accent, 255, 102, 0), 0.28);
+    border-bottom: 1px solid rgba(var(--field-surface-accent, 255, 102, 0), 0.28);
+    border-bottom-right-radius: inherit;
+  }
+
+  .field-surface--intel-aperture {
+    --field-surface-accent: 255, 140, 66;
+  }
+
+  .field-surface--intel-aperture .field-surface__motif {
+    background:
+      radial-gradient(circle at 72% 24%, transparent 0 28%, rgba(255,140,66,0.09) 29%, transparent 31%),
+      conic-gradient(from 210deg at 72% 24%, transparent 0 58%, rgba(255,140,66,0.14), transparent 72% 100%);
+  }
+
+  .field-surface--session-ledger {
+    --field-surface-accent: 45, 212, 255;
+  }
+
+  .field-surface--session-ledger .field-surface__motif {
+    background:
+      repeating-linear-gradient(180deg, rgba(45,212,255,0.055) 0 1px, transparent 1px 22px),
+      linear-gradient(90deg, transparent, rgba(45,212,255,0.08), transparent);
+  }
+
+  .field-surface--signal-stack {
+    --field-surface-accent: 132, 146, 232;
+  }
+
+  .field-surface--signal-stack .field-surface__motif {
+    background:
+      repeating-linear-gradient(90deg, rgba(132,146,232,0.052) 0 1px, transparent 1px 48px),
+      radial-gradient(circle at 12% 18%, rgba(132,146,232,0.1), transparent 28%);
+  }
+
+  .field-surface--liquidity-field {
+    --field-surface-accent: 50, 213, 131;
+  }
+
+  .field-surface--liquidity-field .field-surface__motif {
+    background-image:
+      radial-gradient(circle at 12% 24%, rgba(50,213,131,0.16) 0 2px, transparent 3px),
+      radial-gradient(circle at 34% 72%, rgba(255,176,32,0.12) 0 2px, transparent 3px),
+      radial-gradient(circle at 72% 36%, rgba(45,212,255,0.11) 0 2px, transparent 3px),
+      linear-gradient(135deg, transparent, rgba(50,213,131,0.055), transparent);
+    background-size: 180px 140px, 220px 160px, 260px 170px, 100% 100%;
+  }
+
+  @keyframes sne-field-map-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(-120px, -120px, 0);
+    }
+  }
+
+  @keyframes sne-field-aperture {
+    0% {
+      transform: rotate(0deg) scale(1);
+    }
+    50% {
+      transform: rotate(180deg) scale(1.025);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+    }
+  }
+
+  @keyframes sne-field-node-pulse {
+    0%, 100% {
+      transform: scale(0.85);
+      opacity: 0.4;
+    }
+    50% {
+      transform: scale(1.25);
+      opacity: 0.95;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sne-field__cartography::before,
+    .sne-field__aperture,
+    .sne-field__node {
+      animation: none;
+    }
+  }
+}

@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
+import { FieldSurface } from '../components/field/FieldSurface';
 import { PageSignalFrame, SignalPanel } from '../components/motion/PageMotion';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
@@ -732,22 +733,24 @@ export function Home() {
       <div className="flex-1 px-6 py-4 overflow-y-auto xl:px-8">
         <PageSignalFrame className="mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
-          <SignalPanel
-            className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
-            style={{
-              background: `
-                radial-gradient(circle at 0% 8%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.22)} 0%, transparent 28%),
-                radial-gradient(circle at 100% 18%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.18)} 0%, transparent 24%),
-                radial-gradient(circle at 84% 100%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.14)} 0%, transparent 26%),
-                radial-gradient(circle at 14% 100%, rgba(255,255,255,0.05) 0%, transparent 22%),
-                linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))
-              `,
-              backgroundColor: 'var(--bg-2)',
-              borderWidth: '1px',
-              borderColor: 'rgba(255,255,255,0.06)',
-              boxShadow: 'var(--shadow-2)',
-            }}
-          >
+          <SignalPanel>
+            <FieldSurface
+              motif="intel-aperture"
+              className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
+              style={{
+                background: `
+                  radial-gradient(circle at 0% 8%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.22)} 0%, transparent 28%),
+                  radial-gradient(circle at 100% 18%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.18)} 0%, transparent 24%),
+                  radial-gradient(circle at 84% 100%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.14)} 0%, transparent 26%),
+                  radial-gradient(circle at 14% 100%, rgba(255,255,255,0.05) 0%, transparent 22%),
+                  linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))
+                `,
+                backgroundColor: 'var(--bg-2)',
+                borderWidth: '1px',
+                borderColor: 'rgba(255,255,255,0.06)',
+                boxShadow: 'var(--shadow-2)',
+              }}
+            >
             <div className="pointer-events-none absolute inset-0">
               <div
                 className="absolute left-[-10%] top-[-14%] h-[38%] w-[34%] rounded-full blur-3xl"
@@ -1051,19 +1054,22 @@ export function Home() {
                 </>
               )}
             </div>
+            </FieldSurface>
           </SignalPanel>
 
           {/* ── Brief — since last session ─────────────────────────── */}
           {brief && (
-            <SignalPanel
-              className="rounded-[24px] px-5 py-5"
-              style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
-                backgroundColor: 'var(--bg-2)',
-                borderWidth: '1px',
-                borderColor: 'var(--stroke-1)',
-              }}
-            >
+            <SignalPanel>
+              <FieldSurface
+                motif="session-ledger"
+                className="rounded-[24px] px-5 py-5"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
+                  backgroundColor: 'var(--bg-2)',
+                  borderWidth: '1px',
+                  borderColor: 'var(--stroke-1)',
+                }}
+              >
               <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-5">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -1128,15 +1134,18 @@ export function Home() {
                   )}
                 </div>
               </div>
+              </FieldSurface>
             </SignalPanel>
           )}
 
           {/* ── Intel Stream ──────────────────────────────────────── */}
           {intelStreamSections.length > 0 && (
-            <SignalPanel
-              className="rounded-[24px] p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-            >
+            <SignalPanel>
+              <FieldSurface
+                motif="signal-stack"
+                className="rounded-[24px] p-5"
+                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+              >
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -1254,14 +1263,17 @@ export function Home() {
                   );
                 })}
               </div>
+              </FieldSurface>
             </SignalPanel>
           )}
 
           {/* ── Mercado — contexto, não protagonista ─────────────── */}
-          <SignalPanel
-            className="rounded-[24px] p-5"
-            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-          >
+          <SignalPanel>
+            <FieldSurface
+              motif="liquidity-field"
+              className="rounded-[24px] p-5"
+              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+            >
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -1426,6 +1438,7 @@ export function Home() {
                 </div>
               </div>
             )}
+            </FieldSurface>
           </SignalPanel>
         </PageSignalFrame>
       </div>

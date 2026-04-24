@@ -14,6 +14,7 @@ import { TapeWire } from './components/TapeWire';
 import { ShellCommandPalette } from './components/ShellCommandPalette';
 import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
 import { ChunkLoadBoundary } from './components/ChunkLoadBoundary';
+import { SNEField } from './components/field/SNEField';
 import { LivingSystemLayer } from './components/LivingSystemLayer';
 import { RouteSeo } from './RouteSeo';
 import { lazyRoute, pickLazyExport } from './utils/lazyRoute';
@@ -101,6 +102,7 @@ function AppContent() {
   return (
     <div className={`shell-frame ${atmosphereClass}`} style={{ backgroundColor: 'var(--bg-0)' }}>
       <RouteSeo />
+      <SNEField pathname={location.pathname} />
       <AsciiHaze atmosphereKey={atmosphereClass} />
       <LivingSystemLayer pathname={location.pathname} />
       <div className="relative z-10 min-h-screen">
