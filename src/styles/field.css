@@ -242,6 +242,38 @@
       font-size: 0.94rem;
     }
 
+    .sne-mosaic-page .sne-mosaic-frame {
+      width: 100%;
+      max-width: none !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+
+    .sne-home-mosaic {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+      align-items: start;
+      gap: var(--mosaic-gap);
+    }
+
+    .sne-home-mosaic > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 0 !important;
+    }
+
+    .sne-home-hero-panel {
+      grid-column: 1 / -1;
+    }
+
+    .sne-home-brief-panel,
+    .sne-home-intel-panel {
+      grid-column: 1;
+    }
+
+    .sne-home-market-panel {
+      grid-column: 2;
+      grid-row: 2 / span 2;
+    }
+
     .sne-mosaic-page .field-surface[data-density='compact'] {
       --field-surface-pad-x: 12px;
       --field-surface-pad-y: 12px;
@@ -325,13 +357,12 @@
   }
 
   @media (min-width: 1800px) {
-    .sne-mosaic-page .sne-mosaic-frame {
-      width: 100%;
-      max-width: min(2320px, calc(100vw - 128px)) !important;
-    }
-
     .sne-mosaic-page {
       --radar-card-span: 3;
+    }
+
+    .sne-home-mosaic {
+      grid-template-columns: minmax(0, 1.18fr) minmax(460px, 0.82fr);
     }
 
     .sne-mosaic-page .sne-mosaic-hero-grid {

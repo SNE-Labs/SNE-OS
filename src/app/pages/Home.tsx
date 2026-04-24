@@ -731,9 +731,9 @@ export function Home() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
-        <PageSignalFrame className="sne-mosaic-frame mx-auto max-w-[1480px] space-y-4">
+        <PageSignalFrame className="sne-mosaic-frame sne-home-mosaic mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
-          <SignalPanel>
+          <SignalPanel className="sne-home-hero-panel">
             <FieldSurface
               motif="intel-aperture"
               density="compact"
@@ -1061,7 +1061,7 @@ export function Home() {
 
           {/* ── Brief — since last session ─────────────────────────── */}
           {brief && (
-            <SignalPanel>
+            <SignalPanel className="sne-home-brief-panel">
               <FieldSurface
                 motif="session-ledger"
                 density="compact"
@@ -1144,7 +1144,7 @@ export function Home() {
 
           {/* ── Intel Stream ──────────────────────────────────────── */}
           {intelStreamSections.length > 0 && (
-            <SignalPanel>
+            <SignalPanel className="sne-home-intel-panel">
               <FieldSurface
                 motif="signal-stack"
                 density="compact"
@@ -1274,7 +1274,7 @@ export function Home() {
           )}
 
           {/* ── Mercado — contexto, não protagonista ─────────────── */}
-          <SignalPanel>
+          <SignalPanel className="sne-home-market-panel">
             <FieldSurface
               motif="liquidity-field"
               density="compact"
