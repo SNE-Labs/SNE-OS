@@ -218,7 +218,7 @@ export function Radar() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
+      <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
         <PageSignalFrame className="mx-auto max-w-[1540px] space-y-4">
           <SignalPanel>
             <FieldSurface
@@ -299,7 +299,7 @@ export function Radar() {
               onAction={moduleState === 'error' ? () => overviewQuery.refetch() : undefined}
             />
           ) : (
-            <SignalPanel className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+            <SignalPanel className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
               <div className="min-w-0 space-y-4">
                 <FieldSurface
                   as="section"
@@ -330,7 +330,7 @@ export function Radar() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-12 auto-rows-[72px] gap-2.5">
+                  <div className="mt-4 grid grid-cols-12 auto-rows-[60px] gap-2">
                     {fieldRows.map((row, index) => {
                       const pinned = row.symbol === pinnedRow?.symbol;
                       const preview = row.symbol === hoveredRow?.symbol;
@@ -346,7 +346,7 @@ export function Radar() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
-                          className="group relative overflow-hidden rounded-[22px] px-3 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                          className="group relative overflow-hidden rounded-[18px] px-3 py-2.5 text-left transition-transform duration-200 hover:-translate-y-0.5"
                           style={{
                             gridColumn: 'span 4',
                             gridRow: 'span 2',
@@ -360,13 +360,13 @@ export function Radar() {
                           }}
                         >
                           <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: toneColor(row.state.tone), opacity: 0.65 }} />
-                          <div className="flex h-full flex-col justify-between gap-4">
+                          <div className="flex h-full flex-col justify-between gap-2">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <IntelEntityIcon symbol={toEntitySymbol(row.symbol)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} iconClassName="h-4.5 w-4.5" />
+                                  <IntelEntityIcon symbol={toEntitySymbol(row.symbol)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} iconClassName="h-4 w-4" />
                                   <div className="min-w-0">
-                                    <div className="text-[16px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-1)' }}>
+                                    <div className="text-[14px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-1)' }}>
                                       {row.symbol}
                                     </div>
                                   <div className="mt-1 text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
@@ -380,10 +380,10 @@ export function Radar() {
 
                             <div className="flex items-end justify-between gap-3">
                               <div>
-                                <div className="text-[20px] font-semibold leading-none" style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                                <div className="text-[17px] font-semibold leading-none" style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
                                   {formatPercent(row.change24h)}
                                 </div>
-                                <div className="mt-2 text-sm" style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                                <div className="mt-1.5 text-xs" style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
                                   ${formatPrice(row.price)}
                                 </div>
                               </div>

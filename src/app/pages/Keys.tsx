@@ -109,14 +109,14 @@ function Panel({
       motif="sovereign-key"
       density="compact"
       surface="panel"
-      className="rounded-lg border p-4"
+      className="rounded-lg border p-3"
       style={{
         background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012))',
         borderColor: 'rgba(255,255,255,0.08)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
       }}
     >
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {Icon ? (
             <div
@@ -450,7 +450,7 @@ export function Keys() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
+      <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
         <div className="mx-auto max-w-[1560px] space-y-4">
           <FieldSurface
             as="header"
@@ -492,15 +492,15 @@ export function Keys() {
             </div>
           </FieldSurface>
 
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-4">
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-3">
               <OperatorState cockpit={cockpit} isFetching={cockpitQuery.isFetching} onRefresh={() => void cockpitQuery.refetch()} />
               <Timeline events={cockpit.timeline} />
               <ContractsTable cockpit={cockpit} />
               <OrdersTable cockpit={cockpit} />
             </div>
 
-            <aside className="space-y-4 xl:sticky xl:top-5">
+            <aside className="space-y-3 xl:sticky xl:top-5">
               <NextActionRail cockpit={cockpit} onNavigate={navigate} />
               <AccessGraph cockpit={cockpit} />
               <Panel title="Indexer e leitura" label="Health" icon={Activity} right={<Badge tone={cockpit.indexer.healthy ? 'success' : 'warning'}>{cockpit.indexer.mode}</Badge>}>

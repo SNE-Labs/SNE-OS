@@ -107,7 +107,7 @@ export function Swaps() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
+      <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
         <div className="mx-auto max-w-[1600px] space-y-4">
           <FieldSurface
             as="header"
@@ -145,7 +145,7 @@ export function Swaps() {
             </div>
           </FieldSurface>
 
-          <main className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_332px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+          <main className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_310px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
             <FieldSurface
               as="section"
               motif="swap-engine"
@@ -219,7 +219,7 @@ export function Swaps() {
                 </div>
               </div>
 
-              <LiFiSwapWidget prefill={prefill} className="min-h-[660px]" />
+              <LiFiSwapWidget prefill={prefill} className="min-h-[600px]" />
             </FieldSurface>
 
             <aside className="space-y-3">
@@ -402,7 +402,7 @@ function Panel({
       motif={compact ? 'execution-rail' : 'swap-engine'}
       density="compact"
       surface={compact ? 'strip' : 'rail'}
-      className={`${compact ? 'rounded-[24px] p-3.5' : 'rounded-[26px] p-4'} border`}
+      className={`${compact ? 'rounded-[18px] p-3' : 'rounded-[20px] p-3.5'} border`}
       style={{
         background: compact
           ? 'linear-gradient(135deg, rgba(255,255,255,0.026), rgba(255,255,255,0.01))'

@@ -260,7 +260,7 @@ export function Pass() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+      <div className="sne-mosaic-page flex-1 px-6 py-5 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-4">
           <FieldSurface
             as="section"
@@ -449,7 +449,7 @@ export function Pass() {
                 />
               ) : (
                 <>
-                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
+                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.18fr)_minmax(300px,0.82fr)] gap-4">
                     <FieldSurface
                       motif="identity-mesh"
                       as="section"
@@ -549,7 +549,7 @@ export function Pass() {
                     </div>
                   </section>
 
-                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
+                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.18fr)_minmax(300px,0.82fr)] gap-4">
                     <div
                       className="rounded-xl p-5"
                       style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
@@ -716,7 +716,7 @@ export function Pass() {
                     />
                   ) : null}
 
-                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
+                  <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
                     <div
                       className="rounded-xl p-5"
                       style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
@@ -783,7 +783,7 @@ export function Pass() {
           )}
 
           {activeTab === 'lookup' && (
-            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-5">
+            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] gap-4">
               <div
                 className="rounded-xl p-5"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}

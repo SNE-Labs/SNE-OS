@@ -151,7 +151,7 @@ export function Blog() {
   }
 
   return (
-    <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+    <div className="sne-mosaic-page flex-1 px-6 py-5 overflow-y-auto xl:px-8">
       <PageSignalFrame className="mx-auto max-w-6xl space-y-4">
         <SignalPanel>
           <FieldSurface
@@ -227,7 +227,7 @@ export function Blog() {
           <ModuleStateCard tone="loading" title="Nenhuma peça encontrada" description="Ajuste os filtros ou aguarde a próxima rodada editorial do Intel Brief." />
         ) : (
           <>
-            <SignalPanel className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
+            <SignalPanel className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.75fr] gap-4">
               <FieldSurface
                 as="button"
                 type="button"
@@ -259,8 +259,8 @@ export function Blog() {
                   </div>
                   <ArrowUpRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
                 </div>
-                <div className="text-2xl font-semibold mb-3" style={{ color: 'var(--text-1)' }}>{featured.title}</div>
-                <div className="text-base mb-4 max-w-3xl" style={{ color: 'var(--text-2)' }}>{featured.subtitle}</div>
+                <div className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>{featured.title}</div>
+                <div className="text-sm mb-3 max-w-3xl" style={{ color: 'var(--text-2)' }}>{featured.subtitle}</div>
                 <div className="text-sm mb-5 max-w-3xl" style={{ color: 'var(--text-3)' }}>
                   {featured.excerpt || 'Leitura editorial completa disponível nesta peça.'}
                 </div>
@@ -323,7 +323,7 @@ export function Blog() {
                   {filteredPosts.length} peças na view
                 </div>
               </div>
-              <StaggerGroup className="grid grid-cols-1 xl:grid-cols-2 gap-4" delay={0.06}>
+              <StaggerGroup className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3" delay={0.06}>
               {secondary.map((post) => (
                 <MotionListItem key={post.id}>
                 <FieldSurface
@@ -352,8 +352,8 @@ export function Blog() {
                     </div>
                     <span className="text-xs" style={{ color: 'var(--text-3)' }}>{post.reading_time_minutes} min</span>
                   </div>
-                  <div className="font-semibold mb-2 text-lg" style={{ color: 'var(--text-1)' }}>{post.title}</div>
-                  <div className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
+                  <div className="font-semibold mb-2 text-base" style={{ color: 'var(--text-1)' }}>{post.title}</div>
+                  <div className="text-xs line-clamp-3 mb-3" style={{ color: 'var(--text-2)' }}>{post.excerpt || post.subtitle}</div>
                   <div className="flex flex-wrap gap-2">
                     {(post.visual_entities ?? []).slice(0, 3).map((entity) => (
                       <span key={`${post.id}-${entity.id}`} onClick={(event) => event.stopPropagation()}>

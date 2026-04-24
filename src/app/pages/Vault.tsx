@@ -137,7 +137,7 @@ export function Vault() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+      <div className="sne-mosaic-page flex-1 px-6 py-5 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-4">
           <FieldSurface
             as="section"
@@ -259,7 +259,7 @@ export function Vault() {
             </div>
           </FieldSurface>
 
-          <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)] gap-5">
+          <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.12fr)_minmax(300px,0.88fr)] gap-4">
             <FieldSurface
               motif="vault-ledger"
               as="section"
@@ -293,7 +293,7 @@ export function Vault() {
                   onAction={() => overviewQuery.refetch()}
                 />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {overview?.empty_state ? (
                     <div
                       className="rounded-xl p-4"
@@ -319,7 +319,7 @@ export function Vault() {
                     </div>
                   ) : null}
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <BucketCard
                       icon={Wallet}
                       label={overview?.balances.usdt.label ?? 'USDT'}
@@ -346,7 +346,7 @@ export function Vault() {
               )}
             </FieldSurface>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <FieldSurface
                 motif="execution-rail"
                 as="section"
@@ -490,7 +490,7 @@ export function Vault() {
                 compact
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-3">
                 {networks.map((network) => (
                   <div
                     key={network.network}

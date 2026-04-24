@@ -219,7 +219,7 @@
     --field-surface-radius: 16px;
   }
 
-  @media (min-width: 1280px) {
+  @media (min-width: 1024px) {
     .field-surface[data-density='compact'] {
       padding: var(--field-surface-pad-y) var(--field-surface-pad-x) !important;
       border-radius: var(--field-surface-radius) !important;
@@ -232,6 +232,95 @@
 
     .field-surface[data-density='compact'] .field-surface__motif {
       opacity: 0.58;
+    }
+
+    .sne-mosaic-page {
+      --mosaic-gap: 0.75rem;
+      --mosaic-card-pad: 0.75rem;
+      --mosaic-card-pad-wide: 0.875rem;
+      --mosaic-radius: 16px;
+      font-size: 0.94rem;
+    }
+
+    .sne-mosaic-page .field-surface[data-density='compact'] {
+      --field-surface-pad-x: 12px;
+      --field-surface-pad-y: 12px;
+      --field-surface-radius: 16px;
+    }
+
+    .sne-mosaic-page .field-surface[data-density='compact'][data-surface='hero'] {
+      --field-surface-pad-x: 16px;
+      --field-surface-pad-y: 14px;
+      --field-surface-radius: 20px;
+    }
+
+    .sne-mosaic-page .field-surface[data-density='compact'][data-surface='strip'] {
+      --field-surface-pad-x: 14px;
+      --field-surface-pad-y: 10px;
+      --field-surface-radius: 16px;
+    }
+
+    .sne-mosaic-page .field-surface[data-density='compact'][data-surface='rail'] {
+      --field-surface-pad-x: 12px;
+      --field-surface-pad-y: 12px;
+      --field-surface-radius: 16px;
+    }
+
+    .sne-mosaic-page .field-surface[data-density='compact'][data-surface='tile'] {
+      --field-surface-pad-x: 10px;
+      --field-surface-pad-y: 10px;
+      --field-surface-radius: 14px;
+    }
+
+    .sne-mosaic-page :where(section, article, div, button).p-4,
+    .sne-mosaic-page :where(section, article, div, button).p-5,
+    .sne-mosaic-page :where(section, article, div, button).p-6 {
+      padding: var(--mosaic-card-pad) !important;
+    }
+
+    .sne-mosaic-page :where(section, article, div, button).px-4,
+    .sne-mosaic-page :where(section, article, div, button).px-5,
+    .sne-mosaic-page :where(section, article, div, button).px-6 {
+      padding-left: var(--mosaic-card-pad-wide) !important;
+      padding-right: var(--mosaic-card-pad-wide) !important;
+    }
+
+    .sne-mosaic-page :where(section, article, div, button).py-4,
+    .sne-mosaic-page :where(section, article, div, button).py-5,
+    .sne-mosaic-page :where(section, article, div, button).py-6 {
+      padding-top: var(--mosaic-card-pad) !important;
+      padding-bottom: var(--mosaic-card-pad) !important;
+    }
+
+    .sne-mosaic-page :is(.gap-4, .gap-5, .gap-6, .gap-7) {
+      gap: var(--mosaic-gap) !important;
+    }
+
+    .sne-mosaic-page :is(.space-y-4, .space-y-5, .space-y-6) > :not([hidden]) ~ :not([hidden]) {
+      --tw-space-y-reverse: 0;
+      margin-top: calc(var(--mosaic-gap) * calc(1 - var(--tw-space-y-reverse))) !important;
+      margin-bottom: calc(var(--mosaic-gap) * var(--tw-space-y-reverse)) !important;
+    }
+
+    .sne-mosaic-page :where(section, article, div, button).rounded-xl,
+    .sne-mosaic-page :where(section, article, div, button).rounded-2xl,
+    .sne-mosaic-page :where(section, article, div, button).rounded-lg {
+      border-radius: var(--mosaic-radius) !important;
+    }
+
+    .sne-mosaic-page .text-3xl {
+      font-size: 1.5rem !important;
+      line-height: 1.12 !important;
+    }
+
+    .sne-mosaic-page .text-2xl {
+      font-size: 1.25rem !important;
+      line-height: 1.16 !important;
+    }
+
+    .sne-mosaic-page .text-xl {
+      font-size: 1.08rem !important;
+      line-height: 1.2 !important;
     }
   }
 

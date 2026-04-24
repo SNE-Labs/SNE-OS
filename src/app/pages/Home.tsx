@@ -730,7 +730,7 @@ export function Home() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 px-6 py-4 overflow-y-auto xl:px-8">
+      <div className="sne-mosaic-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
         <PageSignalFrame className="mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel>
@@ -838,7 +838,7 @@ export function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-5 xl:gap-6 min-h-[300px]">
+                  <div className="grid grid-cols-1 xl:grid-cols-[1.16fr_0.84fr] gap-5 xl:gap-6 min-h-[260px]">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={`${activeHero.id}:copy`}
@@ -907,7 +907,7 @@ export function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -16 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="flex flex-col gap-4"
+                        className="flex flex-col gap-3"
                       >
                         <div
                           className="rounded-[24px] p-5"
@@ -1074,7 +1074,7 @@ export function Home() {
                   borderColor: 'var(--stroke-1)',
                 }}
               >
-              <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-5">
+              <div className="grid grid-cols-1 xl:grid-cols-[1.04fr_0.96fr] gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -1305,7 +1305,7 @@ export function Home() {
                 Dados de mercado indisponíveis. Radar sincronizando.
               </div>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-[0.86fr_1.14fr] gap-4">
+              <div className="grid grid-cols-1 xl:grid-cols-[0.78fr_1.22fr] gap-4">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={marketRegime?.tone ?? 'pending'}>
@@ -1384,7 +1384,7 @@ export function Home() {
                 </div>
 
                 <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
                         Momentum
