@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
+import { PageSignalFrame, SignalPanel } from '../components/motion/PageMotion';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { useRadarOverview } from '../../hooks/useRadarData';
@@ -729,9 +730,9 @@ export function Home() {
   return (
     <div className="flex flex-1">
       <div className="flex-1 px-6 py-4 overflow-y-auto xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-4">
+        <PageSignalFrame className="mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
-          <section
+          <SignalPanel
             className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
             style={{
               background: `
@@ -1050,11 +1051,11 @@ export function Home() {
                 </>
               )}
             </div>
-          </section>
+          </SignalPanel>
 
           {/* ── Brief — since last session ─────────────────────────── */}
           {brief && (
-            <section
+            <SignalPanel
               className="rounded-[24px] px-5 py-5"
               style={{
                 background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
@@ -1127,12 +1128,12 @@ export function Home() {
                   )}
                 </div>
               </div>
-            </section>
+            </SignalPanel>
           )}
 
           {/* ── Intel Stream ──────────────────────────────────────── */}
           {intelStreamSections.length > 0 && (
-            <section
+            <SignalPanel
               className="rounded-[24px] p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
             >
@@ -1253,11 +1254,11 @@ export function Home() {
                   );
                 })}
               </div>
-            </section>
+            </SignalPanel>
           )}
 
           {/* ── Mercado — contexto, não protagonista ─────────────── */}
-          <section
+          <SignalPanel
             className="rounded-[24px] p-5"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
           >
@@ -1425,8 +1426,8 @@ export function Home() {
                 </div>
               </div>
             )}
-          </section>
-        </div>
+          </SignalPanel>
+        </PageSignalFrame>
       </div>
     </div>
   );

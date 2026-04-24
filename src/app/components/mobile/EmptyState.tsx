@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../ui/utils';
-import { Inbox } from 'lucide-react';
+import { OperationalState } from '../OperationalState';
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -18,17 +18,14 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center py-12 px-4', className)}>
-      <div className="text-[var(--text-3)] mb-4">
-        {icon || <Inbox className="w-12 h-12" />}
-      </div>
-      <h3 className="text-[var(--text-1)] mb-2 text-center">{title}</h3>
-      {description && (
-        <p className="text-sm text-[var(--text-2)] text-center max-w-xs mb-6">
-          {description}
-        </p>
-      )}
-      {action}
+    <div className={cn('py-2', className)}>
+      <OperationalState tone="empty" title={title} description={description ?? 'Nenhum sinal operacional retornou para esta superfície.'} compact />
+      {icon || action ? (
+        <div className="mt-3 flex justify-center text-[var(--text-3)]">
+          {icon}
+          {action}
+        </div>
+      ) : null}
     </div>
   );
 }

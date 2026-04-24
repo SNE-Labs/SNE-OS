@@ -7,6 +7,7 @@ import { useAccount } from 'wagmi';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
+import { PageSignalFrame, SignalPanel } from '../components/motion/PageMotion';
 import { useRadarOverview } from '../../hooks/useRadarData';
 import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { resolveModuleState } from '../../lib/moduleState';
@@ -217,8 +218,8 @@ export function Radar() {
   return (
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <div className="mx-auto max-w-[1540px] space-y-6">
-          <section className="border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <PageSignalFrame className="mx-auto max-w-[1540px] space-y-6">
+          <SignalPanel className="border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-2)' }}>
@@ -274,7 +275,7 @@ export function Radar() {
                 {operatorActive ? 'Abrir Keys' : 'Resolver Keys'}
               </button>
             </div>
-          </section>
+          </SignalPanel>
 
           {moduleState !== 'ready' ? (
             <ModuleStateCard
@@ -285,7 +286,7 @@ export function Radar() {
               onAction={moduleState === 'error' ? () => overviewQuery.refetch() : undefined}
             />
           ) : (
-            <section className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+            <SignalPanel className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
               <div className="min-w-0 space-y-5">
                 <section
                   className="relative overflow-hidden rounded-[30px] px-5 py-5"
@@ -530,9 +531,9 @@ export function Radar() {
                   ))}
                 </section>
               </aside>
-            </section>
+            </SignalPanel>
           )}
-        </div>
+        </PageSignalFrame>
       </div>
     </div>
   );

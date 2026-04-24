@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Activity, BadgeCheck, CircleDot, KeyRound, Newspaper, Radar } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import { useShellContextData } from '../shell-context';
 
@@ -25,6 +27,32 @@ const toneStyles = {
     borderColor: 'rgba(255,255,255,0.06)',
   },
 } as const;
+
+type StreamMeta = {
+  kind: string;
+  state: string;
+  icon: LucideIcon;
+};
+
+function resolveStreamMeta(label: string): StreamMeta {
+  const value = label.toLowerCase();
+  if (value.includes('intel') || value.includes('brief') || value.includes('dossiê')) {
+    return { kind: 'INTEL', state: 'READ', icon: Newspaper };
+  }
+  if (value.includes('sessão') || value.includes('wallet') || value.includes('carteira')) {
+    return { kind: 'SESSION', state: value.includes('conecte') ? 'WAIT' : 'LIVE', icon: BadgeCheck };
+  }
+  if (value.includes('capital') || value.includes('redes') || value.includes('usdt')) {
+    return { kind: 'VAULT', state: 'SYNC', icon: CircleDot };
+  }
+  if (value.includes('operator') || value.includes('discovery') || value.includes('key')) {
+    return { kind: 'ACCESS', state: 'AUTH', icon: KeyRound };
+  }
+  if (value.includes('%') || value.includes('hold') || value.includes('média')) {
+    return { kind: 'MARKET', state: 'LIVE', icon: Radar };
+  }
+  return { kind: 'OPS', state: 'FLOW', icon: Activity };
+}
 
 export function TapeWire() {
   const { routeMeta, tapeItems } = useShellContextData();
@@ -88,35 +116,47 @@ export function TapeWire() {
       />
 
       <div className={`${compact ? '' : 'shell-tape-track'} flex min-w-max items-center gap-3 ${compact ? 'py-2' : 'py-3'} pl-28 pr-8`}>
-        {items.map((item, index) => (
-          <div
-            key={`${item.label}-${index}`}
-            className="flex shrink-0 items-center gap-3"
-          >
-            {item.href ? (
-              <Link
-                to={item.href}
-                className={`rounded-full border px-3 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} uppercase tracking-[0.18em] transition-opacity hover:opacity-80`}
-                style={toneStyles[item.tone]}
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <div
-                className={`rounded-full border px-3 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} uppercase tracking-[0.18em]`}
-                style={toneStyles[item.tone]}
-              >
-                {item.label}
-              </div>
-            )}
-            {!compact ? (
-              <div
-                className="h-px w-6 shrink-0"
-                style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-              />
-            ) : null}
-          </div>
-        ))}
+        {items.map((item, index) => {
+          const meta = resolveStreamMeta(item.label);
+          const Icon = meta.icon;
+          const content = (
+            <>
+              <span className="tape-stream__meta">
+                <Icon className="h-3.5 w-3.5" />
+                {meta.kind}
+              </span>
+              <span className="tape-stream__label">{item.label}</span>
+              <span className="tape-stream__state">{meta.state}</span>
+            </>
+          );
+
+          return (
+            <div
+              key={`${item.label}-${index}`}
+              className="flex shrink-0 items-center gap-3"
+            >
+              {item.href ? (
+                <Link
+                  to={item.href}
+                  className={`tape-stream tape-stream--${item.tone} ${compact ? 'tape-stream--compact' : ''}`}
+                  style={toneStyles[item.tone]}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div
+                  className={`tape-stream tape-stream--${item.tone} ${compact ? 'tape-stream--compact' : ''}`}
+                  style={toneStyles[item.tone]}
+                >
+                  {content}
+                </div>
+              )}
+              {!compact ? (
+                <div className="tape-stream__link-line" />
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

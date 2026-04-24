@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { IntelVisualChip } from '../components/IntelVisualChip';
+import { MotionListItem, PageSignalFrame, SignalPanel, StaggerGroup } from '../components/motion/PageMotion';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { ChainBadge } from '../components/ChainBadge';
@@ -150,8 +151,8 @@ export function Blog() {
 
   return (
     <div className="flex-1 px-8 py-6 overflow-y-auto">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section
+      <PageSignalFrame className="mx-auto max-w-6xl space-y-6">
+        <SignalPanel
           className="rounded-[28px] p-5 space-y-4"
           style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
         >
@@ -214,13 +215,13 @@ export function Blog() {
               <HubLinkGroup title="Assets" basePath="/intel/asset" items={hubAssetLinks} />
             </div>
           )}
-        </section>
+        </SignalPanel>
 
         {!featured ? (
           <ModuleStateCard tone="loading" title="Nenhuma peça encontrada" description="Ajuste os filtros ou aguarde a próxima rodada editorial do Intel Brief." />
         ) : (
           <>
-            <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
+            <SignalPanel className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
               <button
                 type="button"
                 onClick={() => navigate(`/intel/${featured.slug}`)}
@@ -296,9 +297,9 @@ export function Blog() {
                   </div>
                 </div>
               </section>
-            </div>
+            </SignalPanel>
 
-            <section className="space-y-3">
+            <SignalPanel className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Fluxo</div>
@@ -308,8 +309,9 @@ export function Blog() {
                   {filteredPosts.length} peças na view
                 </div>
               </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <StaggerGroup className="grid grid-cols-1 xl:grid-cols-2 gap-4" delay={0.06}>
               {secondary.map((post) => (
+                <MotionListItem key={post.id}>
                 <button
                   key={post.id}
                   type="button"
@@ -348,8 +350,9 @@ export function Blog() {
                     ))}
                   </div>
                 </button>
+                </MotionListItem>
               ))}
-              </div>
+              </StaggerGroup>
               {hasMorePosts ? (
                 <button
                   type="button"
@@ -360,10 +363,10 @@ export function Blog() {
                   Carregar mais peças
                 </button>
               ) : null}
-            </section>
+            </SignalPanel>
           </>
         )}
-      </div>
+      </PageSignalFrame>
     </div>
   );
 }
