@@ -874,15 +874,15 @@ export function Home() {
 
                         {renderIntelTitle(
                           activeHero.item,
-                          'text-xl xl:text-[1.65rem] font-semibold leading-[1.04] tracking-[-0.03em] text-balance mb-3'
+                          'text-xl xl:text-[1.65rem] font-semibold leading-[1.04] tracking-[-0.03em] text-balance mb-3 line-clamp-3'
                         )}
 
-                        <div className="max-w-3xl text-sm xl:text-base mb-3 line-clamp-3" style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>
+                        <div className="max-w-3xl text-sm xl:text-base mb-3 line-clamp-2" style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>
                           {intelSummary(activeHero.item)}
                         </div>
 
                         <div
-                          className="inline-flex max-w-2xl items-center gap-2 rounded-full px-3 py-1.5 mb-3 text-xs"
+                          className="sne-home-hero-implication inline-flex max-w-2xl items-center gap-2 rounded-full px-3 py-1.5 mb-3 text-xs"
                           style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
                         >
                           <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
@@ -1086,10 +1086,10 @@ export function Home() {
                   <div className="text-2xl font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
                     {brief.headline}
                   </div>
-                  <p className="text-sm xl:text-base" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
+                  <p className="sne-home-brief-summary text-sm xl:text-base" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
 
                   <div
-                    className="mt-4 rounded-[20px] border p-4"
+                    className="sne-home-brief-account mt-4 rounded-[20px] border p-4"
                     style={{
                       background:
                         'radial-gradient(circle at 0% 0%, rgba(255,140,66,0.10), transparent 28%), rgba(255,255,255,0.025)',
@@ -1216,7 +1216,7 @@ export function Home() {
                         <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-3">
                           {lead && (
                             <div
-                              className="rounded-[20px] p-4"
+                              className="sne-home-intel-lead rounded-[20px] p-4"
                               style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
                             >
                               <div className="flex items-center gap-2 mb-2">
@@ -1239,7 +1239,7 @@ export function Home() {
                           )}
 
                           {rest.length > 0 && (
-                            <div className="space-y-2">
+                            <div className="sne-home-intel-rest space-y-2">
                               {rest.map((item) => (
                                 <div
                                   key={item.id}
