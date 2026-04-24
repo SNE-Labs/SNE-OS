@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { IntelVisualChip } from '../components/IntelVisualChip';
+import { FieldSurface } from '../components/field/FieldSurface';
 import { MotionListItem, PageSignalFrame, SignalPanel, StaggerGroup } from '../components/motion/PageMotion';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
@@ -152,10 +153,12 @@ export function Blog() {
   return (
     <div className="flex-1 px-8 py-6 overflow-y-auto">
       <PageSignalFrame className="mx-auto max-w-6xl space-y-6">
-        <SignalPanel
-          className="rounded-[28px] p-5 space-y-4"
-          style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-        >
+        <SignalPanel>
+          <FieldSurface
+            motif="editorial-index"
+            className="rounded-[28px] p-5 space-y-4"
+            style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+          >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Segmentação</div>
@@ -215,6 +218,7 @@ export function Blog() {
               <HubLinkGroup title="Assets" basePath="/intel/asset" items={hubAssetLinks} />
             </div>
           )}
+          </FieldSurface>
         </SignalPanel>
 
         {!featured ? (
@@ -222,10 +226,12 @@ export function Blog() {
         ) : (
           <>
             <SignalPanel className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.8fr] gap-4">
-              <button
+              <FieldSurface
+                as="button"
                 type="button"
                 onClick={() => navigate(`/intel/${featured.slug}`)}
-                className="w-full rounded-[28px] p-6"
+                motif="intel-aperture"
+                className="w-full rounded-[28px] p-6 text-left"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,140,66,0.1), rgba(255,255,255,0.02))',
                   backgroundColor: 'var(--bg-2)',
@@ -266,9 +272,11 @@ export function Blog() {
                     </Link>
                   ))}
                 </div>
-              </button>
+              </FieldSurface>
 
-              <section
+              <FieldSurface
+                as="section"
+                motif="signal-stack"
                 className="rounded-[28px] p-5 space-y-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
@@ -296,7 +304,7 @@ export function Blog() {
                     ))}
                   </div>
                 </div>
-              </section>
+              </FieldSurface>
             </SignalPanel>
 
             <SignalPanel className="space-y-3">
@@ -312,10 +320,11 @@ export function Blog() {
               <StaggerGroup className="grid grid-cols-1 xl:grid-cols-2 gap-4" delay={0.06}>
               {secondary.map((post) => (
                 <MotionListItem key={post.id}>
-                <button
-                  key={post.id}
+                <FieldSurface
+                  as="button"
                   type="button"
                   onClick={() => navigate(`/intel/${post.slug}`)}
+                  motif="editorial-index"
                   className="rounded-xl p-5 text-left"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >
@@ -349,7 +358,7 @@ export function Blog() {
                       </Link>
                     ))}
                   </div>
-                </button>
+                </FieldSurface>
                 </MotionListItem>
               ))}
               </StaggerGroup>

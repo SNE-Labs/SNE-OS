@@ -1,11 +1,20 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 
-type FieldMotif = 'intel-aperture' | 'session-ledger' | 'signal-stack' | 'liquidity-field' | 'neutral';
+type FieldMotif =
+  | 'intel-aperture'
+  | 'session-ledger'
+  | 'signal-stack'
+  | 'liquidity-field'
+  | 'radar-field'
+  | 'execution-rail'
+  | 'editorial-index'
+  | 'neutral';
 
 type FieldSurfaceProps = HTMLAttributes<HTMLElement> & {
   motif?: FieldMotif;
-  as?: 'section' | 'div' | 'article';
+  as?: 'section' | 'div' | 'article' | 'button';
   children: ReactNode;
+  type?: ButtonHTMLAttributes<HTMLButtonElement>['type'];
 };
 
 export function FieldSurface({
