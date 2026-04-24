@@ -730,8 +730,8 @@ export function Home() {
 
   return (
     <div className="flex flex-1">
-      <div className="sne-mosaic-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
-        <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1480px] space-y-4">
+      <div className="sne-mosaic-page sne-home-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
+        <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1480px]">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel className="sne-home-hero-panel">
             <FieldSurface
@@ -1020,7 +1020,7 @@ export function Home() {
 
                   {heroTape.length > 0 ? (
                     <div
-                      className="mt-3 overflow-hidden rounded-[18px] border"
+                      className="sne-home-tape mt-3 overflow-hidden rounded-[18px] border"
                       style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(6,10,16,0.55)' }}
                     >
                       <div className="flex items-center gap-3 px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
@@ -1363,7 +1363,7 @@ export function Home() {
 
                   {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
                     <div
-                      className="rounded-[22px] p-4 space-y-3"
+                      className="sne-home-market-editorial rounded-[22px] p-4 space-y-3"
                       style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
                     >
                       <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
