@@ -8,11 +8,15 @@ type FieldMotif =
   | 'radar-field'
   | 'execution-rail'
   | 'editorial-index'
+  | 'vault-ledger'
+  | 'swap-engine'
+  | 'identity-mesh'
+  | 'sovereign-key'
   | 'neutral';
 
 type FieldSurfaceProps = HTMLAttributes<HTMLElement> & {
   motif?: FieldMotif;
-  as?: 'section' | 'div' | 'article' | 'button';
+  as?: 'section' | 'div' | 'article' | 'button' | 'header' | 'aside' | 'main';
   children: ReactNode;
   type?: ButtonHTMLAttributes<HTMLButtonElement>['type'];
 };

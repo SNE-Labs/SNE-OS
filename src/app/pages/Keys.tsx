@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { FieldSurface } from '../components/field/FieldSurface';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { OperatorCheckoutCard } from '../components/keys/OperatorCheckoutCard';
 import { useOperatorCockpit } from '../../hooks/useKeysData';
@@ -103,7 +104,9 @@ function Panel({
   right?: ReactNode;
 }) {
   return (
-    <section
+    <FieldSurface
+      as="section"
+      motif="sovereign-key"
       className="rounded-lg border p-4"
       style={{
         background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012))',
@@ -135,7 +138,7 @@ function Panel({
         {right}
       </div>
       {children}
-    </section>
+    </FieldSurface>
   );
 }
 
@@ -447,7 +450,16 @@ export function Keys() {
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
         <div className="mx-auto max-w-[1560px] space-y-5">
-          <header className="border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <FieldSurface
+            as="header"
+            motif="sovereign-key"
+            className="rounded-[28px] px-5 py-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(102,164,242,0.07), rgba(255,140,66,0.035), rgba(255,255,255,0.012))',
+              borderWidth: '1px',
+              borderColor: 'rgba(255,255,255,0.08)',
+            }}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -474,7 +486,7 @@ export function Keys() {
                 ))}
               </div>
             </div>
-          </header>
+          </FieldSurface>
 
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-4">

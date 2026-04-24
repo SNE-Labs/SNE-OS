@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ArrowUpRight, CheckCircle2, CircleDot, KeyRound, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react';
 
+import { FieldSurface } from '../components/field/FieldSurface';
 import { LiFiSwapWidget } from '../components/swaps/LiFiSwapWidget';
 import { getRadarSwapContext } from '../components/swaps/radarSwapPrefill';
 import { WalletConnect } from '../components/passport/WalletConnect';
@@ -108,7 +109,16 @@ export function Swaps() {
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
         <div className="mx-auto max-w-[1600px] space-y-5">
-          <header className="flex flex-wrap items-end justify-between gap-4">
+          <FieldSurface
+            as="header"
+            motif="swap-engine"
+            className="flex flex-wrap items-end justify-between gap-4 rounded-[28px] px-5 py-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,140,66,0.065), rgba(255,255,255,0.014))',
+              borderWidth: '1px',
+              borderColor: 'rgba(255,255,255,0.08)',
+            }}
+          >
             <div className="min-w-0">
               <div className="mb-2 text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                 Rail de execução
@@ -131,10 +141,12 @@ export function Swaps() {
               <StatusToken label={executionModeLabel} tone="accent" />
               <StatusToken label={operatorStatusLabel} tone={operatorActive ? 'success' : 'neutral'} />
             </div>
-          </header>
+          </FieldSurface>
 
           <main className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_332px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
-            <section
+            <FieldSurface
+              as="section"
+              motif="swap-engine"
               className="min-w-0 rounded-[30px] border p-3 lg:p-4"
               style={{
                 background:
@@ -204,7 +216,7 @@ export function Swaps() {
               </div>
 
               <LiFiSwapWidget prefill={prefill} className="min-h-[780px]" />
-            </section>
+            </FieldSurface>
 
             <aside className="space-y-3">
               <Panel title="Conta" icon={Wallet}>
@@ -381,7 +393,9 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section
+    <FieldSurface
+      as="section"
+      motif={compact ? 'execution-rail' : 'swap-engine'}
       className={`${compact ? 'rounded-[24px] p-3.5' : 'rounded-[26px] p-4'} border`}
       style={{
         background: compact
@@ -403,7 +417,7 @@ function Panel({
         </div>
       </div>
       {children}
-    </section>
+    </FieldSurface>
   );
 }
 

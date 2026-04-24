@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ArrowUpRight, Box, Shield, Wallet, Waves, Zap } from 'lucide-react';
 
+import { FieldSurface } from '../components/field/FieldSurface';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { WalletConnect } from '../components/passport/WalletConnect';
 import { useVaultOverview } from '../../hooks/useVaultData';
@@ -138,7 +139,9 @@ export function Vault() {
     <div className="flex flex-1">
       <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-5">
-          <section
+          <FieldSurface
+            as="section"
+            motif="vault-ledger"
             className="rounded-xl p-5"
             style={{
               background:
@@ -252,10 +255,12 @@ export function Vault() {
                 </div>
               </div>
             </div>
-          </section>
+          </FieldSurface>
 
           <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)] gap-5">
-            <div
+            <FieldSurface
+              motif="vault-ledger"
+              as="section"
               className="rounded-xl p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
             >
@@ -335,10 +340,12 @@ export function Vault() {
                   </div>
                 </div>
               )}
-            </div>
+            </FieldSurface>
 
             <div className="space-y-5">
-              <div
+              <FieldSurface
+                motif="execution-rail"
+                as="section"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -374,9 +381,11 @@ export function Vault() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </FieldSurface>
 
-              <div
+              <FieldSurface
+                motif="sovereign-key"
+                as="section"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -405,9 +414,11 @@ export function Vault() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </FieldSurface>
 
-              <div
+              <FieldSurface
+                motif="execution-rail"
+                as="section"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -430,11 +441,13 @@ export function Vault() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </FieldSurface>
             </div>
           </section>
 
-          <section
+          <FieldSurface
+            as="section"
+            motif="liquidity-field"
             className="rounded-xl p-5"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
           >
@@ -509,7 +522,7 @@ export function Vault() {
                 ))}
               </div>
             )}
-          </section>
+          </FieldSurface>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { isAddress } from 'viem';
 
+import { FieldSurface } from '../components/field/FieldSurface';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { WalletConnect } from '../components/passport/WalletConnect';
@@ -261,7 +262,9 @@ export function Pass() {
     <div className="flex flex-1">
       <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
         <div className="mx-auto max-w-[1480px] space-y-5">
-          <section
+          <FieldSurface
+            as="section"
+            motif="identity-mesh"
             className="rounded-xl p-5"
             style={{
               background: 'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03))',
@@ -377,9 +380,11 @@ export function Pass() {
                 </div>
               </div>
             </div>
-          </section>
+          </FieldSurface>
 
-          <section
+          <FieldSurface
+            as="section"
+            motif="identity-mesh"
             className="rounded-xl p-4"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
           >
@@ -405,12 +410,13 @@ export function Pass() {
                 );
               })}
             </div>
-          </section>
+          </FieldSurface>
 
           {activeTab === 'account' && (
             <>
               {!isAuthenticated ? (
-                <div
+                <FieldSurface
+                  motif="identity-mesh"
                   className="rounded-xl p-5 space-y-4"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
                 >
@@ -420,7 +426,7 @@ export function Pass() {
                     description="O Passport ancora a conta a partir da primeira autenticacao SIWE. Depois disso, novas wallets entram na mesma conta."
                   />
                   <WalletConnect showConnectButton connectButtonLabel="Conectar wallet e assinar SIWE" fullWidth />
-                </div>
+                </FieldSurface>
               ) : identityQuery.isLoading && !identity ? (
                 <ModuleStateCard
                   tone="loading"
@@ -438,7 +444,9 @@ export function Pass() {
               ) : (
                 <>
                   <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-5">
-                    <div
+                    <FieldSurface
+                      motif="identity-mesh"
+                      as="section"
                       className="rounded-xl p-5"
                       style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
                     >
@@ -499,7 +507,7 @@ export function Pass() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </FieldSurface>
 
                     <div
                       className="rounded-xl p-5"
