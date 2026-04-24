@@ -219,10 +219,12 @@ export function Radar() {
   return (
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <PageSignalFrame className="mx-auto max-w-[1540px] space-y-6">
+        <PageSignalFrame className="mx-auto max-w-[1540px] space-y-4">
           <SignalPanel>
             <FieldSurface
               motif="execution-rail"
+              density="compact"
+              surface="strip"
               className="rounded-[28px] px-5 py-5"
               style={{
                 background: 'linear-gradient(135deg, rgba(255,176,32,0.055), rgba(255,255,255,0.015))',
@@ -297,11 +299,13 @@ export function Radar() {
               onAction={moduleState === 'error' ? () => overviewQuery.refetch() : undefined}
             />
           ) : (
-            <SignalPanel className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-              <div className="min-w-0 space-y-5">
+            <SignalPanel className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+              <div className="min-w-0 space-y-4">
                 <FieldSurface
                   as="section"
                   motif="radar-field"
+                  density="compact"
+                  surface="panel"
                   className="relative overflow-hidden rounded-[30px] px-5 py-5"
                   style={{
                     background:
@@ -326,7 +330,7 @@ export function Radar() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-12 auto-rows-[92px] gap-3">
+                  <div className="mt-4 grid grid-cols-12 auto-rows-[72px] gap-2.5">
                     {fieldRows.map((row, index) => {
                       const pinned = row.symbol === pinnedRow?.symbol;
                       const preview = row.symbol === hoveredRow?.symbol;
@@ -342,7 +346,7 @@ export function Radar() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
-                          className="group relative overflow-hidden rounded-[26px] px-4 py-4 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                          className="group relative overflow-hidden rounded-[22px] px-3 py-3 text-left transition-transform duration-200 hover:-translate-y-0.5"
                           style={{
                             gridColumn: 'span 4',
                             gridRow: 'span 2',
@@ -376,7 +380,7 @@ export function Radar() {
 
                             <div className="flex items-end justify-between gap-3">
                               <div>
-                                <div className="text-[24px] font-semibold leading-none" style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
+                                <div className="text-[20px] font-semibold leading-none" style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
                                   {formatPercent(row.change24h)}
                                 </div>
                                 <div className="mt-2 text-sm" style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
@@ -398,7 +402,7 @@ export function Radar() {
                   </div>
                 </FieldSurface>
 
-                <section className="grid gap-6 md:grid-cols-3">
+                <section className="grid gap-4 md:grid-cols-3">
                   <StripList
                     title="fluxo mais liquido"
                     icon={Activity}
@@ -433,10 +437,12 @@ export function Radar() {
                 </section>
               </div>
 
-              <aside className="space-y-5 xl:sticky xl:top-5">
+              <aside className="space-y-4 xl:sticky xl:top-5">
                 <FieldSurface
                   as="section"
                   motif="signal-stack"
+                  density="compact"
+                  surface="rail"
                   className="overflow-hidden rounded-[28px] px-5 py-5"
                       style={{
                     background: hoveredRow

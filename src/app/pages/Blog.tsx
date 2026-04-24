@@ -151,11 +151,13 @@ export function Blog() {
   }
 
   return (
-    <div className="flex-1 px-8 py-6 overflow-y-auto">
-      <PageSignalFrame className="mx-auto max-w-6xl space-y-6">
+    <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+      <PageSignalFrame className="mx-auto max-w-6xl space-y-4">
         <SignalPanel>
           <FieldSurface
             motif="editorial-index"
+            density="compact"
+            surface="strip"
             className="rounded-[28px] p-5 space-y-4"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
           >
@@ -231,6 +233,8 @@ export function Blog() {
                 type="button"
                 onClick={() => navigate(`/intel/${featured.slug}`)}
                 motif="intel-aperture"
+                density="compact"
+                surface="hero"
                 className="w-full rounded-[28px] p-6 text-left"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,140,66,0.1), rgba(255,255,255,0.02))',
@@ -255,7 +259,7 @@ export function Blog() {
                   </div>
                   <ArrowUpRight className="w-4 h-4" style={{ color: 'var(--text-3)' }} />
                 </div>
-                <div className="text-3xl font-semibold mb-3" style={{ color: 'var(--text-1)' }}>{featured.title}</div>
+                <div className="text-2xl font-semibold mb-3" style={{ color: 'var(--text-1)' }}>{featured.title}</div>
                 <div className="text-base mb-4 max-w-3xl" style={{ color: 'var(--text-2)' }}>{featured.subtitle}</div>
                 <div className="text-sm mb-5 max-w-3xl" style={{ color: 'var(--text-3)' }}>
                   {featured.excerpt || 'Leitura editorial completa disponível nesta peça.'}
@@ -277,6 +281,8 @@ export function Blog() {
               <FieldSurface
                 as="section"
                 motif="signal-stack"
+                density="compact"
+                surface="rail"
                 className="rounded-[28px] p-5 space-y-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
@@ -311,7 +317,7 @@ export function Blog() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>Fluxo</div>
-                  <div className="text-2xl font-semibold" style={{ color: 'var(--text-1)' }}>Peças recentes</div>
+                  <div className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Peças recentes</div>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-3)' }}>
                   {filteredPosts.length} peças na view
@@ -325,6 +331,8 @@ export function Blog() {
                   type="button"
                   onClick={() => navigate(`/intel/${post.slug}`)}
                   motif="editorial-index"
+                  density="compact"
+                  surface="tile"
                   className="rounded-xl p-5 text-left"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
                 >

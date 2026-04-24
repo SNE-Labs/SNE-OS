@@ -137,11 +137,13 @@ export function Vault() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-5">
+      <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+        <div className="mx-auto max-w-[1480px] space-y-4">
           <FieldSurface
             as="section"
             motif="vault-ledger"
+            density="compact"
+            surface="hero"
             className="rounded-xl p-5"
             style={{
               background:
@@ -152,7 +154,7 @@ export function Vault() {
               boxShadow: 'var(--shadow-1)',
             }}
           >
-            <div className="grid grid-cols-1 xl:grid-cols-[0.72fr_0.28fr] gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-[0.78fr_0.22fr] gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>
@@ -161,7 +163,7 @@ export function Vault() {
                   {overviewQuery.isFetching && overview ? <TonePill label="sincronizando" tone="pending" /> : null}
                 </div>
 
-                <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
                   {overview?.hero.title ?? 'Seu saldo-base em dolar digital.'}
                 </h1>
                 <p className="max-w-3xl text-sm leading-6" style={{ color: 'var(--text-2)' }}>
@@ -261,6 +263,8 @@ export function Vault() {
             <FieldSurface
               motif="vault-ledger"
               as="section"
+              density="compact"
+              surface="panel"
               className="rounded-xl p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
             >
@@ -342,10 +346,12 @@ export function Vault() {
               )}
             </FieldSurface>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
               <FieldSurface
                 motif="execution-rail"
                 as="section"
+                density="compact"
+                surface="rail"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -386,6 +392,8 @@ export function Vault() {
               <FieldSurface
                 motif="sovereign-key"
                 as="section"
+                density="compact"
+                surface="rail"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -419,6 +427,8 @@ export function Vault() {
               <FieldSurface
                 motif="execution-rail"
                 as="section"
+                density="compact"
+                surface="rail"
                 className="rounded-xl p-4"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
               >
@@ -448,6 +458,8 @@ export function Vault() {
           <FieldSurface
             as="section"
             motif="liquidity-field"
+            density="compact"
+            surface="panel"
             className="rounded-xl p-5"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
           >

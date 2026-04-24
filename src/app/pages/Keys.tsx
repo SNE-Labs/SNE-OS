@@ -107,6 +107,8 @@ function Panel({
     <FieldSurface
       as="section"
       motif="sovereign-key"
+      density="compact"
+      surface="panel"
       className="rounded-lg border p-4"
       style={{
         background: 'linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012))',
@@ -449,10 +451,12 @@ export function Keys() {
   return (
     <div className="flex flex-1">
       <div className="flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <div className="mx-auto max-w-[1560px] space-y-5">
+        <div className="mx-auto max-w-[1560px] space-y-4">
           <FieldSurface
             as="header"
             motif="sovereign-key"
+            density="compact"
+            surface="strip"
             className="rounded-[28px] px-5 py-5"
             style={{
               background: 'linear-gradient(135deg, rgba(102,164,242,0.07), rgba(255,140,66,0.035), rgba(255,255,255,0.012))',

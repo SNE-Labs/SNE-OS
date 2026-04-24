@@ -736,6 +736,8 @@ export function Home() {
           <SignalPanel>
             <FieldSurface
               motif="intel-aperture"
+              density="compact"
+              surface="hero"
               className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
               style={{
                 background: `
@@ -836,7 +838,7 @@ export function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-6 xl:gap-7 min-h-[360px]">
+                  <div className="grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-5 xl:gap-6 min-h-[300px]">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={`${activeHero.id}:copy`}
@@ -872,7 +874,7 @@ export function Home() {
 
                         {renderIntelTitle(
                           activeHero.item,
-                          'text-3xl xl:text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.035em] text-balance mb-4'
+                          'text-2xl xl:text-[2.25rem] font-semibold leading-[1.02] tracking-[-0.035em] text-balance mb-4'
                         )}
 
                         <div className="max-w-3xl text-base xl:text-lg mb-4" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
@@ -1062,6 +1064,8 @@ export function Home() {
             <SignalPanel>
               <FieldSurface
                 motif="session-ledger"
+                density="compact"
+                surface="strip"
                 className="rounded-[24px] px-5 py-5"
                 style={{
                   background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
@@ -1143,6 +1147,8 @@ export function Home() {
             <SignalPanel>
               <FieldSurface
                 motif="signal-stack"
+                density="compact"
+                surface="panel"
                 className="rounded-[24px] p-5"
                 style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
               >
@@ -1271,6 +1277,8 @@ export function Home() {
           <SignalPanel>
             <FieldSurface
               motif="liquidity-field"
+              density="compact"
+              surface="panel"
               className="rounded-[24px] p-5"
               style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
             >

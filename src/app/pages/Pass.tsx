@@ -260,11 +260,13 @@ export function Pass() {
 
   return (
     <div className="flex flex-1">
-      <div className="flex-1 px-6 py-6 overflow-y-auto xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-5">
+      <div className="flex-1 px-6 py-5 overflow-y-auto xl:px-8">
+        <div className="mx-auto max-w-[1480px] space-y-4">
           <FieldSurface
             as="section"
             motif="identity-mesh"
+            density="compact"
+            surface="hero"
             className="rounded-xl p-5"
             style={{
               background: 'radial-gradient(circle at top left, rgba(255,140,66,0.16), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03))',
@@ -274,14 +276,14 @@ export function Pass() {
               boxShadow: 'var(--shadow-1)',
             }}
           >
-            <div className="grid grid-cols-1 xl:grid-cols-[0.72fr_0.28fr] gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-[0.78fr_0.22fr] gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <div className="text-sm" style={{ color: 'var(--text-3)' }}>Passport</div>
                   {identityQuery.isFetching && identity ? <StatusBadge status="pending">sincronizando</StatusBadge> : null}
                 </div>
 
-                <h1 className="text-3xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
+                <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>
                   Sua conta no SNE OS.
                 </h1>
                 <p className="max-w-3xl text-sm" style={{ color: 'var(--text-2)' }}>
@@ -385,6 +387,8 @@ export function Pass() {
           <FieldSurface
             as="section"
             motif="identity-mesh"
+            density="compact"
+            surface="strip"
             className="rounded-xl p-4"
             style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
           >
@@ -417,6 +421,8 @@ export function Pass() {
               {!isAuthenticated ? (
                 <FieldSurface
                   motif="identity-mesh"
+                  density="compact"
+                  surface="panel"
                   className="rounded-xl p-5 space-y-4"
                   style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
                 >
@@ -447,6 +453,8 @@ export function Pass() {
                     <FieldSurface
                       motif="identity-mesh"
                       as="section"
+                      density="compact"
+                      surface="panel"
                       className="rounded-xl p-5"
                       style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)', boxShadow: 'var(--shadow-1)' }}
                     >

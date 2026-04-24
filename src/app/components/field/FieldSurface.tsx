@@ -17,6 +17,8 @@ type FieldMotif =
 type FieldSurfaceProps = HTMLAttributes<HTMLElement> & {
   motif?: FieldMotif;
   as?: 'section' | 'div' | 'article' | 'button' | 'header' | 'aside' | 'main';
+  density?: 'compact' | 'normal' | 'hero';
+  surface?: 'panel' | 'rail' | 'strip' | 'tile' | 'hero';
   children: ReactNode;
   type?: ButtonHTMLAttributes<HTMLButtonElement>['type'];
 };
@@ -24,12 +26,14 @@ type FieldSurfaceProps = HTMLAttributes<HTMLElement> & {
 export function FieldSurface({
   motif = 'neutral',
   as: Tag = 'section',
+  density = 'normal',
+  surface = 'panel',
   className = '',
   children,
   ...props
 }: FieldSurfaceProps) {
   return (
-    <Tag className={`field-surface field-surface--${motif} ${className}`} {...props}>
+    <Tag className={`field-surface field-surface--${motif} ${className}`} data-density={density} data-surface={surface} {...props}>
       <div className="field-surface__motif" aria-hidden="true" />
       <div className="field-surface__corner field-surface__corner--tl" aria-hidden="true" />
       <div className="field-surface__corner field-surface__corner--br" aria-hidden="true" />
