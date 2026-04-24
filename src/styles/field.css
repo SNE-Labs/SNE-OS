@@ -324,6 +324,30 @@
     }
   }
 
+  @media (min-width: 1800px) {
+    .sne-mosaic-page .sne-mosaic-frame {
+      width: 100%;
+      max-width: min(2320px, calc(100vw - 128px)) !important;
+    }
+
+    .sne-mosaic-page {
+      --radar-card-span: 3;
+    }
+
+    .sne-mosaic-page .sne-mosaic-hero-grid {
+      grid-template-columns: minmax(0, 1.32fr) minmax(500px, 0.68fr) !important;
+      min-height: 240px !important;
+    }
+
+    .sne-mosaic-page .sne-mosaic-balanced-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    }
+
+    .sne-mosaic-page .sne-mosaic-market-grid {
+      grid-template-columns: minmax(420px, 0.62fr) minmax(0, 1.38fr) !important;
+    }
+  }
+
   .field-surface:is(button) {
     appearance: none;
     color: inherit;

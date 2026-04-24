@@ -219,7 +219,7 @@ export function Radar() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <PageSignalFrame className="mx-auto max-w-[1540px] space-y-4">
+        <PageSignalFrame className="sne-mosaic-frame mx-auto max-w-[1540px] space-y-4">
           <SignalPanel>
             <FieldSurface
               motif="execution-rail"
@@ -348,7 +348,7 @@ export function Radar() {
                           transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
                           className="group relative overflow-hidden rounded-[18px] px-3 py-2.5 text-left transition-transform duration-200 hover:-translate-y-0.5"
                           style={{
-                            gridColumn: 'span 4',
+                            gridColumn: 'span var(--radar-card-span, 4)',
                             gridRow: 'span 2',
                             background: pinned
                               ? 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.03))'

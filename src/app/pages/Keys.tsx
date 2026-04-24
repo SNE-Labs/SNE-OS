@@ -451,7 +451,7 @@ export function Keys() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <div className="mx-auto max-w-[1560px] space-y-4">
+        <div className="sne-mosaic-frame mx-auto max-w-[1560px] space-y-4">
           <FieldSurface
             as="header"
             motif="sovereign-key"

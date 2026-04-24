@@ -152,7 +152,7 @@ export function Blog() {
 
   return (
     <div className="sne-mosaic-page flex-1 px-6 py-5 overflow-y-auto xl:px-8">
-      <PageSignalFrame className="mx-auto max-w-6xl space-y-4">
+      <PageSignalFrame className="sne-mosaic-frame mx-auto max-w-6xl space-y-4">
         <SignalPanel>
           <FieldSurface
             motif="editorial-index"

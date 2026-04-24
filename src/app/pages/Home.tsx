@@ -731,7 +731,7 @@ export function Home() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
-        <PageSignalFrame className="mx-auto max-w-[1480px] space-y-4">
+        <PageSignalFrame className="sne-mosaic-frame mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel>
             <FieldSurface
@@ -838,7 +838,7 @@ export function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 xl:grid-cols-[1.16fr_0.84fr] gap-5 xl:gap-6 min-h-[260px]">
+                  <div className="sne-mosaic-hero-grid grid grid-cols-1 xl:grid-cols-[1.16fr_0.84fr] gap-5 xl:gap-6 min-h-[260px]">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={`${activeHero.id}:copy`}
@@ -1074,7 +1074,7 @@ export function Home() {
                   borderColor: 'var(--stroke-1)',
                 }}
               >
-              <div className="grid grid-cols-1 xl:grid-cols-[1.04fr_0.96fr] gap-4">
+              <div className="sne-mosaic-balanced-grid grid grid-cols-1 xl:grid-cols-[1.04fr_0.96fr] gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -1305,7 +1305,7 @@ export function Home() {
                 Dados de mercado indisponíveis. Radar sincronizando.
               </div>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-[0.78fr_1.22fr] gap-4">
+              <div className="sne-mosaic-market-grid grid grid-cols-1 xl:grid-cols-[0.78fr_1.22fr] gap-4">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={marketRegime?.tone ?? 'pending'}>

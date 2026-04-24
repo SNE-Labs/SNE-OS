@@ -261,7 +261,7 @@ export function Pass() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 px-6 py-5 overflow-y-auto xl:px-8">
-        <div className="mx-auto max-w-[1480px] space-y-4">
+        <div className="sne-mosaic-frame mx-auto max-w-[1480px] space-y-4">
           <FieldSurface
             as="section"
             motif="identity-mesh"
