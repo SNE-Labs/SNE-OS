@@ -731,14 +731,14 @@ export function Home() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
-        <PageSignalFrame className="sne-mosaic-frame sne-home-mosaic mx-auto max-w-[1480px] space-y-4">
+        <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1480px] space-y-4">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel className="sne-home-hero-panel">
             <FieldSurface
               motif="intel-aperture"
               density="compact"
               surface="hero"
-              className="relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
+              className="sne-home-hero-surface relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
               style={{
                 background: `
                   radial-gradient(circle at 0% 8%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.22)} 0%, transparent 28%),
@@ -817,7 +817,7 @@ export function Home() {
             </div>
 
             <div className="relative z-[1]">
-              <div className="flex flex-wrap items-center gap-3 mb-5">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
                 <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
                   Intel Brief
                 </div>
@@ -838,7 +838,7 @@ export function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="sne-mosaic-hero-grid grid grid-cols-1 xl:grid-cols-[1.16fr_0.84fr] gap-5 xl:gap-6 min-h-[260px]">
+                  <div className="sne-mosaic-hero-grid grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-4 xl:gap-4 min-h-[0]">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={`${activeHero.id}:copy`}
@@ -848,11 +848,11 @@ export function Home() {
                         transition={{ duration: 0.35, ease: 'easeOut' }}
                         className="min-w-0"
                       >
-                        <div className="flex items-center gap-3 mb-5">
+                        <div className="flex items-center gap-3 mb-3">
                           <IntelEntityIcon
                             symbol={activeHero.relatedSymbol ?? intelEntity(activeHero.item)}
                             sectionKey={activeHero.section.key}
-                            className="flex h-12 w-12 items-center justify-center rounded-[20px]"
+                            className="flex h-9 w-9 items-center justify-center rounded-[16px]"
                             style={activeHeroTheme.toneStyle}
                             iconClassName="h-5 w-5"
                           />
@@ -874,15 +874,15 @@ export function Home() {
 
                         {renderIntelTitle(
                           activeHero.item,
-                          'text-2xl xl:text-[2.25rem] font-semibold leading-[1.02] tracking-[-0.035em] text-balance mb-4'
+                          'text-xl xl:text-[1.65rem] font-semibold leading-[1.04] tracking-[-0.03em] text-balance mb-3'
                         )}
 
-                        <div className="max-w-3xl text-base xl:text-lg mb-4" style={{ color: 'var(--text-2)', lineHeight: 1.55 }}>
+                        <div className="max-w-3xl text-sm xl:text-base mb-3 line-clamp-3" style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>
                           {intelSummary(activeHero.item)}
                         </div>
 
                         <div
-                          className="inline-flex max-w-3xl items-center gap-2 rounded-full px-4 py-2 mb-5 text-sm"
+                          className="inline-flex max-w-2xl items-center gap-2 rounded-full px-3 py-1.5 mb-3 text-xs"
                           style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
                         >
                           <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
@@ -1020,10 +1020,10 @@ export function Home() {
 
                   {heroTape.length > 0 ? (
                     <div
-                      className="mt-6 overflow-hidden rounded-[22px] border"
+                      className="mt-3 overflow-hidden rounded-[18px] border"
                       style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(6,10,16,0.55)' }}
                     >
-                      <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                      <div className="flex items-center gap-3 px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                         <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
                           Tape operacional
                         </div>
@@ -1033,16 +1033,16 @@ export function Home() {
                         </div>
                       </div>
 
-                      <div className="relative overflow-hidden py-3">
+                      <div className="relative overflow-hidden py-2">
                         <motion.div
-                          className="flex min-w-max items-center gap-3 px-4"
+                          className="flex min-w-max items-center gap-2 px-3"
                           animate={{ x: ['0%', '-50%'] }}
                           transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
                         >
                           {heroTapeLoop.map((item, index) => (
                             <div
                               key={`${item}-${index}`}
-                              className="flex items-center gap-3 whitespace-nowrap rounded-full px-3 py-2 text-sm"
+                              className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-xs"
                               style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
                             >
                               <span style={{ color: 'var(--text-1)' }}>{item}</span>
@@ -1170,7 +1170,7 @@ export function Home() {
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="sne-home-intel-stream space-y-3">
                 {intelStreamSections.map((section) => {
                   const lead = section.items[0];
                   const rest = section.items.slice(1, 3);
