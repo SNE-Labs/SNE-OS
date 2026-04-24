@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Activity, ArrowLeftRight, BadgeCheck, BookOpen, FileText, Grid2x2, House, KeyRound, LockKeyhole, Shield, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import { ChunkLoadBoundary } from '../components/ChunkLoadBoundary';
 import { lazyRoute, pickLazyExport } from '../utils/lazyRoute';
@@ -297,30 +298,41 @@ export function MobileLayout() {
       <div className="mobile-content-area">
         <ChunkLoadBoundary>
           <Suspense fallback={<MobileSkeleton />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<MobileHome />} />
-              <Route path="/radar" element={<MobileRadar />} />
-              <Route path="/radar/:symbol" element={<MobileRadar />} />
-              <Route path="/swaps" element={<MobileSwaps />} />
-              <Route path="/intel" element={<MobileBlog />} />
-              <Route path="/intel/topic/:topic" element={<MobileBlog />} />
-              <Route path="/intel/chain/:chain" element={<MobileBlog />} />
-              <Route path="/intel/asset/:asset" element={<MobileBlog />} />
-              <Route path="/intel/:slug" element={<MobileBlogPost />} />
-              <Route path="/blog" element={<Navigate to="/intel" replace />} />
-              <Route path="/blog/topic/:topic" element={<MobileLegacyBlogRedirect />} />
-              <Route path="/blog/chain/:chain" element={<MobileLegacyBlogRedirect />} />
-              <Route path="/blog/asset/:asset" element={<MobileLegacyBlogRedirect />} />
-              <Route path="/blog/:slug" element={<MobileLegacyBlogRedirect />} />
-              <Route path="/vault" element={<MobileVault />} />
-              <Route path="/pass" element={<MobilePass />} />
-              <Route path="/keys" element={<MobileKeys />} />
-              <Route path="/secrets" element={<MobileSecrets />} />
-              <Route path="/docs" element={<MobileDocs />} />
-              <Route path="/status" element={<MobileStatus />} />
-              <Route path="*" element={<Navigate to="/home" replace />} />
-            </Routes>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                className="h-full"
+                initial={{ opacity: 0, y: 10, scale: 0.992 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.996 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Routes location={location}>
+                  <Route path="/" element={<Navigate to="/home" replace />} />
+                  <Route path="/home" element={<MobileHome />} />
+                  <Route path="/radar" element={<MobileRadar />} />
+                  <Route path="/radar/:symbol" element={<MobileRadar />} />
+                  <Route path="/swaps" element={<MobileSwaps />} />
+                  <Route path="/intel" element={<MobileBlog />} />
+                  <Route path="/intel/topic/:topic" element={<MobileBlog />} />
+                  <Route path="/intel/chain/:chain" element={<MobileBlog />} />
+                  <Route path="/intel/asset/:asset" element={<MobileBlog />} />
+                  <Route path="/intel/:slug" element={<MobileBlogPost />} />
+                  <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                  <Route path="/blog/topic/:topic" element={<MobileLegacyBlogRedirect />} />
+                  <Route path="/blog/chain/:chain" element={<MobileLegacyBlogRedirect />} />
+                  <Route path="/blog/asset/:asset" element={<MobileLegacyBlogRedirect />} />
+                  <Route path="/blog/:slug" element={<MobileLegacyBlogRedirect />} />
+                  <Route path="/vault" element={<MobileVault />} />
+                  <Route path="/pass" element={<MobilePass />} />
+                  <Route path="/keys" element={<MobileKeys />} />
+                  <Route path="/secrets" element={<MobileSecrets />} />
+                  <Route path="/docs" element={<MobileDocs />} />
+                  <Route path="/status" element={<MobileStatus />} />
+                  <Route path="*" element={<Navigate to="/home" replace />} />
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
           </Suspense>
         </ChunkLoadBoundary>
       </div>

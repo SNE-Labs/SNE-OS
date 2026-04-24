@@ -216,6 +216,238 @@
     mix-blend-mode: screen;
   }
 
+  .shell-route-frame {
+    min-height: calc(100vh - 140px);
+  }
+
+  .living-system {
+    --living-primary: 255, 102, 0;
+    --living-secondary: 45, 212, 255;
+    --living-tertiary: 50, 213, 131;
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.72;
+    mix-blend-mode: screen;
+  }
+
+  .living-system--radar {
+    --living-primary: 50, 213, 131;
+    --living-secondary: 45, 212, 255;
+    --living-tertiary: 255, 176, 32;
+  }
+
+  .living-system--intel {
+    --living-primary: 255, 140, 66;
+    --living-secondary: 132, 146, 232;
+    --living-tertiary: 45, 212, 255;
+  }
+
+  .living-system--vault {
+    --living-primary: 50, 213, 131;
+    --living-secondary: 255, 176, 32;
+    --living-tertiary: 45, 212, 255;
+  }
+
+  .living-system--pass {
+    --living-primary: 45, 212, 255;
+    --living-secondary: 255, 140, 66;
+    --living-tertiary: 50, 213, 131;
+  }
+
+  .living-system--keys {
+    --living-primary: 102, 164, 242;
+    --living-secondary: 255, 102, 0;
+    --living-tertiary: 240, 68, 56;
+  }
+
+  .living-system--docs {
+    --living-primary: 150, 162, 180;
+    --living-secondary: 86, 138, 194;
+    --living-tertiary: 212, 154, 96;
+    opacity: 0.46;
+  }
+
+  .living-system__mesh {
+    position: absolute;
+    inset: -8%;
+    background:
+      linear-gradient(rgba(var(--living-primary), 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--living-secondary), 0.035) 1px, transparent 1px);
+    background-size: 86px 86px;
+    mask-image: radial-gradient(circle at 50% 40%, rgba(0, 0, 0, 0.78), transparent 68%);
+    animation: living-mesh-drift 28s linear infinite;
+  }
+
+  .living-system__radar {
+    position: absolute;
+    border: 1px solid rgba(var(--living-primary), 0.13);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle, rgba(var(--living-primary), 0.09), transparent 58%),
+      conic-gradient(from 0deg, transparent 0 68%, rgba(var(--living-primary), 0.22), transparent 82% 100%);
+    filter: blur(0.2px);
+    animation: living-radar-spin 18s linear infinite;
+  }
+
+  .living-system__radar--a {
+    right: -14vh;
+    top: 16vh;
+    width: 44vh;
+    height: 44vh;
+  }
+
+  .living-system__radar--b {
+    left: 10vw;
+    bottom: -22vh;
+    width: 52vh;
+    height: 52vh;
+    animation-duration: 26s;
+    animation-direction: reverse;
+    opacity: 0.62;
+  }
+
+  .living-system__spine {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(var(--living-secondary), 0.18), transparent);
+    transform: translateX(-50%) rotate(18deg);
+    animation: living-spine-pulse 7s var(--ease-shell) infinite;
+  }
+
+  .living-system__node {
+    position: absolute;
+    padding: 4px 7px;
+    border: 1px solid rgba(var(--living-primary), 0.15);
+    border-radius: 999px;
+    background: rgba(6, 10, 16, 0.22);
+    color: rgba(255, 255, 255, 0.34);
+    font-family: var(--font-family-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    box-shadow: 0 0 18px rgba(var(--living-primary), 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: living-node-breathe 10s var(--ease-shell) infinite;
+  }
+
+  .module-state-card {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .module-state-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--module-state-color) 16%, transparent), transparent 42%),
+      linear-gradient(135deg, rgba(255,255,255,0.035), transparent 42%);
+    opacity: 0.9;
+  }
+
+  .module-state-card__scan {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--module-state-color) 12%, transparent) 50%, transparent 100%);
+    opacity: 0;
+    transform: translateY(-100%);
+    animation: module-state-scan 4.8s ease-in-out infinite;
+  }
+
+  .module-state-card__icon {
+    box-shadow: 0 0 28px color-mix(in srgb, var(--module-state-color) 18%, transparent);
+  }
+
+  .mobile-page-shell {
+    --mobile-surface-primary: 255, 102, 0;
+    --mobile-surface-secondary: 45, 212, 255;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-page-shell--radar {
+    --mobile-surface-primary: 50, 213, 131;
+    --mobile-surface-secondary: 45, 212, 255;
+  }
+
+  .mobile-page-shell--intel {
+    --mobile-surface-primary: 255, 140, 66;
+    --mobile-surface-secondary: 132, 146, 232;
+  }
+
+  .mobile-page-shell--vault {
+    --mobile-surface-primary: 50, 213, 131;
+    --mobile-surface-secondary: 255, 176, 32;
+  }
+
+  .mobile-page-shell--pass {
+    --mobile-surface-primary: 45, 212, 255;
+    --mobile-surface-secondary: 255, 140, 66;
+  }
+
+  .mobile-page-shell--keys {
+    --mobile-surface-primary: 102, 164, 242;
+    --mobile-surface-secondary: 255, 102, 0;
+  }
+
+  .mobile-page-shell--docs {
+    --mobile-surface-primary: 150, 162, 180;
+    --mobile-surface-secondary: 86, 138, 194;
+  }
+
+  .mobile-page-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 18% 10%, rgba(var(--mobile-surface-primary), 0.13), transparent 30%),
+      radial-gradient(circle at 86% 6%, rgba(var(--mobile-surface-secondary), 0.08), transparent 28%);
+    opacity: 0.9;
+  }
+
+  .mobile-page-shell__header {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(7, 9, 11, 0.84), rgba(7, 9, 11, 0.58)),
+      radial-gradient(circle at 24% 0%, rgba(var(--mobile-surface-primary), 0.11), transparent 42%);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+  }
+
+  .mobile-page-shell__aura {
+    position: absolute;
+    right: 16px;
+    top: -32px;
+    width: 116px;
+    height: 116px;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--mobile-surface-primary), 0.12);
+    background: conic-gradient(from 120deg, transparent, rgba(var(--mobile-surface-primary), 0.2), transparent 54%);
+    filter: blur(0.2px);
+    opacity: 0.72;
+    animation: living-radar-spin 16s linear infinite;
+  }
+
+  .mobile-page-shell__signal {
+    width: 74px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(var(--mobile-surface-primary), 0.95), rgba(var(--mobile-surface-secondary), 0.42), transparent);
+    box-shadow: 0 0 18px rgba(var(--mobile-surface-primary), 0.22);
+  }
+
   .shell-frame--home {
     --shell-bg-accent-1: rgba(56, 24, 10, 0.36);
     --shell-bg-accent-2: rgba(8, 26, 42, 0.36);
@@ -290,6 +522,67 @@
     }
   }
 
+  @keyframes living-mesh-drift {
+    0% {
+      transform: translate3d(0, 0, 0) rotate(0.001deg);
+    }
+    100% {
+      transform: translate3d(-86px, -86px, 0) rotate(0.001deg);
+    }
+  }
+
+  @keyframes living-radar-spin {
+    0% {
+      transform: rotate(0deg) scale(1);
+    }
+    50% {
+      transform: rotate(180deg) scale(1.035);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+    }
+  }
+
+  @keyframes living-spine-pulse {
+    0%, 100% {
+      opacity: 0.18;
+      transform: translateX(-50%) rotate(18deg) scaleY(0.82);
+    }
+    50% {
+      opacity: 0.54;
+      transform: translateX(-50%) rotate(18deg) scaleY(1.08);
+    }
+  }
+
+  @keyframes living-node-breathe {
+    0%, 100% {
+      opacity: 0.14;
+      transform: translate3d(0, 0, 0) scale(0.96);
+    }
+    45% {
+      opacity: 0.5;
+      transform: translate3d(0, -8px, 0) scale(1);
+    }
+    70% {
+      opacity: 0.25;
+      transform: translate3d(4px, 2px, 0) scale(0.98);
+    }
+  }
+
+  @keyframes module-state-scan {
+    0%, 42% {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    55% {
+      opacity: 0.5;
+    }
+    72%, 100% {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .shell-tape-track {
       animation: none;
@@ -297,7 +590,13 @@
 
     .shell-frame::before,
     .shell-frame::after,
-    .shell-frame__ascii {
+    .shell-frame__ascii,
+    .living-system__mesh,
+    .living-system__radar,
+    .living-system__spine,
+    .living-system__node,
+    .module-state-card__scan,
+    .mobile-page-shell__aura {
       animation: none;
     }
   }

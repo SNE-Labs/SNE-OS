@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { arbitrum, arbitrumSepolia, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Desktop Components (carregados normalmente)
 import { Sidebar } from './components/Sidebar';
@@ -13,6 +14,7 @@ import { TapeWire } from './components/TapeWire';
 import { ShellCommandPalette } from './components/ShellCommandPalette';
 import { AsciiHaze, type AtmosphereKey } from './components/AsciiHaze';
 import { ChunkLoadBoundary } from './components/ChunkLoadBoundary';
+import { LivingSystemLayer } from './components/LivingSystemLayer';
 import { RouteSeo } from './RouteSeo';
 import { lazyRoute, pickLazyExport } from './utils/lazyRoute';
 
@@ -100,6 +102,7 @@ function AppContent() {
     <div className={`shell-frame ${atmosphereClass}`} style={{ backgroundColor: 'var(--bg-0)' }}>
       <RouteSeo />
       <AsciiHaze atmosphereKey={atmosphereClass} />
+      <LivingSystemLayer pathname={location.pathname} />
       <div className="relative z-10 min-h-screen">
         {!sidebarPinned && sidebarExpanded ? (
           <button
@@ -130,30 +133,32 @@ function AppContent() {
           <main className="overflow-y-auto pb-32">
             <ChunkLoadBoundary>
               <Suspense fallback={<DesktopSkeleton />}>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/home" replace />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/intel" element={<Blog />} />
-                  <Route path="/intel/topic/:topic" element={<Blog />} />
-                  <Route path="/intel/chain/:chain" element={<Blog />} />
-                  <Route path="/intel/asset/:asset" element={<Blog />} />
-                  <Route path="/intel/:slug" element={<BlogPost />} />
-                  <Route path="/blog" element={<Navigate to="/intel" replace />} />
-                  <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
-                  <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
-                  <Route path="/radar" element={<DesktopRadar />} />
-                  <Route path="/radar/:symbol" element={<DesktopRadar />} />
-                  <Route path="/swaps" element={<DesktopSwaps />} />
-                  <Route path="/pass" element={<DesktopPass />} />
-                  <Route path="/vault" element={<DesktopVault />} />
-                  <Route path="/keys" element={<DesktopKeys />} />
-                  <Route path="/secrets" element={<DesktopSecrets />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/status" element={<Status />} />
-                  <Route path="/docs" element={<Docs />} />
-                </Routes>
+                <AnimatedRouteFrame routeKey={location.pathname}>
+                  <Routes location={location}>
+                    <Route path="/" element={<Navigate to="/home" replace />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/intel" element={<Blog />} />
+                    <Route path="/intel/topic/:topic" element={<Blog />} />
+                    <Route path="/intel/chain/:chain" element={<Blog />} />
+                    <Route path="/intel/asset/:asset" element={<Blog />} />
+                    <Route path="/intel/:slug" element={<BlogPost />} />
+                    <Route path="/blog" element={<Navigate to="/intel" replace />} />
+                    <Route path="/blog/topic/:topic" element={<LegacyBlogRedirect />} />
+                    <Route path="/blog/chain/:chain" element={<LegacyBlogRedirect />} />
+                    <Route path="/blog/asset/:asset" element={<LegacyBlogRedirect />} />
+                    <Route path="/blog/:slug" element={<LegacyBlogRedirect />} />
+                    <Route path="/radar" element={<DesktopRadar />} />
+                    <Route path="/radar/:symbol" element={<DesktopRadar />} />
+                    <Route path="/swaps" element={<DesktopSwaps />} />
+                    <Route path="/pass" element={<DesktopPass />} />
+                    <Route path="/vault" element={<DesktopVault />} />
+                    <Route path="/keys" element={<DesktopKeys />} />
+                    <Route path="/secrets" element={<DesktopSecrets />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/status" element={<Status />} />
+                    <Route path="/docs" element={<Docs />} />
+                  </Routes>
+                </AnimatedRouteFrame>
               </Suspense>
             </ChunkLoadBoundary>
           </main>
@@ -167,6 +172,23 @@ function AppContent() {
         <ShellCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       </div>
     </div>
+  );
+}
+
+function AnimatedRouteFrame({ routeKey, children }: { routeKey: string; children: ReactNode }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={routeKey}
+        className="shell-route-frame"
+        initial={{ opacity: 0, y: 12, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, y: -8, filter: 'blur(8px)' }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

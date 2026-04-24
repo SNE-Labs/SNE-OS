@@ -32,16 +32,18 @@ export function ModuleStateCard({
 
   return (
     <div
-      className={`rounded-xl ${compact ? 'p-4' : 'p-5'} flex flex-col gap-4`}
+      className={`module-state-card module-state-card--${tone} rounded-xl ${compact ? 'p-4' : 'p-5'} flex flex-col gap-4`}
       style={{
         backgroundColor: 'var(--bg-3)',
         borderWidth: '1px',
         borderColor: 'var(--stroke-1)',
+        ['--module-state-color' as string]: config.color,
       }}
     >
+      <div className="module-state-card__scan" aria-hidden="true" />
       <div className="flex items-start gap-3">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          className="module-state-card__icon w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${config.color}18`, color: config.color }}
         >
           <Icon className={`w-5 h-5 ${tone === 'loading' ? 'animate-spin' : ''}`} />

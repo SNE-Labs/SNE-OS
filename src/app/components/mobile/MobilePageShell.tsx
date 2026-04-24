@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { cn } from '../ui/utils';
 import { Badge } from './Badge';
 import { useAuth } from '@/lib/auth/useAuth';
@@ -27,6 +28,7 @@ export function MobilePageShell({
   children,
   className,
 }: MobilePageShellProps) {
+  const location = useLocation();
   const { address, isAuthenticated } = useAuth();
   const { effectiveAccess, accessClass } = useEntitlements();
   const isOsHome = title.trim().toUpperCase() === 'SNE OS';
@@ -36,11 +38,13 @@ export function MobilePageShell({
     label: `${accessLabel} • ${formatAddress(address)}`,
     variant: effectiveAccess ? 'success' : 'neutral' as const,
   } : null;
+  const surface = resolveMobileSurface(location.pathname);
 
   return (
-    <div className={cn('flex flex-col h-full bg-[var(--bg-0)]', className)}>
+    <div className={cn('mobile-page-shell flex flex-col h-full bg-[var(--bg-0)]', `mobile-page-shell--${surface}`, className)}>
       {/* Header with safe area */}
-      <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b border-[var(--stroke-1)]">
+      <div className="mobile-page-shell__header flex-shrink-0 px-4 pt-4 pb-3 border-b border-[var(--stroke-1)]">
+        <div className="mobile-page-shell__aura" aria-hidden="true" />
         {isOsHome ? (
           <div className="mb-3 flex flex-col items-center justify-center text-center">
             <div className="relative mb-3 flex h-14 w-14 items-center justify-center">
@@ -60,6 +64,7 @@ export function MobilePageShell({
         ) : (
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex-1 min-w-0">
+              <div className="mobile-page-shell__signal mb-2" aria-hidden="true" />
               <h1 className="text-[var(--text-1)] mb-1">{title}</h1>
               {subtitle && (
                 <p className="text-sm text-[var(--text-2)]">{subtitle}</p>
@@ -95,4 +100,14 @@ export function MobilePageShell({
       </div>
     </div>
   );
+}
+
+function resolveMobileSurface(pathname: string) {
+  if (pathname.startsWith('/radar')) return 'radar';
+  if (pathname.startsWith('/intel') || pathname.startsWith('/blog')) return 'intel';
+  if (pathname.startsWith('/vault') || pathname.startsWith('/swaps')) return 'vault';
+  if (pathname.startsWith('/pass')) return 'pass';
+  if (pathname.startsWith('/keys') || pathname.startsWith('/secrets')) return 'keys';
+  if (pathname.startsWith('/docs')) return 'docs';
+  return 'home';
 }
