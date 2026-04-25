@@ -48,7 +48,7 @@ export const railNavigationGroups: NavigationGroup[] = [
   {
     label: 'Execução',
     items: [
-      { path: '/swaps', label: 'Mover USDT', shortLabel: 'USDT', icon: ArrowLeftRight },
+      { path: '/swaps', label: 'Mover USDT', shortLabel: 'Swaps', icon: ArrowLeftRight },
     ],
   },
   {

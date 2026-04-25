@@ -24,6 +24,22 @@ export interface Signal {
   price?: number;
 }
 
+export interface RadarCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface RadarCandlesPreview {
+  symbol: string;
+  timeframe: string;
+  candles: RadarCandle[];
+  last_updated: string;
+}
+
 export interface RadarOverview {
   execution: {
     label: string;
@@ -257,6 +273,39 @@ export function normalizeRadarOverview(payload: any): RadarOverview {
   };
 }
 
+function normalizeRadarCandle(item: any): RadarCandle | null {
+  if (!item || typeof item !== 'object') return null;
+
+  const timestamp = Number(item.timestamp ?? 0);
+  const open = Number(item.open ?? 0);
+  const high = Number(item.high ?? 0);
+  const low = Number(item.low ?? 0);
+  const close = Number(item.close ?? 0);
+  const volume = Number(item.volume ?? 0);
+
+  if (!timestamp || high <= 0 || low <= 0 || close <= 0) return null;
+
+  return {
+    timestamp,
+    open,
+    high,
+    low,
+    close,
+    volume,
+  };
+}
+
+export function normalizeRadarCandlesPreview(payload: any): RadarCandlesPreview {
+  return {
+    symbol: typeof payload?.symbol === 'string' ? payload.symbol : 'BTCUSDT',
+    timeframe: typeof payload?.timeframe === 'string' ? payload.timeframe : '1h',
+    candles: Array.isArray(payload?.candles)
+      ? payload.candles.map(normalizeRadarCandle).filter((item): item is RadarCandle => Boolean(item))
+      : [],
+    last_updated: typeof payload?.last_updated === 'string' ? payload.last_updated : '',
+  };
+}
+
 /**
  * API client para SNE Radar
  * Conecta aos endpoints reais do backend Flask
@@ -273,6 +322,11 @@ export const radarApi = {
       await apiGet(`/api/radar/overview?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`)
     ),
   hydrateOverview: (payload: unknown): RadarOverview => normalizeRadarOverview(payload),
+  getCandlesPreview: async (symbol: string, timeframe: string = '1h', limit: number = 36): Promise<RadarCandlesPreview> =>
+    normalizeRadarCandlesPreview(
+      await apiGet(`/api/radar/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=${encodeURIComponent(limit)}`)
+    ),
+  hydrateCandlesPreview: (payload: unknown): RadarCandlesPreview => normalizeRadarCandlesPreview(payload),
 
   // Market summary público (não requer auth)
   getMarketSummary: (): Promise<MarketSummary> =>

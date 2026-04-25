@@ -328,9 +328,9 @@ def _build_next_action(
 
 
 def build_radar_overview(active_symbol: Optional[str], authenticated: bool, has_access: bool, timeframe: str = "24H") -> Dict[str, Any]:
-    markets = get_radar_snapshot(limit=12)
+    markets = get_radar_snapshot(limit=20)
     movers = markets[:6]
-    featured = next((item for item in movers if item["symbol"] == active_symbol), None) if active_symbol else None
+    featured = next((item for item in markets if item["symbol"] == active_symbol), None) if active_symbol else None
     if featured is None and movers:
         featured = movers[0]
 
@@ -352,7 +352,7 @@ def build_radar_overview(active_symbol: Optional[str], authenticated: bool, has_
         "execution": execution,
         "hero": _build_hero(market_regime, focus_asset, execution_risk),
         "market_state": {
-            "label": "Ao vivo." if movers else "Sem dados.",
+            "label": "Ao vivo." if markets else "Sem dados.",
             "access": "completo" if has_access else "previa",
             "execution": next_action["state"],
         },
@@ -367,6 +367,6 @@ def build_radar_overview(active_symbol: Optional[str], authenticated: bool, has_
             "summary": "Liquidez viva, regime relativo e selecao rapida do ativo em foco.",
         },
         "signal": signal,
-        "universe": movers,
+        "universe": markets,
         "last_updated": datetime.utcnow().isoformat(),
     }

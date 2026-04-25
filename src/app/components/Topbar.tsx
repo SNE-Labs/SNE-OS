@@ -1,10 +1,7 @@
 import { useShellContextData } from '../shell-context';
-import { WalletConnect } from './passport/WalletConnect';
 
 type TopbarProps = {
   onOpenCommandPalette: () => void;
-  onToggleSidebarPin: () => void;
-  sidebarPinned: boolean;
 };
 
 function resolveGlow(pathname: string) {
@@ -55,24 +52,27 @@ function resolveGlow(pathname: string) {
   };
 }
 
-export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned }: TopbarProps) {
-  void onToggleSidebarPin;
-  void sidebarPinned;
-
+export function Topbar({ onOpenCommandPalette }: TopbarProps) {
   const { routeMeta, sessionStats, pathname, accessLabel } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
-  const isWalletConnected = walletLabel !== 'Sem wallet';
+  const sessionLabel = sessionStats[2]?.value ?? 'Anônima';
+  const isWalletConnected = walletLabel !== 'Sem carteira';
+  const sessionTone = isWalletConnected ? 'var(--ok-green)' : 'var(--text-3)';
+  const sessionStateLabel = isWalletConnected ? 'SESSÃO ATIVA' : 'SESSÃO PÚBLICA';
+  const identityLine = isWalletConnected
+    ? `IDENTIDADE VINCULADA · ${accessLabel}`
+    : `IDENTIDADE DESVINCULADA · ${accessLabel}`;
 
   return (
     <header
       className="sticky top-0 z-20 border-b px-3 py-1"
       style={{
         background:
-          'linear-gradient(180deg, rgba(7,9,11,0.92), rgba(7,9,11,0.78)), radial-gradient(circle at 45% 0%, rgba(255,255,255,0.045), transparent 42%)',
-        borderColor: 'rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+          'linear-gradient(180deg, rgba(6,8,12,0.94), rgba(6,8,12,0.84)), radial-gradient(circle at 45% 0%, rgba(255,255,255,0.03), transparent 38%)',
+        borderColor: 'rgba(255,255,255,0.045)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
       }}
     >
       <div className="grid grid-cols-[minmax(180px,1fr)_auto_minmax(180px,1fr)] items-center gap-2">
@@ -83,22 +83,22 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
             className="group relative isolate flex min-w-0 items-center gap-2 rounded-[12px] border px-2 py-1 text-left transition-all duration-300 hover:-translate-y-0.5"
             style={{
               background:
-                `radial-gradient(circle at 16% 50%, ${glow.wash}, transparent 46%), linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018))`,
-              borderColor: 'rgba(255,255,255,0.08)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                `radial-gradient(circle at 16% 50%, ${glow.wash}, transparent 42%), linear-gradient(135deg, rgba(255,255,255,0.038), rgba(255,255,255,0.014))`,
+              borderColor: 'rgba(255,255,255,0.065)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
             }}
             aria-label="Abrir comandos do SNE OS"
           >
             <div
-              className="absolute left-1.5 top-1/2 -z-10 h-10 w-16 -translate-y-1/2 rounded-full opacity-70 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
-              style={{ background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 48%, transparent 74%)` }}
+              className="absolute left-1.5 top-1/2 -z-10 h-9 w-14 -translate-y-1/2 rounded-full opacity-45 blur-2xl transition-opacity duration-300 group-hover:opacity-70"
+              style={{ background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 52%, transparent 76%)` }}
             />
             <div
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border"
               style={{
-                backgroundColor: 'rgba(6,8,12,0.68)',
-                borderColor: 'rgba(255,255,255,0.12)',
-                boxShadow: `0 0 28px ${glow.primary}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+                backgroundColor: 'rgba(6,8,12,0.76)',
+                borderColor: 'rgba(255,255,255,0.1)',
+                boxShadow: `0 0 16px ${glow.wash}, inset 0 1px 0 rgba(255,255,255,0.06)`,
               }}
             >
               <img src="/favicon.ico" alt="" className="h-3.5 w-3.5 rounded transition-transform duration-300 group-hover:scale-110" />
@@ -117,8 +117,8 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         <div
           className="hidden min-w-0 rounded-full border px-2.5 py-1 text-center lg:block"
           style={{
-            backgroundColor: 'rgba(255,255,255,0.025)',
-            borderColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: 'rgba(255,255,255,0.016)',
+            borderColor: 'rgba(255,255,255,0.05)',
           }}
         >
           <div className="truncate text-[10px] font-medium" style={{ color: 'var(--text-1)' }}>
@@ -130,38 +130,42 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-2">
-          {!isWalletConnected ? (
-            <WalletConnect showConnectButton connectButtonLabel="Criar ID" />
-          ) : (
-            <div
-              className="hidden items-center rounded-[12px] border px-2.5 py-1 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02))',
-                borderColor: 'rgba(255,255,255,0.10)',
-                color: 'var(--text-1)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 34px rgba(0,0,0,0.16)',
-              }}
-            >
-              <div className="min-w-0">
-                <div className="text-[8px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                  ID operacional
-                </div>
-                <div className="max-w-[140px] truncate text-[11px] font-medium" style={{ color: 'var(--text-1)' }}>
-                  {walletLabel}
-                </div>
-                <div className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--ok-green)' }}>
-                  <span
-                    className="h-1 w-1 rounded-full"
-                    style={{ backgroundColor: 'var(--ok-green)', boxShadow: '0 0 10px rgba(50,213,131,0.55)' }}
-                  />
-                  SESSÃO ATIVA
-                </div>
-                <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
-                  IDENTIDADE VINCULADA · {accessLabel}
-                </div>
+          <div
+            className="hidden items-center rounded-[12px] border px-2.5 py-1 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.014))',
+              borderColor: 'rgba(255,255,255,0.075)',
+              color: 'var(--text-1)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045)',
+            }}
+          >
+            <div className="min-w-0">
+              <div className="text-[8px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                ID operacional
               </div>
+              <div className="max-w-[140px] truncate text-[11px] font-medium" style={{ color: 'var(--text-1)' }}>
+                {walletLabel}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-[0.1em]" style={{ color: sessionTone }}>
+                <span
+                  className="h-1 w-1 rounded-full"
+                  style={{
+                    backgroundColor: sessionTone,
+                    boxShadow: isWalletConnected ? '0 0 10px rgba(50,213,131,0.55)' : '0 0 8px rgba(255,255,255,0.22)',
+                  }}
+                />
+                {sessionStateLabel}
+              </div>
+              <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
+                {identityLine}
+              </div>
+              {!isWalletConnected ? (
+                <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
+                  {sessionLabel === 'Anônima' ? 'DISCOVERY PRONTO PARA LEITURA' : sessionLabel}
+                </div>
+              ) : null}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </header>

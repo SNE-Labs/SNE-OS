@@ -4,19 +4,22 @@ Market data, signals, and analysis for SNE OS Radar
 """
 from flask import Blueprint, Response, request, jsonify, g
 import hmac
+import json
 import logging
 import os
 import time
 from datetime import datetime
 from .common.auth import get_auth_context, require_authenticated_user
-from .collector_client import get_live_market_snapshot
+from .collector_client import get_live_market_snapshot, get_klines
 from .radar_report_delivery import send_radar_report_to_telegram, send_radar_report_to_threads
 from .radar_report_media import get_radar_report_media, store_radar_report_media
 from .radar_report_service import build_radar_report
 from .radar_report_visuals import render_radar_report_chart, render_radar_report_social_chart
 from .radar_service import build_radar_overview, derive_signal_from_ticker
+from app.utils.redis_safe import SafeRedis
 
 logger = logging.getLogger(__name__)
+redis_client = SafeRedis()
 
 # Local helpers to avoid import issues
 def ok(data=None, **meta):
@@ -31,6 +34,23 @@ def fail(code: str, message: str, status: int = 400, **details):
     return jsonify(payload), status
 
 radar_bp = Blueprint("radar", __name__)
+
+
+def _normalize_preview_candle(raw):
+    if not isinstance(raw, (list, tuple)) or len(raw) < 6:
+        return None
+
+    try:
+        return {
+            "timestamp": int(raw[0]),
+            "open": float(raw[1]),
+            "high": float(raw[2]),
+            "low": float(raw[3]),
+            "close": float(raw[4]),
+            "volume": float(raw[5]),
+        }
+    except (TypeError, ValueError):
+        return None
 
 
 def _normalize_report_channels(value):
@@ -163,6 +183,51 @@ def overview():
           "featured": None,
           "signal": None,
           "universe": [],
+          "last_updated": datetime.utcnow().isoformat(),
+      }), 200
+
+
+@radar_bp.get("/candles")
+def candles_preview():
+    """
+    Public lightweight candle payload for compact frontend charts.
+    GET /api/radar/candles?symbol=BTCUSDT&timeframe=1h&limit=36
+    """
+    try:
+      symbol = request.args.get("symbol", "BTCUSDT").replace("/", "").upper()
+      timeframe = request.args.get("timeframe", "1h").strip().lower()
+      limit = max(16, min(int(request.args.get("limit", 36)), 72))
+
+      if timeframe not in {"15m", "1h", "4h", "1d"}:
+          timeframe = "1h"
+
+      cache_key = f"radar:candles:preview:{symbol}:{timeframe}:{limit}"
+      cached = redis_client.get(cache_key)
+      if cached:
+          try:
+              return jsonify(json.loads(cached)), 200
+          except Exception:
+              pass
+
+      raw = get_klines(symbol, timeframe, limit=limit)
+      candles = [_normalize_preview_candle(item) for item in raw or []]
+      candles = [item for item in candles if item and item["close"] > 0]
+
+      payload = {
+          "symbol": symbol,
+          "timeframe": timeframe,
+          "candles": candles[-limit:],
+          "last_updated": datetime.utcnow().isoformat(),
+      }
+
+      redis_client.setex(cache_key, 45, json.dumps(payload))
+      return jsonify(payload), 200
+    except Exception as e:
+      logger.error(f"Radar candles preview error: {e}", exc_info=True)
+      return jsonify({
+          "symbol": request.args.get("symbol", "BTCUSDT").replace("/", "").upper(),
+          "timeframe": request.args.get("timeframe", "1h"),
+          "candles": [],
           "last_updated": datetime.utcnow().isoformat(),
       }), 200
 

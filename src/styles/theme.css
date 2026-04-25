@@ -54,16 +54,16 @@
   --shell-bottom-reserve: calc(var(--dock-height) + var(--dock-offset) + 8px);
   --shell-overlay: rgba(3, 5, 8, 0.34);
   --panel-glow: radial-gradient(circle at top left, rgba(255, 102, 0, 0.16), transparent 34%);
-  --shadow-panel: 0 16px 42px rgba(0, 0, 0, 0.38);
-  --shadow-dock: 0 12px 28px rgba(0, 0, 0, 0.32);
+  --shadow-panel: 0 14px 34px rgba(0, 0, 0, 0.3);
+  --shadow-dock: 0 8px 18px rgba(0, 0, 0, 0.24);
   --ease-shell: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-shell: 200ms;
   --shell-bg-accent-1: rgba(52, 24, 8, 0.34);
   --shell-bg-accent-2: rgba(10, 30, 44, 0.34);
   --shell-bg-accent-3: rgba(10, 36, 28, 0.22);
-  --shell-bg-intensity: 1.12;
-  --shell-bg-halo: rgba(255, 255, 255, 0.028);
-  --shell-noise-opacity: 0.065;
+  --shell-bg-intensity: 0.94;
+  --shell-bg-halo: rgba(255, 255, 255, 0.02);
+  --shell-noise-opacity: 0.042;
   
   /* Font */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -167,7 +167,7 @@
   .shell-tape-track {
     width: max-content;
     min-width: 100%;
-    animation: shell-tape-scroll 34s linear infinite;
+    animation: shell-tape-scroll 42s linear infinite;
     will-change: transform;
   }
 
@@ -226,6 +226,77 @@
     min-height: 0;
     padding-bottom: var(--shell-bottom-reserve);
     overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 140, 66, 0.58) rgba(255, 255, 255, 0.02);
+  }
+
+  .shell-main::-webkit-scrollbar {
+    width: 7px;
+  }
+
+  .shell-main::-webkit-scrollbar-track {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008)),
+      rgba(7, 10, 15, 0.52);
+    border-left: 1px solid rgba(255,255,255,0.025);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.012);
+  }
+
+  .shell-main::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    border: 1px solid rgba(7, 10, 15, 0.9);
+    background:
+      linear-gradient(180deg, rgba(255, 176, 32, 0.72), rgba(255, 102, 0, 0.68) 58%, rgba(201, 92, 18, 0.7));
+    box-shadow:
+      0 0 8px rgba(255, 140, 66, 0.16),
+      inset 0 1px 0 rgba(255,255,255,0.12),
+      inset 0 -1px 0 rgba(0,0,0,0.22);
+  }
+
+  .shell-main:hover {
+    scrollbar-color: rgba(255, 140, 66, 0.88) rgba(255, 255, 255, 0.04);
+  }
+
+  .shell-main:hover::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .shell-main:hover::-webkit-scrollbar-track {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012)),
+      rgba(7, 10, 15, 0.82);
+    border-left-color: rgba(255,255,255,0.04);
+  }
+
+  .shell-main:hover::-webkit-scrollbar-thumb {
+    background:
+      linear-gradient(180deg, rgba(255, 191, 64, 0.96), rgba(255, 102, 0, 0.92) 56%, rgba(214, 88, 12, 0.9));
+    box-shadow:
+      0 0 12px rgba(255, 140, 66, 0.28),
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(0,0,0,0.28);
+  }
+
+  .shell-main::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgba(255, 204, 92, 1), rgba(255, 120, 24, 0.98) 56%, rgba(222, 94, 12, 0.96));
+    box-shadow:
+      0 0 14px rgba(255, 140, 66, 0.36),
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(0,0,0,0.3);
+  }
+
+  .shell-main::-webkit-scrollbar-thumb:active {
+    background:
+      linear-gradient(180deg, rgba(255, 214, 120, 1), rgba(255, 132, 36, 1) 54%, rgba(232, 104, 20, 0.98));
+    box-shadow:
+      0 0 16px rgba(255, 140, 66, 0.42),
+      inset 0 1px 0 rgba(255,255,255,0.24),
+      inset 0 -1px 0 rgba(0,0,0,0.34);
+  }
+
+  .shell-main::-webkit-scrollbar-corner {
+    background: rgba(7, 10, 15, 0.88);
   }
 
   .shell-frame {
@@ -498,16 +569,15 @@
     gap: 6px;
     border-radius: 999px;
     border-width: 1px;
-    padding: 3px 7px;
+    padding: 2px 7px;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.12);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.024);
     transition: transform 180ms var(--ease-shell), opacity 180ms var(--ease-shell), border-color 180ms var(--ease-shell);
   }
 
   .tape-stream:hover {
-    opacity: 0.92;
-    transform: translateY(-1px);
+    opacity: 0.94;
   }
 
   .tape-stream--compact {
@@ -521,7 +591,7 @@
     align-items: center;
     gap: 4px;
     font-size: 8px;
-    font-weight: 700;
+    font-weight: 650;
     letter-spacing: 0.16em;
     white-space: nowrap;
   }
@@ -530,8 +600,8 @@
     max-width: min(50vw, 440px);
     overflow: hidden;
     color: var(--text-2);
-    font-size: 9px;
-    font-weight: 600;
+    font-size: 8px;
+    font-weight: 550;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -539,7 +609,7 @@
   .tape-stream__state {
     border-radius: 999px;
     padding: 1px 4px;
-    background: rgba(255,255,255,0.055);
+    background: rgba(255,255,255,0.038);
     color: var(--text-1);
   }
 

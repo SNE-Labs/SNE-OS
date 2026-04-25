@@ -4,9 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
+  ArrowLeftRight,
   ArrowUpRight,
   BadgeCheck,
   Compass,
+  Lock,
+  type LucideIcon,
   Newspaper,
   Shield,
   Wallet,
@@ -18,11 +21,14 @@ import { FieldSurface } from '../components/field/FieldSurface';
 import { PageSignalFrame, SignalPanel } from '../components/motion/PageMotion';
 import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
-import { useRadarOverview } from '../../hooks/useRadarData';
+import { useRadarCandlesPreview, useRadarOverview } from '../../hooks/useRadarData';
 import { apiGet } from '@/lib/api/http';
+import { useEntitlements } from '@/lib/auth/EntitlementsProvider';
 import { readPersistedSnapshot, writePersistedSnapshot } from '@/lib/querySnapshot';
 import { normalizeIntelRoute } from '@/services/intel-api';
+import type { RadarCandle } from '@/services/radar-api';
 import { buildHomeIntelSections, type HomeIntelSectionKey } from '@/services/home-intel';
+import { formatAddress } from '@/utils/format';
 
 type DashboardPayload = {
   status: { overall_status: string; uptime_percentage: number | null };
@@ -73,6 +79,14 @@ type MarketMover = {
   change24h: number;
   volume: string | number;
   score?: number;
+};
+
+type MarketPulseRow = {
+  symbol: string;
+  price: number | null;
+  change24h: number | null;
+  volume: string | number | null;
+  unavailable?: boolean;
 };
 
 type MarketEditorial = {
@@ -139,6 +153,14 @@ type HeroCandidate = {
   sparklinePoints: string;
 };
 
+type HomeGuideStep = {
+  key: 'pass' | 'radar' | 'intel' | 'vault' | 'swaps';
+  label: string;
+  description: string;
+  path: string;
+  icon: LucideIcon;
+};
+
 const RELATED_SYMBOL_ALIASES: Record<string, string> = {
   arb: 'ARB',
   arbitrum: 'ARB',
@@ -161,6 +183,8 @@ const RELATED_SYMBOL_ALIASES: Record<string, string> = {
   sui: 'SUI',
   xrp: 'XRP',
 };
+
+const HOME_MARKET_PULSE_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ARBUSDT'] as const;
 
 function normalizeEntityKey(value?: string | null) {
   return (value ?? '')
@@ -376,10 +400,355 @@ function withAlpha(color: string, alpha: number) {
   return color;
 }
 
+function formatKeysFeeTier(value?: string | null) {
+  if (!value) return '--';
+  if (value === 'operator_discount') return 'Operator discount';
+  if (value === 'standard') return 'Standard';
+
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatChartTimestamp(value?: number | null) {
+  if (!value) return '--';
+
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+    }).format(new Date(value));
+  } catch {
+    return '--';
+  }
+}
+
+function MarketPulseCandlestick({
+  symbol,
+  change24h,
+  candles,
+  isLoading,
+}: {
+  symbol: string;
+  change24h: number | null;
+  candles: RadarCandle[];
+  isLoading: boolean;
+}) {
+  const viewBoxWidth = 320;
+  const viewBoxHeight = 144;
+  const paddingX = 10;
+  const paddingY = 12;
+  const innerWidth = viewBoxWidth - paddingX * 2;
+  const innerHeight = viewBoxHeight - paddingY * 2;
+  const safeCandles = candles.slice(-36);
+  const priceValues = safeCandles.flatMap((candle) => [candle.high, candle.low]);
+  const high = priceValues.length > 0 ? Math.max(...priceValues) : 0;
+  const low = priceValues.length > 0 ? Math.min(...priceValues) : 0;
+  const priceRange = high - low || Math.max(high * 0.01, 1);
+  const candleSlot = safeCandles.length > 0 ? innerWidth / safeCandles.length : innerWidth;
+  const candleWidth = Math.max(3, Math.min(7, candleSlot * 0.56));
+  const latestCandle = safeCandles[safeCandles.length - 1] ?? null;
+  const latestPrice = latestCandle?.close ?? null;
+  const latestTime = latestCandle?.timestamp ?? null;
+
+  const projectY = (value: number) => {
+    const normalized = (value - low) / priceRange;
+    return paddingY + innerHeight - normalized * innerHeight;
+  };
+
+  return (
+    <div className="sne-home-market-chart">
+      <div className="sne-home-market-chart__header">
+        <div>
+          <div className="sne-home-market-chart__eyebrow">Candle 1H</div>
+          <div className="sne-home-market-chart__title">
+            {assetIconSymbol(symbol).toUpperCase()} {latestPrice == null ? '--' : `$${formatMarketPrice(latestPrice)}`}
+          </div>
+        </div>
+        <div
+          className="sne-home-market-chart__delta"
+          data-tone={change24h == null ? 'flat' : change24h >= 0 ? 'up' : 'down'}
+        >
+          {change24h == null ? '--' : `${change24h >= 0 ? '+' : ''}${(change24h * 100).toFixed(1)}%`}
+        </div>
+      </div>
+
+      <div className="sne-home-market-chart__frame">
+        {safeCandles.length === 0 ? (
+          <div className="sne-home-market-chart__empty">
+            {isLoading ? 'Carregando candles...' : 'Candles indisponíveis no momento.'}
+          </div>
+        ) : (
+          <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="sne-home-market-chart__svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="home-market-chart-overlay" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+              </linearGradient>
+            </defs>
+
+            {[0.25, 0.5, 0.75].map((ratio) => {
+              const y = paddingY + innerHeight * ratio;
+              return (
+                <line
+                  key={ratio}
+                  x1={paddingX}
+                  y1={y}
+                  x2={viewBoxWidth - paddingX}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.06)"
+                  strokeDasharray="2 5"
+                />
+              );
+            })}
+
+            {safeCandles.map((candle, index) => {
+              const x = paddingX + candleSlot * index + candleSlot / 2;
+              const openY = projectY(candle.open);
+              const closeY = projectY(candle.close);
+              const highY = projectY(candle.high);
+              const lowY = projectY(candle.low);
+              const bodyY = Math.min(openY, closeY);
+              const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+              const bullish = candle.close >= candle.open;
+              const color = bullish ? 'rgba(62,201,153,0.95)' : 'rgba(255,140,66,0.95)';
+
+              return (
+                <g key={candle.timestamp}>
+                  <line
+                    x1={x}
+                    y1={highY}
+                    x2={x}
+                    y2={lowY}
+                    stroke={color}
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    opacity="0.92"
+                  />
+                  <rect
+                    x={x - candleWidth / 2}
+                    y={bodyY}
+                    width={candleWidth}
+                    height={bodyHeight}
+                    rx="1.2"
+                    fill={bullish ? color : 'rgba(255,140,66,0.18)'}
+                    stroke={color}
+                    strokeWidth="1"
+                  />
+                </g>
+              );
+            })}
+
+            {latestPrice != null && (
+              <line
+                x1={paddingX}
+                y1={projectY(latestPrice)}
+                x2={viewBoxWidth - paddingX}
+                y2={projectY(latestPrice)}
+                stroke="rgba(255,255,255,0.12)"
+                strokeDasharray="3 4"
+              />
+            )}
+
+            <rect
+              x={paddingX}
+              y={paddingY}
+              width={innerWidth}
+              height={innerHeight}
+              fill="url(#home-market-chart-overlay)"
+              opacity="0.14"
+            />
+          </svg>
+        )}
+      </div>
+
+      <div className="sne-home-market-chart__meta">
+        <span>{safeCandles.length > 0 ? `${safeCandles.length} candles` : 'Sem candles'}</span>
+        <span>{formatChartTimestamp(latestTime)}</span>
+      </div>
+    </div>
+  );
+}
+
+const RADAR_PANEL_SURFACE_STYLE: CSSProperties = {
+  background:
+    'radial-gradient(circle at 18% 16%, rgba(255,140,66,0.08), transparent 22%), radial-gradient(circle at 80% 24%, rgba(62,201,153,0.06), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008))',
+  boxShadow: 'var(--shadow-1)',
+  border: '1px solid rgba(255,255,255,0.08)',
+};
+
+const RADAR_RAIL_SURFACE_STYLE: CSSProperties = {
+  background: 'linear-gradient(180deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.01))',
+  border: '1px solid rgba(255,255,255,0.08)',
+  boxShadow: 'var(--shadow-1)',
+};
+
+function renderIntelHeroAtmosphere(
+  sectionKey: HomeIntelSectionKey | undefined,
+  accentColor: string,
+  sparklinePoints?: string
+) {
+  const accentPrimary = withAlpha(accentColor, 0.9);
+  const accentSoft = withAlpha(accentColor, 0.22);
+  const accentFaint = withAlpha(accentColor, 0.1);
+
+  if (sectionKey === 'tech') {
+    return (
+      <>
+        <svg
+          viewBox="0 0 320 180"
+          preserveAspectRatio="none"
+          className="absolute right-[5%] top-[12%] h-[60%] w-[50%] opacity-55"
+        >
+          <defs>
+            <linearGradient id="hero-tech-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={accentPrimary} />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.06)" />
+            </linearGradient>
+          </defs>
+          <rect x="18" y="22" width="124" height="56" rx="8" fill="none" stroke="url(#hero-tech-gradient)" strokeWidth="1.2" />
+          <rect x="162" y="34" width="92" height="38" rx="7" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+          <rect x="116" y="104" width="150" height="42" rx="9" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+          <path d="M142 50 H178 V53 H210" fill="none" stroke={accentSoft} strokeWidth="1.4" />
+          <path d="M84 78 V110 H116" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+          <path d="M254 53 V104 H204" fill="none" stroke={accentSoft} strokeWidth="1.2" />
+          <circle cx="84" cy="78" r="4" fill={accentPrimary} />
+          <circle cx="210" cy="53" r="3.5" fill="rgba(255,255,255,0.18)" />
+          <circle cx="204" cy="104" r="3.5" fill={accentPrimary} />
+          <circle cx="116" cy="110" r="3.5" fill="rgba(255,255,255,0.14)" />
+        </svg>
+        <motion.div
+          className="absolute right-[12%] top-[18%] h-[38%] w-px"
+          style={{ background: `linear-gradient(180deg, transparent, ${accentPrimary}, transparent)` }}
+          animate={{ opacity: [0.18, 0.45, 0.18], scaleY: [0.92, 1.05, 0.92] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </>
+    );
+  }
+
+  if (sectionKey === 'politica') {
+    return (
+      <>
+        <svg
+          viewBox="0 0 320 180"
+          preserveAspectRatio="none"
+          className="absolute right-[4%] top-[10%] h-[62%] w-[52%] opacity-50"
+        >
+          <defs>
+            <linearGradient id="hero-politica-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={accentPrimary} />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
+            </linearGradient>
+          </defs>
+          <rect x="24" y="22" width="44" height="96" rx="6" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <rect x="84" y="34" width="52" height="84" rx="6" fill="none" stroke="url(#hero-politica-gradient)" strokeWidth="1.2" />
+          <rect x="154" y="18" width="60" height="108" rx="6" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+          <rect x="232" y="42" width="52" height="70" rx="6" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+          <circle cx="184" cy="144" r="18" fill="none" stroke={accentSoft} strokeWidth="1.4" />
+          <circle cx="184" cy="144" r="8" fill={accentFaint} stroke={accentPrimary} strokeWidth="1.1" />
+          <path d="M184 126 V102" fill="none" stroke={accentSoft} strokeWidth="1.3" />
+          <path d="M184 162 V170" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        </svg>
+        <motion.div
+          className="absolute right-[9%] top-[16%] h-[1px] w-[24%]"
+          style={{ background: `linear-gradient(90deg, transparent, ${accentPrimary}, transparent)` }}
+          animate={{ opacity: [0.16, 0.36, 0.16], x: ['-6%', '6%', '-6%'] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </>
+    );
+  }
+
+  if (sectionKey === 'cripto') {
+    return (
+      <>
+        <svg
+          viewBox="0 0 320 180"
+          preserveAspectRatio="none"
+          className="absolute right-[4%] top-[12%] h-[60%] w-[52%] opacity-52"
+        >
+          <defs>
+            <linearGradient id="hero-crypto-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={accentPrimary} />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
+            </linearGradient>
+          </defs>
+          <path d="M42 118 L102 54 L164 98 L228 42 L286 84" fill="none" stroke="url(#hero-crypto-gradient)" strokeWidth="1.2" />
+          <path d="M42 118 L92 144 L164 98 L214 142 L286 84" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          <path d="M102 54 L92 144" fill="none" stroke={accentSoft} strokeWidth="1" />
+          <path d="M228 42 L214 142" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+          <circle cx="42" cy="118" r="5" fill={accentPrimary} />
+          <circle cx="102" cy="54" r="4.5" fill="rgba(255,255,255,0.16)" />
+          <circle cx="164" cy="98" r="5" fill={accentPrimary} />
+          <circle cx="228" cy="42" r="4.5" fill="rgba(255,255,255,0.14)" />
+          <circle cx="286" cy="84" r="5" fill={accentPrimary} />
+          <circle cx="92" cy="144" r="4" fill="rgba(255,255,255,0.12)" />
+          <circle cx="214" cy="142" r="4" fill="rgba(255,255,255,0.12)" />
+        </svg>
+        <motion.div
+          className="absolute right-[10%] bottom-[18%] h-[18%] w-[18%] rounded-full blur-2xl"
+          style={{ backgroundColor: accentFaint }}
+          animate={{ opacity: [0.08, 0.2, 0.08], scale: [0.94, 1.06, 0.94] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className="absolute inset-x-[10%] top-[24%] h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${accentSoft}, transparent)` }}
+      />
+      <div
+        className="absolute inset-x-[14%] top-[40%] h-px"
+        style={{ background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)` }}
+      />
+      <div
+        className="absolute inset-x-[18%] top-[56%] h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${accentFaint}, transparent)` }}
+      />
+      <motion.div
+        className="absolute right-[10%] top-[18%] h-[42%] w-px"
+        style={{ background: `linear-gradient(180deg, transparent, ${accentPrimary}, transparent)` }}
+        animate={{ opacity: [0.14, 0.34, 0.14], y: ['-4%', '4%', '-4%'] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {sparklinePoints ? (
+        <svg
+          viewBox="0 0 100 120"
+          preserveAspectRatio="none"
+          className="absolute inset-x-[44%] bottom-[4%] h-[38%] w-[50%] opacity-34"
+        >
+          <defs>
+            <linearGradient id="hero-market-sparkline-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="transparent" />
+              <stop offset="40%" stopColor={accentPrimary} />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            </linearGradient>
+          </defs>
+          <polyline
+            fill="none"
+            stroke="url(#hero-market-sparkline-gradient)"
+            strokeWidth="1.6"
+            points={sparklinePoints}
+          />
+        </svg>
+      ) : null}
+    </>
+  );
+}
+
 export function Home() {
   const navigate = useNavigate();
+  const { loading: entitlementsLoading, entitlement, effectiveAccess, accessClass, feeTier } = useEntitlements();
   const [now, setNow] = useState(new Date());
   const [heroCycle, setHeroCycle] = useState(0);
+  const [marketChartSymbol, setMarketChartSymbol] = useState<string>('BTCUSDT');
   const persistedHome = readPersistedSnapshot<HomeResponse>(HOME_SNAPSHOT_KEY);
 
   const { data: homeData, isLoading, isFetching, error, refetch } = useQuery({
@@ -397,7 +766,6 @@ export function Home() {
     refetchInterval: 30000,
     retry: 3,
   });
-
   useEffect(() => {
     const clockTimer = window.setInterval(() => setNow(new Date()), 10000);
     const heroTimer = window.setInterval(() => setHeroCycle((current) => current + 1), 16000);
@@ -415,11 +783,12 @@ export function Home() {
   const marketRegime = homeData?.market.regime;
   const intelItems = homeData?.intel.items ?? [];
   const intelSections = useMemo(() => buildHomeIntelSections(intelItems), [intelItems]);
-  const featuredMover = liveMovers[0] ?? null;
-  const secondaryMovers = liveMovers.slice(1, 4);
+  const marketPulseOverviewQuery = useRadarOverview('BTCUSDT', '24H');
+  const marketPulseOverview = marketPulseOverviewQuery.data;
   const brief = homeData?.brief;
   const data = homeData?.dashboard;
   const walletConnected = Boolean(homeData?.session.authenticated || homeData?.wallet?.address);
+  const walletReady = homeData?.wallet?.status === 'ready';
   const commandIntent = walletConnected
     ? {
         eyebrow: 'Command Center',
@@ -428,8 +797,8 @@ export function Home() {
       }
     : {
         eyebrow: 'Command Center',
-        title: 'Modo público ativo',
-        summary: 'Valide o mercado antes de conectar a conta.',
+        title: 'Sessão pública ativa',
+        summary: 'Mercado disponível para leitura. Conecte a conta para ativar identidade, vault e memória privada.',
       };
   const commandDeck = walletConnected
     ? [
@@ -472,13 +841,115 @@ export function Home() {
         },
         {
           label: 'Conectar',
-          state: 'Vault aguardando',
-          path: '/vault',
-          icon: BadgeCheck,
+          state: 'identidade primeiro',
+          path: '/pass',
+          icon: Shield,
           tone: 'pending' as const,
         },
       ];
+  const homeGuide = useMemo(() => {
+    const steps: HomeGuideStep[] = [
+      {
+        key: 'pass',
+        label: 'Pass',
+        description: 'Conectar sua carteira',
+        path: '/pass',
+        icon: Shield,
+      },
+      {
+        key: 'radar',
+        label: 'Radar',
+        description: 'Ver o mercado',
+        path: '/radar',
+        icon: Activity,
+      },
+      {
+        key: 'intel',
+        label: 'Intel',
+        description: 'Entender o contexto',
+        path: '/intel',
+        icon: Newspaper,
+      },
+      {
+        key: 'vault',
+        label: 'Vault',
+        description: 'Conferir seu saldo',
+        path: '/vault',
+        icon: Lock,
+      },
+      {
+        key: 'swaps',
+        label: 'Swaps',
+        description: 'Fazer a troca',
+        path: '/swaps',
+        icon: ArrowLeftRight,
+      },
+    ];
 
+    if (!walletConnected) {
+      return {
+        eyebrow: 'Como começar',
+        title: 'Conecte sua carteira para liberar o uso completo',
+        summary: 'Você já pode navegar pelo mercado, mas a carteira conectada é o que libera saldo, memória e continuidade dentro do sistema.',
+        currentLabel: 'Ir para Pass',
+        currentPath: '/pass',
+        steps,
+      };
+    }
+
+    if (!walletReady) {
+      return {
+        eyebrow: 'Próximo passo',
+        title: 'Sua carteira já está conectada',
+        summary: 'Agora vale conferir seu saldo e entender o mercado antes de pensar em qualquer troca.',
+        currentLabel: 'Abrir Vault',
+        currentPath: '/vault',
+        steps,
+      };
+    }
+
+    return {
+      eyebrow: 'Próximo passo',
+      title: 'Sua conta já está pronta para avançar',
+      summary: 'Comece pelo Radar, use Intel para ganhar contexto e só então siga para Swaps quando a leitura fizer sentido.',
+      currentLabel: 'Abrir Radar',
+      currentPath: '/radar',
+      steps,
+    };
+  }, [intelItems.length, walletConnected, walletReady]);
+  const keysClassLabel = effectiveAccess && accessClass === 'operator' ? 'Operator' : 'Discovery';
+  const keysEntitlementLabel = !walletConnected
+    ? 'inativo'
+    : entitlementsLoading
+      ? 'resolvendo'
+      : effectiveAccess
+        ? 'ativo'
+        : 'não concedido';
+  const keysDelegateLabel = !walletConnected
+    ? '--'
+    : entitlement?.delegateWallet
+      ? formatAddress(entitlement.delegateWallet)
+      : effectiveAccess
+        ? 'posse direta'
+        : 'owner only';
+  const keysFeeLabel = !walletConnected
+    ? '--'
+    : entitlement?.feePolicy?.label ?? formatKeysFeeTier(feeTier);
+  const keysStateLabel = !walletConnected
+    ? 'sem wallet vinculada'
+    : entitlementsLoading
+      ? 'resolvendo entitlement'
+      : effectiveAccess
+        ? 'operator ativo'
+        : 'checkout disponível';
+  const keysSynopsis = !walletConnected
+    ? 'Discovery público ativo. Conecte uma wallet para resolver owner, delegate e fee tier.'
+    : effectiveAccess
+      ? entitlement?.delegateWallet
+        ? `Delegate ativa em ${formatAddress(entitlement.delegateWallet)} com camada Operator visível.`
+        : 'A wallet já opera em posse direta com entitlement soberano ativo.'
+      : 'A wallet já pode abrir o rail de checkout e concluir a ativação Operator em Keys.';
+  const keysActionLabel = !walletConnected ? 'Abrir Keys' : effectiveAccess ? 'Gerenciar Keys' : 'Ativar acesso';
   const openIntelItem = (url: string) => {
     const normalized = normalizeIntelRoute(url);
     if (normalized.startsWith('/intel/')) {
@@ -573,7 +1044,6 @@ export function Home() {
       accentColor: 'rgba(77,201,144,0.9)',
     },
   };
-  const intelStreamSections = intelSections;
   const marketLookup = useMemo(() => {
     const lookup = new Map<string, MarketMover>();
 
@@ -584,21 +1054,50 @@ export function Home() {
     return lookup;
   }, [liveMovers, topLosers, volumeLeaders]);
   const marketPulseRows = useMemo(() => {
-    const rows = new Map<string, MarketMover>();
+    const overviewLookup = new Map<string, MarketMover>();
 
-    [...liveMovers, ...topLosers, ...volumeLeaders].forEach((item) => {
-      if (!item) return;
-      const key = item.symbol.toUpperCase();
-      const current = rows.get(key);
-
-      rows.set(key, {
-        ...item,
-        volume: current && toNumericVolume(current.volume) > toNumericVolume(item.volume) ? current.volume : item.volume,
+    [marketPulseOverview?.focus_asset, marketPulseOverview?.featured, ...(marketPulseOverview?.universe ?? [])].forEach((item) => {
+      if (!item?.symbol) return;
+      overviewLookup.set(item.symbol.toUpperCase(), {
+        symbol: item.symbol.toUpperCase(),
+        price: Number(item.price) || 0,
+        change24h: Number(item.change24h) || 0,
+        volume: item.volume ?? 0,
       });
     });
 
-    return Array.from(rows.values()).slice(0, 6);
-  }, [liveMovers, topLosers, volumeLeaders]);
+    return HOME_MARKET_PULSE_SYMBOLS.map<MarketPulseRow>((symbol) => {
+      const preferred = overviewLookup.get(symbol) ?? marketLookup.get(symbol);
+
+      if (!preferred) {
+        return {
+          symbol,
+          price: null,
+          change24h: null,
+          volume: null,
+          unavailable: true,
+        };
+      }
+
+      return {
+        symbol,
+        price: Number(preferred.price) || 0,
+        change24h: Number(preferred.change24h) || 0,
+        volume: preferred.volume ?? 0,
+      };
+    });
+  }, [marketLookup, marketPulseOverview]);
+  const hasMarketPulseData = marketPulseRows.some((row) => !row.unavailable);
+  const fallbackMarketChartSymbol = marketPulseRows.find((row) => !row.unavailable)?.symbol ?? 'BTCUSDT';
+  useEffect(() => {
+    const selectedRow = marketPulseRows.find((row) => row.symbol === marketChartSymbol);
+    if (!selectedRow || selectedRow.unavailable) {
+      setMarketChartSymbol(fallbackMarketChartSymbol);
+    }
+  }, [fallbackMarketChartSymbol, marketChartSymbol, marketPulseRows]);
+  const marketChartQuery = useRadarCandlesPreview(marketChartSymbol, '1h', 36);
+  const marketChartCandles = marketChartQuery.data?.candles ?? [];
+  const marketChartRow = marketPulseRows.find((row) => row.symbol === marketChartSymbol) ?? null;
 
   const heroCandidates = useMemo(() => {
     const candidates: HeroCandidate[] = [];
@@ -676,8 +1175,6 @@ export function Home() {
     heroRadarOverview?.last_updated || activeHero?.item.created_at || homeData?.intel.last_updated || homeData?.last_updated,
     now
   );
-  const heroTape = activeHero?.tapeItems ?? [];
-  const heroTapeLoop = [...heroTape, ...heroTape];
   const heroVolumeLeaderSymbols = new Set(volumeLeaders.map((item) => item.symbol.toUpperCase()));
   const heroResolvedMover =
     activeHero?.relatedMover ??
@@ -687,15 +1184,6 @@ export function Home() {
   const isMarketBackedHero = Boolean(heroResolvedMover);
   const heroContextMover = isMarketBackedHero ? heroResolvedMover : null;
   const heroSupportMover = heroContextMover;
-  const heroThemeLabel = activeHero?.section.kicker ?? 'Intel';
-  const heroTopMetricLabel = isMarketBackedHero ? 'Preço' : 'Sinal';
-  const heroTopMetricValue = isMarketBackedHero && heroContextMover
-    ? `$${formatMarketPrice(heroContextMover.price)}`
-    : activeHero?.item.watch_items?.[0] ??
-      activeHero?.item.assets?.[0] ??
-      activeHero?.item.chains?.[0] ??
-      activeHero?.item.topics?.[0] ??
-      '--';
   const heroSupportAsset =
     activeHero?.relatedSymbol ??
     (activeHero ? intelMeta(activeHero.item) : null) ??
@@ -710,11 +1198,6 @@ export function Home() {
       stripHeadlinePrefix(activeHero?.item.chains?.[0]) ??
       stripHeadlinePrefix(activeHero?.item.topics?.[0]) ??
       'leitura ativa';
-  const heroSupportChips = uniqueText([
-    stripHeadlinePrefix(activeHero?.item.watch_items?.[0]),
-    stripHeadlinePrefix(activeHero?.item.watch_items?.[1]),
-    isMarketBackedHero && heroContextMover ? describeRisk(heroContextMover.change24h) : null,
-  ]).slice(0, 4);
   const heroValidationMetrics = isMarketBackedHero && heroContextMover
     ? [
         { label: 'Ativo', value: heroSupportAsset, tone: 'default' as const },
@@ -825,17 +1308,12 @@ export function Home() {
               surface="hero"
               className="sne-home-hero-surface relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
               style={{
+                ...RADAR_PANEL_SURFACE_STYLE,
                 background: `
-                  radial-gradient(circle at 0% 8%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.22)} 0%, transparent 28%),
-                  radial-gradient(circle at 100% 18%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.18)} 0%, transparent 24%),
-                  radial-gradient(circle at 84% 100%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.14)} 0%, transparent 26%),
-                  radial-gradient(circle at 14% 100%, rgba(255,255,255,0.05) 0%, transparent 22%),
-                  linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04))
+                  radial-gradient(circle at 18% 16%, ${withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.08)} 0%, transparent 22%),
+                  radial-gradient(circle at 80% 24%, rgba(62,201,153,0.06), transparent 22%),
+                  linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008))
                 `,
-                backgroundColor: 'var(--bg-2)',
-                borderWidth: '1px',
-                borderColor: 'rgba(255,255,255,0.06)',
-                boxShadow: 'var(--shadow-2)',
               }}
             >
             <div className="pointer-events-none absolute inset-0">
@@ -852,53 +1330,26 @@ export function Home() {
                 style={{ backgroundColor: withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)', 0.08) }}
               />
               <div
-                className="absolute bottom-[-16%] right-[10%] h-[26%] w-[28%] rounded-full blur-3xl"
-                style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-              />
-              <div
-                className="absolute inset-0 opacity-40"
+                className="absolute inset-0 opacity-25"
                 style={{
                   backgroundImage:
                     'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
-                  backgroundSize: '22px 22px',
-                }}
-              />
-              <div
-                className="absolute inset-x-0 top-[18%] h-px"
-                style={{
-                  background: `linear-gradient(90deg, transparent, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.66)'}, transparent)`,
+                  backgroundSize: '28px 28px',
                 }}
               />
               <motion.div
-                className="absolute inset-x-[-30%] top-[16%] h-[2px]"
-                style={{
-                  background: `linear-gradient(90deg, transparent, ${activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.86)'}, transparent)`,
-                  filter: 'blur(1px)',
-                }}
-                animate={{ x: ['-18%', '18%'], opacity: [0.2, 0.75, 0.2] }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute right-[8%] bottom-[10%] h-[26%] w-[22%] rounded-full blur-3xl"
+                style={{ backgroundColor: withAlpha(activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.82)', 0.07) }}
+                animate={{ opacity: [0.08, 0.18, 0.08], scale: [0.97, 1.04, 0.97] }}
+                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
               />
-              {activeHero ? (
-                <svg
-                  viewBox="0 0 100 120"
-                  preserveAspectRatio="none"
-                  className="absolute inset-x-[34%] bottom-[-10%] h-[68%] w-[76%] opacity-50"
-                >
-                  <defs>
-                    <linearGradient id="hero-sparkline-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="transparent" />
-                      <stop offset="38%" stopColor={activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.9)'} />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
-                    </linearGradient>
-                  </defs>
-                  <polyline
-                    fill="none"
-                    stroke="url(#hero-sparkline-gradient)"
-                    strokeWidth="2.1"
-                    points={activeHero.sparklinePoints}
-                  />
-                </svg>
-              ) : null}
+              {activeHero
+                ? renderIntelHeroAtmosphere(
+                    activeHero.section.key,
+                    activeHeroTheme?.accentColor ?? 'rgba(255,140,66,0.88)',
+                    activeHero.sparklinePoints
+                  )
+                : null}
             </div>
 
             <div className="relative z-[1]">
@@ -980,7 +1431,7 @@ export function Home() {
                       >
                         <div
                           className="sne-home-hero-validation-card rounded-[24px] px-5 py-4"
-                          style={{ backgroundColor: 'rgba(10,14,23,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                          style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.1)' }}
                         >
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
@@ -990,7 +1441,7 @@ export function Home() {
 
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             {heroValidationMetrics.map((metric) => (
-                              <div key={metric.label} className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div key={metric.label} className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                 <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
                                   {metric.label}
                                 </div>
@@ -1013,7 +1464,7 @@ export function Home() {
 
                           <div
                             className="rounded-[18px] px-4 py-3 text-xs uppercase tracking-[0.14em]"
-                            style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
+                            style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-2)' }}
                           >
                             {heroSupportPulse}
                           </div>
@@ -1022,60 +1473,69 @@ export function Home() {
                     </AnimatePresence>
                   </div>
 
-                  <div className="sne-home-hero-data-card">
-                    <div className="sne-home-hero-data-inline">
-                      <span>Leitura</span>
-                      <strong>{heroThemeLabel}</strong>
-                      {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
-                      <button
-                        type="button"
-                        onClick={() => openIntelItem(activeHero.item.url)}
-                        className="sne-home-text-action"
-                        style={{ color: 'var(--accent-orange)' }}
-                      >
-                        Ler brief ↗
-                      </button>
-                    </div>
-                  </div>
-
-                  {heroTape.length > 0 ? (
-                    <div
-                      className="sne-home-tape mt-3 overflow-hidden rounded-[18px] border"
-                      style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(6,10,16,0.55)' }}
-                    >
-                      <div className="flex items-center gap-3 px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                        <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
-                          Tape operacional
-                        </div>
-                        <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: activeHeroTheme.accentColor }} />
-                        <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                          Intel conduz, mercado valida
-                        </div>
-                      </div>
-
-                      <div className="relative overflow-hidden py-2">
-                        <motion.div
-                          className="flex min-w-max items-center gap-2 px-3"
-                          animate={{ x: ['0%', '-50%'] }}
-                          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
-                        >
-                          {heroTapeLoop.map((item, index) => (
-                            <div
-                              key={`${item}-${index}`}
-                              className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-xs"
-                              style={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text-2)' }}
-                            >
-                              <span style={{ color: 'var(--text-1)' }}>{item}</span>
-                              <span style={{ color: 'var(--text-3)' }}>•</span>
-                            </div>
-                          ))}
-                        </motion.div>
-                      </div>
-                    </div>
-                  ) : null}
                 </>
               )}
             </div>
+            </FieldSurface>
+          </SignalPanel>
+
+          <SignalPanel className="sne-home-keys-panel">
+            <FieldSurface
+              motif="signal-stack"
+              density="compact"
+              surface="panel"
+              className="rounded-[24px] px-4 py-[0.95rem]"
+              style={RADAR_RAIL_SURFACE_STYLE}
+            >
+              <div className="sne-home-keys">
+                <div className="sne-home-keys__header">
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                      Keys
+                    </div>
+                    <div className="mt-0.5 text-[1.02rem] font-semibold leading-[1.08] text-balance" style={{ color: 'var(--text-1)' }}>
+                      Postura de acesso
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/keys')}
+                    className="sne-home-text-action self-start whitespace-nowrap text-[12px] font-medium"
+                    style={{ color: 'var(--accent-orange)' }}
+                  >
+                    {keysActionLabel} ↗
+                  </button>
+                </div>
+
+                <div className="sne-home-keys__grid">
+                  <div className="sne-home-keys__metric">
+                    <div className="sne-home-keys__metric-label">Classe</div>
+                    <div className="sne-home-keys__metric-value">{keysClassLabel}</div>
+                  </div>
+                  <div className="sne-home-keys__metric">
+                    <div className="sne-home-keys__metric-label">Entitlement</div>
+                    <div className="sne-home-keys__metric-value">{keysEntitlementLabel}</div>
+                  </div>
+                  <div className="sne-home-keys__metric">
+                    <div className="sne-home-keys__metric-label">Delegate</div>
+                    <div className="sne-home-keys__metric-value">{keysDelegateLabel}</div>
+                  </div>
+                  <div className="sne-home-keys__metric">
+                    <div className="sne-home-keys__metric-label">Fee tier</div>
+                    <div className="sne-home-keys__metric-value">{keysFeeLabel}</div>
+                  </div>
+                </div>
+
+                <div className="sne-home-keys__footer">
+                  <div className="sne-home-keys__state">
+                    <span className="sne-home-keys__state-dot" />
+                    {keysStateLabel}
+                  </div>
+                  <div className="sne-home-keys__synopsis">
+                    {keysSynopsis}
+                  </div>
+                </div>
+              </div>
             </FieldSurface>
           </SignalPanel>
 
@@ -1087,12 +1547,7 @@ export function Home() {
                 density="compact"
                 surface="strip"
                 className="rounded-[24px] px-5 py-5"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.02))',
-                  backgroundColor: 'var(--bg-2)',
-                  borderWidth: '1px',
-                  borderColor: 'var(--stroke-1)',
-                }}
+                style={RADAR_RAIL_SURFACE_STYLE}
               >
               <div className="sne-home-command-deck">
                 <div className="sne-home-command-intent min-w-0">
@@ -1138,117 +1593,76 @@ export function Home() {
             </SignalPanel>
           )}
 
-          {/* ── Intel Stream ──────────────────────────────────────── */}
-          {intelStreamSections.length > 0 && (
-            <SignalPanel className="sne-home-intel-panel">
-              <FieldSurface
-                motif="signal-stack"
-                density="compact"
-                surface="panel"
-                className="rounded-[24px] p-5"
-                style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
-              >
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                    Fluxo Intel
-                  </div>
-                  <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
-                    Inteligência em monitoramento contínuo
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/intel')}
-                  className="sne-home-text-action text-sm font-medium"
-                  style={{ color: 'var(--accent-orange)' }}
-                >
-                  Ver brief ↗
-                </button>
-              </div>
-
-              <div className="sne-home-intel-stream space-y-3">
-                {intelStreamSections.map((section) => {
-                  const lead = section.items[0];
-                  const rest = section.items.slice(1, 3);
-
-                  return (
-                    <div
-                      key={section.key}
-                      className="sne-home-intel-row rounded-[12px] px-3 py-2"
-                      style={{
-                        backgroundColor: 'var(--bg-3)',
-                        borderWidth: '1px',
-                        borderColor: 'rgba(255,255,255,0.07)',
-                        ...intelSectionTheme[section.key].panelStyle,
-                      }}
-                    >
-                      <div className="sne-home-intel-row__meta flex items-center gap-2">
-                        <IntelEntityIcon
-                          symbol={lead ? intelEntity(lead) : null}
-                          sectionKey={section.key}
-                          className="flex h-7 w-7 items-center justify-center rounded-[9px]"
-                          style={intelSectionTheme[section.key].toneStyle}
-                          iconClassName="h-3.5 w-3.5"
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                            {section.kicker}
-                          </div>
-                          <div className="truncate text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                            {section.title}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="sne-home-intel-row__lead">
-                        {lead ? (
-                          <>
-                            {renderIntelTitle(lead, 'text-sm font-semibold leading-tight line-clamp-1')}
-                            <div className="sne-home-intel-row__chips mt-1">
-                              <span className="truncate text-[10px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
-                                {intelMeta(lead)}
-                              </span>
-                              {rest.map((item) => (
-                                <span key={item.id} className="truncate text-[10px]" style={{ color: 'var(--text-2)' }}>
-                                  {intelTitle(item)}
-                                </span>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                            {section.description}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
-                        <button
-                          onClick={() => navigate('/intel')}
-                          aria-label={`Abrir Intel em ${section.title}`}
-                          className="sne-home-icon-action"
-                          style={{ color: 'var(--accent-orange)' }}
-                        >
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+          {/* ── Guia de uso ───────────────────────────────────────── */}
+          <SignalPanel className="sne-home-intel-panel sne-home-guide-panel">
+            <FieldSurface
+              motif="signal-stack"
+              density="compact"
+              surface="panel"
+              className="rounded-[24px] p-5"
+              style={RADAR_RAIL_SURFACE_STYLE}
+            >
+              <div className="sne-home-guide">
+                <div className="sne-home-guide__header">
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                      {homeGuide.eyebrow}
                     </div>
-                  );
-                })}
+                    <div className="mt-1 text-lg font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
+                      {homeGuide.title}
+                    </div>
+                    <p className="mt-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                      {homeGuide.summary}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate(homeGuide.currentPath)}
+                    className="sne-home-text-action text-sm font-medium"
+                    style={{ color: 'var(--accent-orange)' }}
+                  >
+                    {homeGuide.currentLabel} ↗
+                  </button>
+                </div>
+
+                <div className="sne-home-guide__steps">
+                  {homeGuide.steps.map((step) => {
+                    const Icon = step.icon;
+
+                    return (
+                      <button
+                        key={step.key}
+                        type="button"
+                        onClick={() => navigate(step.path)}
+                        className="sne-home-guide-step"
+                      >
+                        <span className="sne-home-guide-step__icon">
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {step.label}
+                          </span>
+                          <span className="block text-[11px]" style={{ color: 'var(--text-2)' }}>
+                            {step.description}
+                          </span>
+                        </span>
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              </FieldSurface>
-            </SignalPanel>
-          )}
+            </FieldSurface>
+          </SignalPanel>
 
           {/* ── Mercado — contexto, não protagonista ─────────────── */}
           <SignalPanel className="sne-home-market-panel">
             <FieldSurface
-              motif="liquidity-field"
-              density="compact"
-              surface="panel"
-              className="rounded-[24px] p-5"
-              style={{ backgroundColor: 'var(--bg-2)', borderWidth: '1px', borderColor: 'var(--stroke-1)' }}
+                motif="liquidity-field"
+                density="compact"
+                surface="panel"
+                className="rounded-[24px] p-5"
+                style={RADAR_RAIL_SURFACE_STYLE}
             >
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div>
@@ -1268,56 +1682,71 @@ export function Home() {
               </button>
             </div>
 
-            {!featuredMover ? (
-              <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                Dados de mercado indisponíveis. Radar sincronizando.
-              </div>
-            ) : (
-              <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
-                <div className="sne-home-market-table">
-                  {marketPulseRows.map((mover) => (
-                    <button
-                      key={mover.symbol}
-                      type="button"
-                      className="sne-home-market-token"
-                      onClick={() => navigate(`/radar/${mover.symbol}`)}
-                      aria-label={`Abrir Radar de ${mover.symbol}`}
-                    >
-                      <span className="sne-home-market-token__top">
-                        <IntelEntityIcon
-                          symbol={assetIconSymbol(mover.symbol)}
-                          sectionKey="market"
-                          className="sne-home-market-token__icon"
-                          iconClassName="h-4 w-4"
-                        />
-                      </span>
-                      <span className="sne-home-market-token__symbol">
-                        {assetIconSymbol(mover.symbol).toUpperCase()}
-                      </span>
-                      <span className="sne-home-market-token__price">
-                        ${formatMarketPrice(mover.price)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
-                  <div
-                    className="sne-home-market-editorial rounded-[12px] px-3 py-2"
-                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+            <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
+              <div className="sne-home-market-table">
+                {marketPulseRows.map((mover) => (
+                  <button
+                    key={mover.symbol}
+                    type="button"
+                    className="sne-home-market-token"
+                    data-active={marketChartSymbol === mover.symbol ? 'true' : 'false'}
+                    data-tone={mover.unavailable ? 'flat' : mover.change24h != null && mover.change24h >= 0 ? 'up' : 'down'}
+                    onMouseEnter={() => setMarketChartSymbol(mover.symbol)}
+                    onFocus={() => setMarketChartSymbol(mover.symbol)}
+                    onClick={() => navigate(`/radar/${mover.symbol}`)}
+                    aria-label={`Abrir Radar de ${mover.symbol}`}
                   >
-                    <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                      Narrativa
-                    </div>
-                    {marketEditorial.headline && (
-                      <div className="mt-1 line-clamp-2 font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
-                        {marketEditorial.headline}
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <span className="sne-home-market-token__top">
+                      <IntelEntityIcon
+                        symbol={assetIconSymbol(mover.symbol)}
+                        sectionKey="market"
+                        className="sne-home-market-token__icon"
+                        iconClassName="h-6 w-6"
+                      />
+                    </span>
+                    <span className="sne-home-market-token__symbol">
+                      {assetIconSymbol(mover.symbol).toUpperCase()}
+                    </span>
+                    <span className="sne-home-market-token__price">
+                      {mover.price == null ? '--' : `$${formatMarketPrice(mover.price)}`}
+                    </span>
+                    <span className="sne-home-market-token__change">
+                      {mover.change24h == null ? '--' : `${mover.change24h >= 0 ? '+' : ''}${(mover.change24h * 100).toFixed(1)}%`}
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
+
+              {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) ? (
+                <div
+                  className="sne-home-market-editorial rounded-[12px] px-3 py-2"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                >
+                  <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                    Narrativa
+                  </div>
+                  {marketEditorial.headline && (
+                    <div className="mt-1 line-clamp-2 font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                      {marketEditorial.headline}
+                    </div>
+                  )}
+                </div>
+              ) : !hasMarketPulseData ? (
+                <div
+                  className="sne-home-market-editorial rounded-[12px] px-3 py-2 text-sm"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)', color: 'var(--text-2)' }}
+                >
+                  Dados de mercado indisponíveis. Radar sincronizando.
+                </div>
+              ) : null}
+
+              <MarketPulseCandlestick
+                symbol={marketChartSymbol}
+                change24h={marketChartRow?.change24h ?? null}
+                candles={marketChartCandles}
+                isLoading={marketChartQuery.isLoading || marketChartQuery.isFetching}
+              />
+            </div>
             </FieldSurface>
           </SignalPanel>
         </PageSignalFrame>

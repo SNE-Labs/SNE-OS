@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { readPersistedSnapshot, writePersistedSnapshot } from '../lib/querySnapshot';
 import { radarApi } from '../services/radar-api';
-import type { MarketSummary, RadarOverview, Signal, WatchlistResponse } from '../services/radar-api';
+import type { MarketSummary, RadarCandlesPreview, RadarOverview, Signal, WatchlistResponse } from '../services/radar-api';
 
 export function useRadarOverview(symbol: string, timeframe: string = '24H') {
   const snapshotKey = `sne:query:radar:${symbol}:${timeframe}`;
@@ -24,6 +24,30 @@ export function useRadarOverview(symbol: string, timeframe: string = '24H') {
     retry: 2,
     refetchOnWindowFocus: false,
     refetchInterval: 15 * 1000,
+  });
+}
+
+export function useRadarCandlesPreview(symbol: string, timeframe: string = '1h', limit: number = 36) {
+  const snapshotKey = `sne:query:radar:candles:${symbol}:${timeframe}:${limit}`;
+  const persistedSnapshot = readPersistedSnapshot<RadarCandlesPreview>(snapshotKey);
+  const hydratedSnapshot = persistedSnapshot?.data ? radarApi.hydrateCandlesPreview(persistedSnapshot.data) : undefined;
+
+  return useQuery({
+    queryKey: ['radar', 'candles-preview', symbol, timeframe, limit],
+    queryFn: async () => {
+      const payload = await radarApi.getCandlesPreview(symbol, timeframe, limit);
+      writePersistedSnapshot(snapshotKey, payload);
+      return payload;
+    },
+    enabled: !!symbol && !!timeframe && limit > 0,
+    initialData: hydratedSnapshot,
+    initialDataUpdatedAt: persistedSnapshot?.savedAt,
+    placeholderData: (previousData) => previousData,
+    staleTime: 20 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
+    refetchInterval: 30 * 1000,
   });
 }
 

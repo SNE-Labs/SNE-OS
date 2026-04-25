@@ -7,7 +7,6 @@ import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Desktop Components (carregados normalmente)
-import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { BottomDock } from './components/BottomDock';
 import { TapeWire } from './components/TapeWire';
@@ -54,20 +53,7 @@ const SUPPORTED_CHAINS = [arbitrum, arbitrumSepolia, mainnet, optimism, base, po
 function AppContent() {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [sidebarPinned, setSidebarPinned] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem('sne:shell:sidebar-pinned') === 'true';
-  });
-  const [sidebarExpanded, setSidebarExpanded] = useState(sidebarPinned);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem('sne:shell:sidebar-pinned', sidebarPinned ? 'true' : 'false');
-    if (sidebarPinned) {
-      setSidebarExpanded(true);
-    }
-  }, [sidebarPinned]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -75,14 +61,11 @@ function AppContent() {
         event.preventDefault();
         setCommandPaletteOpen(true);
       }
-      if (event.key === 'Escape' && !sidebarPinned) {
-        setSidebarExpanded(false);
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarPinned]);
+  }, []);
 
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
@@ -106,30 +89,8 @@ function AppContent() {
       <AsciiHaze atmosphereKey={atmosphereClass} />
       <LivingSystemLayer pathname={location.pathname} />
       <div className="relative z-10 h-dvh overflow-hidden">
-        {!sidebarPinned && sidebarExpanded ? (
-          <button
-            type="button"
-            aria-label="Fechar sidebar"
-            onClick={() => setSidebarExpanded(false)}
-            className="fixed inset-0 z-30 hidden bg-black/15 lg:block"
-            style={{ backgroundColor: 'var(--shell-overlay)' }}
-          />
-        ) : null}
-
-        <Sidebar
-          expanded={sidebarExpanded}
-          pinned={sidebarPinned}
-          onExpand={() => setSidebarExpanded(true)}
-          onCollapse={() => setSidebarExpanded(false)}
-          onTogglePin={() => setSidebarPinned((value) => !value)}
-        />
-
-        <div className="flex h-dvh flex-col lg:pl-[var(--sidebar-rail-width)]">
-          <Topbar
-            onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-            onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
-            sidebarPinned={sidebarPinned}
-          />
+        <div className="flex h-dvh flex-col">
+          <Topbar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
           <TapeWire />
 
           <main className="shell-main flex-1 overflow-y-auto">
@@ -166,11 +127,7 @@ function AppContent() {
           </main>
         </div>
 
-        <BottomDock
-          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-          onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
-          sidebarPinned={sidebarPinned}
-        />
+        <BottomDock onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
         <ShellCommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       </div>
     </div>
