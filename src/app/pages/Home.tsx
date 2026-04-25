@@ -287,6 +287,13 @@ function toNumericVolume(value: string | number) {
   return typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.]/g, ''));
 }
 
+function assetIconSymbol(symbol: string) {
+  return symbol
+    .toUpperCase()
+    .replace(/(USDT|USDC|USD|BTC|ETH)$/u, '')
+    .toLocaleLowerCase('pt-BR');
+}
+
 function toRadarSymbol(value?: string | null) {
   if (!value) return '';
 
@@ -576,6 +583,22 @@ export function Home() {
 
     return lookup;
   }, [liveMovers, topLosers, volumeLeaders]);
+  const marketPulseRows = useMemo(() => {
+    const rows = new Map<string, MarketMover>();
+
+    [featuredMover, ...secondaryMovers.slice(0, 2), ...topLosers.slice(0, 1), ...volumeLeaders.slice(0, 2)].forEach((item) => {
+      if (!item) return;
+      const key = item.symbol.toUpperCase();
+      const current = rows.get(key);
+
+      rows.set(key, {
+        ...item,
+        volume: current && toNumericVolume(current.volume) > toNumericVolume(item.volume) ? current.volume : item.volume,
+      });
+    });
+
+    return Array.from(rows.values()).slice(0, 5);
+  }, [featuredMover, secondaryMovers, topLosers, volumeLeaders]);
 
   const heroCandidates = useMemo(() => {
     const candidates: HeroCandidate[] = [];
@@ -937,6 +960,22 @@ export function Home() {
                           {intelSummary(activeHero.item)}
                         </div>
 
+                        <div className="sne-home-hero-data-card">
+                          <div className="sne-home-hero-data-inline">
+                            <span>Leitura</span>
+                            <strong>{heroThemeLabel}</strong>
+                            {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
+                            <button
+                              type="button"
+                              onClick={() => openIntelItem(activeHero.item.url)}
+                              className="sne-home-text-action"
+                              style={{ color: 'var(--accent-orange)' }}
+                            >
+                              Ler brief ↗
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                           <span>{activeHero.item.points} pts</span>
                           <span>{activeHero.item.comments} comentários</span>
@@ -955,22 +994,6 @@ export function Home() {
                         transition={{ duration: 0.35, ease: 'easeOut' }}
                         className="sne-home-hero-context flex flex-col gap-3"
                       >
-                        <div className="sne-home-hero-data-card">
-                          <div className="sne-home-hero-data-inline">
-                            <span>Leitura</span>
-                            <strong>{heroThemeLabel}</strong>
-                            {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
-                            <button
-                              type="button"
-                              onClick={() => openIntelItem(activeHero.item.url)}
-                              className="sne-home-text-action"
-                              style={{ color: 'var(--accent-orange)' }}
-                            >
-                              Ler brief ↗
-                            </button>
-                          </div>
-                        </div>
-
                         <div
                           className="sne-home-hero-validation-card rounded-[24px] px-5 py-4"
                           style={{ backgroundColor: 'rgba(10,14,23,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
@@ -1252,52 +1275,18 @@ export function Home() {
             ) : (
               <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
                 <div className="sne-home-market-table rounded-[12px] px-3 py-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <div className="sne-home-market-row">
-                    <div className="min-w-0">
-                      <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                        Destaque
+                  {marketPulseRows.map((mover) => (
+                    <div key={mover.symbol} className="sne-home-market-token">
+                      <div className="sne-home-market-token__top">
+                        <IntelEntityIcon
+                          symbol={assetIconSymbol(mover.symbol)}
+                          sectionKey="market"
+                          className="sne-home-market-token__icon"
+                          iconClassName="h-4 w-4"
+                        />
                       </div>
-                      <div className="truncate text-base font-semibold" style={{ color: 'var(--text-1)' }}>
-                        {featuredMover.symbol}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
-                      <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
-                        ${formatMarketPrice(featuredMover.price)}
-                      </div>
-                    </div>
-                    <div className="text-right text-sm font-semibold" style={{ color: featuredMover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
-                      {featuredMover.change24h >= 0 ? '+' : ''}{(featuredMover.change24h * 100).toFixed(1)}%
-                    </div>
-                  </div>
-
-                  {secondaryMovers.slice(0, 2).map((mover) => (
-                    <div key={mover.symbol} className="sne-home-market-row">
-                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>${formatMarketPrice(mover.price)}</div>
-                      <div className="text-right text-sm font-semibold" style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
-                        {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                  ))}
-
-                  {topLosers.slice(0, 1).map((mover) => (
-                    <div key={mover.symbol} className="sne-home-market-row">
-                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>queda</div>
-                      <div className="text-right text-sm font-semibold" style={{ color: 'var(--danger-red)' }}>
-                        {(mover.change24h * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                  ))}
-
-                  {volumeLeaders.slice(0, 1).map((item) => (
-                    <div key={item.symbol} className="sne-home-market-row">
-                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>volume</div>
-                      <div className="text-right text-xs font-semibold" style={{ color: 'var(--text-1)' }}>
-                        ${formatCompactNumber(Number(item.volume))}
+                      <div className="sne-home-market-token__price">
+                        ${formatMarketPrice(mover.price)}
                       </div>
                     </div>
                   ))}
