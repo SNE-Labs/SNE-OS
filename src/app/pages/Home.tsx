@@ -955,68 +955,19 @@ export function Home() {
                         transition={{ duration: 0.35, ease: 'easeOut' }}
                         className="sne-home-hero-context flex flex-col gap-3"
                       >
-                        <div
-                          className="sne-home-hero-data-card rounded-[24px] p-5"
-                          style={{
-                            background: 'linear-gradient(180deg, rgba(10,14,23,0.44), rgba(10,14,23,0.22))',
-                            borderWidth: '1px',
-                            borderColor: 'rgba(255,255,255,0.06)',
-                            backdropFilter: 'blur(8px)',
-                          }}
-                        >
-                          <div className="sne-home-hero-data-head flex items-center justify-between gap-3 mb-4">
-                            <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                              Leitura
-                            </div>
+                        <div className="sne-home-hero-data-card">
+                          <div className="sne-home-hero-data-inline">
+                            <span>Leitura</span>
+                            <strong>{heroThemeLabel}</strong>
+                            {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
                             <button
+                              type="button"
                               onClick={() => openIntelItem(activeHero.item.url)}
-                              className="sne-home-text-action text-sm font-medium"
+                              className="sne-home-text-action"
                               style={{ color: 'var(--accent-orange)' }}
                             >
                               Ler brief ↗
                             </button>
-                          </div>
-
-                          <div className="sne-home-hero-data-grid grid grid-cols-2 gap-3 mb-3">
-                            <div
-                              className={isMarketBackedHero ? 'sne-home-metric-tile rounded-[18px] px-4 py-3' : 'sne-home-metric-tile rounded-[18px] px-4 py-3 col-span-2'}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
-                            >
-                              <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Tema</div>
-                              <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                {heroThemeLabel}
-                              </div>
-                            </div>
-                            {isMarketBackedHero ? (
-                              <div className="sne-home-metric-tile rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                                <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                                  {heroTopMetricLabel}
-                                </div>
-                                <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>
-                                  {heroTopMetricValue}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div className="sne-home-support-chips flex flex-wrap gap-2">
-                            {heroSupportChips.map((chip) => (
-                              <div
-                                key={chip}
-                                className="rounded-full px-3 py-2 text-xs uppercase tracking-[0.14em]"
-                                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
-                              >
-                                {chip}
-                              </div>
-                            ))}
-                            {heroSupportChips.length === 0 ? (
-                              <div
-                                className="rounded-full px-3 py-2 text-xs uppercase tracking-[0.14em]"
-                                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
-                              >
-                                leitura ativa
-                              </div>
-                            ) : null}
                           </div>
                         </div>
 

@@ -384,7 +384,7 @@
       overflow: hidden;
       margin-bottom: 0.55rem !important;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3 !important;
+      -webkit-line-clamp: 2 !important;
       color: rgba(226,232,240,0.78) !important;
       font-size: 0.72rem !important;
       line-height: 1.34 !important;
@@ -558,54 +558,59 @@
 
     .sne-home-hero-data-card {
       background: transparent !important;
-      border-color: rgba(255,255,255,0.045) !important;
+      border: 0 !important;
       backdrop-filter: none;
       padding: 0 !important;
     }
 
-    .sne-home-hero-data-head {
-      margin-bottom: 0.35rem !important;
-    }
-
-    .sne-home-hero-data-grid {
-      display: flex !important;
-      gap: 0.35rem !important;
-      margin-bottom: 0.35rem !important;
-    }
-
-    .sne-home-metric-tile {
-      flex: 1 1 0;
-      min-height: 0;
-      padding: 0 !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-    }
-
-    .sne-home-metric-tile.col-span-2 {
-      flex-basis: 100%;
-    }
-
-    .sne-home-metric-tile .text-\[10px\] {
-      margin-bottom: 0.15rem !important;
-      font-size: 0.52rem !important;
-      letter-spacing: 0.12em !important;
-    }
-
-    .sne-home-metric-tile .text-base {
-      font-size: 0.72rem !important;
-      line-height: 1.15 !important;
-    }
-
-    .sne-home-support-chips {
-      max-height: 1.7rem;
+    .sne-home-hero-data-inline {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.42rem;
       overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding-top: 0.48rem;
+      font-size: 0.64rem;
+      line-height: 1;
+      color: var(--text-3);
     }
 
-    .sne-home-support-chips > div {
-      padding: 0.34rem 0.52rem !important;
-      border-radius: 8px !important;
-      font-size: 0.55rem !important;
-      letter-spacing: 0.12em !important;
+    .sne-home-hero-data-inline span,
+    .sne-home-hero-data-inline strong,
+    .sne-home-hero-data-inline button {
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .sne-home-hero-data-inline span {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .sne-home-hero-data-inline strong {
+      overflow: hidden;
+      color: var(--text-1);
+      font-weight: 650;
+      text-overflow: ellipsis;
+    }
+
+    .sne-home-hero-data-inline strong:not(:last-of-type)::after {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 3px;
+      margin-left: 0.42rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.28);
+      vertical-align: middle;
+    }
+
+    .sne-home-hero-data-inline button {
+      margin-left: auto;
+      flex: 0 0 auto;
+      font-size: 0.68rem;
+      font-weight: 650;
     }
 
     .sne-home-hero-validation-card {
