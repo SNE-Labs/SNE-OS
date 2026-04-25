@@ -88,7 +88,7 @@ export function TapeWire() {
       }}
     >
       <div
-        className="absolute left-6 top-1/2 z-20 hidden -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] lg:flex"
+        className="absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] lg:flex"
         style={{
           borderColor: compact ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.08)',
           backgroundColor: compact ? 'rgba(8, 11, 16, 0.58)' : 'rgba(8, 11, 16, 0.74)',
@@ -115,7 +115,7 @@ export function TapeWire() {
         style={{ background: 'linear-gradient(270deg, rgba(7,9,11,0.92), transparent)' }}
       />
 
-      <div className={`${compact ? '' : 'shell-tape-track'} flex min-w-max items-center gap-3 ${compact ? 'py-2' : 'py-3'} pl-28 pr-8`}>
+      <div className={`${compact ? '' : 'shell-tape-track'} flex min-w-max items-center gap-2 ${compact ? 'py-1' : 'py-1.5'} pl-24 pr-6`}>
         {items.map((item, index) => {
           const meta = resolveStreamMeta(item.label);
           const Icon = meta.icon;
@@ -133,7 +133,7 @@ export function TapeWire() {
           return (
             <div
               key={`${item.label}-${index}`}
-              className="flex shrink-0 items-center gap-3"
+              className="flex shrink-0 items-center gap-2"
             >
               {item.href ? (
                 <Link

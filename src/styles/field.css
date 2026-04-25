@@ -256,13 +256,13 @@
 
     .sne-home-frame {
       min-height: 0;
-      height: min(700px, calc(100vh - 270px));
-      max-width: min(1600px, calc(100vw - 180px)) !important;
+      height: min(660px, calc(100dvh - 220px));
+      max-width: min(1500px, calc(100vw - 148px)) !important;
     }
 
     .sne-home-cockpit {
       display: grid;
-      grid-template-columns: minmax(360px, 0.9fr) minmax(520px, 1.16fr) minmax(330px, 0.84fr);
+      grid-template-columns: minmax(330px, 0.9fr) minmax(480px, 1.16fr) minmax(300px, 0.84fr);
       grid-template-areas:
         "hero brief market"
         "hero intel market";
@@ -609,12 +609,12 @@
     }
 
     .sne-home-frame {
-      height: min(720px, calc(100vh - 250px));
-      max-width: min(1640px, calc(100vw - 200px)) !important;
+      height: min(680px, calc(100dvh - 210px));
+      max-width: min(1540px, calc(100vw - 160px)) !important;
     }
 
     .sne-home-cockpit {
-      grid-template-columns: minmax(390px, 0.92fr) minmax(600px, 1.18fr) minmax(360px, 0.84fr);
+      grid-template-columns: minmax(350px, 0.92fr) minmax(540px, 1.18fr) minmax(320px, 0.84fr);
     }
 
     .sne-mosaic-page .sne-mosaic-hero-grid {
@@ -651,8 +651,8 @@
     }
 
     .sne-home-frame {
-      height: min(620px, calc(100vh - 286px));
-      max-width: min(1500px, calc(100vw - 180px)) !important;
+      height: min(620px, calc(100dvh - 224px));
+      max-width: min(1420px, calc(100vw - 148px)) !important;
     }
 
     .sne-home-hero-surface {

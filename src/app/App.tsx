@@ -105,7 +105,7 @@ function AppContent() {
       <SNEField pathname={location.pathname} />
       <AsciiHaze atmosphereKey={atmosphereClass} />
       <LivingSystemLayer pathname={location.pathname} />
-      <div className="relative z-10 min-h-screen">
+      <div className="relative z-10 h-dvh overflow-hidden">
         {!sidebarPinned && sidebarExpanded ? (
           <button
             type="button"
@@ -124,7 +124,7 @@ function AppContent() {
           onTogglePin={() => setSidebarPinned((value) => !value)}
         />
 
-        <div className="min-h-screen lg:pl-[var(--sidebar-rail-width)]">
+        <div className="flex h-dvh flex-col lg:pl-[var(--sidebar-rail-width)]">
           <Topbar
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onToggleSidebarPin={() => setSidebarPinned((value) => !value)}
@@ -132,7 +132,7 @@ function AppContent() {
           />
           <TapeWire />
 
-          <main className="overflow-y-auto pb-32">
+          <main className="shell-main flex-1 overflow-y-auto">
             <ChunkLoadBoundary>
               <Suspense fallback={<DesktopSkeleton />}>
                 <AnimatedRouteFrame routeKey={location.pathname}>

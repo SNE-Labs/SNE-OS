@@ -44,14 +44,14 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
 
       <div className="relative flex h-full">
         <div
-          className="flex h-full w-[var(--sidebar-rail-width)] flex-col items-center justify-between border-r py-5"
+          className="flex h-full w-[var(--sidebar-rail-width)] flex-col items-center justify-between border-r py-4"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}
         >
-          <div className="flex w-full flex-col items-center gap-5">
+          <div className="flex w-full flex-col items-center gap-4">
             <button
               type="button"
               onClick={onTogglePin}
-              className="flex h-11 w-11 items-center justify-center rounded-[18px] border transition-all duration-200 hover:-translate-y-0.5"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] border transition-all duration-200 hover:-translate-y-0.5"
               style={{
                 backgroundColor: pinned ? 'rgba(255, 102, 0, 0.16)' : 'rgba(255,255,255,0.03)',
                 borderColor: pinned ? 'rgba(255, 102, 0, 0.28)' : 'rgba(255,255,255,0.08)',
@@ -64,7 +64,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
 
             <NavLink
               to="/home"
-              className="flex h-12 w-12 items-center justify-center rounded-[20px] border"
+              className="flex h-10 w-10 items-center justify-center rounded-[14px] border"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.025)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -79,12 +79,12 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               />
             </NavLink>
 
-            <nav className="flex w-full flex-col items-center gap-2 px-3">
+            <nav className="flex w-full flex-col items-center gap-1.5 px-2.5">
               {sidebarItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className="flex w-full items-center justify-center rounded-[18px] px-3 py-3 transition-all duration-200 hover:-translate-y-0.5"
+                  className="flex w-full items-center justify-center rounded-[13px] px-2.5 py-2.5 transition-all duration-200 hover:-translate-y-0.5"
                   style={({ isActive }) => ({
                     backgroundColor: isActive ? 'rgba(255, 102, 0, 0.14)' : 'transparent',
                     boxShadow: isActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : 'none',
@@ -105,7 +105,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
           <button
             type="button"
             onClick={() => navigate(sidebarContext.actionPath)}
-            className="flex h-11 w-11 items-center justify-center rounded-[18px] border"
+            className="flex h-10 w-10 items-center justify-center rounded-[14px] border"
             style={{
               backgroundColor: 'rgba(255,255,255,0.03)',
               borderColor: 'rgba(255,255,255,0.08)',
@@ -126,7 +126,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
             pointerEvents: expanded ? 'auto' : 'none',
           }}
         >
-          <div className="flex h-full flex-col px-5 py-5">
+          <div className="flex h-full flex-col px-4 py-4">
             <div
               className="mb-4 border-b pb-4"
               style={{
@@ -158,7 +158,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
             </div>
 
             <div
-              className="mt-5 rounded-[24px] border p-4"
+              className="mt-4 rounded-[18px] border p-3"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.03)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -180,7 +180,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
                 {sidebarContext.items.slice(0, 3).map((item) => (
                   <div
                     key={item}
-                    className="rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.16em]"
+                    className="rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]"
                     style={{
                       backgroundColor: 'rgba(255,255,255,0.03)',
                       borderColor: 'rgba(255,255,255,0.08)',
@@ -194,7 +194,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               <button
                 type="button"
                 onClick={() => navigate(sidebarContext.actionPath)}
-                className="w-full rounded-[18px] px-4 py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5"
+                className="w-full rounded-[14px] px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5"
                 style={{
                   backgroundColor: 'rgba(255, 102, 0, 0.16)',
                   color: 'var(--text-1)',

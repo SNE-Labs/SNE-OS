@@ -730,7 +730,7 @@ export function Home() {
 
   return (
     <div className="flex flex-1">
-      <div className="sne-mosaic-page sne-home-page flex-1 px-6 py-4 overflow-y-auto xl:px-8">
+      <div className="sne-mosaic-page sne-home-page flex-1 px-5 py-3 xl:px-6">
         <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1480px]">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel className="sne-home-hero-panel">
