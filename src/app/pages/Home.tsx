@@ -417,16 +417,12 @@ export function Home() {
     ? {
         eyebrow: 'Command Center',
         title: 'Conta conectada',
-        summary: marketRegime?.label
-          ? `Use o Radar para validar um mercado ${marketRegime.label.toLocaleLowerCase('pt-BR')} antes de mover saldo.`
-          : 'Vault, Radar e Intel já podem orientar o próximo movimento.',
+        summary: 'Valide o mercado antes de mover saldo.',
       }
     : {
         eyebrow: 'Command Center',
         title: 'Modo público ativo',
-        summary: marketRegime?.label
-          ? `Comece pelo Radar: mercado ${marketRegime.label.toLocaleLowerCase('pt-BR')} e conta ainda não conectada.`
-          : 'Explore Radar e Intel agora, ou conecte a carteira para personalizar o OS.',
+        summary: 'Valide o mercado antes de conectar a conta.',
       };
   const commandDeck = walletConnected
     ? [
