@@ -1178,92 +1178,63 @@ export function Home() {
                   return (
                     <div
                       key={section.key}
-                      className="rounded-[22px] p-4"
+                      className="sne-home-intel-row rounded-[12px] px-3 py-2"
                       style={{
                         backgroundColor: 'var(--bg-3)',
                         borderWidth: '1px',
+                        borderColor: 'rgba(255,255,255,0.07)',
                         ...intelSectionTheme[section.key].panelStyle,
                       }}
                     >
-                      <div className="grid grid-cols-1 lg:grid-cols-[0.32fr_0.68fr] gap-4 lg:gap-6">
-                        <div className="lg:pr-2">
-                          <div className="flex items-start justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-3">
-                              <IntelEntityIcon
-                                symbol={lead ? intelEntity(lead) : null}
-                                sectionKey={section.key}
-                                className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                                style={intelSectionTheme[section.key].toneStyle}
-                                iconClassName="h-4 w-4"
-                              />
-                              <div>
-                                <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                                  {section.kicker}
-                                </div>
-                                <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                                  {section.title}
-                                </div>
-                              </div>
-                            </div>
-                            <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
+                      <div className="sne-home-intel-row__meta flex items-center gap-2">
+                        <IntelEntityIcon
+                          symbol={lead ? intelEntity(lead) : null}
+                          sectionKey={section.key}
+                          className="flex h-7 w-7 items-center justify-center rounded-[9px]"
+                          style={intelSectionTheme[section.key].toneStyle}
+                          iconClassName="h-3.5 w-3.5"
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                            {section.kicker}
                           </div>
+                          <div className="truncate text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {section.title}
+                          </div>
+                        </div>
+                      </div>
 
+                      <div className="sne-home-intel-row__lead">
+                        {lead ? (
+                          <>
+                            {renderIntelTitle(lead, 'text-sm font-semibold leading-tight line-clamp-1')}
+                            <div className="sne-home-intel-row__chips mt-1">
+                              <span className="truncate text-[10px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
+                                {intelMeta(lead)}
+                              </span>
+                              {rest.map((item) => (
+                                <span key={item.id} className="truncate text-[10px]" style={{ color: 'var(--text-2)' }}>
+                                  {intelTitle(item)}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
                           <div className="text-sm" style={{ color: 'var(--text-2)' }}>
                             {section.description}
                           </div>
-                        </div>
+                        )}
+                      </div>
 
-                        <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-3">
-                          {lead && (
-                            <div
-                              className="sne-home-intel-lead rounded-[20px] p-4"
-                              style={{ backgroundColor: 'rgba(10,14,23,0.34)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-                            >
-                              <div className="flex items-center gap-2 mb-2">
-                                <IntelEntityIcon
-                                  symbol={intelEntity(lead)}
-                                  sectionKey={section.key}
-                                  className="flex h-7 w-7 items-center justify-center rounded-xl"
-                                  style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-                                  iconClassName="h-4 w-4"
-                                />
-                                <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                                  {intelMeta(lead)}
-                                </div>
-                              </div>
-                              {renderIntelTitle(lead, 'font-semibold mb-1.5 line-clamp-2')}
-                              <div className="text-sm line-clamp-3" style={{ color: 'var(--text-2)' }}>
-                                {intelSummary(lead)}
-                              </div>
-                            </div>
-                          )}
-
-                          {rest.length > 0 && (
-                            <div className="sne-home-intel-rest space-y-2">
-                              {rest.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="rounded-[18px] p-4"
-                                  style={{ backgroundColor: 'rgba(10,14,23,0.26)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-                                >
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <IntelEntityIcon
-                                      symbol={intelEntity(item)}
-                                      sectionKey={section.key}
-                                      className="flex h-6 w-6 items-center justify-center rounded-lg"
-                                      style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-                                      iconClassName="h-3.5 w-3.5"
-                                    />
-                                    <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                                      {intelMeta(item)}
-                                    </div>
-                                  </div>
-                                  {renderIntelTitle(item, 'text-sm font-medium mb-1 line-clamp-2')}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
+                        <button
+                          onClick={() => navigate('/intel')}
+                          className="text-[11px] font-medium"
+                          style={{ color: 'var(--accent-orange)' }}
+                        >
+                          Abrir ↗
+                        </button>
                       </div>
                     </div>
                   );
@@ -1305,145 +1276,83 @@ export function Home() {
                 Dados de mercado indisponíveis. Radar sincronizando.
               </div>
             ) : (
-              <div className="sne-mosaic-market-grid grid grid-cols-1 xl:grid-cols-[0.78fr_1.22fr] gap-4">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={marketRegime?.tone ?? 'pending'}>
-                      {marketRegime?.label ?? 'sem dados'}
-                    </StatusBadge>
-                    {marketEditorial?.status === 'ready' && (
-                      <StatusBadge status="active">editorial IA</StatusBadge>
-                    )}
-                  </div>
-
-                  <div
-                    className="rounded-[22px] p-5"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,140,66,0.08), transparent)',
-                      backgroundColor: 'var(--bg-3)',
-                      borderWidth: '1px',
-                      borderColor: 'rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-5">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.18em] mb-1" style={{ color: 'var(--text-3)' }}>
-                          Destaque
-                        </div>
-                        <div className="text-3xl font-semibold" style={{ color: 'var(--text-1)' }}>
-                          {featuredMover.symbol}
-                        </div>
-                      </div>
-                      <div
-                        className="rounded-full px-3 py-1 text-sm font-semibold"
-                        style={{
-                          color: featuredMover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)',
-                          backgroundColor: featuredMover.change24h >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
-                        }}
-                      >
-                        {featuredMover.change24h >= 0 ? '+' : ''}{(featuredMover.change24h * 100).toFixed(1)}%
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                        <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
-                        <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
-                          ${formatMarketPrice(featuredMover.price)}
-                        </div>
-                      </div>
-                      <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                        <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Volume</div>
-                        <div className="font-semibold text-lg" style={{ color: 'var(--text-1)' }}>
-                          ${formatCompactNumber(Number(featuredMover.volume))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
-                    <div
-                      className="sne-home-market-editorial rounded-[22px] p-4 space-y-3"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                        Narrativa do Mercado
-                      </div>
-                      {marketEditorial.headline && (
-                        <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
-                          {marketEditorial.headline}
-                        </div>
-                      )}
-                      {marketEditorial.summary_pt && (
-                        <div className="text-sm" style={{ color: 'var(--text-2)' }}>
-                          {marketEditorial.summary_pt}
-                        </div>
-                      )}
-                    </div>
+              <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={marketRegime?.tone ?? 'pending'}>
+                    {marketRegime?.label ?? 'sem dados'}
+                  </StatusBadge>
+                  {marketEditorial?.status === 'ready' && (
+                    <StatusBadge status="active">editorial IA</StatusBadge>
                   )}
                 </div>
 
-                <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                        Momentum
+                <div className="sne-home-market-table rounded-[12px] px-3 py-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="sne-home-market-row">
+                    <div className="min-w-0">
+                      <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                        Destaque
                       </div>
-                      <div className="space-y-1">
-                        {secondaryMovers.map((mover) => (
-                          <div key={mover.symbol} className="flex items-center justify-between gap-3 py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                              <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                                ${formatMarketPrice(mover.price)}
-                              </div>
-                            </div>
-                            <div className="text-sm font-semibold" style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
-                              {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
-                            </div>
-                          </div>
-                        ))}
+                      <div className="truncate text-base font-semibold" style={{ color: 'var(--text-1)' }}>
+                        {featuredMover.symbol}
                       </div>
                     </div>
-
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                        Maiores quedas
-                      </div>
-                      <div className="space-y-1">
-                        {topLosers.slice(0, 3).map((mover) => (
-                          <div key={mover.symbol} className="flex items-center justify-between gap-3 py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                            <div className="min-w-0">
-                              <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
-                              <div className="text-xs" style={{ color: 'var(--text-3)' }}>
-                                ${formatMarketPrice(mover.price)}
-                              </div>
-                            </div>
-                            <div className="text-sm font-semibold" style={{ color: 'var(--danger-red)' }}>
-                              {(mover.change24h * 100).toFixed(1)}%
-                            </div>
-                          </div>
-                        ))}
+                      <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Preço</div>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                        ${formatMarketPrice(featuredMover.price)}
                       </div>
                     </div>
-
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.18em] mb-3" style={{ color: 'var(--text-3)' }}>
-                        Volume dominante
-                      </div>
-                      <div className="space-y-1">
-                        {volumeLeaders.slice(0, 3).map((item) => (
-                          <div key={item.symbol} className="py-3 border-b last:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                            <div className="font-semibold text-sm mb-1" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
-                            <div className="text-xs" style={{ color: 'var(--text-2)' }}>
-                              Vol. ${formatCompactNumber(Number(item.volume))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="text-right text-sm font-semibold" style={{ color: featuredMover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
+                      {featuredMover.change24h >= 0 ? '+' : ''}{(featuredMover.change24h * 100).toFixed(1)}%
                     </div>
                   </div>
+
+                  {secondaryMovers.slice(0, 2).map((mover) => (
+                    <div key={mover.symbol} className="sne-home-market-row">
+                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>${formatMarketPrice(mover.price)}</div>
+                      <div className="text-right text-sm font-semibold" style={{ color: mover.change24h >= 0 ? 'var(--ok-green)' : 'var(--danger-red)' }}>
+                        {mover.change24h >= 0 ? '+' : ''}{(mover.change24h * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+
+                  {topLosers.slice(0, 1).map((mover) => (
+                    <div key={mover.symbol} className="sne-home-market-row">
+                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{mover.symbol}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>queda</div>
+                      <div className="text-right text-sm font-semibold" style={{ color: 'var(--danger-red)' }}>
+                        {(mover.change24h * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+
+                  {volumeLeaders.slice(0, 1).map((item) => (
+                    <div key={item.symbol} className="sne-home-market-row">
+                      <div className="truncate font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{item.symbol}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-2)' }}>volume</div>
+                      <div className="text-right text-xs font-semibold" style={{ color: 'var(--text-1)' }}>
+                        ${formatCompactNumber(Number(item.volume))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) && (
+                  <div
+                    className="sne-home-market-editorial rounded-[12px] px-3 py-2"
+                    style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
+                  >
+                    <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                      Narrativa
+                    </div>
+                    {marketEditorial.headline && (
+                      <div className="mt-1 line-clamp-2 font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
+                        {marketEditorial.headline}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             </FieldSurface>
