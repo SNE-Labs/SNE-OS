@@ -586,7 +586,7 @@ export function Home() {
   const marketPulseRows = useMemo(() => {
     const rows = new Map<string, MarketMover>();
 
-    [featuredMover, ...secondaryMovers.slice(0, 2), ...topLosers.slice(0, 1), ...volumeLeaders.slice(0, 2)].forEach((item) => {
+    [...liveMovers, ...topLosers, ...volumeLeaders].forEach((item) => {
       if (!item) return;
       const key = item.symbol.toUpperCase();
       const current = rows.get(key);
@@ -597,8 +597,8 @@ export function Home() {
       });
     });
 
-    return Array.from(rows.values()).slice(0, 5);
-  }, [featuredMover, secondaryMovers, topLosers, volumeLeaders]);
+    return Array.from(rows.values()).slice(0, 6);
+  }, [liveMovers, topLosers, volumeLeaders]);
 
   const heroCandidates = useMemo(() => {
     const candidates: HeroCandidate[] = [];
@@ -1290,6 +1290,9 @@ export function Home() {
                           className="sne-home-market-token__icon"
                           iconClassName="h-4 w-4"
                         />
+                      </span>
+                      <span className="sne-home-market-token__symbol">
+                        {assetIconSymbol(mover.symbol).toUpperCase()}
                       </span>
                       <span className="sne-home-market-token__price">
                         ${formatMarketPrice(mover.price)}
