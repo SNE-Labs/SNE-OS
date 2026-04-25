@@ -925,7 +925,7 @@ export function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -16 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="min-w-0"
+                        className="sne-home-hero-copy min-w-0"
                       >
                         <div className="flex items-center gap-3 mb-3">
                           <IntelEntityIcon
@@ -1276,19 +1276,25 @@ export function Home() {
               <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
                 <div className="sne-home-market-table rounded-[12px] px-3 py-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
                   {marketPulseRows.map((mover) => (
-                    <div key={mover.symbol} className="sne-home-market-token">
-                      <div className="sne-home-market-token__top">
+                    <button
+                      key={mover.symbol}
+                      type="button"
+                      className="sne-home-market-token"
+                      onClick={() => navigate(`/radar/${mover.symbol}`)}
+                      aria-label={`Abrir Radar de ${mover.symbol}`}
+                    >
+                      <span className="sne-home-market-token__top">
                         <IntelEntityIcon
                           symbol={assetIconSymbol(mover.symbol)}
                           sectionKey="market"
                           className="sne-home-market-token__icon"
                           iconClassName="h-4 w-4"
                         />
-                      </div>
-                      <div className="sne-home-market-token__price">
+                      </span>
+                      <span className="sne-home-market-token__price">
                         ${formatMarketPrice(mover.price)}
-                      </div>
-                    </div>
+                      </span>
+                    </button>
                   ))}
                 </div>
 

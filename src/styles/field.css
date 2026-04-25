@@ -315,10 +315,19 @@
 
     .sne-home-hero-panel .sne-mosaic-hero-grid {
       gap: 0.55rem !important;
+      height: 100%;
     }
 
     .sne-home-hero-panel .sne-mosaic-hero-grid > div:first-child {
       display: flex;
+      height: 100%;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    .sne-home-hero-copy {
+      display: flex;
+      height: 100%;
       min-height: 0;
       flex-direction: column;
     }
@@ -711,9 +720,10 @@
     }
 
     .sne-home-market-table {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 0.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.55rem;
       max-height: 190px;
       overflow: hidden;
     }
@@ -721,16 +731,28 @@
     .sne-home-market-token {
       display: flex;
       min-width: 0;
+      flex: 1 1 0;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.32rem;
-      border: 1px solid rgba(255,255,255,0.055);
-      border-radius: 10px;
-      padding: 0.5rem 0.28rem;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.055), transparent 64%),
-        rgba(255,255,255,0.022);
+      gap: 0.28rem;
+      border: 0;
+      border-radius: 12px;
+      padding: 0.22rem 0.12rem;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 160ms var(--ease-shell), opacity 160ms var(--ease-shell);
+    }
+
+    .sne-home-market-token:hover {
+      transform: translateY(-1px);
+    }
+
+    .sne-home-market-token:focus-visible {
+      outline: 1px solid rgba(255,255,255,0.22);
+      outline-offset: 3px;
     }
 
     .sne-home-market-token__top {
@@ -740,19 +762,21 @@
 
     .sne-home-market-token__icon {
       display: inline-flex;
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       align-items: center;
       justify-content: center;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.05);
+      border-radius: 11px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 62%),
+        rgba(255,255,255,0.045);
     }
 
     .sne-home-market-token__price {
       max-width: 100%;
       overflow: hidden;
-      color: var(--text-1);
-      font-size: 0.68rem;
+      color: var(--text-2);
+      font-size: 0.62rem;
       font-weight: 700;
       line-height: 1;
       text-align: center;
