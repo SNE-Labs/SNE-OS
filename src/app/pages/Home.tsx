@@ -960,22 +960,6 @@ export function Home() {
                           {intelSummary(activeHero.item)}
                         </div>
 
-                        <div className="sne-home-hero-data-card">
-                          <div className="sne-home-hero-data-inline">
-                            <span>Leitura</span>
-                            <strong>{heroThemeLabel}</strong>
-                            {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
-                            <button
-                              type="button"
-                              onClick={() => openIntelItem(activeHero.item.url)}
-                              className="sne-home-text-action"
-                              style={{ color: 'var(--accent-orange)' }}
-                            >
-                              Ler brief ↗
-                            </button>
-                          </div>
-                        </div>
-
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                           <span>{activeHero.item.points} pts</span>
                           <span>{activeHero.item.comments} comentários</span>
@@ -1036,6 +1020,22 @@ export function Home() {
                         </div>
                       </motion.div>
                     </AnimatePresence>
+                  </div>
+
+                  <div className="sne-home-hero-data-card">
+                    <div className="sne-home-hero-data-inline">
+                      <span>Leitura</span>
+                      <strong>{heroThemeLabel}</strong>
+                      {isMarketBackedHero ? <strong>{heroTopMetricValue}</strong> : null}
+                      <button
+                        type="button"
+                        onClick={() => openIntelItem(activeHero.item.url)}
+                        className="sne-home-text-action"
+                        style={{ color: 'var(--accent-orange)' }}
+                      >
+                        Ler brief ↗
+                      </button>
+                    </div>
                   </div>
 
                   {heroTape.length > 0 ? (
@@ -1274,7 +1274,7 @@ export function Home() {
               </div>
             ) : (
               <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
-                <div className="sne-home-market-table rounded-[12px] px-3 py-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="sne-home-market-table">
                   {marketPulseRows.map((mover) => (
                     <button
                       key={mover.symbol}
