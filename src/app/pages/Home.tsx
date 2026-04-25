@@ -431,7 +431,7 @@ export function Home() {
   const commandDeck = walletConnected
     ? [
         {
-          label: 'Abrir Vault',
+          label: 'Vault',
           state: homeData?.wallet?.status === 'ready' ? 'conta pronta' : 'saldo em leitura',
           path: '/vault',
           icon: Wallet,
@@ -461,14 +461,14 @@ export function Home() {
           tone: 'warning' as const,
         },
         {
-          label: 'Abrir Intel',
+          label: 'Intel',
           state: intelItems.length > 0 ? `${intelItems.length} sinais ativos` : 'brief ao vivo',
           path: '/intel',
           icon: Newspaper,
           tone: 'active' as const,
         },
         {
-          label: 'Conectar conta',
+          label: 'Conectar',
           state: 'Vault aguardando',
           path: '/vault',
           icon: BadgeCheck,
@@ -890,9 +890,6 @@ export function Home() {
                 <div className="text-sm" style={{ color: 'var(--text-3)' }}>
                   {formattedTime}
                 </div>
-                <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
-                  atualizado {heroUpdatedAt}
-                </div>
               </div>
 
               {!activeHero || !activeHeroTheme ? (
@@ -944,16 +941,6 @@ export function Home() {
                           {intelSummary(activeHero.item)}
                         </div>
 
-                        <div
-                          className="sne-home-hero-implication inline-flex max-w-2xl items-center gap-2 rounded-full px-3 py-1.5 mb-3 text-xs"
-                          style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-2)' }}
-                        >
-                          <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
-                            O que isso entrega
-                          </span>
-                          <span>{activeHero.implication}</span>
-                        </div>
-
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
                           <span>{activeHero.item.points} pts</span>
                           <span>{activeHero.item.comments} comentários</span>
@@ -970,10 +957,10 @@ export function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -16 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="flex flex-col gap-3"
+                        className="sne-home-hero-context flex flex-col gap-3"
                       >
                         <div
-                          className="rounded-[24px] p-5"
+                          className="sne-home-hero-data-card rounded-[24px] p-5"
                           style={{
                             background: 'linear-gradient(180deg, rgba(10,14,23,0.44), rgba(10,14,23,0.22))',
                             borderWidth: '1px',
@@ -987,16 +974,16 @@ export function Home() {
                             </div>
                             <button
                               onClick={() => openIntelItem(activeHero.item.url)}
-                              className="text-sm font-medium"
+                              className="sne-home-text-action text-sm font-medium"
                               style={{ color: 'var(--accent-orange)' }}
                             >
-                              Abrir Intel Brief ↗
+                              Ler brief ↗
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="sne-home-hero-data-grid grid grid-cols-2 gap-3 mb-3">
                             <div
-                              className={isMarketBackedHero ? 'rounded-[18px] px-4 py-3' : 'rounded-[18px] px-4 py-3 col-span-2'}
+                              className={isMarketBackedHero ? 'sne-home-metric-tile rounded-[18px] px-4 py-3' : 'sne-home-metric-tile rounded-[18px] px-4 py-3 col-span-2'}
                               style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
                             >
                               <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>Tema</div>
@@ -1005,7 +992,7 @@ export function Home() {
                               </div>
                             </div>
                             {isMarketBackedHero ? (
-                              <div className="rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              <div className="sne-home-metric-tile rounded-[18px] px-4 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
                                 <div className="text-[10px] uppercase mb-1 tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
                                   {heroTopMetricLabel}
                                 </div>
@@ -1016,7 +1003,7 @@ export function Home() {
                             ) : null}
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
+                          <div className="sne-home-support-chips flex flex-wrap gap-2">
                             {heroSupportChips.map((chip) => (
                               <div
                                 key={chip}
@@ -1038,7 +1025,7 @@ export function Home() {
                         </div>
 
                         <div
-                          className="rounded-[24px] px-5 py-4"
+                          className="sne-home-hero-validation-card rounded-[24px] px-5 py-4"
                           style={{ backgroundColor: 'rgba(10,14,23,0.22)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
                         >
                           <div className="flex items-center justify-between gap-3 mb-3">
@@ -1143,12 +1130,6 @@ export function Home() {
                     <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                       {commandIntent.eyebrow}
                     </div>
-                    <StatusBadge status={walletConnected ? 'success' : 'pending'}>
-                      {walletConnected ? 'conta ativa' : 'modo público'}
-                    </StatusBadge>
-                    <StatusBadge status={marketRegime?.tone ?? brief.badge_status}>
-                      {marketRegime?.label ?? brief.badge}
-                    </StatusBadge>
                   </div>
                   <div className="mt-1 text-xl font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
                     {commandIntent.title}
@@ -1208,10 +1189,10 @@ export function Home() {
                 </div>
                 <button
                   onClick={() => navigate('/intel')}
-                  className="text-sm font-medium"
+                  className="sne-home-text-action text-sm font-medium"
                   style={{ color: 'var(--accent-orange)' }}
                 >
-                  Abrir Intel Brief ↗
+                  Ver brief ↗
                 </button>
               </div>
 
@@ -1275,10 +1256,11 @@ export function Home() {
                         <StatusBadge status={intelSectionTheme[section.key].badge}>{section.items.length}</StatusBadge>
                         <button
                           onClick={() => navigate('/intel')}
-                          className="text-[11px] font-medium"
+                          aria-label={`Abrir Intel em ${section.title}`}
+                          className="sne-home-icon-action"
                           style={{ color: 'var(--accent-orange)' }}
                         >
-                          Abrir ↗
+                          <ArrowUpRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1309,10 +1291,10 @@ export function Home() {
               </div>
               <button
                 onClick={() => navigate('/radar')}
-                className="text-sm font-medium"
+                className="sne-home-text-action text-sm font-medium"
                 style={{ color: 'var(--accent-orange)' }}
               >
-                Abrir Radar ↗
+                Radar ↗
               </button>
             </div>
 
@@ -1322,15 +1304,6 @@ export function Home() {
               </div>
             ) : (
               <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={marketRegime?.tone ?? 'pending'}>
-                    {marketRegime?.label ?? 'sem dados'}
-                  </StatusBadge>
-                  {marketEditorial?.status === 'ready' && (
-                    <StatusBadge status="active">editorial IA</StatusBadge>
-                  )}
-                </div>
-
                 <div className="sne-home-market-table rounded-[12px] px-3 py-2" style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}>
                   <div className="sne-home-market-row">
                     <div className="min-w-0">
