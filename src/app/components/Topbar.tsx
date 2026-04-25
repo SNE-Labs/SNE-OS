@@ -66,7 +66,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
 
   return (
     <header
-      className="sticky top-0 z-20 border-b px-4 py-1.5"
+      className="sticky top-0 z-20 border-b px-3 py-1"
       style={{
         background:
           'linear-gradient(180deg, rgba(7,9,11,0.92), rgba(7,9,11,0.78)), radial-gradient(circle at 45% 0%, rgba(255,255,255,0.045), transparent 42%)',
@@ -75,12 +75,12 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         WebkitBackdropFilter: 'blur(24px)',
       }}
     >
-      <div className="grid grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] items-center gap-3">
+      <div className="grid grid-cols-[minmax(180px,1fr)_auto_minmax(180px,1fr)] items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="group relative isolate flex min-w-0 items-center gap-2 rounded-[16px] border px-2.5 py-1.5 text-left transition-all duration-300 hover:-translate-y-0.5"
+            className="group relative isolate flex min-w-0 items-center gap-2 rounded-[12px] border px-2 py-1 text-left transition-all duration-300 hover:-translate-y-0.5"
             style={{
               background:
                 `radial-gradient(circle at 16% 50%, ${glow.wash}, transparent 46%), linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018))`,
@@ -90,24 +90,24 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
             aria-label="Abrir comandos do SNE OS"
           >
             <div
-              className="absolute left-2 top-1/2 -z-10 h-12 w-20 -translate-y-1/2 rounded-full opacity-75 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+              className="absolute left-1.5 top-1/2 -z-10 h-10 w-16 -translate-y-1/2 rounded-full opacity-70 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
               style={{ background: `radial-gradient(circle, ${glow.primary}, ${glow.secondary} 48%, transparent 74%)` }}
             />
             <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] border"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border"
               style={{
                 backgroundColor: 'rgba(6,8,12,0.68)',
                 borderColor: 'rgba(255,255,255,0.12)',
                 boxShadow: `0 0 28px ${glow.primary}, inset 0 1px 0 rgba(255,255,255,0.08)`,
               }}
             >
-              <img src="/favicon.ico" alt="" className="h-4 w-4 rounded transition-transform duration-300 group-hover:scale-110" />
+              <img src="/favicon.ico" alt="" className="h-3.5 w-3.5 rounded transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div className="min-w-0">
-              <div className="truncate text-[0.92rem] font-semibold" style={{ color: 'var(--text-1)' }}>
+              <div className="truncate text-[0.82rem] font-semibold" style={{ color: 'var(--text-1)' }}>
                 SNE OS
               </div>
-              <div className="truncate text-[10px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+              <div className="truncate text-[8px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
                 Camada operacional
               </div>
             </div>
@@ -115,16 +115,16 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
         </div>
 
         <div
-          className="hidden min-w-0 rounded-full border px-3 py-1.5 text-center lg:block"
+          className="hidden min-w-0 rounded-full border px-2.5 py-1 text-center lg:block"
           style={{
             backgroundColor: 'rgba(255,255,255,0.025)',
             borderColor: 'rgba(255,255,255,0.06)',
           }}
         >
-          <div className="truncate text-[11px] font-medium" style={{ color: 'var(--text-1)' }}>
+          <div className="truncate text-[10px] font-medium" style={{ color: 'var(--text-1)' }}>
             {routeMeta.title}
           </div>
-          <div className="truncate text-[9px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+          <div className="truncate text-[8px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
             {routeMeta.context}
           </div>
         </div>
@@ -134,7 +134,7 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
             <WalletConnect showConnectButton connectButtonLabel="Criar ID" />
           ) : (
             <div
-              className="hidden items-center rounded-[16px] border px-3 py-1.5 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
+              className="hidden items-center rounded-[12px] border px-2.5 py-1 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
               style={{
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02))',
                 borderColor: 'rgba(255,255,255,0.10)',
@@ -143,20 +143,20 @@ export function Topbar({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned
               }}
             >
               <div className="min-w-0">
-                <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                <div className="text-[8px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
                   ID operacional
                 </div>
-                <div className="max-w-[160px] truncate text-[13px] font-medium" style={{ color: 'var(--text-1)' }}>
+                <div className="max-w-[140px] truncate text-[11px] font-medium" style={{ color: 'var(--text-1)' }}>
                   {walletLabel}
                 </div>
-                <div className="mt-0.5 flex items-center gap-1.5 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'var(--ok-green)' }}>
+                <div className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--ok-green)' }}>
                   <span
-                    className="h-1.5 w-1.5 rounded-full"
+                    className="h-1 w-1 rounded-full"
                     style={{ backgroundColor: 'var(--ok-green)', boxShadow: '0 0 10px rgba(50,213,131,0.55)' }}
                   />
                   SESSÃO ATIVA
                 </div>
-                <div className="truncate text-[9px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
+                <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
                   IDENTIDADE VINCULADA · {accessLabel}
                 </div>
               </div>

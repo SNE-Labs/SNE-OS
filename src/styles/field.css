@@ -235,11 +235,11 @@
     }
 
     .sne-mosaic-page {
-      --mosaic-gap: 0.75rem;
-      --mosaic-card-pad: 0.75rem;
-      --mosaic-card-pad-wide: 0.875rem;
-      --mosaic-radius: 16px;
-      font-size: 0.94rem;
+      --mosaic-gap: 0.5rem;
+      --mosaic-card-pad: 0.52rem;
+      --mosaic-card-pad-wide: 0.62rem;
+      --mosaic-radius: 10px;
+      font-size: 0.84rem;
     }
 
     .sne-home-page {
@@ -251,18 +251,18 @@
 
     .sne-mosaic-page .sne-mosaic-frame {
       width: 100%;
-      max-width: min(1560px, calc(100vw - 64px)) !important;
+      max-width: min(1440px, calc(100vw - 42px)) !important;
     }
 
     .sne-home-frame {
       min-height: 0;
-      height: min(660px, calc(100dvh - 220px));
-      max-width: min(1500px, calc(100vw - 148px)) !important;
+      height: min(590px, calc(100dvh - 184px));
+      max-width: min(1380px, calc(100vw - 112px)) !important;
     }
 
     .sne-home-cockpit {
       display: grid;
-      grid-template-columns: minmax(330px, 0.9fr) minmax(480px, 1.16fr) minmax(300px, 0.84fr);
+      grid-template-columns: minmax(290px, 0.86fr) minmax(430px, 1.16fr) minmax(270px, 0.78fr);
       grid-template-areas:
         "hero brief market"
         "hero intel market";
@@ -352,15 +352,15 @@
 
     .sne-home-hero-panel h1,
     .sne-home-hero-panel .text-xl {
-      font-size: 1rem !important;
+      font-size: 0.9rem !important;
       line-height: 1.12 !important;
     }
 
     .sne-home-hero-panel .text-sm,
     .sne-home-brief-panel .text-sm,
     .sne-home-market-panel .text-sm {
-      font-size: 0.78rem !important;
-      line-height: 1.35 !important;
+      font-size: 0.72rem !important;
+      line-height: 1.28 !important;
     }
 
     .sne-home-hero-panel .line-clamp-3 {
@@ -424,9 +424,9 @@
     }
 
     .sne-home-brief-panel .sne-mosaic-balanced-grid > div:last-child > div {
-      min-height: 62px;
-      padding: 0.5rem !important;
-      border-radius: 10px !important;
+      min-height: 50px;
+      padding: 0.4rem !important;
+      border-radius: 8px !important;
     }
 
     .sne-home-intel-stream {
@@ -441,8 +441,8 @@
 
     .sne-home-intel-stream > div {
       min-height: 0;
-      padding: 0.55rem !important;
-      border-radius: 10px !important;
+      padding: 0.45rem !important;
+      border-radius: 8px !important;
     }
 
     .sne-home-intel-stream > div > div > div:first-child {
@@ -463,9 +463,9 @@
     }
 
     .sne-home-intel-lead {
-      min-height: 112px;
-      padding: 0.5rem !important;
-      border-radius: 10px !important;
+      min-height: 88px;
+      padding: 0.45rem !important;
+      border-radius: 8px !important;
     }
 
     .sne-home-intel-lead .line-clamp-3,
@@ -482,8 +482,8 @@
     }
 
     .sne-home-intel-stream .text-sm {
-      font-size: 0.76rem !important;
-      line-height: 1.35 !important;
+      font-size: 0.7rem !important;
+      line-height: 1.25 !important;
     }
 
     .sne-home-intel-stream .line-clamp-3 {
@@ -522,33 +522,33 @@
     }
 
     .sne-mosaic-page .field-surface[data-density='compact'] {
-      --field-surface-pad-x: 12px;
-      --field-surface-pad-y: 12px;
-      --field-surface-radius: 16px;
+      --field-surface-pad-x: 9px;
+      --field-surface-pad-y: 9px;
+      --field-surface-radius: 10px;
     }
 
     .sne-mosaic-page .field-surface[data-density='compact'][data-surface='hero'] {
-      --field-surface-pad-x: 14px;
-      --field-surface-pad-y: 12px;
-      --field-surface-radius: 14px;
+      --field-surface-pad-x: 10px;
+      --field-surface-pad-y: 9px;
+      --field-surface-radius: 10px;
     }
 
     .sne-mosaic-page .field-surface[data-density='compact'][data-surface='strip'] {
-      --field-surface-pad-x: 12px;
-      --field-surface-pad-y: 9px;
-      --field-surface-radius: 12px;
+      --field-surface-pad-x: 9px;
+      --field-surface-pad-y: 7px;
+      --field-surface-radius: 9px;
     }
 
     .sne-mosaic-page .field-surface[data-density='compact'][data-surface='rail'] {
-      --field-surface-pad-x: 12px;
-      --field-surface-pad-y: 12px;
-      --field-surface-radius: 16px;
+      --field-surface-pad-x: 9px;
+      --field-surface-pad-y: 9px;
+      --field-surface-radius: 10px;
     }
 
     .sne-mosaic-page .field-surface[data-density='compact'][data-surface='tile'] {
-      --field-surface-pad-x: 10px;
-      --field-surface-pad-y: 10px;
-      --field-surface-radius: 14px;
+      --field-surface-pad-x: 8px;
+      --field-surface-pad-y: 8px;
+      --field-surface-radius: 9px;
     }
 
     .sne-mosaic-page :where(section, article, div, button).p-4,
@@ -588,17 +588,33 @@
     }
 
     .sne-mosaic-page .text-3xl {
-      font-size: 1.5rem !important;
-      line-height: 1.12 !important;
+      font-size: 1.12rem !important;
+      line-height: 1.08 !important;
     }
 
     .sne-mosaic-page .text-2xl {
-      font-size: 1.25rem !important;
-      line-height: 1.16 !important;
+      font-size: 1rem !important;
+      line-height: 1.12 !important;
     }
 
     .sne-mosaic-page .text-xl {
-      font-size: 1.08rem !important;
+      font-size: 0.92rem !important;
+      line-height: 1.15 !important;
+    }
+
+    .sne-mosaic-page .text-lg,
+    .sne-mosaic-page .text-base {
+      font-size: 0.84rem !important;
+      line-height: 1.18 !important;
+    }
+
+    .sne-mosaic-page .text-sm {
+      font-size: 0.72rem !important;
+      line-height: 1.28 !important;
+    }
+
+    .sne-mosaic-page .text-xs {
+      font-size: 0.64rem !important;
       line-height: 1.2 !important;
     }
   }
@@ -609,12 +625,12 @@
     }
 
     .sne-home-frame {
-      height: min(680px, calc(100dvh - 210px));
-      max-width: min(1540px, calc(100vw - 160px)) !important;
+      height: min(620px, calc(100dvh - 176px));
+      max-width: min(1460px, calc(100vw - 120px)) !important;
     }
 
     .sne-home-cockpit {
-      grid-template-columns: minmax(350px, 0.92fr) minmax(540px, 1.18fr) minmax(320px, 0.84fr);
+      grid-template-columns: minmax(310px, 0.9fr) minmax(480px, 1.18fr) minmax(290px, 0.8fr);
     }
 
     .sne-mosaic-page .sne-mosaic-hero-grid {
@@ -651,8 +667,8 @@
     }
 
     .sne-home-frame {
-      height: min(620px, calc(100dvh - 224px));
-      max-width: min(1420px, calc(100vw - 148px)) !important;
+      height: min(560px, calc(100dvh - 190px));
+      max-width: min(1320px, calc(100vw - 112px)) !important;
     }
 
     .sne-home-hero-surface {
@@ -661,7 +677,7 @@
     }
 
     .sne-home-cockpit {
-      grid-template-columns: minmax(330px, 0.9fr) minmax(470px, 1.14fr) minmax(300px, 0.82fr);
+      grid-template-columns: minmax(280px, 0.86fr) minmax(410px, 1.14fr) minmax(260px, 0.78fr);
     }
 
     .sne-home-hero-surface .sne-mosaic-hero-grid {

@@ -47,15 +47,15 @@
   --spacing-gap: 16px;
 
   /* Shell */
-  --sidebar-rail-width: 68px;
-  --sidebar-expanded-width: 264px;
-  --dock-height: 52px;
-  --dock-offset: 12px;
-  --shell-bottom-reserve: calc(var(--dock-height) + var(--dock-offset) + 10px);
+  --sidebar-rail-width: 58px;
+  --sidebar-expanded-width: 244px;
+  --dock-height: 44px;
+  --dock-offset: 10px;
+  --shell-bottom-reserve: calc(var(--dock-height) + var(--dock-offset) + 8px);
   --shell-overlay: rgba(3, 5, 8, 0.34);
   --panel-glow: radial-gradient(circle at top left, rgba(255, 102, 0, 0.16), transparent 34%);
-  --shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.42);
-  --shadow-dock: 0 18px 42px rgba(0, 0, 0, 0.34);
+  --shadow-panel: 0 16px 42px rgba(0, 0, 0, 0.38);
+  --shadow-dock: 0 12px 28px rgba(0, 0, 0, 0.32);
   --ease-shell: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-shell: 200ms;
   --shell-bg-accent-1: rgba(52, 24, 8, 0.34);
@@ -226,6 +226,11 @@
     min-height: 0;
     padding-bottom: var(--shell-bottom-reserve);
     overscroll-behavior: contain;
+  }
+
+  .shell-frame {
+    --os-control-radius: 10px;
+    --os-panel-radius: 12px;
   }
 
   .living-system {
@@ -490,10 +495,10 @@
   .tape-stream {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     border-radius: 999px;
     border-width: 1px;
-    padding: 5px 8px;
+    padding: 3px 7px;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 8px 18px rgba(0,0,0,0.12);
@@ -506,8 +511,8 @@
   }
 
   .tape-stream--compact {
-    padding: 4px 7px;
-    gap: 6px;
+    padding: 3px 6px;
+    gap: 5px;
   }
 
   .tape-stream__meta,
@@ -515,7 +520,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.16em;
     white-space: nowrap;
@@ -525,7 +530,7 @@
     max-width: min(50vw, 440px);
     overflow: hidden;
     color: var(--text-2);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -533,13 +538,13 @@
 
   .tape-stream__state {
     border-radius: 999px;
-    padding: 2px 5px;
+    padding: 1px 4px;
     background: rgba(255,255,255,0.055);
     color: var(--text-1);
   }
 
   .tape-stream__link-line {
-    width: 18px;
+    width: 12px;
     height: 1px;
     background: linear-gradient(90deg, rgba(255,255,255,0.13), transparent);
   }

@@ -44,14 +44,14 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
 
       <div className="relative flex h-full">
         <div
-          className="flex h-full w-[var(--sidebar-rail-width)] flex-col items-center justify-between border-r py-4"
+          className="flex h-full w-[var(--sidebar-rail-width)] flex-col items-center justify-between border-r py-3"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}
         >
-          <div className="flex w-full flex-col items-center gap-4">
+          <div className="flex w-full flex-col items-center gap-3">
             <button
               type="button"
               onClick={onTogglePin}
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] border transition-all duration-200 hover:-translate-y-0.5"
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] border transition-all duration-200 hover:-translate-y-0.5"
               style={{
                 backgroundColor: pinned ? 'rgba(255, 102, 0, 0.16)' : 'rgba(255,255,255,0.03)',
                 borderColor: pinned ? 'rgba(255, 102, 0, 0.28)' : 'rgba(255,255,255,0.08)',
@@ -64,7 +64,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
 
             <NavLink
               to="/home"
-              className="flex h-10 w-10 items-center justify-center rounded-[14px] border"
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] border"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.025)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -75,16 +75,16 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               <img
                 src={appIcon}
                 alt="SNE OS"
-                className="h-6 w-6 object-contain"
+                className="h-[18px] w-[18px] object-contain"
               />
             </NavLink>
 
-            <nav className="flex w-full flex-col items-center gap-1.5 px-2.5">
+            <nav className="flex w-full flex-col items-center gap-1 px-2">
               {sidebarItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  className="flex w-full items-center justify-center rounded-[13px] px-2.5 py-2.5 transition-all duration-200 hover:-translate-y-0.5"
+                  className="flex w-full items-center justify-center rounded-[10px] px-2 py-2 transition-all duration-200 hover:-translate-y-0.5"
                   style={({ isActive }) => ({
                     backgroundColor: isActive ? 'rgba(255, 102, 0, 0.14)' : 'transparent',
                     boxShadow: isActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : 'none',
@@ -93,7 +93,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
                 >
                   {({ isActive }) => (
                     <item.icon
-                      className="h-[18px] w-[18px]"
+                      className="h-4 w-4"
                       style={{ color: isActive ? 'var(--accent-orange)' : 'currentColor' }}
                     />
                   )}
@@ -105,7 +105,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
           <button
             type="button"
             onClick={() => navigate(sidebarContext.actionPath)}
-            className="flex h-10 w-10 items-center justify-center rounded-[14px] border"
+            className="flex h-8 w-8 items-center justify-center rounded-[10px] border"
             style={{
               backgroundColor: 'rgba(255,255,255,0.03)',
               borderColor: 'rgba(255,255,255,0.08)',
@@ -126,7 +126,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
             pointerEvents: expanded ? 'auto' : 'none',
           }}
         >
-          <div className="flex h-full flex-col px-4 py-4">
+          <div className="flex h-full flex-col px-3 py-3">
             <div
               className="mb-4 border-b pb-4"
               style={{
@@ -149,16 +149,16 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
                   {pinned ? 'Fixado' : 'Rail'}
                 </span>
               </div>
-              <div className="text-lg font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-1)' }}>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
                 {routeMeta.title}
               </div>
-              <div className="mt-1 text-sm" style={{ color: 'var(--text-2)' }}>
+              <div className="mt-1 text-xs" style={{ color: 'var(--text-2)' }}>
                 {routeMeta.descriptor}
               </div>
             </div>
 
             <div
-              className="mt-4 rounded-[18px] border p-3"
+              className="mt-3 rounded-[12px] border p-3"
               style={{
                 backgroundColor: 'rgba(255,255,255,0.03)',
                 borderColor: 'rgba(255,255,255,0.08)',
@@ -170,10 +170,10 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               <div className="mb-2 text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
                 {sidebarContext.eyebrow}
               </div>
-              <div className="mb-2 text-base font-semibold leading-snug" style={{ color: 'var(--text-1)' }}>
+              <div className="mb-2 text-sm font-semibold leading-snug" style={{ color: 'var(--text-1)' }}>
                 {sidebarContext.title}
               </div>
-              <div className="mb-3 text-sm" style={{ color: 'var(--text-2)' }}>
+              <div className="mb-3 text-xs" style={{ color: 'var(--text-2)' }}>
                 {sidebarContext.summary}
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
@@ -194,7 +194,7 @@ export function Sidebar({ expanded, pinned, onExpand, onCollapse, onTogglePin }:
               <button
                 type="button"
                 onClick={() => navigate(sidebarContext.actionPath)}
-                className="w-full rounded-[14px] px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5"
+                className="w-full rounded-[10px] px-3 py-2 text-xs font-medium transition-all duration-200 hover:-translate-y-0.5"
                 style={{
                   backgroundColor: 'rgba(255, 102, 0, 0.16)',
                   color: 'var(--text-1)',

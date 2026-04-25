@@ -12,13 +12,13 @@ type BottomDockProps = {
 export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPinned }: BottomDockProps) {
   return (
     <div
-      className="fixed left-1/2 z-40 hidden -translate-x-1/2 items-center gap-2 lg:flex"
-      style={{ bottom: '12px' }}
+      className="fixed left-1/2 z-40 hidden -translate-x-1/2 items-center gap-1.5 lg:flex"
+      style={{ bottom: '10px' }}
     >
       <button
         type="button"
         onClick={onToggleSidebarPin}
-        className="flex h-10 w-10 items-center justify-center rounded-[14px] border transition-all duration-200 hover:-translate-y-0.5"
+        className="flex h-8 w-8 items-center justify-center rounded-[10px] border transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: sidebarPinned ? 'rgba(255, 102, 0, 0.16)' : 'rgba(10, 14, 20, 0.82)',
           borderColor: sidebarPinned ? 'rgba(255, 102, 0, 0.28)' : 'rgba(255,255,255,0.08)',
@@ -29,11 +29,11 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
         }}
         aria-label={sidebarPinned ? 'Desafixar rail lateral' : 'Fixar rail lateral'}
       >
-        <PanelLeft className="h-4 w-4" />
+        <PanelLeft className="h-3.5 w-3.5" />
       </button>
 
       <nav
-        className="flex items-center gap-1 rounded-[18px] border px-2 py-1"
+        className="flex items-center gap-0.5 rounded-[13px] border px-1.5 py-1"
         style={{
           backgroundColor: 'rgba(9, 12, 18, 0.82)',
           borderColor: 'rgba(255,255,255,0.08)',
@@ -47,7 +47,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `group flex min-w-[66px] items-center justify-center gap-1.5 rounded-[12px] px-2.5 py-1.5 transition-all duration-200 ${
+              `group flex min-w-[56px] items-center justify-center gap-1 rounded-[9px] px-2 py-1 transition-all duration-200 ${
                 isActive ? 'is-active' : ''
               }`
             }
@@ -63,10 +63,10 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
             {({ isActive }) => (
               <>
                 <item.icon
-                  className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-y-0.5"
                   style={{ color: isActive ? 'var(--accent-orange)' : 'currentColor' }}
                 />
-                <span className="text-[12px] font-medium whitespace-nowrap">
+                <span className="text-[10px] font-medium whitespace-nowrap">
                   {item.shortLabel || item.label}
                 </span>
               </>
@@ -78,7 +78,7 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
       <button
         type="button"
         onClick={onOpenCommandPalette}
-        className="flex items-center gap-1.5 rounded-[14px] border px-2.5 py-2 transition-all duration-200 hover:-translate-y-0.5"
+        className="flex items-center gap-1 rounded-[10px] border px-2 py-1.5 transition-all duration-200 hover:-translate-y-0.5"
         style={{
           backgroundColor: 'rgba(9, 12, 18, 0.82)',
           borderColor: 'rgba(255,255,255,0.08)',
@@ -88,9 +88,9 @@ export function BottomDock({ onOpenCommandPalette, onToggleSidebarPin, sidebarPi
           WebkitBackdropFilter: 'blur(22px)',
         }}
       >
-        <Command className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-        <Sparkles className="h-4 w-4" />
-        <span className="text-[10px] uppercase tracking-[0.16em]">Comandos</span>
+        <Command className="h-3.5 w-3.5" style={{ color: 'var(--accent-orange)' }} />
+        <Sparkles className="h-3.5 w-3.5" />
+        <span className="text-[9px] uppercase tracking-[0.14em]">Comandos</span>
       </button>
     </div>
   );
