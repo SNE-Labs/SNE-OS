@@ -53,16 +53,16 @@
   --dock-offset: 10px;
   --shell-bottom-reserve: calc(var(--dock-height) + var(--dock-offset) + 8px);
   --shell-overlay: rgba(3, 5, 8, 0.34);
-  --panel-glow: radial-gradient(circle at top left, rgba(255, 102, 0, 0.16), transparent 34%);
+  --panel-glow: radial-gradient(circle at top left, rgba(255, 102, 0, 0.1), transparent 34%);
   --shadow-panel: 0 14px 34px rgba(0, 0, 0, 0.3);
   --shadow-dock: 0 8px 18px rgba(0, 0, 0, 0.24);
   --ease-shell: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-shell: 200ms;
-  --shell-bg-accent-1: rgba(52, 24, 8, 0.34);
-  --shell-bg-accent-2: rgba(10, 30, 44, 0.34);
-  --shell-bg-accent-3: rgba(10, 36, 28, 0.22);
-  --shell-bg-intensity: 0.94;
-  --shell-bg-halo: rgba(255, 255, 255, 0.02);
+  --shell-bg-accent-1: rgba(40, 22, 12, 0.24);
+  --shell-bg-accent-2: rgba(10, 26, 38, 0.24);
+  --shell-bg-accent-3: rgba(10, 30, 24, 0.14);
+  --shell-bg-intensity: 0.78;
+  --shell-bg-halo: rgba(255, 255, 255, 0.012);
   --shell-noise-opacity: 0.042;
   
   /* Font */
@@ -100,9 +100,13 @@
 
   body {
     background:
-      radial-gradient(circle at top left, rgba(255, 102, 0, 0.04), transparent 24%),
-      radial-gradient(circle at 55% top, rgba(255,255,255,0.018), transparent 24%),
-      radial-gradient(circle at bottom right, rgba(255,255,255,0.022), transparent 28%),
+      radial-gradient(circle at 18% 14%, rgba(255, 120, 24, 0.08), transparent 24%),
+      radial-gradient(circle at 24% 44%, rgba(255, 120, 24, 0.035), transparent 18%),
+      radial-gradient(circle at 72% 18%, rgba(45, 212, 255, 0.045), transparent 26%),
+      radial-gradient(circle at 82% 64%, rgba(50, 213, 131, 0.035), transparent 28%),
+      radial-gradient(circle at 48% 88%, rgba(50, 213, 131, 0.03), transparent 24%),
+      radial-gradient(circle at 55% 8%, rgba(255,255,255,0.018), transparent 18%),
+      linear-gradient(180deg, rgba(6, 8, 14, 0.7), rgba(3, 5, 8, 0.96)),
       var(--bg-0);
     color: var(--text-1);
     font-family: var(--font-family);
@@ -191,19 +195,23 @@
 
   .shell-frame::before {
     background:
-      radial-gradient(circle at 18% 20%, var(--shell-bg-accent-1), transparent 40%),
-      radial-gradient(circle at 28% 52%, var(--shell-bg-halo), transparent 24%),
-      radial-gradient(circle at 44% 74%, rgba(255, 255, 255, 0.018), transparent 22%);
-    filter: blur(20px);
+      radial-gradient(circle at 16% 18%, var(--shell-bg-accent-1), transparent 34%),
+      radial-gradient(circle at 26% 44%, color-mix(in srgb, var(--shell-bg-accent-1) 58%, transparent), transparent 20%),
+      radial-gradient(circle at 32% 62%, var(--shell-bg-halo), transparent 18%),
+      radial-gradient(circle at 42% 76%, rgba(255, 255, 255, 0.022), transparent 18%),
+      radial-gradient(circle at 22% 72%, rgba(255, 176, 32, 0.04), transparent 24%);
+    filter: blur(34px);
     animation: shell-atmosphere-drift-a 22s var(--ease-shell) infinite alternate;
   }
 
   .shell-frame::after {
     background:
-      radial-gradient(circle at 72% 24%, var(--shell-bg-accent-2), transparent 36%),
-      radial-gradient(circle at 76% 76%, var(--shell-bg-accent-3), transparent 30%),
-      radial-gradient(circle at 58% 56%, rgba(255, 255, 255, 0.02), transparent 18%);
-    filter: blur(24px);
+      radial-gradient(circle at 74% 22%, var(--shell-bg-accent-2), transparent 32%),
+      radial-gradient(circle at 82% 70%, var(--shell-bg-accent-3), transparent 26%),
+      radial-gradient(circle at 62% 56%, rgba(255, 255, 255, 0.022), transparent 16%),
+      radial-gradient(circle at 88% 34%, rgba(45, 212, 255, 0.035), transparent 24%),
+      radial-gradient(circle at 66% 84%, rgba(50, 213, 131, 0.04), transparent 22%);
+    filter: blur(40px);
     animation: shell-atmosphere-drift-b 26s var(--ease-shell) infinite alternate;
   }
 
@@ -313,7 +321,7 @@
     z-index: 2;
     overflow: hidden;
     pointer-events: none;
-    opacity: 0.72;
+    opacity: 0.5;
     mix-blend-mode: screen;
   }
 
@@ -366,31 +374,7 @@
   }
 
   .living-system__radar {
-    position: absolute;
-    border: 1px solid rgba(var(--living-primary), 0.13);
-    border-radius: 999px;
-    background:
-      radial-gradient(circle, rgba(var(--living-primary), 0.09), transparent 58%),
-      conic-gradient(from 0deg, transparent 0 68%, rgba(var(--living-primary), 0.22), transparent 82% 100%);
-    filter: blur(0.2px);
-    animation: living-radar-spin 18s linear infinite;
-  }
-
-  .living-system__radar--a {
-    right: -14vh;
-    top: 16vh;
-    width: 44vh;
-    height: 44vh;
-  }
-
-  .living-system__radar--b {
-    left: 10vw;
-    bottom: -22vh;
-    width: 52vh;
-    height: 52vh;
-    animation-duration: 26s;
-    animation-direction: reverse;
-    opacity: 0.62;
+    display: none;
   }
 
   .living-system__spine {

@@ -1261,12 +1261,33 @@ export function Home() {
       </a>
     );
   };
+  const heroFacts = activeHero
+    ? [
+        { label: 'Impacto', value: activeHero.item.impact?.label ?? activeHero.section.shortTitle },
+        {
+          label: 'Origem',
+          value:
+            activeHero.item.source_tier === 'editorial'
+              ? 'Intel'
+              : activeHero.item.source?.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0] || 'Intel',
+        },
+        { label: 'Ativo', value: String(heroSupportAsset).toUpperCase() },
+        {
+          label: 'Janela',
+          value: isMarketBackedHero
+            ? '24H'
+            : activeHero.item.editorial_kind === 'briefing'
+              ? 'agora'
+              : 'ampliada',
+        },
+      ]
+    : [];
 
   if (isLoading && !homeData) {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
-          <div className="mx-auto max-w-[1480px] py-6">
+          <div className="mx-auto max-w-[1560px] py-5">
             <ModuleStateCard
               tone="loading"
               title="Carregando base operacional"
@@ -1282,7 +1303,7 @@ export function Home() {
     return (
       <div className="flex flex-1">
         <div className="flex-1 px-8 py-6 overflow-y-auto">
-          <div className="mx-auto max-w-[1480px] py-6">
+          <div className="mx-auto max-w-[1560px] py-5">
             <ModuleStateCard
               tone="error"
               title="Base operacional indisponível"
@@ -1297,16 +1318,16 @@ export function Home() {
   }
 
   return (
-    <div className="flex flex-1">
-      <div className="sne-mosaic-page sne-home-page flex-1 px-3 py-2 xl:px-4">
-        <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1480px]">
+    <div className="flex min-h-full flex-1">
+      <div className="sne-mosaic-page sne-home-page min-h-full flex-1 px-2 py-2 xl:px-3">
+        <PageSignalFrame className="sne-mosaic-frame sne-home-frame sne-home-cockpit mx-auto max-w-[1560px]">
           {/* ── Intel Hero ─────────────────────────────────────────── */}
           <SignalPanel className="sne-home-hero-panel">
             <FieldSurface
               motif="intel-aperture"
               density="compact"
               surface="hero"
-              className="sne-home-hero-surface relative overflow-hidden rounded-[28px] px-5 py-5 xl:px-7 xl:py-6"
+              className="sne-home-hero-surface relative overflow-hidden rounded-[26px] px-4 py-4 xl:px-5 xl:py-5"
               style={{
                 ...RADAR_PANEL_SURFACE_STYLE,
                 background: `
@@ -1354,10 +1375,10 @@ export function Home() {
 
             <div className="relative z-[1]">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <div className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
+                <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                   Intel Brief
                 </div>
-                <div className="text-sm" style={{ color: 'var(--text-3)' }}>
+                <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
                   {formattedTime}
                 </div>
               </div>
@@ -1387,12 +1408,12 @@ export function Home() {
                             iconClassName="h-5 w-5"
                           />
                           <div>
-                            <div className="text-xs uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                              {activeHero.section.kicker}
-                            </div>
-                            <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
-                              {activeHero.section.title}
-                            </div>
+                          <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
+                            {activeHero.section.kicker}
+                          </div>
+                          <div className="text-[13px] font-semibold" style={{ color: 'var(--text-1)' }}>
+                            {activeHero.section.title}
+                          </div>
                           </div>
                         </div>
 
@@ -1416,6 +1437,14 @@ export function Home() {
                           <span>{activeHero.item.comments} comentários</span>
                           <span>{intelMeta(activeHero.item)}</span>
                           <span>{activeHero.item.author ? `@${activeHero.item.author}` : activeHero.section.shortTitle}</span>
+                        </div>
+                        <div className="sne-home-hero-facts">
+                          {heroFacts.map((item) => (
+                            <div key={item.label} className="sne-home-hero-facts__item">
+                              <span className="sne-home-hero-facts__label">{item.label}</span>
+                              <span className="sne-home-hero-facts__value">{item.value}</span>
+                            </div>
+                          ))}
                         </div>
                       </motion.div>
                     </AnimatePresence>
@@ -1484,7 +1513,7 @@ export function Home() {
               motif="signal-stack"
               density="compact"
               surface="panel"
-              className="rounded-[24px] px-4 py-[0.95rem]"
+              className="rounded-[22px] px-3.5 py-3"
               style={RADAR_RAIL_SURFACE_STYLE}
             >
               <div className="sne-home-keys">
@@ -1493,14 +1522,14 @@ export function Home() {
                     <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
                       Keys
                     </div>
-                    <div className="mt-0.5 text-[1.02rem] font-semibold leading-[1.08] text-balance" style={{ color: 'var(--text-1)' }}>
+                    <div className="mt-0.5 text-[0.95rem] font-semibold leading-[1.08] text-balance" style={{ color: 'var(--text-1)' }}>
                       Postura de acesso
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => navigate('/keys')}
-                    className="sne-home-text-action self-start whitespace-nowrap text-[12px] font-medium"
+                    className="sne-home-text-action self-start whitespace-nowrap text-[11px] font-medium"
                     style={{ color: 'var(--accent-orange)' }}
                   >
                     {keysActionLabel} ↗
@@ -1546,7 +1575,7 @@ export function Home() {
                 motif="session-ledger"
                 density="compact"
                 surface="strip"
-                className="rounded-[24px] px-5 py-5"
+                className="rounded-[22px] px-4 py-3.5"
                 style={RADAR_RAIL_SURFACE_STYLE}
               >
               <div className="sne-home-command-deck">
@@ -1556,10 +1585,10 @@ export function Home() {
                       {commandIntent.eyebrow}
                     </div>
                   </div>
-                  <div className="mt-1 text-xl font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
+                  <div className="mt-1 text-[0.94rem] font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
                     {commandIntent.title}
                   </div>
-                  <p className="mt-1 text-sm line-clamp-1" style={{ color: 'var(--text-2)' }}>
+                  <p className="mt-1 text-[13px] line-clamp-1" style={{ color: 'var(--text-2)' }}>
                     {commandIntent.summary}
                   </p>
                 </div>
@@ -1577,13 +1606,13 @@ export function Home() {
                         data-tone={command.tone}
                       >
                         <span className="sne-home-command-action__icon">
-                          <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3.25 w-3.25" />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold">{command.label}</span>
-                          <span className="block truncate text-[10px] uppercase tracking-[0.12em]">{command.state}</span>
+                          <span className="block truncate text-[13px] font-semibold">{command.label}</span>
+                          <span className="block truncate text-[9px] uppercase tracking-[0.12em]">{command.state}</span>
                         </span>
-                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                        <ArrowUpRight className="h-3.25 w-3.25 shrink-0 opacity-70" />
                       </button>
                     );
                   })}
@@ -1599,25 +1628,25 @@ export function Home() {
               motif="signal-stack"
               density="compact"
               surface="panel"
-              className="rounded-[24px] p-5"
+              className="rounded-[22px] p-3.5"
               style={RADAR_RAIL_SURFACE_STYLE}
             >
               <div className="sne-home-guide">
                 <div className="sne-home-guide__header">
                   <div className="min-w-0">
-                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                    <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
                       {homeGuide.eyebrow}
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
+                    <div className="mt-1 text-[0.94rem] font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
                       {homeGuide.title}
                     </div>
-                    <p className="mt-2 text-sm" style={{ color: 'var(--text-2)' }}>
+                    <p className="mt-1.5 text-[13px]" style={{ color: 'var(--text-2)' }}>
                       {homeGuide.summary}
                     </p>
                   </div>
                   <button
                     onClick={() => navigate(homeGuide.currentPath)}
-                    className="sne-home-text-action text-sm font-medium"
+                    className="sne-home-text-action text-[13px] font-medium"
                     style={{ color: 'var(--accent-orange)' }}
                   >
                     {homeGuide.currentLabel} ↗
@@ -1636,17 +1665,17 @@ export function Home() {
                         className="sne-home-guide-step"
                       >
                         <span className="sne-home-guide-step__icon">
-                          <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3.25 w-3.25" />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                          <span className="block text-[13px] font-semibold" style={{ color: 'var(--text-1)' }}>
                             {step.label}
                           </span>
-                          <span className="block text-[11px]" style={{ color: 'var(--text-2)' }}>
+                          <span className="block text-[10px]" style={{ color: 'var(--text-2)' }}>
                             {step.description}
                           </span>
                         </span>
-                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                        <ArrowUpRight className="h-3.25 w-3.25 shrink-0 opacity-70" />
                       </button>
                     );
                   })}
@@ -1661,91 +1690,93 @@ export function Home() {
                 motif="liquidity-field"
                 density="compact"
                 surface="panel"
-                className="rounded-[24px] p-5"
+                className="rounded-[22px] p-3.5"
                 style={RADAR_RAIL_SURFACE_STYLE}
             >
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                  Pulso de mercado
-                </div>
-                <div className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>
-                  Contexto para validar a leitura
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/radar')}
-                className="sne-home-text-action text-sm font-medium"
-                style={{ color: 'var(--accent-orange)' }}
-              >
-                Radar ↗
-              </button>
-            </div>
-
-            <div className="sne-mosaic-market-grid grid grid-cols-1 gap-3">
-              <div className="sne-home-market-table">
-                {marketPulseRows.map((mover) => (
-                  <button
-                    key={mover.symbol}
-                    type="button"
-                    className="sne-home-market-token"
-                    data-active={marketChartSymbol === mover.symbol ? 'true' : 'false'}
-                    data-tone={mover.unavailable ? 'flat' : mover.change24h != null && mover.change24h >= 0 ? 'up' : 'down'}
-                    onMouseEnter={() => setMarketChartSymbol(mover.symbol)}
-                    onFocus={() => setMarketChartSymbol(mover.symbol)}
-                    onClick={() => navigate(`/radar/${mover.symbol}`)}
-                    aria-label={`Abrir Radar de ${mover.symbol}`}
-                  >
-                    <span className="sne-home-market-token__top">
-                      <IntelEntityIcon
-                        symbol={assetIconSymbol(mover.symbol)}
-                        sectionKey="market"
-                        className="sne-home-market-token__icon"
-                        iconClassName="h-6 w-6"
-                      />
-                    </span>
-                    <span className="sne-home-market-token__symbol">
-                      {assetIconSymbol(mover.symbol).toUpperCase()}
-                    </span>
-                    <span className="sne-home-market-token__price">
-                      {mover.price == null ? '--' : `$${formatMarketPrice(mover.price)}`}
-                    </span>
-                    <span className="sne-home-market-token__change">
-                      {mover.change24h == null ? '--' : `${mover.change24h >= 0 ? '+' : ''}${(mover.change24h * 100).toFixed(1)}%`}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) ? (
-                <div
-                  className="sne-home-market-editorial rounded-[12px] px-3 py-2"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
-                >
-                  <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                    Narrativa
+            <div>
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
+                    Pulso de mercado
                   </div>
-                  {marketEditorial.headline && (
-                    <div className="mt-1 line-clamp-2 font-semibold text-sm" style={{ color: 'var(--text-1)' }}>
-                      {marketEditorial.headline}
-                    </div>
-                  )}
+                  <div className="text-[0.94rem] font-semibold" style={{ color: 'var(--text-1)' }}>
+                    Contexto para validar a leitura
+                  </div>
                 </div>
-              ) : !hasMarketPulseData ? (
-                <div
-                  className="sne-home-market-editorial rounded-[12px] px-3 py-2 text-sm"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)', color: 'var(--text-2)' }}
+                <button
+                  onClick={() => navigate('/radar')}
+                  className="sne-home-text-action text-[13px] font-medium"
+                  style={{ color: 'var(--accent-orange)' }}
                 >
-                  Dados de mercado indisponíveis. Radar sincronizando.
-                </div>
-              ) : null}
+                  Radar ↗
+                </button>
+              </div>
 
-              <MarketPulseCandlestick
-                symbol={marketChartSymbol}
-                change24h={marketChartRow?.change24h ?? null}
-                candles={marketChartCandles}
-                isLoading={marketChartQuery.isLoading || marketChartQuery.isFetching}
-              />
+              <div className="sne-mosaic-market-grid grid grid-cols-1 gap-2.5">
+                <div className="sne-home-market-table">
+                  {marketPulseRows.map((mover) => (
+                    <button
+                      key={mover.symbol}
+                      type="button"
+                      className="sne-home-market-token"
+                      data-active={marketChartSymbol === mover.symbol ? 'true' : 'false'}
+                      data-tone={mover.unavailable ? 'flat' : mover.change24h != null && mover.change24h >= 0 ? 'up' : 'down'}
+                      onMouseEnter={() => setMarketChartSymbol(mover.symbol)}
+                      onFocus={() => setMarketChartSymbol(mover.symbol)}
+                      onClick={() => navigate(`/radar/${mover.symbol}`)}
+                      aria-label={`Abrir Radar de ${mover.symbol}`}
+                    >
+                      <span className="sne-home-market-token__top">
+                        <IntelEntityIcon
+                          symbol={assetIconSymbol(mover.symbol)}
+                          sectionKey="market"
+                          className="sne-home-market-token__icon"
+                          iconClassName="h-6 w-6"
+                        />
+                      </span>
+                      <span className="sne-home-market-token__symbol">
+                        {assetIconSymbol(mover.symbol).toUpperCase()}
+                      </span>
+                      <span className="sne-home-market-token__price">
+                        {mover.price == null ? '--' : `$${formatMarketPrice(mover.price)}`}
+                      </span>
+                      <span className="sne-home-market-token__change">
+                        {mover.change24h == null ? '--' : `${mover.change24h >= 0 ? '+' : ''}${(mover.change24h * 100).toFixed(1)}%`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {marketEditorial && (marketEditorial.headline || marketEditorial.summary_pt || marketEditorial.watch_items.length > 0) ? (
+                  <div
+                    className="sne-home-market-editorial rounded-[12px] px-3 py-2"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)' }}
+                  >
+                    <div className="text-[9px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
+                      Narrativa
+                    </div>
+                    {marketEditorial.headline && (
+                      <div className="mt-1 line-clamp-2 font-semibold text-[13px]" style={{ color: 'var(--text-1)' }}>
+                        {marketEditorial.headline}
+                      </div>
+                    )}
+                  </div>
+                ) : !hasMarketPulseData ? (
+                  <div
+                    className="sne-home-market-editorial rounded-[12px] px-3 py-2 text-sm"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.08)', color: 'var(--text-2)' }}
+                  >
+                    Dados de mercado indisponíveis. Radar sincronizando.
+                  </div>
+                ) : null}
+
+                <MarketPulseCandlestick
+                  symbol={marketChartSymbol}
+                  change24h={marketChartRow?.change24h ?? null}
+                  candles={marketChartCandles}
+                  isLoading={marketChartQuery.isLoading || marketChartQuery.isFetching}
+                />
+              </div>
             </div>
             </FieldSurface>
           </SignalPanel>

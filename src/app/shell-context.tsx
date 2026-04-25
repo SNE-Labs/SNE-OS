@@ -156,7 +156,7 @@ function buildTapeItems(
     pushUnique('session', {
       label: 'Conecte uma carteira para persistir contexto',
       tone: 'warning',
-      href: '/vault',
+      href: '/pass',
     });
   }
 

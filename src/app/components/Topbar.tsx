@@ -56,17 +56,14 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
   const { routeMeta, sessionStats, pathname, accessLabel } = useShellContextData();
   const glow = resolveGlow(pathname);
   const walletLabel = sessionStats[1]?.value ?? 'Sem wallet';
-  const sessionLabel = sessionStats[2]?.value ?? 'Anônima';
   const isWalletConnected = walletLabel !== 'Sem carteira';
   const sessionTone = isWalletConnected ? 'var(--ok-green)' : 'var(--text-3)';
   const sessionStateLabel = isWalletConnected ? 'SESSÃO ATIVA' : 'SESSÃO PÚBLICA';
-  const identityLine = isWalletConnected
-    ? `IDENTIDADE VINCULADA · ${accessLabel}`
-    : `IDENTIDADE DESVINCULADA · ${accessLabel}`;
+  const identityStateLabel = isWalletConnected ? accessLabel : `IDENTIDADE DESVINCULADA · ${accessLabel}`;
 
   return (
     <header
-      className="sticky top-0 z-20 border-b px-3 py-1"
+      className="sticky top-0 z-20 border-b px-3 py-0.5"
       style={{
         background:
           'linear-gradient(180deg, rgba(6,8,12,0.94), rgba(6,8,12,0.84)), radial-gradient(circle at 45% 0%, rgba(255,255,255,0.03), transparent 38%)',
@@ -75,7 +72,7 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
         WebkitBackdropFilter: 'blur(18px)',
       }}
     >
-      <div className="grid grid-cols-[minmax(180px,1fr)_auto_minmax(180px,1fr)] items-center gap-2">
+      <div className="grid grid-cols-[minmax(160px,1fr)_auto_minmax(160px,1fr)] items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -115,7 +112,7 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
         </div>
 
         <div
-          className="hidden min-w-0 rounded-full border px-2.5 py-1 text-center lg:block"
+          className="hidden min-w-0 rounded-full border px-2 py-0.5 text-center xl:block"
           style={{
             backgroundColor: 'rgba(255,255,255,0.016)',
             borderColor: 'rgba(255,255,255,0.05)',
@@ -131,7 +128,7 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
 
         <div className="flex min-w-0 items-center justify-end gap-2">
           <div
-            className="hidden items-center rounded-[12px] border px-2.5 py-1 transition-transform duration-200 hover:-translate-y-0.5 lg:flex"
+            className="hidden items-center rounded-[10px] border px-2 py-[0.4rem] transition-transform duration-200 hover:-translate-y-0.5 xl:flex"
             style={{
               background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.014))',
               borderColor: 'rgba(255,255,255,0.075)',
@@ -139,31 +136,30 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045)',
             }}
           >
-            <div className="min-w-0">
-              <div className="text-[8px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
-                ID operacional
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div className="shrink-0 text-[7px] uppercase tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+                  ID operacional
+                </div>
+                <div className="max-w-[124px] truncate text-[10px] font-semibold" style={{ color: 'var(--text-1)' }}>
+                  {walletLabel}
+                </div>
               </div>
-              <div className="max-w-[140px] truncate text-[11px] font-medium" style={{ color: 'var(--text-1)' }}>
-                {walletLabel}
-              </div>
-              <div className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-[0.1em]" style={{ color: sessionTone }}>
+              <div className="flex min-w-0 items-center gap-1.5 text-[8px] uppercase tracking-[0.1em]">
                 <span
-                  className="h-1 w-1 rounded-full"
+                  className="h-1 w-1 shrink-0 rounded-full"
                   style={{
                     backgroundColor: sessionTone,
                     boxShadow: isWalletConnected ? '0 0 10px rgba(50,213,131,0.55)' : '0 0 8px rgba(255,255,255,0.22)',
                   }}
                 />
-                {sessionStateLabel}
+                <span className="shrink-0" style={{ color: sessionTone }}>
+                  {sessionStateLabel}
+                </span>
+                <span className="truncate" style={{ color: 'var(--text-3)' }}>
+                  {identityStateLabel}
+                </span>
               </div>
-              <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
-                {identityLine}
-              </div>
-              {!isWalletConnected ? (
-                <div className="truncate text-[8px] uppercase tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>
-                  {sessionLabel === 'Anônima' ? 'DISCOVERY PRONTO PARA LEITURA' : sessionLabel}
-                </div>
-              ) : null}
             </div>
           </div>
         </div>

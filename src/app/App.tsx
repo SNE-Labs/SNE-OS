@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { arbitrum, arbitrumSepolia, base, mainnet, optimism, polygon, scroll } from 'viem/chains';
-import { Suspense, useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Desktop Components (carregados normalmente)
@@ -48,12 +48,24 @@ import { useSeoMeta } from '@/lib/seo/useSeoMeta';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 const SUPPORTED_CHAINS = [arbitrum, arbitrumSepolia, mainnet, optimism, base, polygon, scroll] as const;
+const SHELL_DESIGN_BASELINE_WIDTH = 1920;
+const SHELL_DESIGN_BASELINE_HEIGHT = 1080;
+const SHELL_DESIGN_MIN_SCALE = 0.86;
+function resolveShellContentScale() {
+  if (typeof window === 'undefined') return 1;
+
+  const widthScale = window.innerWidth / SHELL_DESIGN_BASELINE_WIDTH;
+  const heightScale = window.innerHeight / SHELL_DESIGN_BASELINE_HEIGHT;
+  return Number(Math.max(SHELL_DESIGN_MIN_SCALE, Math.min(1, Math.min(widthScale, heightScale))).toFixed(4));
+}
 
 // Componente que decide qual layout usar baseado na plataforma
 function AppContent() {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shellContentScale, setShellContentScale] = useState(resolveShellContentScale);
+  const shellMainRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -66,6 +78,57 @@ function AppContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const handleResize = () => setShellContentScale(resolveShellContentScale());
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const previousFontSize = root.style.fontSize;
+
+    if (isMobile) {
+      root.style.fontSize = previousFontSize || '';
+      return () => {
+        root.style.fontSize = previousFontSize;
+      };
+    }
+
+    root.style.fontSize = `${16 * shellContentScale}px`;
+
+    return () => {
+      root.style.fontSize = previousFontSize;
+    };
+  }, [isMobile, shellContentScale]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const main = shellMainRef.current;
+
+    if (isMobile || !main) {
+      root.style.removeProperty('--shell-main-height');
+      return;
+    }
+
+    const updateShellMainHeight = () => {
+      root.style.setProperty('--shell-main-height', `${main.clientHeight}px`);
+    };
+
+    updateShellMainHeight();
+
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateShellMainHeight) : null;
+    observer?.observe(main);
+    window.addEventListener('resize', updateShellMainHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateShellMainHeight);
+      root.style.removeProperty('--shell-main-height');
+    };
+  }, [isMobile]);
 
   // Só renderiza mobile se realmente for mobile (evita flickering)
   if (isMobile) {
@@ -93,7 +156,7 @@ function AppContent() {
           <Topbar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
           <TapeWire />
 
-          <main className="shell-main flex-1 overflow-y-auto">
+          <main ref={shellMainRef} className="shell-main flex-1 overflow-y-auto">
             <ChunkLoadBoundary>
               <Suspense fallback={<DesktopSkeleton />}>
                 <AnimatedRouteFrame routeKey={location.pathname}>

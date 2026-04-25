@@ -46,7 +46,12 @@ type MonogramIcon = {
   color: string;
 };
 
-type EntityIcon = IconComponent | SimpleSvgIcon | EmojiIcon | MonogramIcon;
+type ImageIcon = {
+  kind: 'image';
+  src: string;
+};
+
+type EntityIcon = IconComponent | SimpleSvgIcon | EmojiIcon | MonogramIcon | ImageIcon;
 
 const ENTITY_ICONS: Record<string, EntityIcon> = {
   arbitrum: NetworkArbitrumOne,
@@ -77,7 +82,7 @@ const ENTITY_ICONS: Record<string, EntityIcon> = {
     path: siChainlink.path,
     color: `#${siChainlink.hex}`,
   },
-  aave: { kind: 'monogram', value: 'A', color: '#B6509E' },
+  aave: { kind: 'image', src: '/icons/aave.svg' },
   uni: { kind: 'monogram', value: 'U', color: '#FF007A' },
   uniswap: { kind: 'monogram', value: 'U', color: '#FF007A' },
   dogecoin: {
@@ -145,6 +150,14 @@ export function IntelEntityIcon({ symbol, sectionKey = 'market', className, styl
           <span aria-hidden="true" className={iconClassName} style={{ fontSize: '0.95em', lineHeight: 1 }}>
             {Icon.value}
           </span>
+        </div>
+      );
+    }
+
+    if (typeof Icon === 'object' && 'kind' in Icon && Icon.kind === 'image') {
+      return (
+        <div className={className} style={style}>
+          <img src={Icon.src} alt="" aria-hidden="true" className={iconClassName} />
         </div>
       );
     }

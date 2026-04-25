@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, AlertTriangle, ArrowUpRight, MoveRight, RefreshCw, ShieldAlert, Waves } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -8,8 +8,8 @@ import { ModuleStateCard } from '../components/sne/ModuleStateCard';
 import { StatusBadge } from '../components/sne/StatusBadge';
 import { IntelEntityIcon } from '../components/IntelEntityIcon';
 import { FieldSurface } from '../components/field/FieldSurface';
-import { PageSignalFrame, SignalPanel } from '../components/motion/PageMotion';
-import { useRadarOverview } from '../../hooks/useRadarData';
+import { PageSignalFrame, SignalPanel, StaggerGroup } from '../components/motion/PageMotion';
+import { useRadarCandlesPreview, useRadarOverview } from '../../hooks/useRadarData';
 import { useKeysEntitlement } from '../../hooks/useKeysEntitlement';
 import { resolveModuleState } from '../../lib/moduleState';
 import { getRadarAssetBySymbol, mergeRadarUniverse } from '../../lib/assets/registry';
@@ -178,9 +178,7 @@ export function Radar() {
   const hoveredRow = rows.find((row) => row.symbol === hoveredSymbol);
   const detailRow = hoveredRow ?? pinnedRow;
   const fieldRows = rows.slice(0, 10);
-  const momentumLane = [...rows].sort((left, right) => right.score - left.score).slice(0, 5);
   const liquidityLane = [...rows].sort((left, right) => Number(right.volume) - Number(left.volume)).slice(0, 5);
-  const cautionLane = [...rows].filter((row) => row.state.label !== 'BUY').sort((left, right) => left.score - right.score).slice(0, 4);
   const routeActions = (nextAction?.actions ?? []).slice(0, 3);
   const detailMetrics = [
     { label: 'Preco', value: `$${formatPrice(detailRow?.price ?? 0)}`, tone: 'pending' as Tone },
@@ -209,7 +207,6 @@ export function Radar() {
   function pinSymbol(symbol: string) {
     setPinnedSymbol(symbol);
     setHoveredSymbol(null);
-    navigate(`/radar/${symbol.toLowerCase()}`);
   }
 
   function previewSymbol(symbol: string | null) {
@@ -219,8 +216,8 @@ export function Radar() {
   return (
     <div className="flex flex-1">
       <div className="sne-mosaic-page flex-1 overflow-y-auto px-6 py-5 xl:px-8">
-        <PageSignalFrame className="sne-mosaic-frame mx-auto max-w-[1540px] space-y-4">
-          <SignalPanel>
+        <PageSignalFrame className="sne-mosaic-frame sne-radar-frame mx-auto max-w-[1560px] space-y-4">
+          <SignalPanel className="sne-radar-strip-panel">
             <FieldSurface
               motif="execution-rail"
               density="compact"
@@ -299,14 +296,14 @@ export function Radar() {
               onAction={moduleState === 'error' ? () => overviewQuery.refetch() : undefined}
             />
           ) : (
-            <SignalPanel className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
-              <div className="min-w-0 space-y-4">
+            <StaggerGroup className="sne-radar-cockpit">
+              <SignalPanel className="sne-radar-assets-panel">
                 <FieldSurface
                   as="section"
                   motif="radar-field"
                   density="compact"
                   surface="panel"
-                  className="relative overflow-hidden rounded-[30px] px-5 py-5"
+                  className="relative overflow-hidden rounded-[28px] px-4.5 py-3"
                   style={{
                     background:
                       'radial-gradient(circle at 18% 16%, rgba(255,140,66,0.08), transparent 22%), radial-gradient(circle at 80% 24%, rgba(62,201,153,0.06), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008))',
@@ -318,10 +315,10 @@ export function Radar() {
                   <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.28em]" style={{ color: 'var(--text-3)' }}>
-                        campo
+                        ativos
                       </div>
-                      <div className="mt-2 text-[15px] leading-7" style={{ color: 'var(--text-2)' }}>
-                        Visao geral do mercado com selecao direta de ativos.
+                      <div className="mt-1 text-[11px] leading-5" style={{ color: 'var(--text-2)' }}>
+                        Selecao direta de ativos em observacao.
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
@@ -330,121 +327,48 @@ export function Radar() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-12 auto-rows-[60px] gap-2">
-                    {fieldRows.map((row, index) => {
-                      const pinned = row.symbol === pinnedRow?.symbol;
-                      const preview = row.symbol === hoveredRow?.symbol;
-                      return (
-                        <motion.button
-                          key={row.symbol}
-                          layout
-                          onMouseEnter={() => previewSymbol(row.symbol)}
-                          onMouseLeave={() => previewSymbol(null)}
-                          onFocus={() => previewSymbol(row.symbol)}
-                          onBlur={() => previewSymbol(null)}
-                          onClick={() => pinSymbol(row.symbol)}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
-                          className="group relative overflow-hidden rounded-[18px] px-3 py-2.5 text-left transition-transform duration-200 hover:-translate-y-0.5"
-                          style={{
-                            gridColumn: 'span var(--radar-card-span, 4)',
-                            gridRow: 'span 2',
-                            background: pinned
-                              ? 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.03))'
-                              : preview
-                                ? 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))'
-                                : 'linear-gradient(135deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015))',
-                            border: pinned ? '1px solid rgba(255,140,66,0.18)' : preview ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: pinned ? '0 18px 50px rgba(0,0,0,0.18)' : 'none',
-                          }}
-                        >
-                          <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: toneColor(row.state.tone), opacity: 0.65 }} />
-                          <div className="flex h-full flex-col justify-between gap-2">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <IntelEntityIcon symbol={toEntitySymbol(row.symbol)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} iconClassName="h-4 w-4" />
-                                  <div className="min-w-0">
-                                    <div className="text-[14px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-1)' }}>
-                                      {row.symbol}
-                                    </div>
-                                  <div className="mt-1 text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                                      {row.liquidityLabel} · {row.confidenceLabel}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <StatusBadge status={toStatusBadge(row.state.tone)}>{row.state.label}</StatusBadge>
-                            </div>
-
-                            <div className="flex items-end justify-between gap-3">
-                              <div>
-                                <div className="text-[17px] font-semibold leading-none" style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>
-                                  {formatPercent(row.change24h)}
-                                </div>
-                                <div className="mt-1.5 text-xs" style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
-                                  ${formatPrice(row.price)}
-                                </div>
-                              </div>
-                              <div className="text-right text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>
-                                <div>score {formatScore(row.score)}</div>
-                                <div className="mt-1">vol ${compact(Number(row.volume))}</div>
-                                <div className="mt-2 h-1.5 w-20 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                                  <div className="h-full rounded-full" style={{ width: scoreToWidth(row.score), backgroundColor: toneColor(row.state.tone) }} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
+                  <div className="sne-radar-assets-grid mt-2.5">
+                    {fieldRows.map((row, index) => (
+                      <RadarAssetTile
+                        key={row.symbol}
+                        row={row}
+                        index={index}
+                        pinned={row.symbol === pinnedRow?.symbol}
+                        preview={row.symbol === hoveredRow?.symbol}
+                        onPreview={previewSymbol}
+                        onPin={pinSymbol}
+                      />
+                    ))}
                   </div>
                 </FieldSurface>
+              </SignalPanel>
 
-                <section className="grid gap-4 md:grid-cols-3">
-                  <StripList
-                    title="fluxo mais liquido"
-                    icon={Activity}
-                    entries={liquidityLane}
-                    activeSymbol={detailRow?.symbol}
-                    onPreview={previewSymbol}
-                    onPin={pinSymbol}
-                    meta={(entry) => `vol $${compact(Number(entry.volume))}`}
-                    value={(entry) => formatPercent(entry.change24h)}
-                  />
-                  <StripList
-                    title="pulso de momentum"
-                    icon={Waves}
-                    entries={momentumLane}
-                    activeSymbol={detailRow?.symbol}
-                    onPreview={previewSymbol}
-                    onPin={pinSymbol}
-                    meta={(entry) => `score ${formatScore(entry.score)}`}
-                    value={(entry) => entry.state.label}
-                  />
-                  <StripList
-                    title="zona de cautela"
-                    icon={ShieldAlert}
-                    entries={cautionLane}
-                    activeSymbol={detailRow?.symbol}
-                    onPreview={previewSymbol}
-                    onPin={pinSymbol}
-                    meta={(entry) => `score ${formatScore(entry.score)} · liq ${entry.liquidityLabel}`}
-                    value={(entry) => entry.state.label}
-                    emptyMessage="Nenhum ativo entrou em zona de cautela nesta janela."
-                  />
-                </section>
-              </div>
+              <SignalPanel className="sne-radar-chart-panel">
+                <FieldSurface
+                  as="section"
+                  motif="liquidity-field"
+                  density="compact"
+                  surface="panel"
+                  className="overflow-hidden rounded-[28px] px-5 py-5"
+                  style={{
+                    background:
+                      'radial-gradient(circle at 18% 16%, rgba(255,140,66,0.08), transparent 22%), radial-gradient(circle at 80% 24%, rgba(62,201,153,0.06), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: 'var(--shadow-1)',
+                  }}
+                >
+                  <RadarFocusChart symbol={detailRow?.symbol ?? pinnedRow?.symbol ?? querySymbol} change24h={detailRow?.change24h ?? null} />
+                </FieldSurface>
+              </SignalPanel>
 
-              <aside className="space-y-4 xl:sticky xl:top-5">
+              <SignalPanel className="sne-radar-reading-panel">
                 <FieldSurface
                   as="section"
                   motif="signal-stack"
                   density="compact"
                   surface="rail"
-                  className="overflow-hidden rounded-[28px] px-5 py-5"
-                      style={{
+                  className="overflow-hidden rounded-[28px] px-4.5 py-4.5"
+                  style={{
                     background: hoveredRow
                       ? 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018) 44%, rgba(255,255,255,0.01))'
                       : 'linear-gradient(180deg, rgba(255,140,66,0.08), rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.01))',
@@ -452,107 +376,155 @@ export function Radar() {
                     boxShadow: 'var(--shadow-1)',
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
-                        ativo em leitura
-                      </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        <IntelEntityIcon symbol={toEntitySymbol(detailRow?.symbol)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-6 w-6" />
-                        <div>
-                          <div className="text-[28px] font-semibold leading-none" style={{ color: 'var(--text-1)' }}>
-                            {detailRow?.symbol ?? '--'}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{detailRow?.state.label ?? 'HOLD'}</StatusBadge>
-                            {signal?.strength ? <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{formatSignalStrength(signal.strength)}</StatusBadge> : null}
+                  <div className="sne-radar-reading">
+                    <div className="sne-radar-reading__header">
+                      <div className="sne-radar-reading__identity">
+                        <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
+                          leitura
+                        </div>
+                        <div className="mt-2.5 flex items-center gap-3">
+                          <IntelEntityIcon symbol={toEntitySymbol(detailRow?.symbol)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} iconClassName="h-4.5 w-4.5" />
+                          <div>
+                            <div className="text-[22px] font-semibold leading-none" style={{ color: 'var(--text-1)' }}>
+                              {detailRow?.symbol ?? '--'}
+                            </div>
+                            <div className="sne-radar-reading__badges mt-1.5">
+                              <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{detailRow?.state.label ?? 'HOLD'}</StatusBadge>
+                              {signal?.strength ? <StatusBadge status={toStatusBadge(detailRow?.state.tone)}>{formatSignalStrength(signal.strength)}</StatusBadge> : null}
+                            </div>
                           </div>
                         </div>
+                      </div>
+
+                      <div className="sne-radar-reading__summary" style={{ color: 'var(--text-2)' }}>
+                        {detailRow?.executionHint ?? 'Execucao em rota de swap suportada.'}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => navigate(detailRow?.swapsHref ?? buildSwapsHrefFromRadarSymbol(detailRow?.symbol))}
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em]"
-                      style={{ color: 'var(--accent-orange)', backgroundColor: 'rgba(255,140,66,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.18)' }}
-                    >
-                      {detailRow?.swapAvailability === 'proxy' ? 'Abrir rota proxy' : 'Abrir swaps'}
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="mt-4 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    Preco, variacao, score, liquidez e volume do ativo selecionado.
-                  </div>
-
-                  <div className="mt-3 text-sm leading-6" style={{ color: 'var(--text-3)' }}>
-                    {detailRow?.executionHint ?? 'Execucao em rota de swap suportada.'}
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
-                    {detailMetrics.map((metric) => (
-                      <div key={metric.label} className="border-b pb-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>
-                          {metric.label}
+                    <div className="sne-radar-reading__list">
+                      {detailMetrics.map((metric) => (
+                        <div key={metric.label} className="sne-radar-reading__row">
+                          <div className="sne-radar-reading__label" style={{ color: 'var(--text-3)' }}>
+                            {metric.label}
+                          </div>
+                          <div className="sne-radar-reading__value" style={{ color: toneColor(metric.tone), fontVariantNumeric: 'tabular-nums' }}>
+                            {metric.value}
+                          </div>
+                          {metric.label === 'Score' ? (
+                            <div className="sne-radar-reading__bar" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                              <div
+                                className="sne-radar-reading__bar-fill"
+                                style={{ width: scoreToWidth(detailRow?.score), backgroundColor: toneColor(detailRow?.state.tone) }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="mt-1 text-sm font-semibold uppercase tracking-[0.06em]" style={{ color: toneColor(metric.tone), fontVariantNumeric: 'tabular-nums' }}>
-                          {metric.value}
-                        </div>
+                      ))}
+                    </div>
+
+                    <div className="sne-radar-reading__footer">
+                      <div className="sne-radar-reading__footer-meta" style={{ color: 'var(--text-3)' }}>
+                        {detailRow?.swapAvailability === 'proxy' ? 'rota proxy ativa' : 'rota direta de swaps'}
                       </div>
-                    ))}
-                  </div>
 
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                    <div className="h-full rounded-full" style={{ width: scoreToWidth(detailRow?.score), backgroundColor: toneColor(detailRow?.state.tone) }} />
+                      <button
+                        onClick={() => navigate(detailRow?.swapsHref ?? buildSwapsHrefFromRadarSymbol(detailRow?.symbol))}
+                        className="sne-radar-reading__cta"
+                        style={{ color: 'var(--accent-orange)', backgroundColor: 'rgba(255,140,66,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,140,66,0.18)' }}
+                      >
+                        {detailRow?.swapAvailability === 'proxy' ? 'Abrir rota proxy' : 'Abrir swaps'}
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </FieldSurface>
+              </SignalPanel>
 
-                <section className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="mb-2 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                    <MoveRight className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
-                    Trilho sugerido
-                  </div>
-                  <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    {nextAction?.summary ?? 'Leia o campo, fixe o ativo que vale aprofundar e depois valide o trilho de execucao.'}
-                  </div>
-
-                  <div className="mt-4 space-y-1">
-                    {routeActions.map((action, index) => (
-                      <button
-                        key={`${action.label}-${action.href}`}
-                        onClick={() => navigate(action.href)}
-                        className="flex w-full items-center justify-between border-b py-3 text-left transition-colors hover:text-white"
-                        style={{ borderColor: 'rgba(255,255,255,0.06)', color: action.recommended ? 'var(--text-1)' : 'var(--text-2)' }}
-                      >
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: action.recommended ? 'var(--accent-orange)' : 'var(--text-3)' }}>
-                            {String(index + 1).padStart(2, '0')} · {action.kind}
-                          </div>
-                          <div className="mt-1 text-sm font-medium">{action.label}</div>
-                        </div>
-                        <ArrowUpRight className="h-4 w-4 shrink-0" />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="mb-2 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
-                    <ShieldAlert className="h-4 w-4" style={{ color: toneColor(executionRisk?.tone) }} />
-                    Friccao de execucao
-                  </div>
-                  <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                    {executionRisk?.summary ?? 'Sem leitura suficiente para qualificar a friccao de execucao.'}
-                  </div>
-                  {(executionRisk?.blockers ?? []).slice(0, 3).map((blocker) => (
-                    <div key={blocker} className="mt-3 flex items-start gap-2 text-sm" style={{ color: 'var(--text-2)' }}>
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--warn-amber)' }} />
-                      <span>{blocker}</span>
+              <SignalPanel className="sne-radar-lanes-panel">
+                <FieldSurface
+                  as="section"
+                  motif="signal-stack"
+                  density="compact"
+                  surface="rail"
+                  className="overflow-hidden rounded-[28px] px-5 py-5"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.012) 42%, rgba(255,255,255,0.008))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: 'var(--shadow-1)',
+                  }}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: 'var(--text-3)' }}>
+                        lanes taticas
+                      </div>
+                      <div className="mt-1.5 text-sm leading-6" style={{ color: 'var(--text-2)' }}>
+                        Faixas de liquidez, momentum, cautela e trilho operacional do ativo em foco.
+                      </div>
                     </div>
-                  ))}
-                </section>
-              </aside>
-            </SignalPanel>
+                  </div>
+
+                  <div className="sne-radar-lanes-grid">
+                    <div className="sne-radar-lanes-tables">
+                      <StripList
+                        title="fluxo mais liquido"
+                        icon={Activity}
+                        entries={liquidityLane}
+                        activeSymbol={detailRow?.symbol}
+                        onPreview={previewSymbol}
+                        onPin={pinSymbol}
+                        meta={(entry) => `vol $${compact(Number(entry.volume))}`}
+                        value={(entry) => formatPercent(entry.change24h)}
+                      />
+                    </div>
+
+                    <section className="sne-radar-lanes-card" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                      <div className="sne-radar-lanes-card__head">
+                        <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-1)' }}>
+                          <MoveRight className="h-4 w-4" style={{ color: 'var(--accent-orange)' }} />
+                          Trilho sugerido
+                        </div>
+                        <div className="sne-radar-lanes-risk-chip" style={{ color: toneColor(executionRisk?.tone), backgroundColor: 'rgba(255,255,255,0.035)' }}>
+                          {executionRisk?.label ?? 'sem dados'}
+                        </div>
+                      </div>
+
+                      <div className="sne-radar-lanes-card__summary" style={{ color: 'var(--text-2)' }}>
+                        {nextAction?.summary ?? 'Leia o campo, fixe o ativo que vale aprofundar e depois valide o trilho de execucao.'}
+                      </div>
+
+                      <div className="sne-radar-lanes-blockers">
+                        {(executionRisk?.blockers ?? []).slice(0, 2).map((blocker) => (
+                          <div key={blocker} className="sne-radar-lanes-blocker" style={{ color: 'var(--text-2)' }}>
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--warn-amber)' }} />
+                            <span>{blocker}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="sne-radar-lanes-actions sne-radar-lanes-actions--stack">
+                        {routeActions.map((action, index) => (
+                          <button
+                            key={`${action.label}-${action.href}`}
+                            onClick={() => navigate(action.href)}
+                            className="sne-radar-lanes-action"
+                            style={{ borderColor: 'rgba(255,255,255,0.06)', color: action.recommended ? 'var(--text-1)' : 'var(--text-2)' }}
+                          >
+                            <div className="min-w-0">
+                              <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: action.recommended ? 'var(--accent-orange)' : 'var(--text-3)' }}>
+                                {String(index + 1).padStart(2, '0')} · {action.kind}
+                              </div>
+                              <div className="mt-1 text-sm font-medium">{action.label}</div>
+                            </div>
+                            <ArrowUpRight className="h-4 w-4 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </FieldSurface>
+              </SignalPanel>
+            </StaggerGroup>
           )}
         </PageSignalFrame>
       </div>
@@ -564,6 +536,330 @@ function TopStat({ label, value, tone }: { label: string; value: string; tone?: 
   return (
     <div className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
       {label} <span style={{ color: tone ? toneColor(tone) : 'var(--text-1)' }}>{value}</span>
+    </div>
+  );
+}
+
+function RadarAssetTile({
+  row,
+  index,
+  pinned,
+  preview,
+  onPreview,
+  onPin,
+}: {
+  row: RadarRow;
+  index: number;
+  pinned: boolean;
+  preview: boolean;
+  onPreview: (symbol: string | null) => void;
+  onPin: (symbol: string) => void;
+}) {
+  return (
+    <motion.button
+      layout
+      onMouseEnter={() => onPreview(row.symbol)}
+      onMouseLeave={() => onPreview(null)}
+      onFocus={() => onPreview(row.symbol)}
+      onBlur={() => onPreview(null)}
+      onClick={() => onPin(row.symbol)}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: 'easeOut', delay: index * 0.02 }}
+      className="sne-radar-asset-tile group"
+      style={{
+        background: pinned
+          ? 'linear-gradient(135deg, rgba(255,140,66,0.14), rgba(255,255,255,0.03))'
+          : preview
+            ? 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015))',
+        border: pinned ? '1px solid rgba(255,140,66,0.18)' : preview ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.08)',
+        boxShadow: pinned ? '0 18px 40px rgba(0,0,0,0.16)' : 'none',
+      }}
+    >
+      <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: toneColor(row.state.tone), opacity: 0.65 }} />
+      <div className="sne-radar-asset-tile__body">
+        <div className="sne-radar-asset-tile__identity">
+          <IntelEntityIcon
+            symbol={toEntitySymbol(row.symbol)}
+            className="sne-radar-asset-tile__icon"
+            style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+            iconClassName="h-3.5 w-3.5"
+          />
+          <div className="sne-radar-asset-tile__symbol-wrap">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-1)' }}>
+              {row.symbol}
+            </div>
+            <div className="text-[7px] uppercase tracking-[0.12em]" style={{ color: 'var(--text-3)' }}>
+              {row.liquidityLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="sne-radar-asset-tile__price-block">
+          <div className="text-[8px] font-medium" style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+            ${formatPrice(row.price)}
+          </div>
+          <div className="text-[11px] font-semibold leading-none" style={{ color: toneColor(row.state.tone), fontVariantNumeric: 'tabular-nums' }}>
+            {formatPercent(row.change24h)}
+          </div>
+        </div>
+
+        <div className="sne-radar-asset-tile__tail">
+          <div className="sne-radar-asset-tile__meta-pill">
+            <span className="sne-radar-asset-tile__meta-key">S</span>
+            <span className="sne-radar-asset-tile__meta-val">{formatScore(row.score)}</span>
+          </div>
+          <div className="sne-radar-asset-tile__meta-pill">
+            <span className="sne-radar-asset-tile__meta-key">V</span>
+            <span className="sne-radar-asset-tile__meta-val">{compact(Number(row.volume))}</span>
+          </div>
+          <div className="sne-radar-asset-tile__status" data-tone={row.state.tone} style={{ color: toneColor(row.state.tone) }}>
+            {row.state.label}
+          </div>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+function RadarFocusChart({
+  symbol,
+  change24h,
+}: {
+  symbol: string;
+  change24h: number | null;
+}) {
+  const chartQuery = useRadarCandlesPreview(symbol, '1h', 42);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const candles = chartQuery.data?.candles ?? [];
+  const viewBoxWidth = 720;
+  const viewBoxHeight = 280;
+  const paddingX = 16;
+  const paddingY = 18;
+  const innerWidth = viewBoxWidth - paddingX * 2;
+  const innerHeight = viewBoxHeight - paddingY * 2;
+  const safeCandles = candles.slice(-42);
+  const priceValues = safeCandles.flatMap((candle) => [candle.high, candle.low]);
+  const high = priceValues.length > 0 ? Math.max(...priceValues) : 0;
+  const low = priceValues.length > 0 ? Math.min(...priceValues) : 0;
+  const priceRange = high - low || Math.max(high * 0.01, 1);
+  const candleSlot = safeCandles.length > 0 ? innerWidth / safeCandles.length : innerWidth;
+  const candleWidth = Math.max(5, Math.min(11, candleSlot * 0.64));
+  const latestCandle = safeCandles[safeCandles.length - 1] ?? null;
+  const latestPrice = latestCandle?.close ?? null;
+  const activeIndex = safeCandles.length === 0 ? null : hoverIndex == null ? safeCandles.length - 1 : Math.max(0, Math.min(safeCandles.length - 1, hoverIndex));
+  const activeCandle = activeIndex == null ? null : safeCandles[activeIndex] ?? null;
+  const activePrice = activeCandle?.close ?? latestPrice;
+  const activeX = activeIndex == null ? null : paddingX + candleSlot * activeIndex + candleSlot / 2;
+  const priceGuideValues = safeCandles.length > 0 ? [high, low + priceRange * 0.5, low] : [];
+  const timeGuideIndexes = safeCandles.length > 0
+    ? Array.from(new Set([
+        0,
+        Math.max(0, Math.floor((safeCandles.length - 1) * 0.33)),
+        Math.max(0, Math.floor((safeCandles.length - 1) * 0.66)),
+        safeCandles.length - 1,
+      ]))
+    : [];
+
+  const projectY = (value: number) => {
+    const normalized = (value - low) / priceRange;
+    return paddingY + innerHeight - normalized * innerHeight;
+  };
+
+  const handlePointerMove = (event: MouseEvent<HTMLDivElement>) => {
+    if (safeCandles.length === 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = Math.max(0, Math.min(0.9999, (event.clientX - rect.left) / rect.width));
+    setHoverIndex(Math.floor(ratio * safeCandles.length));
+  };
+
+  return (
+    <div className="sne-radar-focus-chart">
+      <div className="sne-radar-focus-chart__header">
+        <div>
+          <div className="sne-radar-focus-chart__eyebrow">grafico</div>
+          <div className="sne-radar-focus-chart__title">
+            {toEntitySymbol(symbol)?.toUpperCase() ?? symbol} {activePrice == null ? '--' : `$${formatPrice(activePrice)}`}
+          </div>
+        </div>
+        <div className="sne-radar-focus-chart__delta" data-tone={change24h == null ? 'flat' : change24h >= 0 ? 'up' : 'down'}>
+          {change24h == null ? '--' : formatPercent(change24h)}
+        </div>
+      </div>
+
+      {activeCandle ? (
+        <div className="sne-radar-focus-chart__ohlc">
+          <div className="sne-radar-focus-chart__ohlc-item">
+            <span className="sne-radar-focus-chart__ohlc-label">O</span>
+            <span className="sne-radar-focus-chart__ohlc-value">{formatPrice(activeCandle.open)}</span>
+          </div>
+          <div className="sne-radar-focus-chart__ohlc-item">
+            <span className="sne-radar-focus-chart__ohlc-label">H</span>
+            <span className="sne-radar-focus-chart__ohlc-value">{formatPrice(activeCandle.high)}</span>
+          </div>
+          <div className="sne-radar-focus-chart__ohlc-item">
+            <span className="sne-radar-focus-chart__ohlc-label">L</span>
+            <span className="sne-radar-focus-chart__ohlc-value">{formatPrice(activeCandle.low)}</span>
+          </div>
+          <div className="sne-radar-focus-chart__ohlc-item">
+            <span className="sne-radar-focus-chart__ohlc-label">C</span>
+            <span className="sne-radar-focus-chart__ohlc-value">{formatPrice(activeCandle.close)}</span>
+          </div>
+          <div className="sne-radar-focus-chart__ohlc-time">
+            {new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(activeCandle.timestamp))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="sne-radar-focus-chart__frame" onMouseMove={handlePointerMove} onMouseLeave={() => setHoverIndex(null)}>
+        {safeCandles.length === 0 ? (
+          <div className="sne-radar-focus-chart__empty">
+            {chartQuery.isLoading || chartQuery.isFetching ? 'Carregando candles...' : 'Candles indisponíveis no momento.'}
+          </div>
+        ) : (
+          <>
+            <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="sne-radar-focus-chart__svg" aria-hidden="true">
+              {priceGuideValues.map((value, guideIndex) => {
+                const y = projectY(value);
+                return (
+                  <line
+                    key={`price-guide-${guideIndex}`}
+                    x1={paddingX}
+                    y1={y}
+                    x2={viewBoxWidth - paddingX}
+                    y2={y}
+                    stroke="rgba(255,255,255,0.05)"
+                    strokeDasharray="3 6"
+                  />
+                );
+              })}
+
+              {timeGuideIndexes.map((index) => {
+                const x = paddingX + candleSlot * index + candleSlot / 2;
+                return (
+                  <line
+                    key={`time-guide-${index}`}
+                    x1={x}
+                    y1={paddingY}
+                    x2={x}
+                    y2={viewBoxHeight - paddingY}
+                    stroke="rgba(255,255,255,0.028)"
+                    strokeDasharray="2 7"
+                  />
+                );
+              })}
+
+              {safeCandles.map((candle, index) => {
+                const x = paddingX + candleSlot * index + candleSlot / 2;
+                const openY = projectY(candle.open);
+                const closeY = projectY(candle.close);
+                const highY = projectY(candle.high);
+                const lowY = projectY(candle.low);
+                const bodyY = Math.min(openY, closeY);
+                const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+                const bullish = candle.close >= candle.open;
+                const bodyFill = bullish ? 'rgba(62,201,153,0.92)' : 'rgba(255,140,66,0.92)';
+                const wickStroke = bullish ? 'rgba(62,201,153,0.82)' : 'rgba(255,140,66,0.82)';
+                const active = index === activeIndex;
+
+                return (
+                  <g key={candle.timestamp}>
+                    {active ? (
+                      <rect
+                        x={x - candleSlot / 2}
+                        y={paddingY}
+                        width={candleSlot}
+                        height={innerHeight}
+                        fill="rgba(255,255,255,0.018)"
+                      />
+                    ) : null}
+                    <line x1={x} y1={highY} x2={x} y2={lowY} stroke={wickStroke} strokeWidth={active ? '1.6' : '1.25'} strokeLinecap="round" />
+                    <rect
+                      x={x - candleWidth / 2}
+                      y={bodyY}
+                      width={candleWidth}
+                      height={bodyHeight}
+                      rx="0.8"
+                      fill={bodyFill}
+                      stroke={active ? 'rgba(255,255,255,0.18)' : 'rgba(8,10,15,0.38)'}
+                      strokeWidth={active ? '1.15' : '0.85'}
+                    />
+                  </g>
+                );
+              })}
+
+              {activePrice != null ? (
+                <line
+                  x1={paddingX}
+                  y1={projectY(activePrice)}
+                  x2={viewBoxWidth - paddingX}
+                  y2={projectY(activePrice)}
+                  stroke="rgba(255,255,255,0.14)"
+                  strokeDasharray="4 5"
+                />
+              ) : null}
+
+              {activeX != null ? (
+                <line
+                  x1={activeX}
+                  y1={paddingY}
+                  x2={activeX}
+                  y2={viewBoxHeight - paddingY}
+                  stroke="rgba(255,255,255,0.14)"
+                  strokeDasharray="3 6"
+                />
+              ) : null}
+
+              {priceGuideValues.map((value, guideIndex) => (
+                <text
+                  key={`price-label-${guideIndex}`}
+                  x={viewBoxWidth - 2}
+                  y={projectY(value) - 4}
+                  textAnchor="end"
+                  fill="rgba(196,201,214,0.74)"
+                  fontSize="10"
+                  fontWeight="700"
+                  letterSpacing="0.08em"
+                >
+                  {formatPrice(value)}
+                </text>
+              ))}
+
+              {timeGuideIndexes.map((index) => {
+                const candle = safeCandles[index];
+                if (!candle) return null;
+                const x = paddingX + candleSlot * index + candleSlot / 2;
+                const label = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(candle.timestamp));
+                return (
+                  <text
+                    key={`time-label-${index}`}
+                    x={x}
+                    y={viewBoxHeight - 4}
+                    textAnchor="middle"
+                    fill="rgba(196,201,214,0.62)"
+                    fontSize="10"
+                    fontWeight="700"
+                    letterSpacing="0.08em"
+                  >
+                    {label}
+                  </text>
+                );
+              })}
+            </svg>
+
+            {activePrice != null ? (
+              <div
+                className="sne-radar-focus-chart__price-tag"
+                style={{ top: `${(projectY(activePrice) / viewBoxHeight) * 100}%` }}
+              >
+                ${formatPrice(activePrice)}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
