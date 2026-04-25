@@ -933,7 +933,7 @@ export function Home() {
                           'text-xl xl:text-[1.65rem] font-semibold leading-[1.04] tracking-[-0.03em] text-balance mb-3 line-clamp-3'
                         )}
 
-                        <div className="max-w-3xl text-sm xl:text-base mb-3 line-clamp-2" style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>
+                        <div className="sne-home-hero-summary max-w-3xl text-sm xl:text-base mb-3 line-clamp-2" style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>
                           {intelSummary(activeHero.item)}
                         </div>
 
@@ -964,9 +964,9 @@ export function Home() {
                             backdropFilter: 'blur(8px)',
                           }}
                         >
-                          <div className="flex items-center justify-between gap-3 mb-4">
+                          <div className="sne-home-hero-data-head flex items-center justify-between gap-3 mb-4">
                             <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                              Leitura em dados
+                              Leitura
                             </div>
                             <button
                               onClick={() => openIntelItem(activeHero.item.url)}
