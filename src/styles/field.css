@@ -442,6 +442,72 @@
       border-radius: 8px !important;
     }
 
+    .sne-home-command-deck {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .sne-home-command-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.45rem;
+      min-width: 0;
+    }
+
+    .sne-home-command-action {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 0.48rem 0.55rem;
+      background: rgba(255,255,255,0.028);
+      color: var(--text-1);
+      text-align: left;
+      transition: transform 180ms var(--ease-shell), border-color 180ms var(--ease-shell), background 180ms var(--ease-shell);
+    }
+
+    .sne-home-command-action:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.045);
+    }
+
+    .sne-home-command-action__icon {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.045);
+      color: var(--text-2);
+    }
+
+    .sne-home-command-action[data-tone='success'] .sne-home-command-action__icon {
+      background: rgba(50, 213, 131, 0.1);
+      color: var(--ok-green);
+    }
+
+    .sne-home-command-action[data-tone='warning'] .sne-home-command-action__icon {
+      background: rgba(255, 176, 32, 0.1);
+      color: var(--warn-amber);
+    }
+
+    .sne-home-command-action[data-tone='active'] .sne-home-command-action__icon {
+      background: rgba(45, 212, 255, 0.1);
+      color: var(--info-cyan);
+    }
+
+    .sne-home-command-action[data-tone='pending'] .sne-home-command-action__icon {
+      background: rgba(255,255,255,0.055);
+      color: var(--text-2);
+    }
+
     .sne-home-intel-stream {
       display: flex;
       flex-direction: column;
@@ -719,6 +785,10 @@
 
     .sne-home-brief-panel .sne-mosaic-balanced-grid {
       grid-template-columns: minmax(0, 1.15fr) minmax(460px, 0.85fr) !important;
+    }
+
+    .sne-home-command-deck {
+      grid-template-columns: minmax(0, 0.86fr) minmax(620px, 1.14fr);
     }
   }
 

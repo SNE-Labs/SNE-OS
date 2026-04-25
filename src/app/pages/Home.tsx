@@ -5,7 +5,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
   ArrowUpRight,
+  BadgeCheck,
+  Compass,
+  Newspaper,
   Shield,
+  Wallet,
   Waves,
   Zap,
 } from 'lucide-react';
@@ -407,8 +411,70 @@ export function Home() {
   const featuredMover = liveMovers[0] ?? null;
   const secondaryMovers = liveMovers.slice(1, 4);
   const brief = homeData?.brief;
-  const briefSignals = homeData?.brief_signals ?? [];
   const data = homeData?.dashboard;
+  const walletConnected = Boolean(homeData?.session.authenticated || homeData?.wallet?.address);
+  const commandIntent = walletConnected
+    ? {
+        eyebrow: 'Command Center',
+        title: 'Conta conectada',
+        summary: marketRegime?.label
+          ? `Use o Radar para validar um mercado ${marketRegime.label.toLocaleLowerCase('pt-BR')} antes de mover saldo.`
+          : 'Vault, Radar e Intel já podem orientar o próximo movimento.',
+      }
+    : {
+        eyebrow: 'Command Center',
+        title: 'Modo público ativo',
+        summary: marketRegime?.label
+          ? `Comece pelo Radar: mercado ${marketRegime.label.toLocaleLowerCase('pt-BR')} e conta ainda não conectada.`
+          : 'Explore Radar e Intel agora, ou conecte a carteira para personalizar o OS.',
+      };
+  const commandDeck = walletConnected
+    ? [
+        {
+          label: 'Abrir Vault',
+          state: homeData?.wallet?.status === 'ready' ? 'conta pronta' : 'saldo em leitura',
+          path: '/vault',
+          icon: Wallet,
+          tone: 'success' as const,
+        },
+        {
+          label: 'Mover USDT',
+          state: 'rail de execução',
+          path: '/swaps',
+          icon: Waves,
+          tone: 'warning' as const,
+        },
+        {
+          label: 'Validar Radar',
+          state: marketRegime?.label ?? 'mercado ao vivo',
+          path: '/radar',
+          icon: Compass,
+          tone: 'active' as const,
+        },
+      ]
+    : [
+        {
+          label: 'Ler mercado',
+          state: marketRegime?.label ?? 'Radar público',
+          path: '/radar',
+          icon: Compass,
+          tone: 'warning' as const,
+        },
+        {
+          label: 'Abrir Intel',
+          state: intelItems.length > 0 ? `${intelItems.length} sinais ativos` : 'brief ao vivo',
+          path: '/intel',
+          icon: Newspaper,
+          tone: 'active' as const,
+        },
+        {
+          label: 'Conectar conta',
+          state: 'Vault aguardando',
+          path: '/vault',
+          icon: BadgeCheck,
+          tone: 'pending' as const,
+        },
+      ];
 
   const openIntelItem = (url: string) => {
     const normalized = normalizeIntelRoute(url);
@@ -824,9 +890,6 @@ export function Home() {
                 <div className="text-sm" style={{ color: 'var(--text-3)' }}>
                   {formattedTime}
                 </div>
-                <StatusBadge status={homeData?.intel.last_updated ? 'active' : 'pending'}>ao vivo</StatusBadge>
-                {activeHero ? <StatusBadge status={activeHeroTheme?.badge ?? 'pending'}>{activeHero.section.shortTitle}</StatusBadge> : null}
-                {isFetching ? <StatusBadge status="pending">sincronizando</StatusBadge> : null}
                 <div className="text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
                   atualizado {heroUpdatedAt}
                 </div>
@@ -1074,68 +1137,50 @@ export function Home() {
                   borderColor: 'var(--stroke-1)',
                 }}
               >
-              <div className="sne-mosaic-balanced-grid grid grid-cols-1 xl:grid-cols-[1.04fr_0.96fr] gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <div className="text-[11px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
-                      Desde a última sessão
+              <div className="sne-home-command-deck">
+                <div className="sne-home-command-intent min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-[10px] uppercase tracking-[0.22em]" style={{ color: 'var(--text-3)' }}>
+                      {commandIntent.eyebrow}
                     </div>
-                    <StatusBadge status={brief.badge_status}>{brief.badge}</StatusBadge>
-                    <StatusBadge status="active">USDT-first</StatusBadge>
+                    <StatusBadge status={walletConnected ? 'success' : 'pending'}>
+                      {walletConnected ? 'conta ativa' : 'modo público'}
+                    </StatusBadge>
+                    <StatusBadge status={marketRegime?.tone ?? brief.badge_status}>
+                      {marketRegime?.label ?? brief.badge}
+                    </StatusBadge>
                   </div>
-                  <div className="text-2xl font-semibold mb-2 text-balance" style={{ color: 'var(--text-1)' }}>
-                    {brief.headline}
+                  <div className="mt-1 text-xl font-semibold text-balance" style={{ color: 'var(--text-1)' }}>
+                    {commandIntent.title}
                   </div>
-                  <p className="sne-home-brief-summary text-sm xl:text-base" style={{ color: 'var(--text-2)' }}>{brief.summary}</p>
-
-                  <div
-                    className="sne-home-brief-account mt-4 rounded-[20px] border p-4"
-                    style={{
-                      background:
-                        'radial-gradient(circle at 0% 0%, rgba(255,140,66,0.10), transparent 28%), rgba(255,255,255,0.025)',
-                      borderColor: 'rgba(255,255,255,0.075)',
-                    }}
-                  >
-                    <div className="mb-1 text-[11px] uppercase tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
-                      Conta operacional
-                    </div>
-                    <div className="text-sm leading-6" style={{ color: 'var(--text-2)' }}>
-                      USDT é o saldo-base. Pass mantém a identidade, Vault lê a conta, Radar qualifica o momento e o rail de execução move o saldo.
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <button
-                        onClick={() => navigate('/vault')}
-                        className="text-sm font-medium"
-                        style={{ color: 'var(--accent-orange)' }}
-                      >
-                        Ver saldo-base ↗
-                      </button>
-                      <button
-                        onClick={() => navigate('/swaps')}
-                        className="text-sm font-medium"
-                        style={{ color: 'var(--text-2)' }}
-                      >
-                        Mover USDT ↗
-                      </button>
-                    </div>
-                  </div>
+                  <p className="mt-1 text-sm line-clamp-1" style={{ color: 'var(--text-2)' }}>
+                    {commandIntent.summary}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {briefSignals.map((s) => (
-                    <div
-                      key={s.label}
-                      className="rounded-[18px] px-4 py-4"
-                      style={{ backgroundColor: 'var(--bg-3)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="text-[10px] uppercase mb-1 tracking-[0.16em]" style={{ color: 'var(--text-3)' }}>{s.label}</div>
-                      <div className="font-semibold text-base" style={{ color: 'var(--text-1)' }}>{s.value}</div>
-                    </div>
-                  ))}
-                  {briefSignals.length === 0 && (
-                    <div className="col-span-2 text-sm" style={{ color: 'var(--text-2)' }}>
-                      Sem sinais resumidos para esta sessão.
-                    </div>
-                  )}
+
+                <div className="sne-home-command-actions">
+                  {commandDeck.map((command) => {
+                    const Icon = command.icon;
+
+                    return (
+                      <button
+                        key={command.path}
+                        type="button"
+                        onClick={() => navigate(command.path)}
+                        className="sne-home-command-action"
+                        data-tone={command.tone}
+                      >
+                        <span className="sne-home-command-action__icon">
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">{command.label}</span>
+                          <span className="block truncate text-[10px] uppercase tracking-[0.12em]">{command.state}</span>
+                        </span>
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               </FieldSurface>
