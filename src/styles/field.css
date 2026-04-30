@@ -453,7 +453,7 @@
     .sne-home-frame {
       position: relative;
       min-height: 0;
-      height: min(548px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 1rem));
+      height: min(760px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 1rem));
       max-width: min(1560px, calc(100vw - 72px)) !important;
       isolation: isolate;
       z-index: 1;
@@ -1607,7 +1607,7 @@
     }
 
     .sne-home-frame {
-      height: min(540px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 1rem));
+      height: min(780px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 1rem));
       max-width: min(1500px, calc(100vw - 104px)) !important;
     }
 
@@ -1653,7 +1653,7 @@
     }
 
     .sne-home-frame {
-      height: min(500px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.75rem));
+      height: min(680px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.75rem));
       max-width: min(1360px, calc(100vw - 100px)) !important;
     }
 
@@ -1685,7 +1685,7 @@
 
   @media (max-width: 1520px) {
     .sne-home-frame {
-      height: min(520px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.9rem));
+      height: min(700px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.9rem));
       max-width: min(1380px, calc(100vw - 52px)) !important;
     }
 
@@ -1712,7 +1712,7 @@
 
   @media (max-width: 1420px) {
     .sne-home-frame {
-      height: min(500px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.75rem));
+      height: min(660px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.75rem));
       max-width: min(1280px, calc(100vw - 40px)) !important;
     }
 
@@ -1754,7 +1754,7 @@
 
   @media (min-width: 1280px) and (max-height: 860px) {
     .sne-home-frame {
-      height: min(456px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.6rem));
+      height: min(620px, calc(var(--shell-main-height, 100dvh) - var(--shell-bottom-reserve) - 0.6rem));
       max-width: min(1320px, calc(100vw - 40px)) !important;
     }
 

@@ -51,12 +51,14 @@ const SUPPORTED_CHAINS = [arbitrum, arbitrumSepolia, mainnet, optimism, base, po
 const SHELL_DESIGN_BASELINE_WIDTH = 1920;
 const SHELL_DESIGN_BASELINE_HEIGHT = 1080;
 const SHELL_DESIGN_MIN_SCALE = 0.86;
+const DESKTOP_PRESENTATION_SCALE = 0.9;
 function resolveShellContentScale() {
   if (typeof window === 'undefined') return 1;
 
   const widthScale = window.innerWidth / SHELL_DESIGN_BASELINE_WIDTH;
   const heightScale = window.innerHeight / SHELL_DESIGN_BASELINE_HEIGHT;
-  return Number(Math.max(SHELL_DESIGN_MIN_SCALE, Math.min(1, Math.min(widthScale, heightScale))).toFixed(4));
+  const responsiveScale = Math.max(SHELL_DESIGN_MIN_SCALE, Math.min(1, Math.min(widthScale, heightScale)));
+  return Number((responsiveScale * DESKTOP_PRESENTATION_SCALE).toFixed(4));
 }
 
 // Componente que decide qual layout usar baseado na plataforma
