@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import { LIFI_RPC_URLS } from '@/lib/rpcUrls';
@@ -18,6 +18,7 @@ type LiFiSwapWidgetProps = {
   prefill?: SwapPrefill;
   compact?: boolean;
   className?: string;
+  bare?: boolean;
 };
 
 const LIFI_INTEGRATOR =
@@ -184,9 +185,14 @@ export function LiFiSwapWidget({
   prefill,
   compact = false,
   className,
+  bare = false,
 }: LiFiSwapWidgetProps) {
   const [WidgetComponent, setWidgetComponent] = useState<LiFiWidgetComponent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [widgetScale, setWidgetScale] = useState(1);
+  const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +211,61 @@ export function LiFiSwapWidget({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (compact) {
+      setWidgetScale(1);
+      return;
+    }
+
+    const stageNode = stageRef.current;
+    const contentNode = contentRef.current;
+    if (!stageNode || !contentNode || typeof ResizeObserver === 'undefined') return;
+
+    const MIN_SCALE = 0.48;
+
+    const readContentSize = () => {
+      const nextWidth = Math.ceil(contentNode.offsetWidth);
+      const nextHeight = Math.ceil(contentNode.offsetHeight);
+
+      if (nextWidth > 0 && nextHeight > 0) {
+        setContentSize((current) =>
+          current.width === nextWidth && current.height === nextHeight
+            ? current
+            : { width: nextWidth, height: nextHeight }
+        );
+      }
+    };
+
+    const updateScale = () => {
+      readContentSize();
+
+      const { width: availableWidth, height: availableHeight } = stageNode.getBoundingClientRect();
+      const measuredWidth = contentNode.offsetWidth;
+      const measuredHeight = contentNode.offsetHeight;
+
+      if (!availableWidth || !availableHeight || !measuredWidth || !measuredHeight) return;
+
+      const widthScale = (availableWidth - 4) / measuredWidth;
+      const heightScale = (availableHeight - 4) / measuredHeight;
+      const nextScale = Math.max(MIN_SCALE, Math.min(1, widthScale, heightScale));
+      setWidgetScale(Number(nextScale.toFixed(4)));
+    };
+
+    updateScale();
+
+    const stageObserver = new ResizeObserver(updateScale);
+    const contentObserver = new ResizeObserver(updateScale);
+    stageObserver.observe(stageNode);
+    contentObserver.observe(contentNode);
+    window.addEventListener('resize', updateScale);
+
+    return () => {
+      stageObserver.disconnect();
+      contentObserver.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [compact, WidgetComponent]);
 
   const config = useMemo(
     () => {
@@ -249,7 +310,7 @@ export function LiFiSwapWidget({
         theme: {
           container: {
             border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: compact ? '20px' : '28px',
+            borderRadius: compact ? '18px' : '24px',
             boxShadow: 'none',
           },
           palette: {
@@ -331,8 +392,98 @@ export function LiFiSwapWidget({
   }
 
   return (
-    <div className={className}>
-      <WidgetComponent integrator={LIFI_INTEGRATOR} config={config} />
+    <div
+      className={className}
+      ref={stageRef}
+      style={{
+        maxWidth: compact ? undefined : '100%',
+        margin: compact ? undefined : '0 auto',
+        width: '100%',
+        height: '100%',
+        borderRadius: bare ? '0' : compact ? '20px' : '26px',
+        border: bare ? 'none' : '1px solid rgba(255,255,255,0.08)',
+        background: bare
+          ? 'transparent'
+          : compact
+            ? 'linear-gradient(180deg, rgba(8,12,20,0.9), rgba(6,9,19,0.94))'
+            : 'radial-gradient(circle at top, rgba(255,140,66,0.08), transparent 30%), linear-gradient(180deg, rgba(8,12,20,0.92), rgba(6,9,19,0.96))',
+        boxShadow: bare ? 'none' : compact ? 'none' : '0 24px 80px rgba(0,0,0,0.28)',
+        padding: bare ? '0' : compact ? '10px' : '12px',
+      }}
+    >
+      {!compact && !bare ? (
+        <div
+          className="mb-2 flex flex-wrap items-start justify-between gap-2 rounded-[18px] border px-3 py-2.5"
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.025)',
+            borderColor: 'rgba(255,255,255,0.07)',
+          }}
+        >
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+              Motor de execução
+            </div>
+            <div className="mt-1 text-[13px] font-medium" style={{ color: 'var(--text-1)' }}>
+              LiFi embutido no rail do SNE OS
+            </div>
+            <div className="mt-1 text-xs leading-5" style={{ color: 'var(--text-2)' }}>
+              A rota continua em auto custódia. O OS organiza contexto, destino e revisão antes da assinatura.
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {['USDT-first', 'self-custody'].map((token) => (
+              <div
+                key={token}
+                className="rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-[0.14em]"
+                style={{
+                  color: 'var(--text-2)',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  borderColor: 'rgba(255,255,255,0.08)',
+                }}
+              >
+                {token}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        className="flex w-full justify-center"
+        style={{
+          height: compact
+            ? 'auto'
+            : contentSize.height > 0
+              ? `${Math.ceil(contentSize.height * widgetScale)}px`
+              : '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            width: compact
+              ? '100%'
+              : contentSize.width > 0
+                ? `${Math.ceil(contentSize.width * widgetScale)}px`
+                : '100%',
+            minHeight: 0,
+          }}
+        >
+          <div
+            ref={contentRef}
+            style={{
+              display: 'inline-block',
+              width: compact ? '100%' : 'max-content',
+              maxWidth: compact ? '100%' : 'none',
+              transform: compact ? undefined : `scale(${widgetScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            <WidgetComponent integrator={LIFI_INTEGRATOR} config={config} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
